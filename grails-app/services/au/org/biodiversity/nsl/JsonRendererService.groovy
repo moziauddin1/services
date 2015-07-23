@@ -59,10 +59,11 @@ class JsonRendererService {
     }
 
     Map getBriefInstance(Instance instance) {
-        brief(instance, [instanceType: instance?.instanceType?.name,
-                         protologue  : instance?.instanceType?.protologue,
-                         citation    : instance?.reference?.citation,
-                         citationHtml: instance?.reference?.citationHtml,
+        brief(instance, [
+                instanceType: instance?.instanceType?.name,
+                protologue  : instance?.instanceType?.protologue,
+                citation    : instance?.reference?.citation,
+                citationHtml: instance?.reference?.citationHtml,
         ])
     }
 
