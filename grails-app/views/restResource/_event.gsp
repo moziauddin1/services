@@ -1,0 +1,2 @@
+<span class="event-gsp"><tt><g:if test="${event}"><g:link mapping="restResource" params="[namespace: 'api', shard: shard, idNumber: event.id]"
+                                                          action="event">${event.timeStamp ?: ifnull ?: '-'}</g:link></g:if><g:else>${ifnull ?: '-'}</g:else></tt></span>

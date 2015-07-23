@@ -1,0 +1,1 @@
+<span class="branch-tree"><g:link mapping="restResource" params="[namespace: 'api', shard: tree.label ?: 'tree', idNumber: tree.label ? 0 : tree.id]" action="tree">${tree.label ?: "Tree ${tree.id}"}</g:link></span>

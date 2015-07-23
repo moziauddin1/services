@@ -1,0 +1,13 @@
+target*/
+out/
+.idea/
+/*.iml
+.classpath
+.project
+.settings/
+stacktrace.log
+atlassian-ide-plugin.xml
+**/temp.*
+
+# OSX mouse droppings
+.DS_Store
