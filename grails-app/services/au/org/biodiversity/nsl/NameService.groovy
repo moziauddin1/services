@@ -262,6 +262,7 @@ class NameService {
             simpleName.genusNsl = Name.get(simpleNameParams.genusNslId as Long)
             simpleName.speciesNsl = Name.get(simpleNameParams.speciesNslId as Long)
             simpleName.apcInstance = Instance.get(simpleNameParams.apcInstanceId as Long)
+            simpleName.protoInstance = Instance.get(simpleNameParams.protoInstanceId as Long)
             simpleName.save()
             log.debug "Saved simpleName with $simpleNameParams"
         } else {

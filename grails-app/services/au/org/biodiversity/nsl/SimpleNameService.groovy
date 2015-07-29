@@ -38,8 +38,9 @@ class SimpleNameService {
         if (cache) {
             if (nameYear.isEmpty()) {
                 log.debug "caching protologue years"
-                List<List> nameYearList = Instance.executeQuery('select i.name.id, r.year, i.instanceType from Instance i, Reference r where i.instanceType in (:protologues) and r = i.reference',
+                List<List> nameYearList = Instance.executeQuery('select i.name.id, r.year, r.citation, i  from Instance i, Reference r where i.instanceType in (:protologues) and r = i.reference',
                         [protologues: getProtologues()]) as List<List>
+                nameYearList.groupBy { it[0] }
                 nameYearList.each { nameYear.put(it[0] as Long, it[1] as Integer) }
             }
             return nameYear[name.id]
@@ -53,9 +54,25 @@ class SimpleNameService {
         }
     }
 
+    private Name findNameByCitedInstance(Name name, String instanceTypeName) {
+        List<Name> names = Instance.executeQuery("select i.name from Instance i where i.citedBy.name = :name and i.instanceType.name = :type", [name: name, type: instanceTypeName]) as List<Name>
+
+        if (names && !names.empty) {
+            return names.first()
+        }
+        return null
+    }
+
+
     Map makeSimpleNameMap(Name name, Boolean cache = false) {
         Name.withNewSession { t ->
-            Integer protologueYear = findProtologueYear(name, cache)
+
+            Instance protologue = Instance.findByNameAndInstanceTypeInList(name, getProtologues())
+            Integer protologueYear = protologue?.reference?.year
+            String protoCitation = protologue?.reference?.citation
+
+            Name basionym = findNameByCitedInstance(name, 'basionym')
+            Name replaced = findNameByCitedInstance(name, 'replaced synonym')
 
             NameTreePath treePath = nameTreePathService.findCurrentNameTreePath(name, 'APNI')
             if (!treePath) {
@@ -99,6 +116,8 @@ class SimpleNameService {
                         simpleNameHtml     : name.simpleNameHtml,
                         fullNameHtml       : name.fullNameHtml,
                         cultivarName       : cultivarName,
+                        basionym           : basionym?.fullName,
+                        replacedSynonym    : replaced?.fullName,
 
                         nameTypeName       : name.nameType.name,
                         nameTypeId         : name.nameType.id,
@@ -124,6 +143,8 @@ class SimpleNameService {
                         classifications    : classifications,
                         apni               : apni,
 
+                        protoCitation      : protoCitation,
+                        protoInstanceId    : protologue?.id,
                         protoYear          : protologueYear,
                         nomStat            : name.nameStatus.name,
                         nameStatusId       : name.nameStatus.id,
@@ -166,6 +187,9 @@ class SimpleNameService {
                 apcInstance?.discard()
                 apcNode?.discard()
                 apcFamily?.discard()
+                basionym?.discard()
+                replaced?.discard()
+                protologue?.discard()
 
                 return sn
             } catch (e) {
@@ -323,6 +347,7 @@ CREATE TABLE nsl_simple_name_export AS
   author,
   authority,
   autonym,
+  basionym,
   base_name_author,
   classifications,
   created_at,
@@ -355,10 +380,15 @@ CREATE TABLE nsl_simple_name_export AS
   CASE WHEN parent_nsl_id IS NOT NULL
     THEN 'https://biodiversity.org.au/boa/name/apni/' || parent_nsl_id
   ELSE NULL END AS parent_nsl_id,
+  proto_citation,
+  CASE WHEN proto_instance_id IS NOT NULL
+    THEN 'https://biodiversity.org.au/boa/instance/apni/' || proto_instance_id
+  ELSE NULL END AS proto_instance_id,
   proto_year,
   rank,
   rank_abbrev,
   rank_sort_order,
+  replaced_synonym,
   sanctioning_author,
   scientific,
   CASE WHEN second_parent_nsl_id IS NOT NULL
