@@ -120,7 +120,10 @@ class InstanceService {
     }
 
     public List<Instance> findPrimaryInstance(Name name){
-        Instance.executeQuery("select i from Instance i where i.name = :name and i.instanceType.primaryInstance = true",[name: name])
+        if(name) {
+            return Instance.executeQuery("select i from Instance i where i.name = :name and i.instanceType.primaryInstance = true", [name: name])
+        }
+        return null
     }
 
     public List<Instance> sortInstances(List<Instance> instances) {

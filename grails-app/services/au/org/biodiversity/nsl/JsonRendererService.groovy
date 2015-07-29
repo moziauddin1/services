@@ -69,14 +69,14 @@ class JsonRendererService {
 
     Map getBriefNameWithHtml(Name name) {
         brief(name, [
-                nameType       : name.nameType?.name,
-                nameStatus     : name.nameStatus?.name,
-                nameRank       : name.nameRank?.name,
+                nameType       : name?.nameType?.name,
+                nameStatus     : name?.nameStatus?.name,
+                nameRank       : name?.nameRank?.name,
                 primaryInstance: instanceService.findPrimaryInstance(name)?.collect { Instance instance -> getBriefInstance(instance) },
-                fullName       : name.fullName,
-                fullNameHtml   : name.fullNameHtml,
-                simpleName     : name.simpleName,
-                simpleNameHtml : name.simpleNameHtml
+                fullName       : name?.fullName,
+                fullNameHtml   : name?.fullNameHtml,
+                simpleName     : name?.simpleName,
+                simpleNameHtml : name?.simpleNameHtml
         ])
     }
 
@@ -84,13 +84,13 @@ class JsonRendererService {
 
     Map getBriefInstanceForNameWithHtml(Instance instance) {
         brief(instance, [
-                instanceType: instance.instanceType.name,
-                page        : instance.page,
-                citation    : instance.reference.citation,
-                citationHtml: instance.reference.citationHtml,
-                parent      : instance.parent?.id,
-                cites       : instance.cites?.id,
-                citedBy     : instance.citedBy?.id
+                instanceType: instance?.instanceType?.name,
+                page        : instance?.page,
+                citation    : instance?.reference?.citation,
+                citationHtml: instance?.reference?.citationHtml,
+                parent      : instance?.parent?.id,
+                cites       : instance?.cites?.id,
+                citedBy     : instance?.citedBy?.id
         ])
     }
 
