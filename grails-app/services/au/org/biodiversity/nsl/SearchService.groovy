@@ -205,7 +205,7 @@ class SearchService {
 
     public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
         if (query.startsWith('"') && query.endsWith('"')) {
-            return query[1..-2]
+            return  query.size() > 2 ? query[1..-2] : ""
         }
         (leadingWildCard ? '%' : '') + query.replaceAll(/[ ]+/, ' ')
                                             .replaceAll(/([a-zA-Z0-9\.,']) ([a-zA-Z0-9\.,'])/, '$1 %$2')

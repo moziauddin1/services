@@ -37,7 +37,7 @@ class IdMapperController {
 
     def apni() {
         log.debug "cgi-bin/apni params: $params"
-        if (params.taxon_id) {
+        if (params.taxon_id && (params.taxon_id as String).isLong()) {
             Long taxon_id = params.taxon_id as Long
             IdMapper idMapper = IdMapper.findByFromIdAndSystem(taxon_id, 'PLANT_NAME')
             if (!idMapper?.toId) {
@@ -51,10 +51,11 @@ class IdMapperController {
         // OK look for any parameter with name in it and search it
         String name = params.taxon_name ?: (params['00taxon_name'] ?: params.TAXON_NAME)
 
-        flash.message = "You have been redirected here from an old Link. We may have missed something in your search request. Please use the APNI search directly for best results."
         if(name) {
+            flash.message = "You have been redirected here from an old Link. We may have missed something in your search request. Please use the APNI search directly for best results."
             return redirect(uri:'/apni', params: [name: name, max: 100, display: 'apni', search: true])
         } else {
+            flash.message = "You have been redirected here from an old Link. We couldn't figure out what you were looking for, try searching here."
             return redirect(uri:'/apni')
         }
     }
