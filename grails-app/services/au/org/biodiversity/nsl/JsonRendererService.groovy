@@ -425,6 +425,7 @@ class JsonRendererService {
                 nameType           : nslSimpleName.nameTypeName,
                 homonym            : nslSimpleName.homonym,
                 autonym            : nslSimpleName.autonym,
+                basionym           : nslSimpleName.basionym,
                 hybrid             : nslSimpleName.hybrid,
                 cultivar           : nslSimpleName.cultivar,
                 formula            : nslSimpleName.formula,
@@ -440,6 +441,8 @@ class JsonRendererService {
                 rankAbbrev         : nslSimpleName.rankAbbrev,
                 classifications    : nslSimpleName.classifications,
                 apni               : nslSimpleName.apni,
+                protoCitation      : nslSimpleName.protoCitation,
+                protoInstance      : getBriefInstance(nslSimpleName.protoInstance),
                 protoYear          : nslSimpleName.protoYear,
                 nomStat            : nslSimpleName.nomStat,
                 nomIlleg           : nslSimpleName.nomIlleg,
@@ -470,7 +473,6 @@ class JsonRendererService {
                 apcComment         : nslSimpleName.apcComment,
                 apcDistribution    : nslSimpleName.apcDistribution,
                 apcExcluded        : nslSimpleName.apcExcluded
-
         ]
         return data
     }
