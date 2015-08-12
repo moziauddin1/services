@@ -342,7 +342,7 @@ SELECT EXISTS (
     }
 
     @Synchronized
-    private static void makeNslSimpleNameExportTable(Sql sql) {
+    public static void makeNslSimpleNameExportTable(Sql sql) {
 
         sql.execute('DROP TABLE IF EXISTS nsl_simple_name_export')
         sql.execute('''
