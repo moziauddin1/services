@@ -17,8 +17,15 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
+import org.apache.shiro.grails.annotations.RoleRequired
+import org.springframework.transaction.TransactionStatus
+
+import java.sql.Timestamp
 
 class ReferenceService {
+
+    def instanceService
+    def linkService
 
     /**
      * Create a reference citation from reference
@@ -125,6 +132,174 @@ class ReferenceService {
 
         }
     }
+
+    List<Map> deduplicateMarked(String user) {
+        List<Map> results = []
+        Reference.findAllByDuplicateOfIsNotNull().each { Reference reference ->
+            Map result = [source: reference.id, target: reference.duplicateOf.id]
+            //noinspection GroovyAssignabilityCheck
+            result << moveReference(reference, reference.duplicateOf, user)
+            results << result
+        }
+        return results
+    }
+
+    /**
+     * Move all the
+     * - instances
+     * - externalRefs
+     * - referencesForParent
+     * - comments
+     * - move reference note to the instances of the source.
+     *
+     * from the source reference to the target reference.
+     * Also moves the URI of the source to the target.
+     *
+     * No references can have the source as their duplicate of id or this will fail.
+     *
+     * @param source
+     * @param target
+     * @return
+     */
+    @Transactional
+    Map moveReference(Reference source, Reference target, String user) {
+        if (!user) {
+            return [ok: false, errors: ['You must supply a user.']]
+        }
+        if (source.referencesForDuplicateOf.size() > 0) {
+            return [ok: false, errors: ['References say they are a duplicate of the source.']]
+        }
+        InstanceNoteKey refNote = instanceService.getInstanceNoteKey('Reference Note', true)
+        try {
+            Reference.withTransaction { TransactionStatus t ->
+                if (source.notes && (!source.notes.equals(target.notes))) {
+                    //copy to the source instances as an instance note
+                    if (source.instances.size() > 0) {
+                        Timestamp now = new Timestamp(System.currentTimeMillis())
+                        InstanceNote note = new InstanceNote(
+                                value: source.notes,
+                                instanceNoteKey: refNote,
+                                updatedBy: user,
+                                updatedAt: now,
+                                createdBy: user,
+                                createdAt: now
+                        )
+                        source.instances.each { instance ->
+                            instance.addToInstanceNotes(note)
+                            instance.save()
+                        }
+                    } else {
+                        //append to the reference notes.
+                        if (target.notes) {
+                            target.notes = "$target.notes (duplicate refererence Note: $source.notes)"
+                        } else {
+                            target.notes = source.notes
+                        }
+                    }
+                }
+
+                source.instances.each { instance ->
+                    instance.reference = target
+                    instance.save()
+                }
+                source.externalRefs.each { extRef ->
+                    extRef.reference = target
+                    extRef.save()
+                }
+                source.referencesForParent.each { ref ->
+                    ref.parent = target
+                    ref.save()
+                }
+                source.comments.each { comment ->
+                    comment.reference = target
+                    comment.save()
+                }
+                Map response = linkService.moveTargetLinks(source, target)
+
+                source.delete()
+
+                if (!response.success) {
+                    List<String> errors = ["Error moving link from the mapper"]
+                    errors.addAll(response.errors)
+                    t.setRollbackOnly()
+                    return [ok: false, errors: errors]
+                }
+                t.flush()
+            }
+        } catch (e) {
+            List<String> errors = [e.message]
+            while (e.cause) {
+                e = e.cause
+                errors << e.message
+            }
+            return [ok: false, errors: errors]
+        }
+        return [ok: true]
+    }
+
+    @RoleRequired('admin')
+    @Transactional
+    Map deleteReference(Reference reference, String reason) {
+        Map canWeDelete = canDelete(reference, reason)
+        if (canWeDelete.ok) {
+            try {
+                Reference.withTransaction { TransactionStatus t ->
+                    Map response = linkService.deleteReferenceLinks(reference, reason)
+
+                    reference.delete()
+                    if (!response.success) {
+                        List<String> errors = ["Error deleting link from the mapper"]
+                        errors.addAll(response.errors)
+                        t.setRollbackOnly()
+                        return [ok: false, errors: errors]
+                    }
+
+                    t.flush()
+                }
+            } catch (e) {
+                List<String> errors = [e.message]
+                while (e.cause) {
+                    e = e.cause
+                    errors << e.message
+                }
+                return [ok: false, errors: errors]
+            }
+        }
+        return canWeDelete
+    }
+
+    public Map canDelete(Reference reference, String reason) {
+        List<String> errors = []
+
+        if (!reason) {
+            errors << "You need to supply a reason for deleting."
+        }
+
+        if (reference.instances.size() > 0) {
+            errors << "There are ${reference.instances.size()} instances for this reference."
+        }
+
+        if (reference.externalRefs.size() > 0) {
+            errors << "There are ${reference.externalRefs.size()} external refs for this reference."
+        }
+
+        if (reference.referencesForParent.size() > 0) {
+            errors << "There are ${reference.referencesForParent.size()} children of this reference."
+        }
+
+        if (reference.comments.size() > 0) {
+            errors << "There are ${reference.comments.size()} comments for this reference."
+        }
+
+        if (reference.referencesForDuplicateOf.size() > 0) {
+            errors << "There are ${reference.referencesForDuplicateOf.size()} references that are a duplicate of this reference."
+        }
+
+        if (errors.size() > 0) {
+            return [ok: false, errors: errors]
+        }
+        return [ok: true]
+    }
 }
 
 class ReferenceStringCategory {
@@ -144,7 +319,7 @@ class ReferenceStringCategory {
 
     static String removeFullStop(String string) {
         withString(string) {
-            string.endsWith('.') ? string.replaceAll(/\.*$/,'') : string
+            string.endsWith('.') ? string.replaceAll(/\.*$/, '') : string
         }
     }
 

@@ -22,12 +22,12 @@ import au.org.biodiversity.nsl.RefAuthorRole
 import au.org.biodiversity.nsl.Reference
 import grails.transaction.Transactional
 import org.apache.shiro.SecurityUtils
+import org.apache.shiro.authz.annotation.RequiresRoles
 import org.grails.plugins.metrics.groovy.Timed
 
-import static org.springframework.http.HttpStatus.NOT_FOUND
-import static org.springframework.http.HttpStatus.OK
+import static org.springframework.http.HttpStatus.*
 
-@Transactional(readOnly = true)
+@Transactional
 class ReferenceController implements UnauthenticatedHandler, WithTarget {
 
     def referenceService
@@ -35,7 +35,6 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
 
     @SuppressWarnings("GroovyUnusedDeclaration")
     static responseFormats = ['json', 'xml', 'html']
-    static allowedMethods = [save: "POST", update: "PUT", delete: "DELETE"]
     static namespace = "api"
 
     def list(Integer max) {
@@ -65,5 +64,58 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
             }
             respond(result as Object, [status: OK])
         }
+    }
+
+    @Timed()
+    def delete(Reference reference, String reason) {
+        withTarget(reference) { ResultObject result ->
+            if (request.method == 'DELETE') {
+                SecurityUtils.subject.checkRole('admin')
+                result << referenceService.deleteReference(reference, reason)
+                if (!result.ok) {
+                    results.status = FORBIDDEN
+                }
+            } else if (request.method == 'GET') {
+                result << referenceService.canDelete(reference, 'dummy reason')
+            } else {
+                result.status = METHOD_NOT_ALLOWED
+            }
+        }
+    }
+
+    @Timed()
+    @RequiresRoles('admin')
+    def move(Reference reference, Long target, String user) {
+        Reference targetRef = null
+        if (target) {
+            targetRef = Reference.get(target)
+        }
+        withTarget(reference, "source Reference") { ResultObject result1 ->
+            withTarget(targetRef, "target Reference ($target)") { ResultObject result ->
+                if (!user) {
+                    user = SecurityUtils.subject.principal.toString()
+                }
+                if(targetRef == reference) {
+                    result.status = BAD_REQUEST
+                    result.ok = false
+                    result.error = "Source and target are the same. Here I am, brain the size of a planet...."
+                    return
+                }
+                result << referenceService.moveReference(reference, targetRef, user)
+                if (!result.ok) {
+                    result.status = FORBIDDEN
+                }
+            }
+        }
+    }
+
+    @Timed()
+    @RequiresRoles('admin')
+    def deduplicateMarked(String user){
+        if (!user) {
+            user = SecurityUtils.subject.principal.toString()
+        }
+        List<Map> results = referenceService.deduplicateMarked(user)
+        respond results, status: OK
     }
 }

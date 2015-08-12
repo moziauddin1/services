@@ -191,6 +191,10 @@ class LinkService {
         deleteTargetLinks(instance, reason)
     }
 
+    Map deleteReferenceLinks(Reference reference, String reason) {
+        deleteTargetLinks(reference, reason)
+    }
+
     Map deleteTargetLinks(Object target, String reason) {
         String params = targetParams(target) + "&reason=${reason}" + "&" + mapperAuth()
         String mapper = mapper(true)

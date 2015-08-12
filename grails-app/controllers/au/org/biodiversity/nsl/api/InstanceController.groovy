@@ -21,6 +21,7 @@ import grails.transaction.Transactional
 import org.apache.shiro.SecurityUtils
 import org.grails.plugins.metrics.groovy.Timed
 
+import static org.springframework.http.HttpStatus.FORBIDDEN
 import static org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED
 
 @Transactional
@@ -45,6 +46,9 @@ class InstanceController implements UnauthenticatedHandler, WithTarget {
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << instanceService.deleteInstance(instance, reason)
+                if(!result.ok) {
+                    results.status = FORBIDDEN
+                }
             } else if (request.method == 'GET') {
                 result << instanceService.canDelete(instance, 'dummy reason')
             } else {

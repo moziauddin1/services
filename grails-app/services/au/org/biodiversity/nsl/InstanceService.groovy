@@ -49,6 +49,14 @@ class InstanceService {
                         errors.addAll(response.errors)
                         return [ok: false, errors: errors]
                     }
+
+                    NslSimpleName.findAllByProtoInstance(instance).each { NslSimpleName simpleName ->
+                        simpleName.protoInstance = null
+                        simpleName.protoCitation = null
+                        simpleName.protoYear = null
+                        simpleName.save()
+                    }
+
                     removeInstanceFromTrees(instance)
                     instance.refresh()
                     instance.delete()
@@ -89,25 +97,26 @@ class InstanceService {
         if (classificationService.isInstanceInAPC(instance)) {
             errors << "This instance is in APC."
         }
-        if (NslSimpleName.findByApcInstance(instance)) {
-            errors << "This instance is an APC Instance in NslSimpleName."
+        Instance apcInstance = NslSimpleName.findByApcInstance(instance)
+        if (apcInstance) {
+            errors << "This instance is an APC Instance (${apcInstance}) in NslSimpleName."
         }
-        if(instance.instancesForCites) {
+        if (instance.instancesForCites) {
             errors << "There are ${instance.instancesForCites.size()} instances that cite this."
         }
-        if(instance.instancesForCitedBy) {
+        if (instance.instancesForCitedBy) {
             errors << "There are ${instance.instancesForCitedBy.size()} instances that say this cites it."
         }
-        if(instance.instancesForParent) {
+        if (instance.instancesForParent) {
             errors << "This is a parent for ${instance.instancesForParent.size()} instances."
         }
-        if(instance.instanceNotes) {
+        if (instance.instanceNotes) {
             errors << "There are ${instance.instanceNotes.size()} instances notes on this."
         }
-        if(instance.externalRefs) {
+        if (instance.externalRefs) {
             errors << "There are ${instance.externalRefs.size()} external references."
         }
-        if(instance.comments) {
+        if (instance.comments) {
             errors << "There are ${instance.comments.size()} comments for this instance."
         }
 
@@ -135,8 +144,8 @@ class InstanceService {
         }
     }
 
-    public List<Instance> findPrimaryInstance(Name name){
-        if(name) {
+    public List<Instance> findPrimaryInstance(Name name) {
+        if (name) {
             return Instance.executeQuery("select i from Instance i where i.name = :name and i.instanceType.primaryInstance = true", [name: name])
         }
         return null
@@ -180,6 +189,35 @@ class InstanceService {
         }
         return a <=> b
 
+    }
+
+    /**
+     * Get the instance note key by name. If create is provided and set true then the instance note key will be created
+     * with default values (sort order = 100) and returned if it doesn't exist.
+     * @param name
+     * @param create - optional, default false
+     * @return the key or null if not found and create is false.
+     */
+    InstanceNoteKey getInstanceNoteKey(String name, Boolean create = false) {
+        if (!name) {
+            //don't create or even look for a blank key
+            return null
+        }
+        InstanceNoteKey key = InstanceNoteKey.findByName(name)
+        if (key) {
+            return key
+        }
+        if (create) {
+            key = new InstanceNoteKey(
+                    name: name,
+                    sortOrder: 100,
+                    descriptionHtml: "(description of <b>$name</b>)",
+                    rdfId: name.toLowerCase().replaceAll(' ', '-')
+            )
+            key.save()
+            return key
+        }
+        return null
     }
 
 }

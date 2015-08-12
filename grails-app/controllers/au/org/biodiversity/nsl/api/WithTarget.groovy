@@ -27,7 +27,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND
 trait WithTarget {
 
     public withTarget(Object target, Closure work) {
-         assert jsonRendererService
+        withTarget(target, 'Object', work)
+    }
+
+    public withTarget(Object target, String targetInfo, Closure work) {
+        assert jsonRendererService
 
         if (target) {
             ResultObject result
@@ -59,7 +63,7 @@ trait WithTarget {
         } else {
             ResultObject result = new ResultObject([
                     action: params.action,
-                    error : "The Instance was not found."
+                    error : "$targetInfo not found."
             ])
             //noinspection GroovyAssignabilityCheck
             respond(result, [view: '/common/serviceResult', model: [data: result], status: NOT_FOUND])

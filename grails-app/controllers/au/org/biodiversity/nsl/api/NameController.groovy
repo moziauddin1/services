@@ -109,6 +109,9 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << nameService.deleteName(name, reason)
+                if(!result.ok) {
+                    results.status = FORBIDDEN
+                }
             } else if (request.method == 'GET') {
                 result << nameService.canDelete(name, 'dummy reason')
             } else {

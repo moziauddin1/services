@@ -145,12 +145,6 @@ class NameService {
         if (canWeDelete.ok) {
             try {
                 Name.withTransaction { TransactionStatus t ->
-                    Map response = linkService.deleteNameLinks(name, reason)
-                    if (!response.success) {
-                        List<String> errors = ["Error deleting link from the mapper"]
-                        errors.addAll(response.errors)
-                        return [ok: false, errors: errors]
-                    }
                     removeNameFromApni(name)
                     name.refresh()
                     NameTreePath.findAllByName(name)*.delete()
@@ -161,6 +155,13 @@ class NameService {
                     NamePart.findAllByPrecedingName(name)*.delete()
                     NameTagName.findAllByName(name)*.delete()
                     name.delete()
+                    Map response = linkService.deleteNameLinks(name, reason)
+                    if (!response.success) {
+                        List<String> errors = ["Error deleting link from the mapper"]
+                        errors.addAll(response.errors)
+                        t.setRollbackOnly()
+                        return [ok: false, errors: errors]
+                    }
                     t.flush()
                 }
             } catch (e) {
