@@ -110,7 +110,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
                 SecurityUtils.subject.checkRole('admin')
                 result << nameService.deleteName(name, reason)
                 if(!result.ok) {
-                    results.status = FORBIDDEN
+                    result.status = FORBIDDEN
                 }
             } else if (request.method == 'GET') {
                 result << nameService.canDelete(name, 'dummy reason')
@@ -281,7 +281,7 @@ order by n.simpleName asc''',
             } else {
                 result.name.inAPC = false
             }
-            result.name.family = jsonRendererService.getBriefNameWithHtml(nameModel.familyName)
+            result.name.family = jsonRendererService.getBriefNameWithHtml(nameModel.familyName as Name)
             result.references = nameModel.references.collect { Reference reference ->
                 Map refMap = jsonRendererService.getBriefReference(reference)
                 refMap.citations = []
