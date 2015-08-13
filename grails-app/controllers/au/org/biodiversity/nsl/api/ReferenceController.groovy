@@ -115,7 +115,9 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
         if (!user) {
             user = SecurityUtils.subject.principal.toString()
         }
-        List<Map> results = referenceService.deduplicateMarked(user)
-        respond results, status: OK
+        ResultObject results = new ResultObject(referenceService.deduplicateMarked(user))
+        //noinspection GroovyAssignabilityCheck
+
+        respond(results, [status: OK, view: '/common/serviceResult', model: [data: results,]])
     }
 }

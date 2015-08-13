@@ -133,34 +133,45 @@ class ReferenceService {
         }
     }
 
-    List<Map> deduplicateMarked(String user) {
-        List<Map> results = []
+    Map deduplicateMarked(String user) {
+        Map results = [action: "deduplicate marked references", count: Reference.countByDuplicateOfIsNotNull()]
+        List<Map> refs = []
+        //remove nested duplicates first
+        Reference.findAllByDuplicateOfIsNotNull().each { Reference reference ->
+            int depth = 0
+            while (reference.duplicateOf.duplicateOf && depth++ < 6) {
+                reference.duplicateOf = reference.duplicateOf.duplicateOf
+                reference.save(flush: true)
+            }
+        }
+
         Reference.findAllByDuplicateOfIsNotNull().each { Reference reference ->
             Map result = [source: reference.id, target: reference.duplicateOf.id]
             //noinspection GroovyAssignabilityCheck
             result << moveReference(reference, reference.duplicateOf, user)
-            results << result
+            refs << result
         }
+        results.references = refs
         return results
     }
 
-    /**
-     * Move all the
-     * - instances
-     * - externalRefs
-     * - referencesForParent
-     * - comments
-     * - move reference note to the instances of the source.
-     *
-     * from the source reference to the target reference.
-     * Also moves the URI of the source to the target.
-     *
-     * No references can have the source as their duplicate of id or this will fail.
-     *
-     * @param source
-     * @param target
-     * @return
-     */
+/**
+ * Move all the
+ * - instances
+ * - externalRefs
+ * - referencesForParent
+ * - comments
+ * - move reference note to the instances of the source.
+ *
+ * from the source reference to the target reference.
+ * Also moves the URI of the source to the target.
+ *
+ * No references can have the source as their duplicate of id or this will fail.
+ *
+ * @param source
+ * @param target
+ * @return
+ */
     @Transactional
     Map moveReference(Reference source, Reference target, String user) {
         if (!user) {
@@ -171,60 +182,79 @@ class ReferenceService {
         }
         InstanceNoteKey refNote = instanceService.getInstanceNoteKey('Reference Note', true)
         try {
-            Reference.withTransaction { TransactionStatus t ->
-                if (source.notes && (!source.notes.equals(target.notes))) {
-                    //copy to the source instances as an instance note
-                    if (source.instances.size() > 0) {
-                        Timestamp now = new Timestamp(System.currentTimeMillis())
-                        InstanceNote note = new InstanceNote(
-                                value: source.notes,
-                                instanceNoteKey: refNote,
-                                updatedBy: user,
-                                updatedAt: now,
-                                createdBy: user,
-                                createdAt: now
-                        )
-                        source.instances.each { instance ->
-                            instance.addToInstanceNotes(note)
-                            instance.save()
-                        }
-                    } else {
-                        //append to the reference notes.
-                        if (target.notes) {
-                            target.notes = "$target.notes (duplicate refererence Note: $source.notes)"
+            Reference.withTransaction { t ->
+                Reference.withSession { session ->
+                    Timestamp now = new Timestamp(System.currentTimeMillis())
+                    if (source.notes && (!source.notes.equals(target.notes))) {
+                        //copy to the source instances as an instance note
+                        if (source.instances.size() > 0) {
+                            InstanceNote note = new InstanceNote(
+                                    value: source.notes,
+                                    instanceNoteKey: refNote,
+                                    updatedBy: user,
+                                    updatedAt: now,
+                                    createdBy: user,
+                                    createdAt: now
+                            )
+                            source.instances.each { instance ->
+                                instance.addToInstanceNotes(note)
+                                instance.save()
+                                log.info "Added reference note $note to $instance"
+                            }
                         } else {
-                            target.notes = source.notes
+                            //append to the reference notes.
+                            if (target.notes) {
+                                target.notes = "$target.notes (duplicate refererence Note: $source.notes)"
+                                log.info "Appended notes to $target.notes"
+                            } else {
+                                target.notes = source.notes
+                                log.info "Set target notes to $target.notes"
+                            }
                         }
                     }
-                }
 
-                source.instances.each { instance ->
-                    instance.reference = target
-                    instance.save()
-                }
-                source.externalRefs.each { extRef ->
-                    extRef.reference = target
-                    extRef.save()
-                }
-                source.referencesForParent.each { ref ->
-                    ref.parent = target
-                    ref.save()
-                }
-                source.comments.each { comment ->
-                    comment.reference = target
-                    comment.save()
-                }
-                Map response = linkService.moveTargetLinks(source, target)
+                    source.instances.each { instance ->
+                        log.info "Moving instance $instance to $target"
+                        instance.reference = target
+                        instance.updatedAt = now
+                        instance.updatedBy = user
+                        instance.save()
+                    }
+                    source.externalRefs.each { extRef ->
+                        log.info "Moving external reference $extRef to $target"
+                        extRef.reference = target
+                        extRef.save()
+                    }
+                    source.referencesForParent.each { ref ->
+                        log.info "Moving parent of $ref to $target"
+                        ref.parent = target
+                        ref.parent.updatedAt = now
+                        ref.parent.updatedBy = user
+                        ref.save()
+                    }
+                    source.comments.each { comment ->
+                        log.info "Moving comment $comment to $target"
+                        comment.reference = target
+                        comment.updatedAt = now
+                        comment.updatedBy = user
+                        comment.save()
+                    }
 
-                source.delete()
+                    Map response = linkService.moveTargetLinks(source, target)
 
-                if (!response.success) {
-                    List<String> errors = ["Error moving link from the mapper"]
-                    errors.addAll(response.errors)
-                    t.setRollbackOnly()
-                    return [ok: false, errors: errors]
+                    if (!response.success) {
+                        List<String> errors = ["Error moving the link in the mapper."]
+                        log.error "Setting rollback only: $response.errors"
+                        t.setRollbackOnly()
+                        return [ok: false, errors: errors]
+                    }
+                    target.updatedAt = now
+                    target.updatedBy = user
+                    target.save()
+                    source.delete()
+                    session.flush()
+                    return [ok: true]
                 }
-                t.flush()
             }
         } catch (e) {
             List<String> errors = [e.message]
@@ -234,7 +264,6 @@ class ReferenceService {
             }
             return [ok: false, errors: errors]
         }
-        return [ok: true]
     }
 
     @RoleRequired('admin')

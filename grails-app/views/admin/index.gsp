@@ -126,6 +126,12 @@
                   Deduplicate Authors
                 </a>
               </li>
+              <li>
+                <a class=""
+                   href="${g.createLink(controller: "admin", action: "deduplicateMarkedReferences")}">
+                  Deduplicate marked references
+                </a>
+              </li>
             </ul>
           </div>
         </div>

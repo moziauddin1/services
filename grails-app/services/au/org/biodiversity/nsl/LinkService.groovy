@@ -54,17 +54,21 @@ class LinkService {
     Boolean addTargetLink(target) {
         String params = targetParams(target) + "&" + mapperAuth()
         String mapper = mapper(true)
-        RestResponse response = restCallService.nakedGet("$mapper/admin/addIdentifier?$params")
-        if (response.status != 200) {
-            log.error "Get $mapper/admin/addIdentifier?$params failed with status $response.status"
-            return false
-        }
-        if (response.json) {
-            if (response.json.error) {
-                log.error("Get $mapper/admin/addIdentifier?$params returned errors: ${response.json.error} ${response.json.errors ?: ''}")
+        try {
+            RestResponse response = restCallService.nakedGet("$mapper/admin/addIdentifier?$params")
+            if (response.status != 200) {
+                log.error "Get $mapper/admin/addIdentifier?$params failed with status $response.status"
                 return false
             }
-            return true
+            if (response.json) {
+                if (response.json.error) {
+                    log.error("Get $mapper/admin/addIdentifier?$params returned errors: ${response.json.error} ${response.json.errors ?: ''}")
+                    return false
+                }
+                return true
+            }
+        } catch (e){
+            log.error "Error $e.message adding link for $target"
         }
         return false
     }
@@ -91,7 +95,7 @@ class LinkService {
                 log.debug "Couldn't get links, response headers are $response.headers\n response body is: $response.body"
             }
         } catch (Exception e) {
-            log.debug "Error $e.message getting preferred link for $target"
+            log.error "Error $e.message getting preferred link for $target"
         }
         return [:]
     }
@@ -198,21 +202,26 @@ class LinkService {
     Map deleteTargetLinks(Object target, String reason) {
         String params = targetParams(target) + "&reason=${reason}" + "&" + mapperAuth()
         String mapper = mapper(true)
-        RestResponse response = restCallService.nakedGet("$mapper/admin/deleteIdentifier?$params")
-        if (response.status != 200) {
-            List<String> errors = getResopnseErrorMessages(response)
-            errors << "response was: $response.statusCode.reasonPhrase"
-            log.error "Get $mapper/admin/addIdentifier?$params failed with $errors"
-            return [success: false, errors: errors]
-        }
-        if (response.json) {
-            List<String> errors = getResopnseErrorMessages(response)
-            if (errors) {
-                log.error("Deleting links $mapper/admin/deleteIdentifier?$params ${errors}")
+        try {
+            RestResponse response = restCallService.nakedGet("$mapper/admin/deleteIdentifier?$params")
+            if (response.status != 200) {
+                List<String> errors = getResopnseErrorMessages(response)
+                errors << "response was: $response.statusCode.reasonPhrase"
+                log.error "Get $mapper/admin/addIdentifier?$params failed with $errors"
                 return [success: false, errors: errors]
             }
-            log.debug(response.json)
-            return [success: true]
+            if (response.json) {
+                List<String> errors = getResopnseErrorMessages(response)
+                if (errors) {
+                    log.error("Deleting links $mapper/admin/deleteIdentifier?$params ${errors}")
+                    return [success: false, errors: errors]
+                }
+                log.debug(response.json)
+                return [success: true]
+            }
+        } catch (e) {
+            log.error e.message
+            return [success: false, errors: "Communication error with mapper."]
         }
         return [success: false, errors: "No json response, unknown outcome."]
     }
@@ -227,23 +236,28 @@ class LinkService {
             params += "&" + mapperAuth()
 
             String mapper = mapper(true)
-            RestResponse response = restCallService.nakedGet("$mapper/admin/moveIdentity?$params")
-            if (response.status != 200) {
-                List<String> errors = getResopnseErrorMessages(response)
-                errors << "response was: $response.statusCode.reasonPhrase"
-                log.error "Get $mapper/admin/moveIdentity?$params failed with $errors"
-                return [success: false, errors: errors]
-            }
-            if (response.json) {
-                List<String> errors = getResopnseErrorMessages(response)
-                if (errors) {
-                    log.error("Moving links $mapper/admin/moveIdentity?$params ${errors}")
+            try {
+                RestResponse response = restCallService.nakedGet("$mapper/admin/moveIdentity?$params")
+                if (response.status != 200) {
+                    List<String> errors = getResopnseErrorMessages(response)
+                    errors << "response was: $response.statusCode.reasonPhrase"
+                    log.error "Get $mapper/admin/moveIdentity?$params failed with $errors"
                     return [success: false, errors: errors]
                 }
-                log.debug(response.json)
-                return [success: true]
+                if (response.json) {
+                    List<String> errors = getResopnseErrorMessages(response)
+                    if (errors) {
+                        log.error("Moving links $mapper/admin/moveIdentity?$params ${errors}")
+                        return [success: false, errors: errors]
+                    }
+                    log.debug(response.json)
+                    return [success: true]
+                }
+                return [success: false, errors: "No json response, unknown outcome."]
+            } catch (e) {
+                log.error e.message
+                return [success: false, errors: "Communication error with mapper."]
             }
-            return [success: false, errors: "No json response, unknown outcome."]
         }
         return [success: false, errors: "Invalid targets $from, $to."]
     }

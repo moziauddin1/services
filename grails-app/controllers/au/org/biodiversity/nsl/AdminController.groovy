@@ -16,8 +16,12 @@
 
 package au.org.biodiversity.nsl
 
+import au.org.biodiversity.nsl.api.ResultObject
 import grails.transaction.Transactional
+import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
+
+import static org.springframework.http.HttpStatus.OK
 
 @Transactional
 class AdminController {
@@ -165,6 +169,13 @@ class AdminController {
         redirect(action: 'index')
     }
 
+    @RequiresRoles('admin')
+    def deduplicateMarkedReferences() {
+        String user = SecurityUtils.subject.principal.toString()
+        ResultObject results = new ResultObject(referenceService.deduplicateMarked(user))
+        //noinspection GroovyAssignabilityCheck
+        respond(results, [status: OK, view: '/common/serviceResult', model: [data: results,]])
+    }
 
     private static List<String> logSummary(Integer lineLength) {
         String logFileName = (System.getProperty('catalina.base') ?: 'target') + "/logs/nsl-services.log"
