@@ -221,7 +221,7 @@ class SearchService {
 
     public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
         if (query.startsWith('"') && query.endsWith('"')) {
-            return  query.size() > 2 ? query[1..-2] : ""
+            return query.size() > 2 ? query[1..-2] : ""
         }
         (leadingWildCard ? '%' : '') + query.replaceAll(/[ ]+/, ' ')
                                             .replaceAll(/([a-zA-Z0-9\.,']) ([a-zA-Z0-9\.,'])/, '$1 %$2')
@@ -333,8 +333,42 @@ INSERT INTO name_tree_path (id, tree_id, parent_id, tree_path, path, name_id, in
 
     def registerSuggestions() {
         // add apc name search
-        suggestService.addSuggestionHandler('apc-search') { String query ->
-            return Name.executeQuery('''
+        suggestService.addSuggestionHandler('apc-search') { String subject, String query, Map params ->
+
+            log.debug "apc-search suggestion handler params: $params"
+            Instance instance
+            if (params.instanceId) {
+                instance = Instance.get(params.instanceId as Long)
+
+            }
+            if (instance) {
+                NameRank rank = instance.name.nameRank
+                log.debug "This rank $rank, parent $rank.parentRank"
+
+                return Name.executeQuery('''
+select n from Name n
+where lower(n.fullName) like :query
+and n.nameRank.sortOrder < :sortOrder
+and n.nameRank.sortOrder >= :parentSortOrder
+and exists (
+  select 1
+  from Node nd
+  where nd.root.label = 'APC'
+  and nd.checkedInAt is not null
+  and nd.replacedAt is null
+  and nd.nameUriNsPart.label = 'nsl-name'
+  and nd.nameUriIdPart = cast(n.id as string)
+)
+order by n.simpleName asc, n.fullName asc''',
+                        [
+                                query          : query.toLowerCase() + '%',
+                                sortOrder      : rank.sortOrder,
+                                parentSortOrder: rank.parentRank.sortOrder
+                        ], [max: 15])
+                           .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
+
+            } else {
+                return Name.executeQuery('''
 select n from Name n 
 where lower(n.fullName) like :query
 and exists (
@@ -347,8 +381,9 @@ and exists (
   and nd.nameUriIdPart = cast(n.id as string)
 )
 order by n.simpleName asc, n.fullName asc''',
-                    [query: "${query.toLowerCase()}%"], [max: 10])
-                       .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
+                        [query: query.toLowerCase() + '%'], [max: 15])
+                           .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
+            }
         }
 
         suggestService.addSuggestionHandler('apni-search') { String query ->

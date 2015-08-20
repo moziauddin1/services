@@ -86,7 +86,7 @@ grails.project.dependency.resolution = {
         compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.1-SNAPSHOT"
         compile "au.org.biodiversity.grails.plugins:tree-services-plugin:1.1-SNAPSHOT"
         compile ':rest-client-builder:2.0.3'
-        compile ":simple-suggestions:0.2"
+        compile ":simple-suggestions:0.3"
 		compile ":twitter-bootstrap:3.3.0"
         compile ":shiro:1.2.1", {
             excludes([name: 'quartz', group: 'org.opensymphony.quartz'])
