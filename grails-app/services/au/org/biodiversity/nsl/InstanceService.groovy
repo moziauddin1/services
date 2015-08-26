@@ -57,6 +57,18 @@ class InstanceService {
                         simpleName.save()
                     }
 
+                    NslSimpleName.findByApcInstance(instance).each { NslSimpleName simpleName ->
+                        simpleName.apcInstance = null
+                        simpleName.apcComment = null
+                        simpleName.apcDistribution = null
+                        simpleName.apcFamilia = null
+                        simpleName.apcName = null
+                        simpleName.apcExcluded = false
+                        simpleName.apcProparte = false
+                        simpleName.classifications = '[apni]'
+                        simpleName.save()
+                    }
+
                     removeInstanceFromTrees(instance)
                     instance.refresh()
                     instance.delete()
@@ -96,10 +108,6 @@ class InstanceService {
         }
         if (classificationService.isInstanceInAPC(instance)) {
             errors << "This instance is in APC."
-        }
-        NslSimpleName apcInstance = NslSimpleName.findByApcInstance(instance)
-        if (apcInstance) {
-            errors << "This instance is an APC Instance (${apcInstance}) in NslSimpleName."
         }
         if (instance.instancesForCites) {
             errors << "There are ${instance.instancesForCites.size()} instances that cite this."

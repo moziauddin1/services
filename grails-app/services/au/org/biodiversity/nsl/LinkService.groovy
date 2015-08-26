@@ -200,7 +200,7 @@ class LinkService {
     }
 
     Map deleteTargetLinks(Object target, String reason) {
-        String params = targetParams(target) + "&reason=${reason}" + "&" + mapperAuth()
+        String params = targetParams(target) + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         String mapper = mapper(true)
         try {
             RestResponse response = restCallService.nakedGet("$mapper/admin/deleteIdentifier?$params")
