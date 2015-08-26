@@ -47,7 +47,7 @@ class InstanceController implements UnauthenticatedHandler, WithTarget {
                 SecurityUtils.subject.checkRole('admin')
                 result << instanceService.deleteInstance(instance, reason)
                 if(!result.ok) {
-                    results.status = FORBIDDEN
+                    result.status = FORBIDDEN
                 }
             } else if (request.method == 'GET') {
                 result << instanceService.canDelete(instance, 'dummy reason')

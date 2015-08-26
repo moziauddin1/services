@@ -97,7 +97,7 @@ class InstanceService {
         if (classificationService.isInstanceInAPC(instance)) {
             errors << "This instance is in APC."
         }
-        Instance apcInstance = NslSimpleName.findByApcInstance(instance)
+        NslSimpleName apcInstance = NslSimpleName.findByApcInstance(instance)
         if (apcInstance) {
             errors << "This instance is an APC Instance (${apcInstance}) in NslSimpleName."
         }
