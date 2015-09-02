@@ -54,7 +54,7 @@ class InstanceService {
                         simpleName.protoInstance = null
                         simpleName.protoCitation = null
                         simpleName.protoYear = null
-                        simpleName.save()
+                        simpleName.save(flush: true)
                     }
 
                     NslSimpleName.findByApcInstance(instance).each { NslSimpleName simpleName ->
@@ -66,7 +66,7 @@ class InstanceService {
                         simpleName.apcExcluded = false
                         simpleName.apcProparte = false
                         simpleName.classifications = '[apni]'
-                        simpleName.save()
+                        simpleName.save(flush: true)
                     }
 
                     removeInstanceFromTrees(instance)
