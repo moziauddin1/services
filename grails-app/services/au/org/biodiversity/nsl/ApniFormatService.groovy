@@ -59,17 +59,17 @@ class ApniFormatService {
                     if (aPrimary == bPrimary) {
                         if (a == b) {
                             if (a.pages == b.pages) {
-                                return b.id <=> a.id
+                                return a.id <=> b.id  //highest Id first
                             }
-                            return b.pages <=> a.pages
+                            return a.pages <=> b.pages //reverse string sort 1s, then 2s
                         }
-                        return a.citation <=> b.citation
+                        return a.citation <=> b.citation //alpha sort by reference citation
                     }
-                    return bPrimary <=> aPrimary
+                    return bPrimary <=> aPrimary // primary reference first (1)
                 }
-                return bProto <=> aProto
+                return bProto <=> aProto // proto reference first (1)
             }
-            return (a.year) <=> (b.year)
+            return (a.year) <=> (b.year) //lowest year first
         }
         return [references: references, instancesByRef: refGroups]
     }
