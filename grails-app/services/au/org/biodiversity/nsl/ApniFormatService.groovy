@@ -65,7 +65,7 @@ class ApniFormatService {
                         }
                         return a.citation <=> b.citation
                     }
-                    return aPrimary <=> bPrimary
+                    return bPrimary <=> aPrimary
                 }
                 return bProto <=> aProto
             }
