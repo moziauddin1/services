@@ -32,8 +32,13 @@ $(function () {
                                 parentDiv.find('branch').click(function(event){
                                     console.log('in branch');
 
-                                    $(this).children('ul').toggle();
-                                    event.preventDefault();
+                                    if($(event.target).is("a")) {
+                                        // default behaviour on a hyperlink click
+                                    }
+                                    else {
+                                        $(this).children('ul').toggle();
+                                        event.preventDefault();
+                                    }
                                 });
 
 
