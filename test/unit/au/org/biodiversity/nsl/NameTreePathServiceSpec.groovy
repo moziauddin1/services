@@ -86,8 +86,8 @@ class NameTreePathServiceSpec extends Specification {
                 id: na.id,
                 tree: na.root,
                 name: a,
-                path: "0.${a.id}",
-                treePath: '0',
+                nameIdPath: "0.${a.id}",
+                nodeIdPath: '0',
                 inserted: System.currentTimeMillis()
         ).save()
 
@@ -114,22 +114,22 @@ class NameTreePathServiceSpec extends Specification {
         ntpc = service.findCurrentNameTreePath(c, tree)
 
         NameTreePath.list().each { ntp ->
-            println "${ntp.id} ${ntp.name}: path ${ntp.path}, tpath ${ntp.treePath}"
+            println "${ntp.id} ${ntp.name}: path ${ntp.nameIdPath}, tpath ${ntp.nodeIdPath}"
         }
 
         then:
         ntpc
         ntpc.name == c
-        ntpc.path == '0.1.3'
-        ntpc.treePath == '0.1'
+        ntpc.nameIdPath == '0.1.3'
+        ntpc.nodeIdPath == '0.1'
         ntpc.parent
         ntpc.parent.name == a
         ntpd.name == d
-        ntpd.path == '0.1.2.4'
-        ntpd.treePath == '0.1.2'
+        ntpd.nameIdPath == '0.1.2.4'
+        ntpd.nodeIdPath == '0.1.2'
         ntpe.name == e
-        ntpe.path == '0.1.2.5'
-        ntpe.treePath == '0.1.2'
+        ntpe.nameIdPath == '0.1.2.5'
+        ntpe.nodeIdPath == '0.1.2'
 
         when: "we move a name tree path"
         b.parent = c
@@ -139,7 +139,7 @@ class NameTreePathServiceSpec extends Specification {
 
         println '--'
         NameTreePath.list().each { ntp ->
-            println "${ntp.id} ${ntp.name}: path ${ntp.path}, tpath ${ntp.treePath}"
+            println "${ntp.id} ${ntp.name}: path ${ntp.nameIdPath}, tpath ${ntp.nodeIdPath}"
         }
         println '--'
 
@@ -150,23 +150,23 @@ class NameTreePathServiceSpec extends Specification {
         ntpb.next != null
         ntpb.name == b
         ntpb.next.name == b
-        ntpb.next.path == '0.1.3.2'     // name ids
-        ntpb.next.treePath == '0.1.3'   //tree path ids
+        ntpb.next.nameIdPath == '0.1.3.2'     // name ids
+        ntpb.next.nodeIdPath == '0.1.3'   //tree path ids
         ntpb.next.parent == ntpc
 
         ntpd.next != null
         ntpd.name == d
         ntpd.next.name == d
         ntpd.next.parent == ntpb.next
-        ntpd.next.path == '0.1.3.2.4'   //name ids
-        ntpd.next.treePath == '0.1.3.2' //tree path ids
+        ntpd.next.nameIdPath == '0.1.3.2.4'   //name ids
+        ntpd.next.nodeIdPath == '0.1.3.2' //tree path ids
 
         ntpe.next != null
         ntpe.name == e
         ntpe.next.name == e
         ntpe.next.parent == ntpb.next
-        ntpe.next.path == '0.1.3.2.5'   //name ids
-        ntpe.next.treePath == '0.1.3.2' //tree path ids
+        ntpe.next.nameIdPath == '0.1.3.2.5'   //name ids
+        ntpe.next.nodeIdPath == '0.1.3.2' //tree path ids
 
         ntpf.next == null
         ntpg.next == null

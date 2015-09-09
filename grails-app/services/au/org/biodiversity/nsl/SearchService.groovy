@@ -185,8 +185,8 @@ class SearchService {
                             }
                             Set<String> pathOr = []
                             ntps.eachWithIndex { ntp, i ->
-                                queryParams["path$i"] = "${ntp.path}%"
-                                pathOr << "ntp.path like :path$i"
+                                queryParams["path$i"] = "${ntp.nameIdPath}%"
+                                pathOr << "ntp.nameIdPath like :path$i"
                             }
                             and << "(${pathOr.join(' or ')})"
                         } else {
@@ -251,8 +251,7 @@ class SearchService {
                 log.info "Truncating name tree path."
                 sql.execute('TRUNCATE TABLE ONLY name_tree_path RESTART IDENTITY')
                 sql.close()
-                makeTreePathsSql('APNI')
-                makeTreePathsSql('APC')
+                makeTreePathsSql()
                 log.info "Completed making APNI and APC tree paths"
             } catch (e) {
                 log.error e
@@ -261,38 +260,44 @@ class SearchService {
         }
     }
 
-    def makeTreePathsSql(String arrangementLabel) {
-        log.info "Making Tree Paths for $arrangementLabel."
+    def makeTreePathsSql() {
+        log.info "Making Tree Paths for all trees."
         Long start = System.currentTimeMillis()
         Sql sql = getNSL()
         sql.connection.autoCommit = false
 
         try {
-            sql.execute([tree: arrangementLabel], '''
-WITH RECURSIVE level(node_id, tree_id, parent_id, node_path, name_path, name_id)
+            sql.execute('''
+WITH RECURSIVE level(node_id, tree_id, parent_id, node_path, name_id_path, name_path, rank_path, name_id)
 AS (
   SELECT
-    l2.subnode_id                AS node_id,
-    a.id                         AS tree_id,
-    NULL :: BIGINT               AS parent_id,
-    n.id :: TEXT                 AS node_path,
-    n.name_uri_id_part :: TEXT   AS name_path,
-    n.name_uri_id_part :: BIGINT AS name_id
-  FROM tree_arrangement a, tree_link l, tree_link l2, tree_node n
-  WHERE a.label = :tree
-        AND l.supernode_id = a.node_id
-        AND l2.supernode_id = l.subnode_id
-        AND n.id = l2.subnode_id
+    l2.subnode_id                                                  AS node_id,
+    a.id                                                           AS tree_id,
+    NULL :: BIGINT                                                 AS parent_id,
+    n.id :: TEXT                                                   AS node_path,
+    n.name_uri_id_part :: TEXT                                     AS name_id_path,
+    nm.simple_name :: TEXT                                         AS name_path,
+    r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT AS rank_path,
+    n.name_id                                                      AS name_id
+  FROM tree_arrangement a, tree_link l, tree_link l2, tree_node n, name nm, name_rank r
+  WHERE
+    l.supernode_id = a.node_id
+    AND l2.supernode_id = l.subnode_id
+    AND n.id = l2.subnode_id
+    AND n.name_id = nm.id
+    AND nm.name_rank_id = r.id
 
   UNION ALL
   SELECT
-    subnode.id                                            AS node_id,
-    parent.tree_id                                        AS tree_id,
-    parentnode.id                                         AS parent_id,
-    (parent.node_path || '.' || subnode.id :: TEXT)       AS node_path,
-    (parent.name_path || '.' || subnode.name_uri_id_part) AS name_path,
-    subnode.name_uri_id_part :: BIGINT                    AS name_id
-  FROM level parent, tree_node parentnode, tree_node subnode, tree_link l
+    subnode.id                                                                                  AS node_id,
+    parent.tree_id                                                                              AS tree_id,
+    parentnode.id                                                                               AS parent_id,
+    (parent.node_path || '.' || subnode.id :: TEXT)                                             AS node_path,
+    (parent.name_id_path || '.' || subnode.name_uri_id_part :: TEXT)                            AS name_id_path,
+    (parent.name_path || '>' || nm.simple_name :: TEXT)                                         AS name_path,
+    (parent.rank_path || '>' || r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT) AS rank_path,
+    subnode.name_id                                                                             AS name_id
+  FROM level parent, tree_node parentnode, tree_node subnode, tree_link l, name nm, name_rank r
   WHERE parentnode.id = parent.node_id -- this node is now parent
         AND l.supernode_id = parentnode.id
         AND l.subnode_id = subnode.id
@@ -300,20 +305,35 @@ AS (
         AND subnode.internal_type = 'T\'
         AND subnode.checked_in_at_id IS NOT NULL
         AND subnode.next_node_id IS NULL
+        AND subnode.name_id = nm.id
+        AND nm.name_rank_id = r.id
 )
-INSERT INTO name_tree_path (id, tree_id, parent_id, tree_path, path, name_id, inserted, version)
-(SELECT
-   l.node_id,
-   l.tree_id,
-   l.parent_id,
-   l.node_path,
-   l.name_path,
-   l.name_id,
-   0,
-   0
- FROM level l
- where name_id is not null
-       and name_path is not null)''') //not null tests for DeclaredBT that don't exists see NSL-1017
+INSERT INTO name_tree_path (id,
+                            tree_id,
+                            parent_id,
+                            node_id_path,
+                            name_id_path,
+                            name_path,
+                            rank_path,
+                            name_id,
+                            version,
+                            inserted,
+                            next_id)
+  (SELECT
+     l.node_id,
+     l.tree_id,
+     l.parent_id,
+     l.node_path,
+     l.name_id_path,
+     l.name_path,
+     l.rank_path,
+     l.name_id,
+     0    AS verison,
+     0    AS inserted,
+     NULL AS next_id
+   FROM level l
+   WHERE name_id IS NOT NULL
+         AND name_path IS NOT NULL)''') //not null tests for DeclaredBT that don't exists see NSL-1017
             sql.commit()
         } catch (e) {
             sql.rollback()
@@ -386,14 +406,36 @@ order by n.simpleName asc, n.fullName asc''',
             }
         }
 
-        suggestService.addSuggestionHandler('apni-search') { String query ->
+        suggestService.addSuggestionHandler('apni-search') { String subject, String query, Map params ->
             query = query.trim()
             if (query.contains('\n')) {
                 query = query.split('\n').last().trim()
             }
-            List<String> names = Name.executeQuery('''select n from Name n where lower(n.fullName) like :query and n.instances.size > 0 and n.nameType.scientific = true order by n.fullName asc''',
-                    [query: tokenizeQueryString(query.toLowerCase())], [max: 15])
-                                     .collect { name -> name.fullName }
+            NameRank rank = null
+            if (params.context) {
+                rank = NameRank.get(params.context as Long)
+            }
+            List<String> names
+            if(rank) {
+                names = Name.executeQuery('''select n
+from Name n
+where lower(n.fullName) like :query
+and n.instances.size > 0
+and n.nameType.scientific = true
+and n.nameRank = :rank
+order by n.fullName asc''',
+                        [query: tokenizeQueryString(query.toLowerCase()), rank: rank], [max: 15])
+                            .collect { name -> name.fullName }
+            } else {
+                names = Name.executeQuery('''select n
+from Name n
+where lower(n.fullName) like :query
+and n.instances.size > 0
+and n.nameType.scientific = true
+order by n.fullName asc''',
+                        [query: tokenizeQueryString(query.toLowerCase())], [max: 15])
+                                         .collect { name -> name.fullName }
+            }
             if (names.size() == 15) {
                 names.add('...')
             }

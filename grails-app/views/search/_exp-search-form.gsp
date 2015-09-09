@@ -21,7 +21,7 @@
               <li>For searches of more than 100 names you need to put in the exact full name, and can not use wild cards.</li>
             </ul>
           </div>
-        </help><span class="text-muted small"> click the <i class="fa fa-info-circle"></i>'s for help.</span>
+        </help><span class="text-muted small">click the <i class="fa fa-info-circle"></i>'s for help.</span>
         <textarea name="name" placeholder="Enter each name to check on a new line."
                   class="form-control suggest" rows="2" data-subject="apni-search"
                   data-quoted="yes">${query.name}</textarea>
@@ -56,6 +56,7 @@
              placeholder="name"
              value="${query.rankName}"
              data-subject="apni-search"
+             data-context="inRank"
              class="form-control suggest"/>
     </label>
   </div>
@@ -65,7 +66,7 @@
     <div class="col-md-2">
       <label>of Rank
       <g:select from="${NameRank.list().collect {
-        if(it.name != it.abbrev) {
+        if (it.name != it.abbrev) {
           [id: it.id, name: "$it.name ($it.abbrev)"]
         } else {
           [id: it.id, name: it.name]

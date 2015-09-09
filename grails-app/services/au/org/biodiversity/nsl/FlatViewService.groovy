@@ -135,13 +135,13 @@ SELECT
   rank.sort_order                                                                                AS taxon_rank_sort_order,
   rank.abbrev                                                                                    AS taxon_rank_abbreviation,
 
-  'todo'                                                                                         AS regnum,
-  'todo'                                                                                         AS classis,
-  'todo'                                                                                         AS subclassis,
-  'todo'                                                                                         AS familia,
-  'todo'                                                                                         AS genus,
-  'todo'                                                                                         AS species,
-  'todo'                                                                                         AS infraspecies,
+  substring(ntp.rank_path FROM 'Regnum:([^>]*)')                                                 AS regnum,
+  substring(ntp.rank_path FROM 'Classis:([^>]*)')                                                AS classis,
+  substring(ntp.rank_path FROM 'Subclassis:([^>]*)')                                             AS subclassis,
+  substring(ntp.rank_path FROM 'Familia:([^>]*)')                                                AS familia,
+  substring(ntp.rank_path FROM 'Genus:([^>]*)')                                                  AS genus,
+  substring(ntp.rank_path FROM 'Species:([^>]*)')                                                AS species,
+  substring(ntp.rank_path FROM 'Species:[^>]*>.*:(.*)\$')                                         AS infraspecies,
 
   CASE WHEN firstHybridParent.id IS NOT NULL
     THEN
@@ -172,6 +172,7 @@ SELECT
 FROM name n
   JOIN name_type nt ON n.name_type_id = nt.id
   JOIN name_status ns ON n.name_status_id = ns.id
+  JOIN name_tree_path ntp ON ntp.name_id = n.id
   JOIN author combination_author ON combination_author.id = n.author_id
   JOIN name_rank rank ON n.name_rank_id = rank.id
 
@@ -194,8 +195,8 @@ FROM name n
        AND tree.label = 'APC'
        AND apcn.next_node_id IS NULL
 
-  LEFT OUTER JOIN name firstHybridParent ON n.parent_id = firstHybridParent.id and nt.hybrid
-  LEFT OUTER JOIN name secondHybridParent ON n.second_parent_id = secondHybridParent.id and nt.hybrid
+  LEFT OUTER JOIN name firstHybridParent ON n.parent_id = firstHybridParent.id AND nt.hybrid
+  LEFT OUTER JOIN name secondHybridParent ON n.second_parent_id = secondHybridParent.id AND nt.hybrid
 
 WHERE ns.nom_inval = FALSE
       AND ns.nom_illeg = FALSE

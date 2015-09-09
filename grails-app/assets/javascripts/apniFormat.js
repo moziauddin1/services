@@ -115,8 +115,14 @@ $(function () {
 
     $(".suggest").each(function () {
         var action = $(this).data('subject');
+        var context = $(this).data('context');
         var quoted = $(this).data('quoted');
         var actionurl = baseContextPath + '/suggest/' + action;
+        if(context != undefined) {
+            var contextElement = $("#"+context);
+            var contextValue = contextElement.val();
+            actionurl += '?context=' + encodeURIComponent(contextValue);
+        }
         $(this).autocomplete({
             minLength: 1,
             source: actionurl,

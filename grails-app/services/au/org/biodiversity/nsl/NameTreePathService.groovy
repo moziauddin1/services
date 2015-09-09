@@ -63,7 +63,7 @@ class NameTreePathService {
         oldTreePath.next = newTreePath
         oldTreePath.save(flush: true)
 
-        if(oldTreePath.path != newTreePath.path) {
+        if (oldTreePath.nameIdPath != newTreePath.nameIdPath) {
             updateChildren(oldTreePath, newTreePath)
         }
         return newTreePath
@@ -76,19 +76,25 @@ class NameTreePathService {
             children.each { NameTreePath child ->
                 log.debug "updating $child.name child name tree path."
                 Node currentChildNode = classificationService.isNameInClassification(child.name, newParent.tree)
-                String treePath = newParent.treePath + child.treePath.substring(oldParent.treePath.size())
-                String path = newParent.path + child.path.substring(oldParent.path.size())
+                String nodeIdPath = newParent.nodeIdPath + child.nodeIdPath.substring(oldParent.nodeIdPath.size())
+                String nameIdPath = newParent.nameIdPath + child.nameIdPath.substring(oldParent.nameIdPath.size())
+                String namePath = newParent.namePath + child.namePath.substring(oldParent.namePath.size())
+                String rankPath = newParent.rankPath + child.rankPath.substring(oldParent.rankPath.size())
 
                 if (child.id == currentChildNode.id) {
-                    child.path = path
-                    child.treePath = treePath
+                    child.nameIdPath = nameIdPath
+                    child.nodeIdPath = nodeIdPath
+                    child.namePath = namePath
+                    child.rankPath = rankPath
                 } else {
                     NameTreePath newChild = new NameTreePath()
                     newChild.id = currentChildNode.id
                     newChild.tree = newParent.tree
                     newChild.parent = child.parent.next
-                    newChild.treePath = treePath
-                    newChild.path = path
+                    newChild.nodeIdPath = nodeIdPath
+                    newChild.nameIdPath = nameIdPath
+                    newChild.namePath = namePath
+                    newChild.rankPath = rankPath
                     newChild.inserted = System.currentTimeMillis()
                     newChild.name = child.name
                     newChild.save()
@@ -137,7 +143,7 @@ class NameTreePathService {
      * @return
      */
     List<NameTreePath> currentChildren(NameTreePath parentTreePath) {
-        NameTreePath.findAllByPathLikeAndTreeAndNextIsNull("${parentTreePath.path}.%", parentTreePath.tree).sort { a, b -> a.pathIds().size() <=> b.pathIds().size() }
+        NameTreePath.findAllByPathLikeAndTreeAndNextIsNull("${parentTreePath.nameIdPath}.%", parentTreePath.tree).sort { a, b -> a.namePathIds().size() <=> b.namePathIds().size() }
     }
 
     /**
@@ -178,11 +184,15 @@ class NameTreePathService {
             nameTreePath.name = name
             if (parentNameTreePath) {
                 nameTreePath.parent = parentNameTreePath
-                nameTreePath.treePath = "${parentNameTreePath.treePath}.${parentNameTreePath.id}" as String
-                nameTreePath.path = "${parentNameTreePath.path}.${node.nameUriIdPart}" as String
+                nameTreePath.nodeIdPath = "${parentNameTreePath.nodeIdPath}.${parentNameTreePath.id}" as String
+                nameTreePath.nameIdPath = "${parentNameTreePath.nameIdPath}.${node.nameUriIdPart}" as String
+                nameTreePath.namePath = "${parentNameTreePath.namePath}.${name.simpleName}"
+                nameTreePath.rankPath = "${parentNameTreePath.rankPath}.${name.nameRank.name}"
             } else {
-                nameTreePath.treePath = "${node.id}" as String
-                nameTreePath.path = "${node.nameUriIdPart}" as String
+                nameTreePath.nodeIdPath = "${node.id}" as String
+                nameTreePath.nameIdPath = "${node.nameUriIdPart}" as String
+                nameTreePath.namePath = name.simpleName
+                nameTreePath.rankPath = name.nameRank.name
             }
 
             nameTreePath.save(flush: true)
