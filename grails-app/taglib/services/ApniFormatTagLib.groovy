@@ -137,13 +137,14 @@ class ApniFormatTagLib {
             out << '<branch title="click to see branch.">'
             out << body()
 
-            // TODO push this down into the NameTreepathClass
-            List<Node> nodesInBranch = Node.getAll(nameTreePath.treePath.split(/\./).collect{it.toLong()})
+            List<Node> nodesInBranch = nameTreePath.nodesInBranch()
 
             out << '<ul>'
             nodesInBranch.each { Node n ->
                 def href = createLink( mapping: 'restResource', action: 'node', params: [shard: n.root.label, idNumber: n.id])
-                out << "<li><a href='${href}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+//                out << "<li><a href='${href}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                //todo put the above back in when issues with links and display are solved, see NSL-1413
+                out << "<li>${n.name.nameElement} <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
             }
             out << '</ul></branch>'
         }

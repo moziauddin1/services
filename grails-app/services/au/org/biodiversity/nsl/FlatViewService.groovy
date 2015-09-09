@@ -78,7 +78,7 @@ secondHybridParentNameID    // secondParentNsl
 created                     // createdAt
 modified                    // updatedAt
 nameElement                 // nameElement
-                            //
+
 classification              // Classifications
 taxonID                     // apcRelationshipInstanceId
 acceptedNameUsage           // apcAcceptedName
@@ -95,7 +95,7 @@ parentNameUsageID           // parentNsl
 familyTaxonID               // familyNsl
 genericTaxonID              // genusNsl
 speciesTaxonID              // speciesNsl
-                            //
+
 excludedName                // apcExcluded
 proParteRelationship        // apcProparte
 
