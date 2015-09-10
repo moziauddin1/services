@@ -94,7 +94,7 @@ class SimpleNameService {
             if (!treePath) {
                 return null
             }
-            List<Long> ids = treePath.pathIds()
+            List<Long> ids = treePath.namePathIds()
             treePath.discard()
 
             List<List> namesInBranch = (Name.executeQuery('select n.nameRank.name, n.id, n.nameElement from Name n where n.id in (:ids)', [ids: ids]) as List<List>)

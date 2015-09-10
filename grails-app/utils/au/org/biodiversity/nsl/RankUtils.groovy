@@ -56,10 +56,35 @@ class RankUtils {
             '[n/a]'             : 500,
             '[unknown]'         : 500]
 
+    /**
+     * Checks if the NameRank provided is higher than the rank of Name rankName.
+     * Higher ranks have a lower rank sort order, so Genus is higher that Species.
+     *
+     * assert rankHigherThan(NameRank.findByName('Genus'), 'Species') == true
+     * assert rankHigherThan(NameRank.findByName('Species'), 'Genus') == false
+     *
+     * @param rank
+     * @param rankName
+     * @return true if rank is higher than the rank with the name rankName
+     */
     public static Boolean rankHigherThan(NameRank rank, String rankName) {
         return rankOrder[rankName] > rank.sortOrder
     }
 
+    /**
+     * Checks if the NameRank provided is lower than the rank of Name rankName.
+     * Lower ranks have a higher rank sort order, so Species is lower that Genus.
+     *
+     * assert rankLowerThan(NameRank.findByName('Genus'), 'Species') == false
+     * assert rankLowerThan(NameRank.findByName('Species'), 'Genus') == true
+     *
+     * This ranks with a sort order of 500 (or above) will always return false
+     * as they are effectively unranked.
+     *
+     * @param rank
+     * @param rankName
+     * @return true if rank is lower than the rank with the name rankName
+     */
     public static Boolean rankLowerThan(NameRank rank, String rankName) {
         return rank.sortOrder < 500 && rankOrder[rankName] < rank.sortOrder
     }

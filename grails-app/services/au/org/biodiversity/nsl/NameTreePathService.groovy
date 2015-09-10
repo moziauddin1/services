@@ -204,7 +204,8 @@ class NameTreePathService {
     }
 
     static NameTreePath findCurrentNameTreePath(Name name, String treeLabel) {
-        findCurrentNameTreePath(name, Arrangement.findByLabel(treeLabel))
+        Arrangement arrangement = Arrangement.findByLabel(treeLabel)
+        arrangement ? findCurrentNameTreePath(name, arrangement) : null
     }
 
     static NameTreePath findCurrentNameTreePath(Name name, Arrangement tree) {
@@ -220,7 +221,9 @@ class NameTreePathService {
     }
 
     Integer treePathReport(String treeLabel) {
-        List results = Node.executeQuery('''
+        Arrangement arrangement = Arrangement.findByLabel(treeLabel)
+        if (arrangement) {
+            List results = Node.executeQuery('''
         select count(nd) from Node nd
         where nd.root = :tree
             and nd.internalType = 'T'
@@ -228,6 +231,9 @@ class NameTreePathService {
             and nd.next IS NULL
             and nd.nameUriIdPart IS NOT NULL
             and not exists (select 1 from NameTreePath ntp where ntp.id = nd.id)''', [tree: Arrangement.findByLabel(treeLabel)])
-        results?.first() as Integer
+            results?.first() as Integer
+        } else {
+            return 0
+        }
     }
 }

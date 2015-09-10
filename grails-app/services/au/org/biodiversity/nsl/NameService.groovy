@@ -60,7 +60,7 @@ class NameService {
 
         log.info "name $name updated"
         if (name.nameType.scientific || name.nameType.cultivar) {
-            if (name.parent || name.nameRank.sortOrder < 10) { //we don't need domains to have a parent
+            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Division')) { //we don't need domains to have a parent
                 Node currentNode = updateAPNITree(name)
                 name = Name.get(name.id) //reload or it'll die with no session
                 if (currentNode) {
@@ -105,11 +105,15 @@ class NameService {
             if (name.parent || name.nameRank.sortOrder < 10) { //we don't need domains to have a parent
                 log.info "Adding $name to name tree."
                 Node node = updateAPNITree(name)
-                name = Name.get(name.id) //reload or it'll die with no session
+                if (node) {
+                    name = Name.get(name.id) //reload or it'll die with no session
 
-                NameTreePath nameTreePath = addNameTreePath(name, node)
-                nameTreePath.namesInBranch().each { Name n ->
-                    nameTreePathService.updateNameTreePath(n)
+                    NameTreePath nameTreePath = addNameTreePath(name, node)
+                    nameTreePath.namesInBranch().each { Name n ->
+                        nameTreePathService.updateNameTreePath(n)
+                    }
+                } else {
+                    log.error "error updating APNI tree with name $name"
                 }
             } else {
                 log.error "No parent for name $name, which should have one."
@@ -292,6 +296,10 @@ class NameService {
 
         Link parentLink = null
         if (name.parent) {
+            Node parentNode = classificationService.isNameInAPNI(name.parent)
+            if(!parentNode) {
+                updateAPNITree(name.parent)
+            }
             parentLink = node?.supLink?.find { Link link ->
                 link.supernode.next == null && link.supernode.nameUriIdPart == name.parent.id.toString()
             }
@@ -305,9 +313,9 @@ class NameService {
                     s.flush()
                     s.clear()
                 }
-                classificationService.placeNameInAPNI(name.parent, name)
+                node = classificationService.placeNameInAPNI(name.parent, name)
                 name = Name.get(name.id)
-                node = classificationService.isNameInAPNI(name)
+//                node = classificationService.isNameInAPNI(name)
             } catch (e) {
                 // a service exception means that the user asked for something that
                 // is inconsistent with the current state of the tree

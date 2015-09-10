@@ -76,7 +76,7 @@ class ClassificationService {
 
     Node isNameInClassification(Name name, String classification) {
         Arrangement arrangement = Arrangement.findByLabel(classification)
-        isNameInClassification(name, arrangement)
+        arrangement ? isNameInClassification(name, arrangement) : null
     }
 
     Node isNameInClassification(Name name, Arrangement arrangement) {
@@ -132,16 +132,16 @@ from Instance i,
         }
     }
 
-    void placeNameInAPNI(Name supername, Name name) {
+    Node placeNameInAPNI(Name supername, Name name) {
         Arrangement apni = Arrangement.findByLabel('APNI')
 
         Collection<Node> currentInApni = queryService.findCurrentNslName(apni, name)
 
         if (currentInApni.isEmpty()) {
-            treeOperationsService.addNslName(apni, name, supername, null, name.updatedBy)
+            return treeOperationsService.addNslName(apni, name, supername, null, name.updatedBy)
         } else {
             // TODO: when we permit nulls to be used as taxon ids, then we will stop passing in the name as the taxon
-            treeOperationsService.updateNslName(apni, name, supername, null, name.updatedBy)
+            return treeOperationsService.updateNslName(apni, name, supername, null, name.updatedBy)
         }
     }
 
