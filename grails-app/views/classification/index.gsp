@@ -43,6 +43,17 @@
 
     </div>
 
+    <div>
+        <g:link action="validateClassifications">Validate classifications</g:link>
+        <g:if test="validationResults">
+            <g:link action="clearValidationResults">Clear validation results</g:link>
+        </g:if>
+        <g:if test="validationResults">
+            Validation results go here -> ${validationResults}
+        </g:if>
+    </div>
+
+
     <div id='logs' class="row">
 
     </div>

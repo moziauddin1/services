@@ -31,7 +31,10 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def index() {
-        [list: Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P }]
+        [
+                list: Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P },
+                validationResults: session.validationResults
+        ]
     }
 
     @RequiresRoles('admin')
@@ -156,5 +159,17 @@ class ClassificationController {
                 classification  : classification,
                 inputLabel      : params['inputLabel'],
                 inputDescription: params['inputDescription']])
+    }
+
+    @RequiresRoles('admin')
+    def validateClassifications() {
+        session.validationResults = classificationManagerService.validateClassifications()
+        forward action: "index"
+    }
+
+    @RequiresRoles('admin')
+    def clearValidationResults() {
+        session.validationResults = null
+        forward action: "index"
     }
 }
