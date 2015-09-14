@@ -45,11 +45,29 @@
 
     <div>
         <g:link action="validateClassifications">Validate classifications</g:link>
-        <g:if test="validationResults">
+        <g:if test="${validationResults}">
             <g:link action="clearValidationResults">Clear validation results</g:link>
-        </g:if>
-        <g:if test="validationResults">
-            Validation results go here -> ${validationResults}
+            <div>Classifications validated at ${validationResults.time}
+                <dl>
+                    <g:each in="${validationResults.c.keySet().sort()}" var="classification">
+                        <dt>
+                            ${classification}
+                        </dt>
+                        <dd>
+                            <g:if test="${validationResults.c[classification]}">
+                                <ol>
+                                    <g:each in="${validationResults.c[classification]}" var="msg">
+                                        <li>${msg}</li>
+                                    </g:each>
+                                </ol>
+                            </g:if>
+                            <g:else>
+                                No errors.
+                            </g:else>
+                        </dd>
+                    </g:each>
+                </dl>
+            </div>
         </g:if>
     </div>
 
