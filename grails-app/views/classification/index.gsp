@@ -34,7 +34,8 @@
         <ul>
             <g:each in="${list}">
                 <li>
-                    <g:link action="editForm" params="${[classification: it.label]}">${it.label} &mdash; ${it.description}</g:link>
+                    <g:link action="editForm"
+                            params="${[classification: it.label]}">${it.label} &mdash; ${it.description}</g:link>
 
                 </li>
             </g:each>
@@ -55,11 +56,8 @@
                         </dt>
                         <dd>
                             <g:if test="${validationResults.c[classification]}">
-                                <ol>
-                                    <g:each in="${validationResults.c[classification]}" var="msg">
-                                        <li>${msg}</li>
-                                    </g:each>
-                                </ol>
+                                <g:render template="nestedMessageList"
+                                          model="${[msgList: validationResults.c[classification]]}"/>
                             </g:if>
                             <g:else>
                                 No errors.
