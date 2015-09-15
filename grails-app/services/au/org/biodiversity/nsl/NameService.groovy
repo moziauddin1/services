@@ -60,7 +60,7 @@ class NameService {
 
         log.info "name $name updated"
         if (name.nameType.scientific || name.nameType.cultivar) {
-            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Division')) { //we don't need domains to have a parent
+            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) { //we don't need domains to have a parent
                 Node currentNode = updateAPNITree(name)
                 name = Name.get(name.id) //reload or it'll die with no session
                 if (currentNode) {

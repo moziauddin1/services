@@ -109,7 +109,7 @@ class NameTreePathService {
     public Name updateNameTreePath(Name name) {
         log.debug "Update Name Tree Path for $name"
         if (name.nameType.scientific || name.nameType.cultivar) {
-            if (name.parent || name.nameRank.sortOrder < 10) { //we don't need domains to have a parent
+            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) { //we don't need domains to have a parent
                 Node currentNode = classificationService.isNameInAPNI(name)
                 if (currentNode) {
                     NameTreePath ntp = findCurrentNameTreePath(name, currentNode.root)
