@@ -69,10 +69,11 @@
         </g:if>
     </div>
 
-
+<% /*
     <div id='logs' class="row">
 
     </div>
+    */ %>
 </div>
 </body>
 </html>

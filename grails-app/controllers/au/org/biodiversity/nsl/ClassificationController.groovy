@@ -24,16 +24,18 @@ class ClassificationController {
 
     ClassificationManagerService classificationManagerService;
 
-    @RequiresRoles('admin')
+    private static String VALIDATION_RESULTS_KEY = ClassificationController.class.getName() + '#validationREsults';
+
+//    @RequiresRoles('admin')
     def logs() {
         forward controller: "admin", action: "logs"
     }
 
-    @RequiresRoles('admin')
+//    @RequiresRoles('admin')
     def index() {
         [
-                list: Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P },
-                validationResults: session.validationResults
+                list             : Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P },
+                validationResults: session[VALIDATION_RESULTS_KEY]
         ]
     }
 
@@ -161,15 +163,36 @@ class ClassificationController {
                 inputDescription: params['inputDescription']])
     }
 
-    @RequiresRoles('admin')
+//    @RequiresRoles('admin')
     def validateClassifications() {
-        session.validationResults = classificationManagerService.validateClassifications()
-        forward action: "index"
+        session[VALIDATION_RESULTS_KEY] = classificationManagerService.validateClassifications()
+
+        session[VALIDATION_RESULTS_KEY].c.each { key, value ->
+            value.each { fixLinksFor(it) }
+        }
+
+        redirect action: "index"
     }
 
-    @RequiresRoles('admin')
+    private void fixLinksFor(result) {
+        switch ((ClassificationManagerService.ValidationResult) result.type) {
+            case ClassificationManagerService.ValidationResult.NAME_APPEARS_TWICE:
+                result.link = [controller: 'TreeFixup', action: 'duplicateNameInClassification', params: result.params]
+                break;
+            case ClassificationManagerService.ValidationResult.INSTANCE_APPEARS_TWICE:
+                result.link = [controller: 'TreeFixup', action: 'duplicateInstanceInClassification', params: result.params]
+                break;
+            default:
+                break;
+        }
+
+        result.nested?.each { fixLinksFor(it) }
+
+    }
+
+//    @RequiresRoles('admin')
     def clearValidationResults() {
-        session.validationResults = null
-        forward action: "index"
+        session[VALIDATION_RESULTS_KEY] = null
+        redirect action: "index"
     }
 }
