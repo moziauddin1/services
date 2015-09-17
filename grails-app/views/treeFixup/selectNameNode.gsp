@@ -54,20 +54,30 @@
                     <g:render template="nodeBlock" model="${[node: node]}"/>
                 </div></div>
 
+        <g:each in="${node.supLink.findAll({
+            it.supernode.root == classification && it.supernode.next == null
+        })}"
+
+                var="sup">
             <div class="row">
-                <div class="col-md-2">Placements</div>
+                <div class="col-md-3">placed as ${sup.typeUriNsPart?.label}:${sup.typeUriIdPart} of </div>
 
-                <div class="col-md-10">
-
-                    <g:each in="${node.supLink.findAll({
-                        it.supernode.root == classification && it.supernode.next == null
-                    })}"
-                            var="sup">
-                        <div class="well">
+                <div class="col-md-9">
                             <g:render template="nodeBlock" model="${[node: sup.supernode]}"/>
-                        </div>
-                    </g:each>
-                </div></div>
+                </div>
+            </div>
+    </g:each>
+            <g:each in="${node.subLink}"
+                    var="sup">
+                <div class="row">
+                    <div class="col-md-3">${sup.typeUriNsPart?.label}:${sup.typeUriIdPart}</div>
+
+                    <div class="col-md-9">
+
+                            <g:render template="nodeBlock" model="${[node: sup.subnode]}"/>
+                    </div>
+                </div>
+            </g:each>
 
             <g:link action="doUseNameNode" class="btn btn-danger pull-right"
                     params="${[classification: classification.label, nameId: name.id, nodeId: node.id]}">Use this node</g:link>

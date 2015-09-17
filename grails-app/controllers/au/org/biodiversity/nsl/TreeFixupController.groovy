@@ -1,5 +1,7 @@
 package au.org.biodiversity.nsl
 
+import au.org.biodiversity.nsl.tree.ClassificationManagerService
+
 /**
  * This controller allows the user to manually perform versioning on nodes.
  *
@@ -11,6 +13,7 @@ package au.org.biodiversity.nsl
  */
 class TreeFixupController {
     private static String SELECTED_NODES_KEY = TreeFixupController.class.getName() + '#selectedNodes';
+    ClassificationManagerService classificationManagerService;
 
 
     def selectNameNode() {
@@ -29,8 +32,11 @@ class TreeFixupController {
     }
 
     def doUseNameNode() {
-        flash.message = "doUseNameNode"
+        classificationManagerService.fixClassificationUseNodeForName(Arrangement.findByLabel(params['classification']), Name.get(params['nameId']), Node.get(params['nodeId']));
+        flash.message = "All placements of name ${params['nameId']} in ${params['classification']} merged into node  ${params['nodeId']}"
         redirect action: 'selectNameNode', params: [classification: params['classification'], nameId: params['nameId']]
+
+
     }
 
 }
