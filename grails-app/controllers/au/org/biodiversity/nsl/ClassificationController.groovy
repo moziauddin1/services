@@ -177,10 +177,7 @@ class ClassificationController {
     private void fixLinksFor(result) {
         switch ((ClassificationManagerService.ValidationResult) result.type) {
             case ClassificationManagerService.ValidationResult.NAME_APPEARS_TWICE:
-                result.link = [controller: 'TreeFixup', action: 'duplicateNameInClassification', params: result.params]
-                break;
-            case ClassificationManagerService.ValidationResult.INSTANCE_APPEARS_TWICE:
-                result.link = [controller: 'TreeFixup', action: 'duplicateInstanceInClassification', params: result.params]
+                result.link = [controller: 'TreeFixup', action: 'selectNameNode', params: result.params]
                 break;
             default:
                 break;

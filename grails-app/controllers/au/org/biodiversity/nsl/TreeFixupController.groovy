@@ -12,30 +12,25 @@ package au.org.biodiversity.nsl
 class TreeFixupController {
     private static String SELECTED_NODES_KEY = TreeFixupController.class.getName() + '#selectedNodes';
 
-    def index() {
-        def keys = session[SELECTED_NODES_KEY] ?: [:];
-        def nodes = [:];
 
-        keys.each { k, v -> nodes[Node.get(k)] = Node.get(v) }
+    def selectNameNode() {
+        def state = []
+        session[SELECTED_NODES_KEY] = state;
 
-        return [
-                keys : keys,
-                nodes: nodes
-        ]
+        Arrangement c = Arrangement.findByLabelAndArrangementType(params['classification'], ArrangementType.P)
+        Name n = Name.get(params['nameId'])
+
+       [
+               classification: c,
+               name: n,
+               nodes:  Node.findAllByRootAndNameAndReplacedAt(c, n, null).each {state << it.id}
+       ]
+
     }
 
-    def clearList() {
-        session[SELECTED_NODES_KEY] = [:];
-        redirect action: 'index';
+    def doUseNameNode() {
+        flash.message = "doUseNameNode"
+        redirect action: 'selectNameNode', params: [classification: params['classification'], nameId: params['nameId']]
     }
 
-    def duplicateNameInClassification() {
-        session[SELECTED_NODES_KEY] = [:];
-        redirect action: 'index';
-    }
-
-    def duplicateInstanceInClassification() {
-        session[SELECTED_NODES_KEY] = [:];
-        redirect action: 'index';
-    }
 }
