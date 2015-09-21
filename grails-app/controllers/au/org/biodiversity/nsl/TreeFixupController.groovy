@@ -40,7 +40,7 @@ class TreeFixupController {
             flash.message = "All placements of name ${params['nameId']} in ${params['classification']} merged into node  ${params['nodeId']}"
         }
         catch(ServiceException ex) {
-            log.error "fixClassificationUseNodeForName: ${ex}"
+            log.error ex, ex
             flash.error = "Failed to merge placements: ${ex}";
         }
         redirect action: 'selectNameNode', params: [classification: params['classification'], nameId: params['nameId']]
