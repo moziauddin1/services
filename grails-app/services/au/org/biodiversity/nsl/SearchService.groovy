@@ -56,14 +56,14 @@ class SearchService {
                 List<String> ors = []
                 if (params.nameCheck) {
                     nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = tokenizeQueryString(n)
-                        ors << "lower(n.simpleName) like :name${i}"
+                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
+                        ors << "regex(lower(n.simpleName), :name${i}) = true"
                     }
                     and << "(${ors.join(' or ')})"
                 } else {
                     nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = tokenizeQueryString(n)
-                        ors << "lower(n.fullName) like :name${i}"
+                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
+                        ors << "regex(lower(n.fullName), :name${i}) = true"
                     }
                     and << "(${ors.join(' or ')})"
                 }
@@ -228,6 +228,55 @@ class SearchService {
                                             .replaceAll(/\+/, ' ') +
                 '%'
     }
+
+    public static String regexTokenizeNameQueryString(String query, boolean leadingWildCard = false) {
+        if (query.startsWith('"') && query.endsWith('"')) {
+            String sansQuotes = query.size() > 2 ? query[1..-2] : ""
+            return '^' + sansQuotes.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
+                             .replaceAll(/%/, '.*')
+                             .replaceAll(/× ?/, 'x\\\\s') + '$'
+        }
+
+        Boolean previousTokenWasX = false
+        String[] tokens = query.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
+                               .replaceAll(/%/, '.*')
+                               .replaceAll(/× ?/, 'x\\\\s')
+                               .replaceAll(/[ ]+/, ' ')
+                               .split(' ')
+                               .collect { String token ->
+            if(token == 'x\\s') {
+                previousTokenWasX = true
+                return token
+            }
+            if(token.size() > 1 && token.startsWith('x')) {
+                previousTokenWasX = false
+                return "($token|x ${token.substring(1)})"
+            }
+            if(token == '.*') {
+                previousTokenWasX = false
+                return token
+            }
+            if(previousTokenWasX) {
+                previousTokenWasX = false
+                return token
+            }
+            previousTokenWasX = false
+            return "(x )?$token"
+        }
+
+        String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' ')
+
+        return tokenizedString
+
+//        (leadingWildCard ? '.*' : '^') + query.replaceAll(/× ?/, ' x ')
+//                                              .replaceAll(/[ ]+/, ' ')
+//                                              .replaceAll(/%/, '.*')
+//                                              .replaceAll(/([^ ][a-zA-Z0-9\.,']) ([a-zA-Z0-9\.,'][^ ])/, '$1 (x )?$2')
+//                                              .replaceAll(/([a-zA-Z0-9\.,']) x([a-zA-Z0-9\.,'])/, '$1 (x$2|x $2)')
+//                                              .replaceAll(/\+/, ' ') +
+//                '.*'
+    }
+
 
     Sql getNSL() {
         (Environment.executeForCurrentEnvironment {
@@ -407,6 +456,7 @@ order by n.simpleName asc, n.fullName asc''',
 
         suggestService.addSuggestionHandler('apni-search') { String subject, String query, Map params ->
             query = query.trim()
+            log.debug "tokenized query ${regexTokenizeNameQueryString(query.toLowerCase())}"
             if (query.contains('\n')) {
                 query = query.split('\n').last().trim()
             }
@@ -415,25 +465,23 @@ order by n.simpleName asc, n.fullName asc''',
                 rank = NameRank.get(params.context as Long)
             }
             List<String> names
-            if(rank) {
+            if (rank) {
                 names = Name.executeQuery('''select n
 from Name n
-where lower(n.fullName) like :query
+where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
-and n.nameRank = :rank
-order by n.fullName asc''',
-                        [query: tokenizeQueryString(query.toLowerCase()), rank: rank], [max: 15])
+and n.nameRank = :rank''',
+                        [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15])
                             .collect { name -> name.fullName }
             } else {
                 names = Name.executeQuery('''select n
 from Name n
-where lower(n.fullName) like :query
+where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
-and n.nameType.scientific = true
-order by n.fullName asc''',
-                        [query: tokenizeQueryString(query.toLowerCase())], [max: 15])
-                                         .collect { name -> name.fullName }
+and n.nameType.scientific = true''',
+                        [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15])
+                            .collect { name -> name.fullName }
             }
             if (names.size() == 15) {
                 names.add('...')
@@ -442,15 +490,15 @@ order by n.fullName asc''',
         }
 
         suggestService.addSuggestionHandler('simpleName') { String query ->
-            return Name.executeQuery('''select n from Name n where lower(n.simpleName) like :query and n.instances.size > 0 order by n.simpleName asc''',
-                    [query: tokenizeQueryString(query.toLowerCase())], [max: 15])
+            return Name.executeQuery('''select n from Name n where regex(lower(n.simpleName), :query) = true and n.instances.size > 0''',
+                    [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15])
                        .collect { name -> name.simpleName }
         }
 
         suggestService.addSuggestionHandler('acceptableName') { String query ->
             List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
-            return Name.executeQuery('''select n from Name n where (lower(n.fullName) like :query or lower(n.simpleName) like :query) and n.instances.size > 0 and n.nameStatus.name in (:ns) order by n.simpleName asc''',
-                    [query: tokenizeQueryString(query.toLowerCase()), ns: status], [max: 15])
+            return Name.executeQuery('''select n from Name n where (regex(lower(n.fullName), :query) = true or regex(lower(n.simpleName), :query) = true) and n.instances.size > 0 and n.nameStatus.name in (:ns) order by n.simpleName asc''',
+                    [query: regexTokenizeNameQueryString(query.toLowerCase()), ns: status], [max: 15])
                        .collect { name -> [name: name.fullName, link: linkService.getPreferredLinkForObject(name)?.link] }
         }
 
