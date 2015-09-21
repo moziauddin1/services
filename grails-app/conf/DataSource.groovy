@@ -63,7 +63,7 @@ environments {
             driverClassName = "org.postgresql.Driver"
             username = "nsldev"
             password = "nsldev"
-            dialect = "org.hibernate.dialect.PostgreSQLDialect"
+            dialect = "org.hibernate.dialect.ExtendedPostgreSQLDialect"
             dbCreate = "update"
             url = "jdbc:postgresql://localhost:5432/nslimport"
             formatSql = false
@@ -89,7 +89,7 @@ environments {
             driverClassName = "org.postgresql.Driver"
             username = "nsldev"
             password = "nsldev"
-            dialect = "org.hibernate.dialect.PostgreSQLDialect"
+            dialect = "org.hibernate.dialect.ExtendedPostgreSQLDialect"
             url = "jdbc:postgresql://localhost:5432/nsl"
             formatSql = false
             logSql = false
