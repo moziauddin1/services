@@ -359,7 +359,6 @@ INSERT INTO name_tree_path (id,
             Instance instance
             if (params.instanceId) {
                 instance = Instance.get(params.instanceId as Long)
-
             }
             if (instance) {
                 NameRank rank = instance.name.nameRank

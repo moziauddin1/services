@@ -110,7 +110,13 @@ class ConstructedNameService {
     private Map constructScientificName(Name name, Name parent, Integer nextRankOrder, Integer count) {
 
         if (!nextRankOrder && name.nameRank) {
-            if (RankUtils.nameAtRankOrLower(name, 'Genus')) {
+            if (name.nameRank.sortOrder == 500 && name.parent) {
+                if(RankUtils.nameAtRankOrLower(name.parent, 'Genus')) {
+                    nextRankOrder = RankUtils.getRankOrder('Genus')
+                } else {
+                    nextRankOrder = name.parent.nameRank.sortOrder
+                }
+            } else if (RankUtils.nameAtRankOrLower(name, 'Genus')) {
                 nextRankOrder = RankUtils.getRankOrder('Genus')
             } else if (RankUtils.nameAtRankOrLower(name, 'Familia')) {
                 nextRankOrder = RankUtils.getRankOrder('Familia')
