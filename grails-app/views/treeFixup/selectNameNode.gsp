@@ -80,7 +80,7 @@
             </g:each>
 
             <g:link action="doUseNameNode" class="btn btn-danger pull-right"
-                    params="${[classification: classification.label, nameId: name.id, nodeId: node.id]}">Use this node</g:link>
+                    params="${[classification: classification.label, nameId: name.id, nodeId: node.id]}">Use this placement</g:link>
         </div>
     </g:each>
 

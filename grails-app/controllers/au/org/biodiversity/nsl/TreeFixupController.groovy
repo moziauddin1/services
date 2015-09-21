@@ -1,6 +1,7 @@
 package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.tree.ClassificationManagerService
+import au.org.biodiversity.nsl.tree.ServiceException
 
 /**
  * This controller allows the user to manually perform versioning on nodes.
@@ -32,8 +33,16 @@ class TreeFixupController {
     }
 
     def doUseNameNode() {
-        classificationManagerService.fixClassificationUseNodeForName(Arrangement.findByLabel(params['classification']), Name.get(params['nameId']), Node.get(params['nodeId']));
-        flash.message = "All placements of name ${params['nameId']} in ${params['classification']} merged into node  ${params['nodeId']}"
+        log.debug 'about to call fixClassificationUseNodeForName'
+        try {
+            classificationManagerService.fixClassificationUseNodeForName(Arrangement.findByLabel(params['classification']), Name.get(params['nameId']), Node.get(params['nodeId']));
+            log.debug 'done call fixClassificationUseNodeForName'
+            flash.message = "All placements of name ${params['nameId']} in ${params['classification']} merged into node  ${params['nodeId']}"
+        }
+        catch(ServiceException ex) {
+            log.error "fixClassificationUseNodeForName: ${ex}"
+            flash.error = "Failed to merge placements: ${ex}";
+        }
         redirect action: 'selectNameNode', params: [classification: params['classification'], nameId: params['nameId']]
 
 
