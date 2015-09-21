@@ -244,7 +244,7 @@ class SearchService {
                                .replaceAll(/[ ]+/, ' ')
                                .split(' ')
                                .collect { String token ->
-            if(token == 'x\\s') {
+            if(token.startsWith('x\\s')) {
                 previousTokenWasX = true
                 return token
             }
@@ -267,14 +267,6 @@ class SearchService {
         String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' ')
 
         return tokenizedString
-
-//        (leadingWildCard ? '.*' : '^') + query.replaceAll(/× ?/, ' x ')
-//                                              .replaceAll(/[ ]+/, ' ')
-//                                              .replaceAll(/%/, '.*')
-//                                              .replaceAll(/([^ ][a-zA-Z0-9\.,']) ([a-zA-Z0-9\.,'][^ ])/, '$1 (x )?$2')
-//                                              .replaceAll(/([a-zA-Z0-9\.,']) x([a-zA-Z0-9\.,'])/, '$1 (x$2|x $2)')
-//                                              .replaceAll(/\+/, ' ') +
-//                '.*'
     }
 
 
