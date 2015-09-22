@@ -109,7 +109,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << nameService.deleteName(name, reason)
-                if(!result.ok) {
+                if (!result.ok) {
                     result.status = FORBIDDEN
                 }
             } else if (request.method == 'GET') {
@@ -300,71 +300,70 @@ order by n.simpleName asc''',
                     }
 
                     if (instance.instanceType.standalone) {
-                        refMap.citations << [
-                                instance    : jsonRendererService.brief(instance),
+
+                        Map inst = jsonRendererService.brief(instance, [
                                 page        : instance.page,
-                                relationship: instance.instanceType.name
-                        ]
+                                instanceType: instance.instanceType.name,
+                                relationships : []
+                        ])
+                        if (relationships) {
+                            if (instance.instancesForCitedBy) {
+                                instanceService.sortInstances(instance.instancesForCitedBy.findAll {
+                                    it.instanceType.synonym
+                                } as List<Instance>).each { Instance synonym ->
+                                    inst.relationships << jsonRendererService.brief(synonym, [
+                                            page        : instancePage(synonym),
+                                            relationship: "$synonym.instanceType.name: $synonym.name.fullNameHtml",
+                                            name        : synonym.name.fullName
+                                    ])
+                                }
+
+                                instanceService.sortInstances(instance.instancesForCitedBy.findAll {
+                                    it.instanceType.misapplied
+                                } as List<Instance>).each { Instance missapp ->
+                                    String rel = "${missapp.instanceType.name.replaceAll('misapplied', 'misapplication')}" +
+                                            " $missapp.cites.name.fullNameHtml" +
+                                            " by ${missapp?.cites?.reference?.citationHtml}: ${missapp?.cites?.page ?: '-'}"
+
+                                    inst.relationships << jsonRendererService.brief(missapp, [
+                                            page        : instancePage(missapp),
+                                            relationship: rel,
+                                            name        : missapp.cites.name.fullName
+                                    ])
+                                }
+
+                                instanceService.sortInstances(instance.instancesForCitedBy.findAll {
+                                    (!it.instanceType.synonym && !it.instanceType.name.contains('misapplied'))
+                                } as List<Instance>).each { Instance synonym ->
+                                    inst.relationships << jsonRendererService.brief(synonym, [
+                                            page        : instancePage(synonym),
+                                            relationship: "$synonym.instanceType.name: $synonym.name.fullNameHtml",
+                                            name        : synonym.name.fullName
+                                    ])
+                                }
+                            }
+
+                            if (instance.instanceType.misapplied) {
+                                inst.relationships << jsonRendererService.brief(instance, [
+                                        page        : instancePage(instance),
+                                        relationship: "$instance.instanceType.name to: $instance.citedBy.name.fullNameHtml" +
+                                                " by  ${instance?.cites?.reference?.citationHtml}: ${instance?.cites?.page ?: '-'}",
+                                        name        : instance.citedBy.name.fullName
+                                ])
+                            }
+                        }
+                        refMap.citations << inst
                     }
-                    if (relationships) {
-                        if (instance.instanceType.synonym || instance.instanceType.unsourced) {
-                            refMap.citations << [
-                                    instance    : jsonRendererService.brief(instance.citedBy),
-                                    page        : instance.citedBy.page,
-                                    relationship: "$instance.instanceType.name of $instance.citedBy.name.fullNameHtml",
-                                    name        : jsonRendererService.getBriefNameWithHtml(instance.citedBy.name)
-                            ]
-                        }
 
-                        if (instance.instancesForCitedBy) {
-                            instanceService.sortInstances(instance.instancesForCitedBy.findAll {
-                                it.instanceType.synonym
-                            } as List<Instance>).each { Instance synonym ->
-                                refMap.citations << [
-                                        instance    : jsonRendererService.brief(synonym),
-                                        page        : instancePage(synonym),
-                                        relationship: "$synonym.instanceType.name: $synonym.name.fullNameHtml",
-                                        name        : jsonRendererService.getBriefNameWithHtml(synonym.name)
-                                ]
-                            }
-
-                            instanceService.sortInstances(instance.instancesForCitedBy.findAll {
-                                it.instanceType.name.contains('misapplied')
-                            } as List<Instance>).each { Instance missapp ->
-                                String rel = "${missapp.instanceType.name.replaceAll('misapplied', 'misapplication')}" +
-                                        " $missapp.cites.name.fullNameHtml" +
-                                        " by ${missapp?.cites?.reference?.citationHtml}: ${missapp?.cites?.page ?: '-'}"
-
-                                refMap.citations << [
-                                        instance    : jsonRendererService.brief(missapp),
-                                        page        : instancePage(missapp),
-                                        relationship: rel,
-                                        name        : jsonRendererService.getBriefNameWithHtml(missapp.cites.name)
-                                ]
-                            }
-
-                            instanceService.sortInstances(instance.instancesForCitedBy.findAll {
-                                (!it.instanceType.synonym && !it.instanceType.name.contains('misapplied'))
-                            } as List<Instance>).each { Instance synonym ->
-                                refMap.citations << [
-                                        instance    : jsonRendererService.brief(synonym),
-                                        page        : instancePage(synonym),
-                                        relationship: "$synonym.instanceType.name: $synonym.name.fullNameHtml",
-                                        name        : jsonRendererService.getBriefNameWithHtml(synonym.name)
-                                ]
-                            }
-                        }
-
-                        if (instance.instanceType.misapplied) {
-                            refMap.citations << [
-                                    instance    : jsonRendererService.brief(instance),
-                                    page        : instancePage(instance),
-                                    relationship: "$instance.instanceType.name to: $instance.citedBy.name.fullNameHtml" +
-                                            " by  ${instance?.cites?.reference?.citationHtml}: ${instance?.cites?.page ?: '-'}",
-                                    name        : jsonRendererService.getBriefNameWithHtml(instance.citedBy.name)
-                            ]
-                        }
+                    if (instance.instanceType.synonym || instance.instanceType.unsourced) {
+                        refMap.citations << jsonRendererService.brief(instance, [
+                                instanceType: instance.instanceType.name,
+                                page        : instance.citedBy.page,
+                                relationship: "$instance.instanceType.name of $instance.citedBy.name.fullNameHtml",
+                                name        : instance.citedBy.name.fullName
+                        ])
                     }
+
                     refMap.notes = instance.instanceNotes.collect { InstanceNote instanceNote ->
                         [
                                 instanceNoteKey : instanceNote.instanceNoteKey.name,

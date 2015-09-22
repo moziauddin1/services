@@ -70,7 +70,7 @@ class CheckNamesJob {
                         break
                     default:
                         //probably caused by previous error. This note will be deleted
-                        log.error "unhandled note $note.message"
+                        log.error "unhandled notification $note.message:$note.objectId"
                 }
                 note.delete()
             }

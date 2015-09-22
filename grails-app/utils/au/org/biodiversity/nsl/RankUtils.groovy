@@ -62,6 +62,7 @@ class RankUtils {
      *
      * assert rankHigherThan(NameRank.findByName('Genus'), 'Species') == true
      * assert rankHigherThan(NameRank.findByName('Species'), 'Genus') == false
+     * assert rankHigherThan(NameRank.findByName('Genus'), 'Genus') == false
      *
      * @param rank
      * @param rankName

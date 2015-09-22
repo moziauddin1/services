@@ -103,10 +103,11 @@ proParteRelationship        // apcProparte
         String query = """
 SELECT
   n.id,
-  n.simple_name                                                                                  AS canonical_Name,
+  pro.id,
+  n.simple_name                                                                                  AS canonical_name,
   regexp_replace(substring(n.full_name_html FROM '<authors>(.*)</authors>'), '<[^>]*>', '', 'g') AS authority,
-  n.full_name                                                                                    AS scientificName,
-  'https://biodiversity.org.au/boa/name/apni/' || n.id                                           AS scientific_Name_ID,
+  n.full_name                                                                                    AS scientific_name,
+  'https://biodiversity.org.au/boa/name/apni/' || n.id                                           AS scientific_name_ID,
   CASE WHEN nt.cultivar = TRUE
     THEN n.name_element
   ELSE NULL END                                                                                  AS cultivar_name,
@@ -141,7 +142,7 @@ SELECT
   substring(ntp.rank_path FROM 'Familia:([^>]*)')                                                AS familia,
   substring(ntp.rank_path FROM 'Genus:([^>]*)')                                                  AS genus,
   substring(ntp.rank_path FROM 'Species:([^>]*)')                                                AS species,
-  substring(ntp.rank_path FROM 'Species:[^>]*>.*:(.*)\$')                                         AS infraspecies,
+  substring(ntp.rank_path FROM 'Species:[^>]*>.*:(.*)\\\$')                                        AS infraspecies,
 
   CASE WHEN firstHybridParent.id IS NOT NULL
     THEN
@@ -166,13 +167,37 @@ SELECT
   n.created_at                                                                                   AS created,
   n.updated_at                                                                                   AS modified,
   n.name_element                                                                                 AS name_element,
+  array(SELECT t2.label
+        FROM name_tree_path ntp2 JOIN tree_arrangement t2 ON ntp2.tree_id = t2.id
+        WHERE name_id = n.id
+        ORDER BY t2.label)                                                                       AS classifications,
 
-  apci.id                                                                                        AS apc_inst_id,
-  apcr.citation                                                                                  AS apc_ref
+
+  CASE WHEN apc_inst.id IS NOT NULL
+    THEN
+      'https://biodiversity.org.au/boa/instance/apni/' || apc_inst.id
+  ELSE NULL END                                                                                  AS taxon_id,
+  accepted_name.full_name                                                                        AS accepted_name_usage,
+  CASE WHEN apcn.instance_id IS NOT NULL
+    THEN
+      'https://biodiversity.org.au/boa/instance/apni/' || apcn.instance_id
+  ELSE NULL END                                                                                  AS accepted_name_usage_id,
+
+  apcr.citation                                                                                  AS name_according_to,
+  CASE WHEN apcr.citation IS NOT NULL
+    THEN
+      'https://biodiversity.org.au/boa/reference/apni/' || apcr.citation
+  ELSE NULL END                                                                                  AS name_according_to_id,
+
+  apc_comment.value                                                                              AS taxon_remarks,
+  apc_dist.value                                                                                 AS taxon_distribution,
+  regexp_replace(ntp.name_path, '\\>',
+                 ' | ', 'g')                                                                          AS higher_classification
+
+
 FROM name n
   JOIN name_type nt ON n.name_type_id = nt.id
   JOIN name_status ns ON n.name_status_id = ns.id
-  JOIN name_tree_path ntp ON ntp.name_id = n.id
   JOIN author combination_author ON combination_author.id = n.author_id
   JOIN name_rank rank ON n.name_rank_id = rank.id
 
@@ -186,26 +211,43 @@ FROM name n
   JOIN reference pro_ref ON pro.reference_id = pro_ref.id
     ON pit.id = pro.instance_type_id AND pro.name_id = n.id AND pit.primary_instance = TRUE
 
-  LEFT OUTER JOIN tree_node apcn
-  JOIN tree_arrangement tree ON tree.id = apcn.tree_arrangement_id
-  JOIN instance apci ON apcn.instance_id = apci.id
-  JOIN reference apcr ON apci.reference_id = apcr.id
-    ON apcn.name_id = n.id
-       AND apcn.checked_in_at_id IS NOT NULL
-       AND tree.label = 'APC'
-       AND apcn.next_node_id IS NULL
+  LEFT OUTER JOIN instance apc_inst
+  JOIN tree_node apcn ON apcn.instance_id = apc_inst.id OR apcn.instance_id = apc_inst.cited_by_id
+  JOIN tree_arrangement tree
+    ON
+      tree.id = apcn.tree_arrangement_id
+      AND tree.label = 'APC'
+      AND apcn.checked_in_at_id IS NOT NULL
+      AND apcn.next_node_id IS NULL
+    ON apc_inst.name_id = n.id
+
+  LEFT OUTER JOIN reference apcr ON apc_inst.reference_id = apcr.id
+  LEFT OUTER JOIN name_tree_path ntp ON ntp.id = apcn.id
+  LEFT OUTER JOIN name accepted_name ON apcn.name_id = accepted_name.id
+
+  LEFT OUTER JOIN instance_note apc_comment
+  JOIN instance_note_key key1
+    ON key1.id = apc_comment.instance_note_key_id AND key1.name = 'APC Comment'
+    ON apc_comment.instance_id = apcn.instance_id
+
+  LEFT OUTER JOIN instance_note apc_dist
+  JOIN instance_note_key key2
+    ON key2.id = apc_dist.instance_note_key_id AND key2.name = 'APC Dist.'
+    ON apc_dist.instance_id = apcn.instance_id
 
   LEFT OUTER JOIN name firstHybridParent ON n.parent_id = firstHybridParent.id AND nt.hybrid
   LEFT OUTER JOIN name secondHybridParent ON n.second_parent_id = secondHybridParent.id AND nt.hybrid
 
-WHERE ns.nom_inval = FALSE
-      AND ns.nom_illeg = FALSE
-      AND ns.name <> 'orth. var.'
-      AND ns.name <> 'isonym'
-      AND exists(SELECT 1
-                 FROM instance i
-                 WHERE i.name_id = n.id)
-ORDER BY n.full_name;
+WHERE
+  --   ns.nom_inval = FALSE
+  --       AND ns.nom_illeg = FALSE
+  --       AND ns.name <> 'orth. var.'
+  --       AND ns.name <> 'isonym'
+  exists(SELECT 1
+         FROM instance i
+         WHERE i.name_id = n.id)
+  AND n.id = 112735
+ORDER BY canonical_Name;
 """
     }
 }

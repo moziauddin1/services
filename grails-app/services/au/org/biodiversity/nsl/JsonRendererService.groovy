@@ -64,7 +64,10 @@ class JsonRendererService {
     }
 
     Map getBriefName(Name name) {
-        brief(name, [nameElement: name?.nameElement])
+        brief(name, [
+                nameElement: name?.nameElement,
+                fullNameHtml: name?.fullNameHtml
+        ])
     }
 
     Map getBriefReference(Reference reference) {
@@ -77,6 +80,7 @@ class JsonRendererService {
     Map getBriefInstance(Instance instance) {
         brief(instance, [
                 instanceType: instance?.instanceType?.name,
+                name        : instance?.name?.fullNameHtml,
                 protologue  : instance?.instanceType?.protologue,
                 citation    : instance?.reference?.citation,
                 citationHtml: instance?.reference?.citationHtml,
