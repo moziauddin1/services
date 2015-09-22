@@ -2,6 +2,7 @@ package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.tree.ClassificationManagerService
 import au.org.biodiversity.nsl.tree.ServiceException
+import org.apache.shiro.authz.annotation.RequiresRoles
 
 /**
  * This controller allows the user to manually perform versioning on nodes.
@@ -17,6 +18,7 @@ class TreeFixupController {
     ClassificationManagerService classificationManagerService;
 
 
+    @RequiresRoles('admin')
     def selectNameNode() {
         def state = []
         session[SELECTED_NODES_KEY] = state;
@@ -32,6 +34,7 @@ class TreeFixupController {
 
     }
 
+    @RequiresRoles('admin')
     def doUseNameNode() {
         log.debug 'about to call fixClassificationUseNodeForName'
         try {
@@ -44,8 +47,6 @@ class TreeFixupController {
             flash.error = "Failed to merge placements: ${ex}";
         }
         redirect action: 'selectNameNode', params: [classification: params['classification'], nameId: params['nameId']]
-
-
     }
 
 }

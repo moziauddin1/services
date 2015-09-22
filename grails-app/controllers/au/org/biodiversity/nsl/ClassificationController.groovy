@@ -26,12 +26,12 @@ class ClassificationController {
 
     private static String VALIDATION_RESULTS_KEY = ClassificationController.class.getName() + '#validationREsults';
 
-//    @RequiresRoles('admin')
+    @RequiresRoles('admin')
     def logs() {
         forward controller: "admin", action: "logs"
     }
 
-//    @RequiresRoles('admin')
+    @RequiresRoles('admin')
     def index() {
         [
                 list             : Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P },
@@ -163,7 +163,7 @@ class ClassificationController {
                 inputDescription: params['inputDescription']])
     }
 
-//    @RequiresRoles('admin')
+    @RequiresRoles('admin')
     def validateClassifications() {
         session[VALIDATION_RESULTS_KEY] = classificationManagerService.validateClassifications()
 
@@ -187,7 +187,7 @@ class ClassificationController {
 
     }
 
-//    @RequiresRoles('admin')
+    @RequiresRoles('admin')
     def clearValidationResults() {
         session[VALIDATION_RESULTS_KEY] = null
         redirect action: "index"
