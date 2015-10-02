@@ -403,6 +403,7 @@ INSERT INTO name_tree_path (id,
             }
             if (instance) {
                 NameRank rank = instance.name.nameRank
+                Integer parentSortOrder = params.allRanksAbove == 'true' ? 0 :rank.parentRank.sortOrder
                 log.debug "This rank $rank, parent $rank.parentRank"
 
                 return Name.executeQuery('''
@@ -423,7 +424,7 @@ order by n.simpleName asc, n.fullName asc''',
                         [
                                 query          : query.toLowerCase() + '%',
                                 sortOrder      : rank.sortOrder,
-                                parentSortOrder: rank.parentRank.sortOrder
+                                parentSortOrder: parentSortOrder
                         ], [max: 15])
                            .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
 
