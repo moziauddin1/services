@@ -24,6 +24,8 @@ class ClassificationController {
 
     ClassificationManagerService classificationManagerService;
 
+    private static String VALIDATION_RESULTS_KEY = ClassificationController.class.getName() + '#validationREsults';
+
     @RequiresRoles('admin')
     def logs() {
         forward controller: "admin", action: "logs"
@@ -31,7 +33,10 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def index() {
-        [list: Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P }]
+        [
+                list             : Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P },
+                validationResults: session[VALIDATION_RESULTS_KEY]
+        ]
     }
 
     @RequiresRoles('admin')
@@ -156,5 +161,35 @@ class ClassificationController {
                 classification  : classification,
                 inputLabel      : params['inputLabel'],
                 inputDescription: params['inputDescription']])
+    }
+
+    @RequiresRoles('admin')
+    def validateClassifications() {
+        session[VALIDATION_RESULTS_KEY] = classificationManagerService.validateClassifications()
+
+        session[VALIDATION_RESULTS_KEY].c.each { key, value ->
+            value.each { fixLinksFor(it) }
+        }
+
+        redirect action: "index"
+    }
+
+    private void fixLinksFor(result) {
+        switch ((ClassificationManagerService.ValidationResult) result.type) {
+            case ClassificationManagerService.ValidationResult.NAME_APPEARS_TWICE:
+                result.link = [controller: 'TreeFixup', action: 'selectNameNode', params: result.params]
+                break;
+            default:
+                break;
+        }
+
+        result.nested?.each { fixLinksFor(it) }
+
+    }
+
+    @RequiresRoles('admin')
+    def clearValidationResults() {
+        session[VALIDATION_RESULTS_KEY] = null
+        redirect action: "index"
     }
 }
