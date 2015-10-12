@@ -22,40 +22,11 @@ package au.org.biodiversity.nsl
  */
 class RankUtils {
 
-    private static Map rankOrder = [
-            Regio               : 8,
-            Regnum              : 10,
-            Division            : 20,
-            Classis             : 30,
-            Subclassis          : 40,
-            Superordo           : 50,
-            Ordo                : 60,
-            Subordo             : 70,
-            Familia             : 80,
-            Subfamilia          : 90,
-            Tribus              : 100,
-            Subtribus           : 110,
-            Genus               : 120,
-            Subgenus            : 130,
-            Sectio              : 140,
-            Subsectio           : 150,
-            Series              : 160,
-            Subseries           : 170,
-            Superspecies        : 180,
-            Species             : 190,
-            Subspecies          : 200,
-            Nothovarietas       : 210,
-            Varietas            : 210,
-            Subvarietas         : 220,
-            Forma               : 230,
-            Subforma            : 240,
-            'form taxon'        : 250,
-            'morphological var.': 260,
-            'nothomorph.'       : 270,
-            '[unranked]'        : 500,
-            '[n/a]'             : 500,
-            '[unknown]'         : 500]
 
+    private static Integer rankOrder(String rankName){
+        NameRank.findByName(rankName).sortOrder
+    }
+    
     /**
      * Checks if the NameRank provided is higher than the rank of Name rankName.
      * Higher ranks have a lower rank sort order, so Genus is higher that Species.
@@ -69,7 +40,7 @@ class RankUtils {
      * @return true if rank is higher than the rank with the name rankName
      */
     public static Boolean rankHigherThan(NameRank rank, String rankName) {
-        return rankOrder[rankName] > rank.sortOrder
+        return rankOrder(rankName) > rank.sortOrder
     }
 
     /**
@@ -87,19 +58,19 @@ class RankUtils {
      * @return true if rank is lower than the rank with the name rankName
      */
     public static Boolean rankLowerThan(NameRank rank, String rankName) {
-        return rank.sortOrder < 500 && rankOrder[rankName] < rank.sortOrder
+        return rank.sortOrder < 500 && rankOrder(rankName) < rank.sortOrder
     }
 
     public static Boolean nameAtRankOrHigher(Name name, String rankName) {
-        return rankOrder[rankName] >= name.nameRank.sortOrder
+        return rankOrder(rankName) >= name.nameRank.sortOrder
     }
 
     public static Boolean nameAtRankOrLower(Name name, String rankName) {
-        return rankOrder[rankName] <= name.nameRank.sortOrder
+        return rankOrder(rankName) <= name.nameRank.sortOrder
     }
 
     public static Integer getRankOrder(String rankName) {
-        rankOrder[rankName]
+        rankOrder(rankName)
     }
 
     public static Name getParentOfRank(Name name, String rank) {
@@ -113,4 +84,21 @@ class RankUtils {
             return namesInBranch.reverse().find { (it && it.nameRank.name == rank) }
         }
     }
+
+    public static previousRank(NameRank rank) {
+        return NameRank.findBySortOrderLessThan(rank.sortOrder, [sort: 'sortOrder', order: 'desc'])
+    }
+
+    public static nextMajorRank(NameRank rank, Boolean up = true) {
+        return NameRank.findBySortOrderLessThanAndMajor(rank.sortOrder, true, [sort: 'sortOrder', order: up ? 'desc' : 'asc'])
+    }
+
+    public static parentOrHigher(NameRank rank) {
+        rank.parentRank ?: previousRank(rank)
+    }
+
+    public static parentOrMajor(NameRank rank) {
+        rank.parentRank ?: nextMajorRank(rank, true)
+    }
+
 }
