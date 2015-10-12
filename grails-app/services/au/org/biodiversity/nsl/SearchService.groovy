@@ -284,6 +284,17 @@ class SearchService {
         } as Sql)
     }
 
+    private static Integer getRankSuggestionParentSortOrder(NameRank rank, Boolean allRanksAbove){
+        if(allRanksAbove){
+            return 0
+        }
+        if(rank.name == 'Genus') {
+            return NameRank.findByName('Familia').sortOrder
+        }
+        return RankUtils.parentOrMajor(rank)?.sortOrder ?: 0
+    }
+
+
     def registerSuggestions() {
         // add apc name search
         suggestService.addSuggestionHandler('apc-search') { String subject, String query, Map params ->
@@ -295,7 +306,7 @@ class SearchService {
             }
             if (instance) {
                 NameRank rank = instance.name.nameRank
-                Integer parentSortOrder = params.allRanksAbove == 'true' ? 0 : (RankUtils.parentOrMajor(rank)?.sortOrder ?: 0)
+                Integer parentSortOrder = getRankSuggestionParentSortOrder(rank, params.allRanksAbove == 'true')
                 log.debug "This rank $rank, parent $rank.parentRank, parentSortOrder $parentSortOrder"
 
                 return Name.executeQuery('''
