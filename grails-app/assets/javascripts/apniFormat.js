@@ -29,10 +29,10 @@ $(function () {
                                 parentDiv.find("protologue-pdf").each(function () {
                                     checkProtologue(this);
                                 });
-                                parentDiv.find('branch').click(function(event){
+                                parentDiv.find('branch').click(function (event) {
                                     console.log('in branch');
 
-                                    if($(event.target).is("a")) {
+                                    if ($(event.target).is("a")) {
                                         // default behaviour on a hyperlink click
                                     }
                                     else {
@@ -117,12 +117,17 @@ $(function () {
         var action = $(this).data('subject');
         var context = $(this).data('context');
         var quoted = $(this).data('quoted');
-        var actionurl = baseContextPath + '/suggest/' + action;
-        if(context != undefined) {
-            var contextElement = $("#"+context);
-            var contextValue = contextElement.val();
-            actionurl += '?context=' + encodeURIComponent(contextValue);
-        }
+        var actionurl = function (request, response) {
+            var url = baseContextPath + '/suggest/' + action + '?term=' + encodeURIComponent(request.term);
+            if (context != undefined) {
+                var contextElement = $("#" + context);
+                var contextValue = contextElement.val();
+                url += '&context=' + encodeURIComponent(contextValue);
+            }
+            $.get(url, function (data, status, request) {
+                response(data);
+            });
+        };
         $(this).autocomplete({
             minLength: 1,
             source: actionurl,
