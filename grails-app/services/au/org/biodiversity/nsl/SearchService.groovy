@@ -233,8 +233,8 @@ class SearchService {
         if (query.startsWith('"') && query.endsWith('"')) {
             String sansQuotes = query.size() > 2 ? query[1..-2] : ""
             return '^' + sansQuotes.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
-                             .replaceAll(/%/, '.*')
-                             .replaceAll(/× ?/, 'x\\\\s') + '$'
+                                   .replaceAll(/%/, '.*')
+                                   .replaceAll(/× ?/, 'x\\\\s') + '$'
         }
 
         Boolean previousTokenWasX = false
@@ -244,19 +244,19 @@ class SearchService {
                                .replaceAll(/[ ]+/, ' ')
                                .split(' ')
                                .collect { String token ->
-            if(token.startsWith('x\\s')) {
+            if (token.startsWith('x\\s')) {
                 previousTokenWasX = true
                 return token
             }
-            if(token.size() > 1 && token.startsWith('x')) {
+            if (token.size() > 1 && token.startsWith('x')) {
                 previousTokenWasX = false
                 return "($token|x ${token.substring(1)})"
             }
-            if(token == '.*') {
+            if (token == '.*') {
                 previousTokenWasX = false
                 return token
             }
-            if(previousTokenWasX) {
+            if (previousTokenWasX) {
                 previousTokenWasX = false
                 return token
             }
@@ -284,11 +284,11 @@ class SearchService {
         } as Sql)
     }
 
-    private static Integer getRankSuggestionParentSortOrder(NameRank rank, Boolean allRanksAbove){
-        if(allRanksAbove){
+    private static Integer getRankSuggestionParentSortOrder(NameRank rank, Boolean allRanksAbove) {
+        if (allRanksAbove) {
             return 0
         }
-        if(rank.name == 'Genus') {
+        if (rank.name == 'Genus') {
             return NameRank.findByName('Familia').sortOrder
         }
         return RankUtils.parentOrMajor(rank)?.sortOrder ?: 0
@@ -360,30 +360,34 @@ order by n.simpleName asc, n.fullName asc''',
             if (params.context) {
                 rank = NameRank.get(params.context as Long)
             }
-            List<String> names
+
+            List<String> names = []
+
             if (rank) {
-                names = Name.executeQuery('''select n
-from Name n
+                names = Name.executeQuery('''select n.fullName
+from Name n, NameTreePath ntp
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
 and n.nameRank = :rank
-order by n.fullName asc''',
-                        [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15])
-                            .collect { name -> name.fullName }
+and n = ntp.name
+and ntp.tree.label = 'APNI'
+order by lower(ntp.namePath)''', [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15]) as List<String>
             } else {
-                names = Name.executeQuery('''select n
-from Name n
+                names = Name.executeQuery('''select n.fullName
+from Name n, NameTreePath ntp
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
-order by n.fullName asc''',
-                        [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15])
-                            .collect { name -> name.fullName }
+and n = ntp.name
+and ntp.tree.label = 'APNI'
+order by lower(ntp.namePath)''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
             }
+
             if (names.size() == 15) {
                 names.add('...')
             }
+
             return names
         }
 

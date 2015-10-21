@@ -246,7 +246,7 @@ class NameTreePathService {
                 log.info "Truncating name tree path."
                 sql.execute('TRUNCATE TABLE ONLY name_tree_path RESTART IDENTITY')
                 sql.close()
-                nameTreePathService.makeTreePathsSql()
+                makeTreePathsSql()
                 log.info "Completed making APNI and APC tree paths"
             } catch (e) {
                 log.error e
