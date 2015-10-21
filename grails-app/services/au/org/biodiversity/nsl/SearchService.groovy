@@ -367,7 +367,8 @@ from Name n
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
-and n.nameRank = :rank''',
+and n.nameRank = :rank
+order by n.fullName asc''',
                         [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15])
                             .collect { name -> name.fullName }
             } else {
@@ -375,7 +376,8 @@ and n.nameRank = :rank''',
 from Name n
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
-and n.nameType.scientific = true''',
+and n.nameType.scientific = true
+order by n.fullName asc''',
                         [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15])
                             .collect { name -> name.fullName }
             }
