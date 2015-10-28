@@ -95,7 +95,7 @@ class ServiceTagLib {
         if (nameId) {
             try {
                 String link = (grailsApplication.config.services.link.editor ?: 'https://biodiversity.org.au/nsl-editor') +
-                        "/search?query=id%3A+${nameId}&query_field=name-instances&query_on=instance"
+                        "/search?query=id:${nameId}&query_field=name-instances&query_on=instance"
                 if (link) {
                     out << "<a href='${link}'>"
                     out << body(link: link)
