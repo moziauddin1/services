@@ -365,23 +365,19 @@ order by n.simpleName asc, n.fullName asc''',
 
             if (rank) {
                 names = Name.executeQuery('''select n.fullName
-from Name n, NameTreePath ntp
+from Name n
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
 and n.nameRank = :rank
-and n = ntp.name
-and ntp.tree.label = 'APNI'
-order by lower(ntp.namePath)''', [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15]) as List<String>
+order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15]) as List<String>
             } else {
                 names = Name.executeQuery('''select n.fullName
-from Name n, NameTreePath ntp
+from Name n
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
-and n = ntp.name
-and ntp.tree.label = 'APNI'
-order by lower(ntp.namePath)''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
+order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
             }
 
             if (names.size() == 15) {
