@@ -23,8 +23,7 @@
           </div>
         </help><span class="text-muted small">click the <i class="fa fa-info-circle"></i>'s for help.</span>
         <textarea name="name" placeholder="Enter each name to check on a new line."
-                  class="form-control suggest" rows="2" data-subject="apni-search"
-                  data-quoted="yes">${query.name}</textarea>
+                  class="form-control suggest" rows="2" data-subject="apni-search">${query.name}</textarea>
       </label>
     </div>
 

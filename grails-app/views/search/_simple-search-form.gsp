@@ -20,7 +20,7 @@
 
     <input type="text" name="name" placeholder="Enter a name" value="${query.name}"
              class="suggest form-control "
-             data-subject="apni-search" data-quoted="yes" size="30"/>
+             data-subject="apni-search" size="30"/>
     </label>
     <g:set var="formName" value="search"/>
     <g:render template="/search/submit"/>

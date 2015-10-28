@@ -136,7 +136,9 @@ $(function () {
                 if (quoted) {
                     qry = '"' + ui.item.value + '"';
                 }
-                $(this).val(qry);
+                if (qry != '...') {
+                    $(this).val(qry);
+                }
                 event.cancel();
             }
         });
