@@ -69,6 +69,13 @@ class ServiceTagLib {
         }
     }
 
+    def scheme = {attrs ->
+        def colourScheme = grailsApplication.config.nslServices.colourScheme
+        if (colourScheme) {
+            out << colourScheme
+        }
+    }
+
     def preferedLink = { attrs, body ->
         def target = attrs.target
         if (target) {
