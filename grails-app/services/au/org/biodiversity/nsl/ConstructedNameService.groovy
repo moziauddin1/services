@@ -134,7 +134,7 @@ class ConstructedNameService {
 
         String connector = makeConnectorString(name, precedingName, rank)
 
-        Boolean italic = RankUtils.rankLowerThan(name.nameRank, 'genus') && !name.nameType.cultivar && name.nameType.name != 'phrase name'
+        Boolean italic = RankUtils.rankLowerThan(name.nameRank, 'Genus') && !name.nameType.cultivar && name.nameType.name != 'phrase name'
 
         String el = "<element>${italic ? '<i>' : ''}$name.nameElement${italic ? '</i>' : ''}</element>"
         Map nameElement = [fullMarkedUpName: el, simpleMarkedUpName: el]
