@@ -30,7 +30,6 @@ $(function () {
                                     checkProtologue(this);
                                 });
                                 parentDiv.find('branch').click(function (event) {
-                                    console.log('in branch');
 
                                     if ($(event.target).is("a")) {
                                         // default behaviour on a hyperlink click
@@ -162,6 +161,7 @@ $(function () {
                 var footer = $(html).find('div.foa-footer');
                 $("foa").append(content);
                 $("div.foa-content").append(footer);
+                $("#foaToggle").show();
             }
         });
     });
@@ -224,6 +224,18 @@ $(function () {
             $('.results').css("font-family", "\"Lucida Grande\", \"Helvetica Nueue\", Arial, sans-serif");
         }
     }
+
+    $('branch').click(function (event) {
+
+        if ($(event.target).is("a")) {
+            // default behaviour on a hyperlink click
+        }
+        else {
+            $(this).children('ul').toggle();
+            event.preventDefault();
+        }
+    });
+
 
 })
 ;

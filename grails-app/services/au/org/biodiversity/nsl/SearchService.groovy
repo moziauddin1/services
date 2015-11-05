@@ -107,10 +107,10 @@ class SearchService {
         }
 
         if (params.publication) {
-            queryParams.publication = "${tokenizeQueryString((params.publication as String).trim().toLowerCase(), true)}"
+            queryParams.publication = "${regexTokenizeReferenceQueryString((params.publication as String).trim().toLowerCase(), true)}"
             from.add('Instance i')
             from.add('Reference r')
-            and << "lower(r.citation) like :publication"
+            and << "regex(lower(r.citation), :publication) = true"
             and << "i.reference = r"
             and << "i.name = n"
         }
@@ -223,11 +223,21 @@ class SearchService {
         if (query.startsWith('"') && query.endsWith('"')) {
             return query.size() > 2 ? query[1..-2] : ""
         }
-        (leadingWildCard ? '%' : '') + query.replaceAll(/[ ]+/, ' ')
-                                            .replaceAll(/([a-zA-Z0-9\.,']) ([a-zA-Z0-9\.,'])/, '$1 %$2')
-                                            .replaceAll(/\+/, ' ') +
-                '%'
+        (leadingWildCard ? '%' : '') + query.replaceAll(/[ ]+/, ' ') + '%'
     }
+
+    public static String regexTokenizeReferenceQueryString(String query, boolean leadingWildCard = false) {
+        if (query.startsWith('"') && query.endsWith('"')) {
+            String sansQuotes = query.size() > 2 ? query[1..-2] : ""
+            return '^' + sansQuotes.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
+                                   .replaceAll(/%/, '.*')
+                                   .replaceAll(/× ?/, 'x\\\\s') + '$'
+        }
+        return (leadingWildCard ? '.*' : '^') + query.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
+                                                     .replaceAll(/%/, '.*')
+                                                     .replaceAll(/[ ]+/, ' +') + '.*'
+    }
+
 
     public static String regexTokenizeNameQueryString(String query, boolean leadingWildCard = false) {
         if (query.startsWith('"') && query.endsWith('"')) {
@@ -241,7 +251,7 @@ class SearchService {
         String[] tokens = query.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
                                .replaceAll(/%/, '.*')
                                .replaceAll(/× ?/, 'x\\\\s')
-                               .replaceAll(/[ ]+/, ' ')
+                               .replaceAll(/[ ]+/, ' +')
                                .split(' ')
                                .collect { String token ->
             if (token.startsWith('x\\s')) {
@@ -407,8 +417,10 @@ order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQu
         }
 
         suggestService.addSuggestionHandler('publication') { String query ->
-            return Reference.executeQuery('''select r from Reference r where lower(r.citation) like :query order by r.citation asc''',
-                    [query: "${tokenizeQueryString(query.trim().toLowerCase(), true)}"], [max: 15])
+            String qtokenized = regexTokenizeReferenceQueryString(query.trim().toLowerCase(), true)
+            log.debug "Tokenized query: $qtokenized"
+            return Reference.executeQuery('''select r from Reference r where regex(lower(r.citation), :query) = true order by r.citation asc''',
+                    [query: "${qtokenized}"], [max: 15])
                             .collect { reference -> reference.citation }
         }
 

@@ -25,8 +25,7 @@
 
   <div data-nameId="${instance.name.id}">
     %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-    <b>${raw(instance.name.fullNameHtml)}<st:preferedLink target="${instance}"><i
-        class="fa fa-link"></i></st:preferedLink></b><name-status
+    <b><st:preferedLink target="${instance.name}">${raw(instance.name.fullNameHtml)}</st:preferedLink></b><name-status
       class="${instance.name.nameStatus.name}">, ${instance.name.nameStatus.name}</name-status><name-type
       class="${instance.name.nameType.name}">, ${instance.name.nameType.name}</name-type>
     <span class="text-muted small">${instance?.instanceType?.name}</span>
@@ -35,7 +34,9 @@
     </editor>
 
     <af:apniLink name="${instance.name}"/>
-
+    <span class="vertbar">
+      <st:preferedLink target="${instance}"><i class="fa fa-link"></i></st:preferedLink>
+    </span>
   </div>
 
   <reference data-referenceId="${instance.reference.id}">
@@ -45,6 +46,7 @@
     </ref-citation>
 
     <page><af:page instance="${instance}"/></page>
+
     <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.taxonUriIdPart == instance.id.toString()}">
       <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.typeUriIdPart == 'ApcConcept'}">
         <apc><i class="fa fa-check"></i>APC</apc>
@@ -54,9 +56,15 @@
       </g:else>
     </g:if>
     <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
-    <a href="${g.createLink(controller: 'search', params: [publication: instance.reference?.citation, search: true, advanced: true, display: 'apni'])}"
-       title="Search for names in this reference.">
-      <i class="fa fa-search"></i></a>
+
+    <st:preferedLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferedLink>
+
+    <span class="vertbar">
+      <a href="${g.createLink(controller: 'search', params: [publication: instance.reference?.citation, search: true, advanced: true, display: 'apni'])}"
+         title="Search for names in this reference.">
+        <i class="fa fa-search"></i></a>
+    </span>
+
     <instance data-instanceId="${instance.id}">
 
       <ul class="instance-notes list-unstyled">
@@ -134,7 +142,7 @@
     </instance>
   </reference>
 
-  <div class="toggleNext">
+  <div id="foaToggle" class="toggleNext" style="display:none;">
     Flora of Australia
     <i class="fa fa-caret-right"></i>
     <i class="fa fa-caret-down" style="display: none;"></i>

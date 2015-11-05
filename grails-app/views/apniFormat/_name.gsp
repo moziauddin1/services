@@ -8,7 +8,7 @@
   <div data-nameId="${name.id}">
     <st:primaryInstance name="${name}" var="primaryInstance">
     %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-    <accepted-name><st:preferedLink target="${primaryInstance ?: name}">${raw(name.fullNameHtml)}</st:preferedLink>
+    <accepted-name><st:preferedLink target="${name}">${raw(name.fullNameHtml)}</st:preferedLink>
     </accepted-name><name-status class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
       class="${name.nameType.name}">, ${name.nameType.name}</name-type>
     <g:if test="${!familyName}">

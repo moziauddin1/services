@@ -6,7 +6,7 @@
         Name search
       </a>
     </li>
-    <li role="presentation" class="${query.experimental ? 'active' : ''}">
+    <li role="presentation" class="${query.advanced || query.experimental ? 'active' : ''}">
       <a href="#experimental" aria-controls="experiemental" role="tab" data-toggle="tab">
         Advanced search
       </a>
@@ -43,7 +43,7 @@
 
     </div>
 
-    <div role="tabpanel" class="tab-pane ${query.experimental ? 'active' : ''}" id="experimental">
+    <div role="tabpanel" class="tab-pane ${query.advanced || query.experimental ? 'active' : ''}" id="experimental">
 
       <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
         <div class="panel-heading">

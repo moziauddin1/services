@@ -90,7 +90,8 @@ name-type {
     color: #777777;
 }
 
-name-type.common {
+name-type.common,
+name-type.show-always {
     display: inline;
 }
 
@@ -101,6 +102,8 @@ name-status.\[unknown\],
 name-status.\[n\/a\] {
     display: none;
 }
+
+
 
 bhl a {
     font-variant-caps: all-small-caps;

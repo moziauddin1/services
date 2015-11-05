@@ -18,6 +18,10 @@ body.test {
     background-color: rgba(123, 0, 255, 0.22);
 }
 
+body.local {
+    background-color: rgba(159, 255, 0, 0.08);
+}
+
 div.logo {
     font-size: 1.5em;
     color: darkolivegreen;
