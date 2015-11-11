@@ -23,6 +23,8 @@ class UrlMappings {
 
         "/api/tree/branch/$treeLabel"(controller: 'treeView', action: 'treeTopBranch')
         "/api/tree/branch/$treeLabel/$nameId"(controller: 'treeView', action: 'namePlacementBranch')
+        "/api/tree/path/$treeLabel"(controller: 'treeView', action: 'treeTopPath')
+        "/api/tree/path/$treeLabel/$nameId"(controller: 'treeView', action: 'namePlacementPath')
         "/api/tree/name/$treeLabel/$nameId"(controller: 'treeView', action: 'nameInTree')
         "/api/tree/name-placement/$treeLabel/$nameId"(controller: 'treeView', action: 'namePlacementInTree')
         "/api/tree/instance-placement/$treeLabel/$instanceId"(controller: 'treeView', action: 'instancePlacementInTree')

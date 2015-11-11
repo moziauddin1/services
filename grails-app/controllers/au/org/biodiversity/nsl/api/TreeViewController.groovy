@@ -32,6 +32,14 @@ class TreeViewController {
 		return [tree: p.tree, name: p.name]
 	}
 
+	def namePlacementPath(TreeViewParam p) {
+		render treeViewService.getPathForName(p.tree, p.name) as JSON
+	}
+
+	def treeTopPath(TreeViewParam p) {
+		render treeViewService.getPathForTree(p.tree) as JSON
+	}
+
 	def namePlacementBranch(TreeViewParam p) {
 		render treeViewService.getBranchForName(p.tree, p.name) as JSON
 	}

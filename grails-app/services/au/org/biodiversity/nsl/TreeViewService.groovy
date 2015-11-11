@@ -31,7 +31,7 @@ import grails.transaction.Transactional
 class TreeViewService {
 	JsonRendererService jsonRendererService
 	QueryService queryService
-	
+
 	def getBranchForName(Arrangement tree, Name name) {
 		if(name) {
 			Uri uri = DomainUtils.uri("nsl-name", name.id.toString())
@@ -40,10 +40,10 @@ class TreeViewService {
 				return getBranchForNode(tree, nodes.first())
 			}
 		}
-		
+
 		return getBranchForTree(tree)
 	}
-	
+
 	def getBranchForNode(Arrangement tree, Node node) {
 		if(node) {
 			List<Link> links = queryService.getPathForNode(tree, node).findAll { Link it -> it.subnode.internalType != NodeInternalType.V }
@@ -51,14 +51,47 @@ class TreeViewService {
 				return buildPath(links)
 			}
 		}
-		
+
 		return getBranchForTree(tree)
 	}
-	
+
 	def getBranchForTree(Arrangement tree) {
 		return populateSubnodeFromLink(DomainUtils.getSingleSublink(tree.node), true)
 	}
-	
+
+	def getPathForName(Arrangement tree, Name name) {
+		if(name) {
+			Uri uri = DomainUtils.uri("nsl-name", name.id.toString())
+			List<Node> nodes = queryService.findCurrentName(tree, uri) // Should return a unique current node for the name. Should.
+			if (nodes) {
+				return getPathForNode(tree, nodes.first())
+			}
+		}
+
+		return getPathForTree(tree)
+	}
+
+	def getPathForNode(Arrangement tree, Node node) {
+		if(node) {
+			List<Link> links = queryService.getPathForNode(tree, node).findAll { Link it -> it.subnode.internalType != NodeInternalType.V }
+			if(links) {
+				return [
+					path: links.drop(1).collect { populateSubnodeFromLink(it, false) } ,
+					tree: populateSubnodeFromLink(links.last(), true )
+				]
+			}
+		}
+
+		return getPathForTree(tree)
+	}
+
+	def getPathForTree(Arrangement tree) {
+		return [
+			path: [ populateSubnodeFromLink(DomainUtils.getSingleSublink(tree.node), false) ],
+			tree: populateSubnodeFromLink(DomainUtils.getSingleSublink(tree.node), true )
+		]
+	}
+
 	def getNameInTree(Arrangement tree, Name name) {
 		if(name) {
 			Uri uri = DomainUtils.uri("nsl-name", name.id.toString())
