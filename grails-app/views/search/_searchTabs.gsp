@@ -1,13 +1,13 @@
 <div role="tabpanel">
   <ul class="nav nav-tabs" role="tablist">
     <li role="presentation"
-        class="${!(query.advanced || query.experimental || query.nameCheck || query.sparql) ? 'active' : ''}">
+        class="${!(query.advanced || query.nameCheck || query.sparql) ? 'active' : ''}">
       <a href="#name" aria-controls="name" role="tab" data-toggle="tab">
         Name search
       </a>
     </li>
-    <li role="presentation" class="${query.advanced || query.experimental ? 'active' : ''}">
-      <a href="#experimental" aria-controls="experiemental" role="tab" data-toggle="tab">
+    <li role="presentation" class="${query.advanced ? 'active' : ''}">
+      <a href="#advanced" aria-controls="advanced" role="tab" data-toggle="tab">
         Advanced search
       </a>
     </li>
@@ -28,7 +28,7 @@
   <div class="tab-content">
 
     <div role="tabpanel"
-         class="tab-pane ${!(query.advanced || query.experimental || query.nameCheck || query.sparql) ? 'active' : ''}"
+         class="tab-pane ${!(query.advanced || query.nameCheck || query.sparql) ? 'active' : ''}"
          id="name">
       <div class="panel ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
 
@@ -43,7 +43,7 @@
 
     </div>
 
-    <div role="tabpanel" class="tab-pane ${query.advanced || query.experimental ? 'active' : ''}" id="experimental">
+    <div role="tabpanel" class="tab-pane ${query.advanced ? 'active' : ''}" id="advanced">
 
       <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
         <div class="panel-heading">
@@ -52,7 +52,7 @@
         </div>
 
         <div class="panel-body">
-          <g:render template="/search/exp-search-form"/>
+          <g:render template="/search/advanced-search-form"/>
         </div>
       </div>
     </div>

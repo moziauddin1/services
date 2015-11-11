@@ -1,6 +1,7 @@
 target*/
 out/
 .idea/
+.slcache/
 /*.iml
 .classpath
 .project

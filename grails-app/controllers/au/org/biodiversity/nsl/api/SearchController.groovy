@@ -19,8 +19,11 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.UriNs
+import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
+
+import javax.servlet.http.Cookie
 
 class SearchController {
     def searchService
@@ -47,9 +50,23 @@ class SearchController {
             params.display = params.display ?: 'apni'
         }
 
-        if (!params.inc) {
-            params.inc = [scientific: 'on']
+
+        Map incMap = checked(params, 'inc')
+
+        if (incMap.isEmpty() && params.search != 'true' && params.advanced != 'true' && params.nameCheck != 'true') {
+            String inc = g.cookie(name: 'searchInclude')
+            if (inc) {
+                incMap = JSON.parse(inc) as Map
+            } else {
+                incMap = [scientific: 'on']
+            }
         }
+
+        params.inc = incMap
+
+        Cookie incCookie = new Cookie("searchInclude", (incMap as JSON).toString())
+        incCookie.maxAge = 3600 //1 hour
+        response.addCookie(incCookie)
 
         Map stats = [:]
         stats.scientific = Name.executeQuery("select count(*) from Name where nameType.scientific = true and instances.size > 0")[0]
@@ -61,7 +78,7 @@ class SearchController {
                 (stats.scientific + stats.cultigen + stats.hybrid + stats.formula + stats.autonym)
 
         List displayFormats = ['apni', 'apc']
-        if (params.search == 'true' || params.advanced == 'true' || params.experimental == 'true' || params.nameCheck == 'true') {
+        if (params.search == 'true' || params.advanced == 'true' || params.nameCheck == 'true') {
             log.debug "doing search"
             Map results = searchService.searchForName(params, max)
             List models = results.names
@@ -70,7 +87,7 @@ class SearchController {
             }
             withFormat {
                 html {
-                    return render (view: 'search', model: [names: models, query: params, count: results.count, max: max, displayFormats: displayFormats, stats: stats])
+                    return render(view: 'search', model: [names: models, query: params, count: results.count, max: max, displayFormats: displayFormats, stats: stats])
                 }
                 json {
                     return render(contentType: 'application/json') { models }
@@ -127,5 +144,15 @@ class SearchController {
 
         return [query: params, max: max, displayFormats: displayFormats, stats: stats]
 
+    }
+
+    private Map checked(params, String set) {
+        Map checked = [:]
+        params[set].each { k, v ->
+            if (v == 'on') {
+                checked << [(k): v]
+            }
+        }
+        return checked
     }
 }

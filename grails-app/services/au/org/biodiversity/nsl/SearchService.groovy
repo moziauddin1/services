@@ -40,35 +40,7 @@ class SearchService {
             and << 'n.instances.size > 0'
         }
 
-        if ((params.name as String)?.trim()) {
-            List<String> nameStrings = (params.name as String).trim().split('\n').collect {
-                cleanUpName(it).toLowerCase()
-            }
-
-            if (nameStrings.size() > 100) {
-                queryParams.names = nameStrings
-                if (params.nameCheck) {
-                    and << "lower(n.simpleName) in (:names)"
-                } else {
-                    and << "lower(n.fullName) in (:names)"
-                }
-            } else {
-                List<String> ors = []
-                if (params.nameCheck) {
-                    nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                        ors << "regex(lower(n.simpleName), :name${i}) = true"
-                    }
-                    and << "(${ors.join(' or ')})"
-                } else {
-                    nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                        ors << "regex(lower(n.fullName), :name${i}) = true"
-                    }
-                    and << "(${ors.join(' or ')})"
-                }
-            }
-        }
+        queryNameParams(params, queryParams, and)
 
         if (params.nameStatus) {
             queryParams.nameStatus = params.nameStatus
@@ -124,12 +96,16 @@ class SearchService {
             and << "i.name = n"
         }
 
-        if (params.experimental && params.inc) {
+        if (params.inc) {
             List<String> ors = []
             params.inc.each { k, v ->
                 if (v == 'on') {
                     if (k == 'other') {
                         ors << "(n.nameType.scientific = false and n.nameType.cultivar = false)"
+                        if(params.containsKey('tree')) {
+                            params.remove('tree.id')
+                            params.remove('tree')
+                        }
                     } else {
                         ors << "n.nameType.${k} = true"
                     }
@@ -140,7 +116,7 @@ class SearchService {
             }
         }
 
-        if (params.experimental && params.ex) {
+        if (params.advanced && params.ex) {
             params.ex.each { k, v ->
                 if (v == 'on') {
                     and << "n.nameType.${k} = false"
@@ -148,12 +124,32 @@ class SearchService {
             }
         }
 
-        if (params.experimental && params.nameTag) {
+        if (params.advanced && params.nameTag) {
             from.add('NameTagName tag')
             queryParams.nameTag = params.nameTag
             and << "tag.tag.name = :nameTag and tag.name = n"
         }
 
+        Map fail = queryTreeParams(params, queryParams, from, and)
+        if(fail) {
+            return fail
+        }
+
+        String fromClause = "from ${from.join(',')}"
+        String whereClause = "where ${and.join(' and ')}"
+
+        String countQuery = "select count(distinct n) $fromClause $whereClause"
+        String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
+
+        log.debug query
+        log.debug queryParams
+        List counter = Name.executeQuery(countQuery, queryParams, [max: max])
+        Integer count = counter[0] as Integer
+        List<Name> names = Name.executeQuery(query, queryParams, [max: max])
+        return [count: count, names: names]
+    }
+
+    private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
         if (params.tree?.id) {
             Arrangement root = Arrangement.get(params.tree.id as Long)
             queryParams.root = root
@@ -200,19 +196,39 @@ class SearchService {
                 }
             }
         }
+        return null
+    }
 
-        String fromClause = "from ${from.join(',')}"
-        String whereClause = "where ${and.join(' and ')}"
+    private static void queryNameParams(Map params, Map queryParams, Set<String> and) {
+        if ((params.name as String)?.trim()) {
+            List<String> nameStrings = (params.name as String).trim().split('\n').collect {
+                cleanUpName(it).toLowerCase()
+            }
 
-        String countQuery = "select count(distinct n) $fromClause $whereClause"
-        String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
-
-        log.debug query
-        log.debug queryParams
-        List counter = Name.executeQuery(countQuery, queryParams, [max: max])
-        Integer count = counter[0] as Integer
-        List<Name> names = Name.executeQuery(query, queryParams, [max: max])
-        return [count: count, names: names]
+            if (nameStrings.size() > 100) {
+                queryParams.names = nameStrings
+                if (params.nameCheck) {
+                    and << "lower(n.simpleName) in (:names)"
+                } else {
+                    and << "lower(n.fullName) in (:names)"
+                }
+            } else {
+                List<String> ors = []
+                if (params.nameCheck) {
+                    nameStrings.findAll { it }.eachWithIndex { n, i ->
+                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
+                        ors << "regex(lower(n.simpleName), :name${i}) = true"
+                    }
+                    and << "(${ors.join(' or ')})"
+                } else {
+                    nameStrings.findAll { it }.eachWithIndex { n, i ->
+                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
+                        ors << "regex(lower(n.fullName), :name${i}) = true"
+                    }
+                    and << "(${ors.join(' or ')})"
+                }
+            }
+        }
     }
 
     private static String cleanUpName(String name) {
@@ -371,7 +387,7 @@ order by n.simpleName asc, n.fullName asc''',
                 rank = NameRank.get(params.context as Long)
             }
 
-            List<String> names = []
+            List<String> names
 
             if (rank) {
                 names = Name.executeQuery('''select n.fullName
