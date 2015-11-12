@@ -87,7 +87,7 @@ class TreeViewService {
 
 	def getPathForTree(Arrangement tree) {
 		return [
-			path: [ populateSubnodeFromLink(DomainUtils.getSingleSublink(tree.node), false) ],
+			path: [ ],
 			tree: populateSubnodeFromLink(DomainUtils.getSingleSublink(tree.node), true )
 		]
 	}
