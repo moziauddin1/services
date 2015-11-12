@@ -117,7 +117,7 @@ class AdminController {
     @RequiresRoles('admin') 
     def makeTreePaths() {
         log.debug "make all tree paths. ${request.getRemoteAddr()}"
-        searchService.makeAllTreePathsSql()
+        nameTreePathService.makeAllTreePathsSql()
         flash.message = "Making all tree paths"
         redirect(action: 'index')
     }

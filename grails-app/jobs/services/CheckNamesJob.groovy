@@ -55,6 +55,9 @@ class CheckNamesJob {
                             log.debug "Name $note.objectId doesn't exist"
                         }
                         break
+                    case 'name deleted':
+                        log.info "Name $note.objectId was deleted."
+                        break
                     case 'author updated':
                         log.debug "Author $note.objectId updated"
                         Author author = Author.get(note.objectId)

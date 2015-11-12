@@ -23,8 +23,7 @@
           </div>
         </help><span class="text-muted small">click the <i class="fa fa-info-circle"></i>'s for help.</span>
         <textarea name="name" placeholder="Enter each name to check on a new line."
-                  class="form-control suggest" rows="2" data-subject="apni-search"
-                  data-quoted="yes">${query.name}</textarea>
+                  class="form-control suggest" rows="2" data-subject="apni-search">${query.name}</textarea>
       </label>
     </div>
 
@@ -141,8 +140,19 @@
           <i class="fa fa-info-circle"></i>
 
           <div>
-            Pick the name types to include. If none are checked, then all name types will be included.
-            Scientific and cultivar types together include everything except 'other'.
+            <p>
+              Pick the name types to include. If none are checked, then Scientific and Cultigen types types will be included.
+            </p>
+
+            <p>
+              Categories other than Scientific and Cultigen are over lapping, so just selecting "Autonym" will give just
+              the Autonyms (which are also scientific names by definition).
+            </p>
+
+            <p>
+              "Other" names include mainly common names. Common names are <b>not</b> part of a classification such as APC,
+            so selecting other will expand your search beyond the classification.
+            </p>
           </div>
         </help>
       </h4>
@@ -154,7 +164,10 @@
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Cultigens (${stats?.cultigen})</label>
+          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Cultigens (${stats?.cultigen})
+            <a title="definition on Wikipedia" href="https://en.wikipedia.org/wiki/Cultigen"><i
+                class="fa fa-external-link"></i></a>
+          </label>
         </div>
 
         <div class="checkbox">
@@ -224,7 +237,7 @@
               class="form-control"/>
     </label>
   </div>
-  <g:set var="formName" value="experimental"/>
+  <g:set var="formName" value="advanced"/>
   <g:render template="/search/submit"/>
 
 </g:form>

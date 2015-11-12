@@ -40,35 +40,7 @@ class SearchService {
             and << 'n.instances.size > 0'
         }
 
-        if ((params.name as String)?.trim()) {
-            List<String> nameStrings = (params.name as String).trim().split('\n').collect {
-                cleanUpName(it).toLowerCase()
-            }
-
-            if (nameStrings.size() > 100) {
-                queryParams.names = nameStrings
-                if (params.nameCheck) {
-                    and << "lower(n.simpleName) in (:names)"
-                } else {
-                    and << "lower(n.fullName) in (:names)"
-                }
-            } else {
-                List<String> ors = []
-                if (params.nameCheck) {
-                    nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                        ors << "regex(lower(n.simpleName), :name${i}) = true"
-                    }
-                    and << "(${ors.join(' or ')})"
-                } else {
-                    nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                        ors << "regex(lower(n.fullName), :name${i}) = true"
-                    }
-                    and << "(${ors.join(' or ')})"
-                }
-            }
-        }
+        queryNameParams(params, queryParams, and)
 
         if (params.nameStatus) {
             queryParams.nameStatus = params.nameStatus
@@ -107,10 +79,10 @@ class SearchService {
         }
 
         if (params.publication) {
-            queryParams.publication = "${tokenizeQueryString((params.publication as String).trim().toLowerCase(), true)}"
+            queryParams.publication = "${regexTokenizeReferenceQueryString((params.publication as String).trim().toLowerCase(), true)}"
             from.add('Instance i')
             from.add('Reference r')
-            and << "lower(r.citation) like :publication"
+            and << "regex(lower(r.citation), :publication) = true"
             and << "i.reference = r"
             and << "i.name = n"
         }
@@ -124,12 +96,16 @@ class SearchService {
             and << "i.name = n"
         }
 
-        if (params.experimental && params.inc) {
+        if (params.inc) {
             List<String> ors = []
             params.inc.each { k, v ->
                 if (v == 'on') {
                     if (k == 'other') {
                         ors << "(n.nameType.scientific = false and n.nameType.cultivar = false)"
+                        if(params.containsKey('tree')) {
+                            params.remove('tree.id')
+                            params.remove('tree')
+                        }
                     } else {
                         ors << "n.nameType.${k} = true"
                     }
@@ -140,7 +116,7 @@ class SearchService {
             }
         }
 
-        if (params.experimental && params.ex) {
+        if (params.advanced && params.ex) {
             params.ex.each { k, v ->
                 if (v == 'on') {
                     and << "n.nameType.${k} = false"
@@ -148,12 +124,32 @@ class SearchService {
             }
         }
 
-        if (params.experimental && params.nameTag) {
+        if (params.advanced && params.nameTag) {
             from.add('NameTagName tag')
             queryParams.nameTag = params.nameTag
             and << "tag.tag.name = :nameTag and tag.name = n"
         }
 
+        Map fail = queryTreeParams(params, queryParams, from, and)
+        if(fail) {
+            return fail
+        }
+
+        String fromClause = "from ${from.join(',')}"
+        String whereClause = "where ${and.join(' and ')}"
+
+        String countQuery = "select count(distinct n) $fromClause $whereClause"
+        String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
+
+        log.debug query
+        log.debug queryParams
+        List counter = Name.executeQuery(countQuery, queryParams, [max: max])
+        Integer count = counter[0] as Integer
+        List<Name> names = Name.executeQuery(query, queryParams, [max: max])
+        return [count: count, names: names]
+    }
+
+    private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
         if (params.tree?.id) {
             Arrangement root = Arrangement.get(params.tree.id as Long)
             queryParams.root = root
@@ -200,19 +196,39 @@ class SearchService {
                 }
             }
         }
+        return null
+    }
 
-        String fromClause = "from ${from.join(',')}"
-        String whereClause = "where ${and.join(' and ')}"
+    private static void queryNameParams(Map params, Map queryParams, Set<String> and) {
+        if ((params.name as String)?.trim()) {
+            List<String> nameStrings = (params.name as String).trim().split('\n').collect {
+                cleanUpName(it).toLowerCase()
+            }
 
-        String countQuery = "select count(distinct n) $fromClause $whereClause"
-        String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
-
-        log.debug query
-        log.debug queryParams
-        List counter = Name.executeQuery(countQuery, queryParams, [max: max])
-        Integer count = counter[0] as Integer
-        List<Name> names = Name.executeQuery(query, queryParams, [max: max])
-        return [count: count, names: names]
+            if (nameStrings.size() > 100) {
+                queryParams.names = nameStrings
+                if (params.nameCheck) {
+                    and << "lower(n.simpleName) in (:names)"
+                } else {
+                    and << "lower(n.fullName) in (:names)"
+                }
+            } else {
+                List<String> ors = []
+                if (params.nameCheck) {
+                    nameStrings.findAll { it }.eachWithIndex { n, i ->
+                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
+                        ors << "regex(lower(n.simpleName), :name${i}) = true"
+                    }
+                    and << "(${ors.join(' or ')})"
+                } else {
+                    nameStrings.findAll { it }.eachWithIndex { n, i ->
+                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
+                        ors << "regex(lower(n.fullName), :name${i}) = true"
+                    }
+                    and << "(${ors.join(' or ')})"
+                }
+            }
+        }
     }
 
     private static String cleanUpName(String name) {
@@ -223,18 +239,28 @@ class SearchService {
         if (query.startsWith('"') && query.endsWith('"')) {
             return query.size() > 2 ? query[1..-2] : ""
         }
-        (leadingWildCard ? '%' : '') + query.replaceAll(/[ ]+/, ' ')
-                                            .replaceAll(/([a-zA-Z0-9\.,']) ([a-zA-Z0-9\.,'])/, '$1 %$2')
-                                            .replaceAll(/\+/, ' ') +
-                '%'
+        (leadingWildCard ? '%' : '') + query.replaceAll(/[ ]+/, ' ') + '%'
     }
+
+    public static String regexTokenizeReferenceQueryString(String query, boolean leadingWildCard = false) {
+        if (query.startsWith('"') && query.endsWith('"')) {
+            String sansQuotes = query.size() > 2 ? query[1..-2] : ""
+            return '^' + sansQuotes.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
+                                   .replaceAll(/%/, '.*')
+                                   .replaceAll(/× ?/, 'x\\\\s') + '$'
+        }
+        return (leadingWildCard ? '.*' : '^') + query.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
+                                                     .replaceAll(/%/, '.*')
+                                                     .replaceAll(/[ ]+/, ' +') + '.*'
+    }
+
 
     public static String regexTokenizeNameQueryString(String query, boolean leadingWildCard = false) {
         if (query.startsWith('"') && query.endsWith('"')) {
             String sansQuotes = query.size() > 2 ? query[1..-2] : ""
             return '^' + sansQuotes.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
-                             .replaceAll(/%/, '.*')
-                             .replaceAll(/× ?/, 'x\\\\s') + '$'
+                                   .replaceAll(/%/, '.*')
+                                   .replaceAll(/× ?/, 'x\\\\s') + '$'
         }
 
         Boolean previousTokenWasX = false
@@ -244,19 +270,19 @@ class SearchService {
                                .replaceAll(/[ ]+/, ' ')
                                .split(' ')
                                .collect { String token ->
-            if(token.startsWith('x\\s')) {
+            if (token.startsWith('x\\s')) {
                 previousTokenWasX = true
                 return token
             }
-            if(token.size() > 1 && token.startsWith('x')) {
+            if (token.size() > 1 && token.startsWith('x')) {
                 previousTokenWasX = false
                 return "($token|x ${token.substring(1)})"
             }
-            if(token == '.*') {
+            if (token == '.*') {
                 previousTokenWasX = false
                 return token
             }
-            if(previousTokenWasX) {
+            if (previousTokenWasX) {
                 previousTokenWasX = false
                 return token
             }
@@ -264,13 +290,13 @@ class SearchService {
             return "(x )?$token"
         }
 
-        String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' ')
+        String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' +')
 
         return tokenizedString
     }
 
 
-    Sql getNSL() {
+    static Sql getNSL() {
         (Environment.executeForCurrentEnvironment {
             development {
                 Sql.newInstance('jdbc:postgresql://localhost:5432/nsl', 'nsldev', 'nsldev', 'org.postgresql.Driver')
@@ -284,113 +310,16 @@ class SearchService {
         } as Sql)
     }
 
-    def makeAllTreePathsSql() {
-        log.debug "in makeAllTreePathsSql"
-        runAsync {
-            try {
-                Sql sql = getNSL()
-                log.info "Truncating name tree path."
-                sql.execute('TRUNCATE TABLE ONLY name_tree_path RESTART IDENTITY')
-                sql.close()
-                makeTreePathsSql()
-                log.info "Completed making APNI and APC tree paths"
-            } catch (e) {
-                log.error e
-                throw e
-            }
+    private static Integer getRankSuggestionParentSortOrder(NameRank rank, Boolean allRanksAbove) {
+        if (allRanksAbove) {
+            return 0
         }
+        if (rank.name == 'Genus') {
+            return NameRank.findByName('Familia').sortOrder
+        }
+        return RankUtils.parentOrMajor(rank)?.sortOrder ?: 0
     }
 
-    def makeTreePathsSql() {
-        log.info "Making Tree Paths for all trees."
-        Long start = System.currentTimeMillis()
-        Sql sql = getNSL()
-        sql.connection.autoCommit = false
-
-        try {
-            sql.execute('''
-WITH RECURSIVE level(node_id, tree_id, parent_id, node_path, name_id_path, name_path, rank_path, name_id)
-AS (
-  SELECT
-    l2.subnode_id                                                  AS node_id,
-    a.id                                                           AS tree_id,
-    NULL :: BIGINT                                                 AS parent_id,
-    n.id :: TEXT                                                   AS node_path,
-    n.name_uri_id_part :: TEXT                                     AS name_id_path,
-    nm.simple_name :: TEXT                                         AS name_path,
-    r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT AS rank_path,
-    n.name_id                                                      AS name_id
-  FROM tree_arrangement a, tree_link l, tree_link l2, tree_node n, name nm, name_rank r
-  WHERE
-    l.supernode_id = a.node_id
-    AND l2.supernode_id = l.subnode_id
-    AND n.id = l2.subnode_id
-    AND n.name_id = nm.id
-    AND nm.name_rank_id = r.id
-
-  UNION ALL
-  SELECT
-    subnode.id                                                                                  AS node_id,
-    parent.tree_id                                                                              AS tree_id,
-    parentnode.id                                                                               AS parent_id,
-    (parent.node_path || '.' || subnode.id :: TEXT)                                             AS node_path,
-    (parent.name_id_path || '.' || subnode.name_uri_id_part :: TEXT)                            AS name_id_path,
-    (parent.name_path || '>' || nm.simple_name :: TEXT)                                         AS name_path,
-    (parent.rank_path || '>' || r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT) AS rank_path,
-    subnode.name_id                                                                             AS name_id
-  FROM level parent, tree_node parentnode, tree_node subnode, tree_link l, name nm, name_rank r
-  WHERE parentnode.id = parent.node_id -- this node is now parent
-        AND l.supernode_id = parentnode.id
-        AND l.subnode_id = subnode.id
-        AND subnode.tree_arrangement_id = parent.tree_id
-        AND subnode.internal_type = 'T\'
-        AND subnode.checked_in_at_id IS NOT NULL
-        AND subnode.next_node_id IS NULL
-        AND subnode.name_id = nm.id
-        AND nm.name_rank_id = r.id
-)
-INSERT INTO name_tree_path (id,
-                            tree_id,
-                            parent_id,
-                            node_id_path,
-                            name_id_path,
-                            name_path,
-                            rank_path,
-                            name_id,
-                            version,
-                            inserted,
-                            next_id)
-  (SELECT
-     l.node_id,
-     l.tree_id,
-     l.parent_id,
-     l.node_path,
-     l.name_id_path,
-     l.name_path,
-     l.rank_path,
-     l.name_id,
-     0    AS verison,
-     0    AS inserted,
-     NULL AS next_id
-   FROM level l
-   WHERE name_id IS NOT NULL
-         AND name_path IS NOT NULL)''') //not null tests for DeclaredBT that don't exists see NSL-1017
-            sql.commit()
-        } catch (e) {
-            sql.rollback()
-            while (e) {
-                log.error(e.message)
-                if (e.message.contains('getNextException')) {
-                    log.error e
-                    e = e.getNextException()
-                } else {
-                    e = e.cause
-                }
-            }
-        }
-        sql.close()
-        log.info "Made Tree Paths in ${System.currentTimeMillis() - start}ms"
-    }
 
     def registerSuggestions() {
         // add apc name search
@@ -403,7 +332,8 @@ INSERT INTO name_tree_path (id,
             }
             if (instance) {
                 NameRank rank = instance.name.nameRank
-                log.debug "This rank $rank, parent $rank.parentRank"
+                Integer parentSortOrder = getRankSuggestionParentSortOrder(rank, params.allRanksAbove == 'true')
+                log.debug "This rank $rank, parent $rank.parentRank, parentSortOrder $parentSortOrder"
 
                 return Name.executeQuery('''
 select n from Name n
@@ -423,7 +353,7 @@ order by n.simpleName asc, n.fullName asc''',
                         [
                                 query          : query.toLowerCase() + '%',
                                 sortOrder      : rank.sortOrder,
-                                parentSortOrder: rank.parentRank.sortOrder
+                                parentSortOrder: parentSortOrder
                         ], [max: 15])
                            .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
 
@@ -456,28 +386,30 @@ order by n.simpleName asc, n.fullName asc''',
             if (params.context) {
                 rank = NameRank.get(params.context as Long)
             }
+
             List<String> names
+
             if (rank) {
-                names = Name.executeQuery('''select n
+                names = Name.executeQuery('''select n.fullName
 from Name n
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
-and n.nameRank = :rank''',
-                        [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15])
-                            .collect { name -> name.fullName }
+and n.nameRank = :rank
+order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15]) as List<String>
             } else {
-                names = Name.executeQuery('''select n
+                names = Name.executeQuery('''select n.fullName
 from Name n
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
-and n.nameType.scientific = true''',
-                        [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15])
-                            .collect { name -> name.fullName }
+and n.nameType.scientific = true
+order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
             }
+
             if (names.size() == 15) {
                 names.add('...')
             }
+
             return names
         }
 
@@ -501,8 +433,10 @@ and n.nameType.scientific = true''',
         }
 
         suggestService.addSuggestionHandler('publication') { String query ->
-            return Reference.executeQuery('''select r from Reference r where lower(r.citation) like :query order by r.citation asc''',
-                    [query: "${tokenizeQueryString(query.trim().toLowerCase(), true)}"], [max: 15])
+            String qtokenized = regexTokenizeReferenceQueryString(query.trim().toLowerCase(), true)
+            log.debug "Tokenized query: $qtokenized"
+            return Reference.executeQuery('''select r from Reference r where regex(lower(r.citation), :query) = true order by r.citation asc''',
+                    [query: "${qtokenized}"], [max: 15])
                             .collect { reference -> reference.citation }
         }
 
@@ -521,5 +455,22 @@ where lower(n.nameElement) like :query and n.instances.size > 0 and n.nameType.c
         }
 
     }
+
+    /**
+     * checks the map of checkboxes to see what has been checked and returns a map of those checkboxes only
+     * @param params - the params object
+     * @param set - the set of checkboxes to check are checked
+     * @return map of checked checkboxes as [key: 'on', ...]
+     */
+    public Map checked(params, String set) {
+        Map checked = [:]
+        params[set].each { k, v ->
+            if (v == 'on') {
+                checked << [(k): v]
+            }
+        }
+        return checked
+    }
+
 
 }

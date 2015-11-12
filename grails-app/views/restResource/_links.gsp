@@ -29,10 +29,6 @@ Please cite using: <a href="${links.find { Map link -> link.preferred }?.link}">
         permanently, redirect if you use a deprecated link.
       </li>
       <li>
-        Some of these links are more general, for example a link to &quot;Doodia Br.&quot;, and will have several
-        resources associated with it.
-      </li>
-      <li>
         You may link to this resource with any of the specific links, but we would prefer you used the preferred link as
         this makes later comparisons of linked resources easier.
       </li>
@@ -42,14 +38,10 @@ Please cite using: <a href="${links.find { Map link -> link.preferred }?.link}">
 </h5>
 <ul>
   <g:each in="${links}" var="link">
-    <li><a href="${link.link}">${link.link}</a>
-      <g:if test="${link.preferred}"><i class="fa fa-star green"></i></g:if>
-      <g:if test="${link.resourceCount == 1}">
+    <g:if test="${!link.preferred && link.resourceCount == 1}">
+      <li><a href="${link.link}">${link.link}</a>
         <span class="text-muted">specific.</span>
-      </g:if>
-      <g:else>
-        <span class="text-muted">${link.resourceCount} resources.</span>
-      </g:else>
-    </li>
+      </li>
+    </g:if>
   </g:each>
 </ul>

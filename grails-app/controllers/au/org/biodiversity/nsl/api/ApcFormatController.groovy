@@ -19,6 +19,7 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.Instance
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Node
+import grails.converters.JSON
 import org.grails.plugins.metrics.groovy.Timed
 
 class ApcFormatController {
@@ -33,7 +34,14 @@ class ApcFormatController {
     def display(Name name) {
         if (name) {
             params.product = 'apc'
-            getNameModel(name) << [query: [name: "\"$name.fullName\"", product: 'apc'], stats: [:], names: [name], count: 1, max: 100]
+            String inc = g.cookie(name: 'searchInclude')
+            if (inc) {
+                params.inc = JSON.parse(inc) as Map
+            } else {
+                params.inc = [scientific: 'on']
+            }
+
+            getNameModel(name) << [query: [name: "$name.fullName", product: 'apc', inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')

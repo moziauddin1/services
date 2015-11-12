@@ -69,6 +69,13 @@ class ServiceTagLib {
         }
     }
 
+    def scheme = {attrs ->
+        def colourScheme = grailsApplication.config.nslServices.colourScheme
+        if (colourScheme) {
+            out << colourScheme
+        }
+    }
+
     def preferedLink = { attrs, body ->
         def target = attrs.target
         if (target) {
@@ -95,7 +102,7 @@ class ServiceTagLib {
         if (nameId) {
             try {
                 String link = (grailsApplication.config.services.link.editor ?: 'https://biodiversity.org.au/nsl-editor') +
-                        "/search?query_on=name&query_field=id&query=${nameId}"
+                        "/search?query=id:${nameId}&query_field=name-instances&query_on=instance"
                 if (link) {
                     out << "<a href='${link}'>"
                     out << body(link: link)

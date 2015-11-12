@@ -34,7 +34,7 @@
   <g:layoutHead/>
 </head>
 
-<body>
+<body class="${st.scheme()}">
 <g:render template="/common/service-navigation" model="[links: [
     [class: 'dashboard', url: createLink(controller: 'dashboard', action: 'index'), label: 'Dash', icon: 'fa-bar-chart-o'],
     [class: 'search', url: createLink(controller: 'search', action: 'search'), label: 'Search', icon: 'fa-search', loggedIn: true],
