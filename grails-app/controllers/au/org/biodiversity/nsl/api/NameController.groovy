@@ -36,12 +36,28 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     def instanceService
 
     @SuppressWarnings("GroovyUnusedDeclaration")
-    static responseFormats = ['json', 'xml', 'html']
+    static responseFormats = [
+            index             : ['html'],
+            nameStrings       : ['json', 'xml', 'html'],
+            apniFormat        : ['html'],
+            apcFormat         : ['html'],
+            apniFormatEmbed   : ['html'],
+            apcFormatEmbed    : ['html'],
+            delete            : ['json', 'xml', 'html'],
+            family            : ['json', 'xml', 'html'],
+            branch            : ['json', 'xml', 'html'],
+            nameUpdateEventUri: ['json', 'xml', 'html'],
+            exportNslSimple   : ['json', 'xml', 'html'],
+            apni              : ['json', 'xml', 'html'],
+            apc               : ['json', 'xml', 'html']
+    ]
 
     static allowedMethods = [
             nameStrings       : ["GET", "PUT"],
             apniFormat        : ["GET"],
             apcFormat         : ["GET"],
+            apniFormatEmbed   : ["GET"],
+            apcFormatEmbed    : ["GET"],
             delete            : ["GET", "DELETE"],
             family            : ["GET"],
             branch            : ["GET"],
@@ -59,23 +75,45 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     def apniFormat(Name name) {
-        withTarget(name) {
+        if(name) {
             if (params.embed) {
                 forward(controller: 'apniFormat', action: 'name', id: name.id)
             } else {
                 forward(controller: 'apniFormat', action: 'display', id: name.id)
             }
+        } else {
+            notFound('name')
+        }
+    }
+
+    @Timed()
+    def apniFormatEmbed(Name name) {
+        if(name) {
+            forward(controller: 'apniFormat', action: 'name', id: name.id)
+        } else {
+            notFound('name')
         }
     }
 
     @Timed()
     def apcFormat(Name name) {
-        withTarget(name) {
+        if(name) {
             if (params.embed) {
                 forward(controller: 'apcFormat', action: 'name', id: name.id)
             } else {
                 forward(controller: 'apcFormat', action: 'display', id: name.id)
             }
+        } else {
+            notFound('name')
+        }
+    }
+
+    @Timed()
+    def apcFormatEmbed(Name name) {
+        if(name) {
+            forward(controller: 'apcFormat', action: 'name', id: name.id)
+        } else {
+            notFound('name')
         }
     }
 
@@ -302,9 +340,9 @@ order by n.simpleName asc''',
                     if (instance.instanceType.standalone) {
 
                         Map inst = jsonRendererService.brief(instance, [
-                                page        : instance.page,
-                                instanceType: instance.instanceType.name,
-                                relationships : []
+                                page         : instance.page,
+                                instanceType : instance.instanceType.name,
+                                relationships: []
                         ])
                         if (relationships) {
                             if (instance.instancesForCitedBy) {
@@ -393,6 +431,14 @@ order by n.simpleName asc''',
         }
     }
 
+    private void notFound(String targetInfo) {
+        ResultObject result = new ResultObject([
+                action: params.action,
+                error : "$targetInfo not found."
+        ])
+        //noinspection GroovyAssignabilityCheck
+        respond(result, [view: '/common/serviceResult', model: [data: result], status: NOT_FOUND])
+    }
 
 }
 

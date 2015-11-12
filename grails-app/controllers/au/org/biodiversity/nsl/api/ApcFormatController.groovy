@@ -26,6 +26,10 @@ class ApcFormatController {
 
     def classificationService
 
+    static responseFormats = [
+            display: ['html'],
+            name   : ['html']
+    ]
     def index() {
         redirect(action: 'search')
     }
@@ -50,9 +54,13 @@ class ApcFormatController {
 
     @Timed()
     def name(Name name) {
-        log.info "getting apc name $name"
-        ResultObject model = new ResultObject(getNameModel(name))
-        respond(model, [view: '_name', model: model])
+        if (name) {
+            log.info "getting apc name $name"
+            ResultObject model = new ResultObject(getNameModel(name))
+            render(view: '_name', model: model)
+        } else {
+            render(status: 404, text: 'Name not found.')
+        }
     }
 
     private Map getNameModel(Name name) {

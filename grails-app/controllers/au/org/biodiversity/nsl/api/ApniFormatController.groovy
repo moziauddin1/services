@@ -28,6 +28,11 @@ class ApniFormatController {
 
     def apniFormatService
 
+    static responseFormats = [
+            display: ['html'],
+            name   : ['html']
+    ]
+
     def index() {
         redirect(action: 'search')
     }
@@ -59,9 +64,9 @@ class ApniFormatController {
         if (name) {
             log.info "getting apni name $name"
             ResultObject model = new ResultObject(apniFormatService.getNameModel(name))
-            respond(model, [view: '_name', model: model])
+            render(view: '_name', model: model)
         } else {
-            render(text: "Name not found")
+            render(status: 404, text: 'Name not found.')
         }
     }
 
