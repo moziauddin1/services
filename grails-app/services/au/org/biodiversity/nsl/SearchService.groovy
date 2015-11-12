@@ -267,7 +267,7 @@ class SearchService {
         String[] tokens = query.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
                                .replaceAll(/%/, '.*')
                                .replaceAll(/× ?/, 'x\\\\s')
-                               .replaceAll(/[ ]+/, ' +')
+                               .replaceAll(/[ ]+/, ' ')
                                .split(' ')
                                .collect { String token ->
             if (token.startsWith('x\\s')) {
@@ -290,7 +290,7 @@ class SearchService {
             return "(x )?$token"
         }
 
-        String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' ')
+        String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' +')
 
         return tokenizedString
     }
@@ -455,5 +455,22 @@ where lower(n.nameElement) like :query and n.instances.size > 0 and n.nameType.c
         }
 
     }
+
+    /**
+     * checks the map of checkboxes to see what has been checked and returns a map of those checkboxes only
+     * @param params - the params object
+     * @param set - the set of checkboxes to check are checked
+     * @return map of checked checkboxes as [key: 'on', ...]
+     */
+    public Map checked(params, String set) {
+        Map checked = [:]
+        params[set].each { k, v ->
+            if (v == 'on') {
+                checked << [(k): v]
+            }
+        }
+        return checked
+    }
+
 
 }

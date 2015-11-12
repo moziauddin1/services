@@ -22,7 +22,9 @@
   </div>
 
   <div class="panel-body">
-    <g:render template="name" model="[name: name, apc: apc]"/>
+    <div class="results">
+      <g:render template="name" model="[name: name, apc: apc]"/>
+    </div>
   </div>
 </div>
 </body>

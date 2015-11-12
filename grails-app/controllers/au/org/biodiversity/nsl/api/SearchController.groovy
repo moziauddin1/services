@@ -51,7 +51,7 @@ class SearchController {
         }
 
 
-        Map incMap = checked(params, 'inc')
+        Map incMap = searchService.checked(params, 'inc')
 
         if (incMap.isEmpty() && params.search != 'true' && params.advanced != 'true' && params.nameCheck != 'true') {
             String inc = g.cookie(name: 'searchInclude')
@@ -144,15 +144,5 @@ class SearchController {
 
         return [query: params, max: max, displayFormats: displayFormats, stats: stats]
 
-    }
-
-    private Map checked(params, String set) {
-        Map checked = [:]
-        params[set].each { k, v ->
-            if (v == 'on') {
-                checked << [(k): v]
-            }
-        }
-        return checked
     }
 }
