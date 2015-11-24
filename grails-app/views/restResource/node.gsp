@@ -15,6 +15,12 @@
     au.org.biodiversity.nsl.Instance instance = queryService.resolveInstance(node);
 %>
 
+<%/*
+
+TODO: This page should display profile data for taxonomic nodes. This leaves the branch page free to display only branch
+
+*/%>
+
 
 <div class="rest-resource-content node-gsp">
     <h3><g:render template="node"/>

@@ -1,17 +1,59 @@
-<%@ page import="au.org.biodiversity.nsl.tree.DomainUtils" %>
+<%@ page import="au.org.biodiversity.nsl.*; au.org.biodiversity.nsl.tree.DomainUtils" %>
+<g:set var="queryService" bean="queryService"/>
+<%
+    /* should be using the tablib for this */
+
+    Name name = queryService.resolveName(node);
+    Instance instance = queryService.resolveInstance(node);
+
+    List<Link> subnodes = new ArrayList<Link>(DomainUtils.getSubtaxaAsList(node));
+    Collections.sort(subnodes) { Link a, Link b -> DomainUtils.simpleNameCompare(a.subnode, b.subnode)}
+
+%>
 <div class="branch-branch">
     <div class="branch-branch-node">
-        <g:render template="branch_node" model="${[node: branch.node]}"/>
-        <g:if test="${branch.branchTruncated && branch.subnodesCount > 0}"> <span style="font-size:80%;" class="text-muted">(${branch.subnodesCount} subnodes)</span></g:if>
+        <st:preferedLink target="${node}">
+            <span class="branch_node ${DomainUtils.getNodeTypeUri(node).asCssClass()}
+            ${node.checkedInAt ? node.replacedAt ? 'replaced' : 'current' : 'draft'}
+            ${node.synthetic ? 'synthetic' : ''}
+            ">
+
+                <g:if test="${DomainUtils.hasName(node)}">
+                    <g:if test="${name}">
+                        ${raw(name.fullNameHtml)}
+                    </g:if>
+                    <g:else>
+                        ${DomainUtils.getNameUri(node)?.asQNameIfOk()}
+                    </g:else>
+                </g:if>
+
+                <g:if test="${DomainUtils.hasTaxon(node)}">
+                    <g:if test="${instance}">
+                        in ${raw(instance.reference?.citationHtml)}
+                    </g:if>
+                    <g:else>
+                        as ${DomainUtils.getTaxonUri(node)?.asQNameIfOk()}
+                    </g:else>
+                </g:if>
+
+                <g:elseif test="${DomainUtils.hasResource(node)}">
+                    (see: ${DomainUtils.getResourceUri(node)?.asQNameIfOk()})
+                </g:elseif>
+            </span>
+        </st:preferedLink>
+
+        <g:if test="${subnodes && depth < 1}">
+            <span style="font-size: smaller;"> (${subnodes.size()} subnames)</span>
+        </g:if>
+
     </div>
-    <g:if test="${branch.subnodesCount > 0 && !branch.branchTruncated}">
-        <table class="branch-branch-subnodelist" style="margin-top: .5em; margin-bottom: 1em;" width="100%">
-            <g:each in="${branch.subnodes}">
-                <tr class="${DomainUtils.getLinkTypeUri(it.link).asCssClass()}">
-                    <td style="vertical-align: top"><g:render template="branch_link" model="${[link: it.link]}"/></td>
-                    <td style="vertical-align: top"><g:render template="branch_branch" model="${[branch: it]}"/></td>
-                </tr>
+    <g:if test="${subnodes && depth >= 1}">
+        <div class="branch-branch-subnodelist" style="margin-top: 0em; margin-bottom: 0em; margin-left:2em;" width="100%">
+            <g:each in="${subnodes}">
+                <div>
+                    <g:render template="branch_branch" model="${[node: it.subnode, depth: subnodes.size() == 1 ? depth : depth-1]}"/>
+                </div>
             </g:each>
-        </table>
+        </div>
     </g:if>
 </div>
