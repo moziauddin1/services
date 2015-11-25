@@ -30,10 +30,10 @@
 <div class="rest-resource-content branch-gsp">
     <div>
         <span><st:preferedLink target="${node.root}">${node.root.label ?: "Tree ${node.root.id}"}</st:preferedLink></span>
-        <g:each var="l" in="${path.reverse()}">
+        <g:each var="l" in="${path.findAll { DomainUtils.getNodeTypeUri(it.subnode).asQName() != 'boatree-voc:classification-root' } .reverse()}">
             &gt;
             <% /* We use the grails link rather than the mapper because this is a link to a display page, not to the semweb object */ %>
-            <g:link mapping="restResource" params="[namespace: 'api', shard: shard, idNumber: l.subnode.id]" action="branch">${raw(queryService.resolveName(l.subnode).simpleNameHtml)}</g:link>
+            <g:link mapping="restResource" params="[namespace: 'api', shard: shard, idNumber: l.subnode.id]" action="branch">${raw(queryService.resolveName(l.subnode)?.simpleNameHtml ?: "unable to resolve name on ${l.subnode}")}</g:link>
         </g:each>
     </div>
     <h3><st:preferedLink target="${name}">${name ? raw(name.simpleNameHtml) : DomainUtils.getNameUri(node)?.asQNameIfOk()}</st:preferedLink> in <st:preferedLink target="${node.root}">${node.root.label ?: "Tree ${node.root.id}"}</st:preferedLink></h3>
