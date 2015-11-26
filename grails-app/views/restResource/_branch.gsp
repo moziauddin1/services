@@ -42,16 +42,16 @@
             </span>
         </st:preferedLink>
 
-        <g:if test="${subnodes && depth < 1}">
+        <g:if test="${subnodes && depth < 1 && subnodes.size()>3}">
             <span style="font-size: smaller;"> (${subnodes.size()} subnames)</span>
         </g:if>
 
     </div>
-    <g:if test="${subnodes && depth >= 1}">
+    <g:if test="${subnodes && (depth >= 1 || subnodes.size()<=3)}">
         <div class="branch-branch-subnodelist" style="margin-top: 0em; margin-bottom: 0em; margin-left:2em;" width="100%">
             <g:each in="${subnodes}">
                 <div>
-                    <g:render template="branch_branch" model="${[node: it.subnode, depth: subnodes.size() == 1 ? depth : depth-1]}"/>
+                    <g:render template="branch" model="${[node: it.subnode, depth: subnodes.size() == 1 ? depth : depth-1]}"/>
                 </div>
             </g:each>
         </div>

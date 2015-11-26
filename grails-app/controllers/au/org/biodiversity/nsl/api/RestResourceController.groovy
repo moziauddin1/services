@@ -125,31 +125,7 @@ class RestResourceController {
         def links = linkService.getLinksForObject(event)
         respond event, [model: [shard: shard, event: event, links: links], status: OK]
     }
-
-    @Transactional
-    @Timed()
-    def branch(String shard, Long idNumber) {
-        Node node = Node.get(idNumber)
-        if (node == null) {
-            return notFound("No tree node in $shard with id $idNumber found")
-        }
-
-        def links = linkService.getLinksForObject(node)
-
-        Object tree = queryService.getTree(node);
-
-        respond tree as Object, [
-                model : [
-                        shard : shard,
-                        node  : node,
-                        branch: tree,
-                        tree  : tree,
-                        links : links
-                ],
-                status: OK
-        ]
-    }
-
+    
     @Timed()
     def nslSimpleName(String shard, Long idNumber) {
         NslSimpleName simpleName = NslSimpleName.get(idNumber)
