@@ -102,7 +102,7 @@ class SearchService {
                 if (v == 'on') {
                     if (k == 'other') {
                         ors << "(n.nameType.scientific = false and n.nameType.cultivar = false)"
-                        if(params.containsKey('tree')) {
+                        if (params.containsKey('tree')) {
                             params.remove('tree.id')
                             params.remove('tree')
                         }
@@ -131,7 +131,7 @@ class SearchService {
         }
 
         Map fail = queryTreeParams(params, queryParams, from, and)
-        if(fail) {
+        if (fail) {
             return fail
         }
 
@@ -236,63 +236,70 @@ class SearchService {
     }
 
     public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
-        if (query.startsWith('"') && query.endsWith('"')) {
-            return query.size() > 2 ? query[1..-2] : ""
+        use(SearchQueryCategory) {
+            if (query.startsWith('"') && query.endsWith('"')) {
+                return query.dequote()
+            }
+            (leadingWildCard ? '%' : '') + query.compressSpaces() + '%'
         }
-        (leadingWildCard ? '%' : '') + query.replaceAll(/[ ]+/, ' ') + '%'
     }
 
     public static String regexTokenizeReferenceQueryString(String query, boolean leadingWildCard = false) {
-        if (query.startsWith('"') && query.endsWith('"')) {
-            String sansQuotes = query.size() > 2 ? query[1..-2] : ""
-            return '^' + sansQuotes.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
-                                   .replaceAll(/%/, '.*')
-                                   .replaceAll(/× ?/, 'x\\\\s') + '$'
+        use(SearchQueryCategory) {
+            if (query.startsWith('"') && query.endsWith('"')) {
+                return '^' +
+                        query.dequote()
+                             .escapeRegexSpecialChars()
+                             .sqlToRegexWildCard() + '$'
+            }
+            return (leadingWildCard ? '.*' : '^') +
+                    query.escapeRegexSpecialChars()
+                         .sqlToRegexWildCard()
+                         .multiSpaceRegex() + '.*'
         }
-        return (leadingWildCard ? '.*' : '^') + query.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
-                                                     .replaceAll(/%/, '.*')
-                                                     .replaceAll(/[ ]+/, ' +') + '.*'
     }
 
 
     public static String regexTokenizeNameQueryString(String query, boolean leadingWildCard = false) {
-        if (query.startsWith('"') && query.endsWith('"')) {
-            String sansQuotes = query.size() > 2 ? query[1..-2] : ""
-            return '^' + sansQuotes.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
-                                   .replaceAll(/%/, '.*')
-                                   .replaceAll(/× ?/, 'x\\\\s') + '$'
+        use(SearchQueryCategory) {
+            if (query.startsWith('"') && query.endsWith('"')) {
+                return '^' +
+                        query.dequote()
+                             .escapeRegexSpecialChars()
+                             .sqlToRegexWildCard()
+                             .replaceMultiplicationSignWithX() + '$'
+            }
+
+            Boolean previousTokenWasX = false
+            String[] tokens = query.escapeRegexSpecialChars()
+                                   .sqlToRegexWildCard()
+                                   .replaceMultiplicationSignWithX()
+                                   .compressSpaces()
+                                   .split(' ')
+                                   .collect { String token ->
+                if (token.startsWith('x\\s')) {
+                    previousTokenWasX = true
+                    return token
+                }
+                if (token.size() > 1 && token.startsWith('x')) {
+                    previousTokenWasX = false
+                    return "($token|x ${token.substring(1)})"
+                }
+                if (token == '.*') {
+                    previousTokenWasX = false
+                    return token
+                }
+                if (previousTokenWasX) {
+                    previousTokenWasX = false
+                    return token
+                }
+                previousTokenWasX = false
+                return "(x )?$token"
+            }
+
+            String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' +')
+            return tokenizedString
         }
-
-        Boolean previousTokenWasX = false
-        String[] tokens = query.replaceAll(/([\.\[\]\(\)\+\?\*])/, '\\\\$1')
-                               .replaceAll(/%/, '.*')
-                               .replaceAll(/× ?/, 'x\\\\s')
-                               .replaceAll(/[ ]+/, ' ')
-                               .split(' ')
-                               .collect { String token ->
-            if (token.startsWith('x\\s')) {
-                previousTokenWasX = true
-                return token
-            }
-            if (token.size() > 1 && token.startsWith('x')) {
-                previousTokenWasX = false
-                return "($token|x ${token.substring(1)})"
-            }
-            if (token == '.*') {
-                previousTokenWasX = false
-                return token
-            }
-            if (previousTokenWasX) {
-                previousTokenWasX = false
-                return token
-            }
-            previousTokenWasX = false
-            return "(x )?$token"
-        }
-
-        String tokenizedString = (leadingWildCard ? '.*' : '^') + tokens.join(' +')
-
-        return tokenizedString
     }
 
 
@@ -473,4 +480,31 @@ where lower(n.nameElement) like :query and n.instances.size > 0 and n.nameType.c
     }
 
 
+}
+
+class SearchQueryCategory {
+
+    static String escapeRegexSpecialChars(String query) {
+        return query.replaceAll(/([\.\[\]\(\)\+\?\*\\])/, '\\\\$1')
+    }
+
+    static String sqlToRegexWildCard(String query) {
+        return query.replaceAll(/%/, '.*')
+    }
+
+    static String replaceMultiplicationSignWithX(String query) {
+        return query.replaceAll(/× ?/, 'x\\\\s')
+    }
+
+    static String compressSpaces(String query) {
+        return query.replaceAll(/[ ]+/, ' ')
+    }
+
+    static String dequote(String query) {
+        return query.size() > 2 ? query[1..-2] : ""
+    }
+
+    static String multiSpaceRegex(String query) {
+        return compressSpaces(query).replaceAll(/ /, ' +')
+    }
 }
