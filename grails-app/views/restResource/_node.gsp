@@ -1,7 +1,6 @@
 <%@ page import="au.org.biodiversity.nsl.Instance; au.org.biodiversity.nsl.tree.DomainUtils" %>
 <%@ page import="au.org.biodiversity.nsl.NodeInternalType" %>
 
-<st:preferedLink target="${node}">
 <tree:getNodeNameAndInstance node="${node}">
     <span class="node ${DomainUtils.getNodeTypeUri(node).asCssClass()}
     ${node.checkedInAt ? node.replacedAt ? 'replaced' : 'current' : 'draft'}
@@ -51,4 +50,3 @@
         </g:elseif>
     </span>
 </tree:getNodeNameAndInstance>
-    </st:preferedLink>
