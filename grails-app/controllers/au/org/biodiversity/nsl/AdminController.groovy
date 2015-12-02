@@ -20,12 +20,14 @@ import au.org.biodiversity.nsl.api.ResultObject
 import grails.transaction.Transactional
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 import static org.springframework.http.HttpStatus.OK
 
 @Transactional
 class AdminController {
 
+    GrailsApplication grailsApplication
     def constructedNameService
     def simpleNameService
     def searchService
@@ -38,11 +40,16 @@ class AdminController {
 
     @RequiresRoles('admin') 
     def index() {
+
+        Namespace namespace = Namespace.findByName(grailsApplication.config.services.classification.namespace as String)
+
         Map stats = [:]
+
+
         stats.namesNeedingConstruction = nameService.countIncompleteNameStrings()
         stats.namesNotInApni = nameService.countNamesNotInApni()
-        stats.namesNotInApniTreePath = nameTreePathService.treePathReport('APNI')
-        stats.namesNotInApcTreePath = nameTreePathService.treePathReport('APC')
+        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(namespace, grailsApplication.config.services.classification.nameTree as String)
+        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(namespace,  grailsApplication.config.services.classification.classificationTree as String)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         //todo iterate trees add back stats if they don't interrupt ops.
         [pollingNames: nameService.pollingStatus(), stats: stats]
@@ -165,7 +172,10 @@ class AdminController {
     @RequiresRoles('admin') 
     def transferApcProfileData() {
         log.debug "applying instance APC comments and distribution text to the APC tree"
-        flash.message = apcTreeService.transferApcProfileData()
+        flash.message = apcTreeService.transferApcProfileData(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.classificationTree as String
+        )
         redirect(action: 'index')
     }
 

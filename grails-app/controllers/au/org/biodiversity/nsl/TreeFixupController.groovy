@@ -26,7 +26,7 @@ class TreeFixupController {
         session[SELECTED_NODES_KEY] = state;
 
         Arrangement c = Arrangement.findByNamespaceAndLabelAndArrangementType(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
                 params['classification'], ArrangementType.P)
         Name n = Name.get(params['nameId'])
 
@@ -43,7 +43,7 @@ class TreeFixupController {
         log.debug 'about to call fixClassificationUseNodeForName'
         try {
             classificationManagerService.fixClassificationUseNodeForName(Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
                     params['classification']),
                     Name.get(params['nameId']),
                     Node.get(params['nodeId']));

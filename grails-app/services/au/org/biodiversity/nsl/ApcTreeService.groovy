@@ -54,8 +54,16 @@ class ApcTreeService {
         boolean dist_diff;
     }
 
-
+    @Deprecated
     def transferApcProfileData() {
+        log.warn 'deprecated'
+        return transferApcProfileData(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.classificationTree as String
+        )
+    }
+
+    def transferApcProfileData(Namespace namespace, String classificationTreeLabel) {
         log.debug "applying instance APC comments and distribution text to the APC tree"
 
         /**
@@ -77,10 +85,7 @@ class ApcTreeService {
 
         log.debug "${fixups.size()} fixups needed."
 
-        Arrangement apc = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
-                grailsApplication.config.services.classification.classificationTree
-        );
+        Arrangement apc = Arrangement.findByNamespaceAndLabel(namespace, classificationTreeLabel);
 
         if (!apc) {
             throw new IllegalStateException('No APC tree?')

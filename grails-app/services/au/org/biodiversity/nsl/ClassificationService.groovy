@@ -40,13 +40,22 @@ class ClassificationService {
      * @param name
      * @return
      */
+    @Deprecated
     List<Name> getPath(Name name) {
-        getPath(name, 'APNI')
+        getPath(name,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.nameTree as String)
     }
 
+    @Deprecated
     List<Name> getPath(Name name, String classification) {
+        log.warn 'deprecated'
+        return getPath(name, Namespace.findByName(grailsApplication.config.services.classification.namespace as String), classification)
+    }
+
+    List<Name> getPath(Name name, Namespace namespace, String classification) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                namespace,
                 classification)
 
         if (arrangement) {
@@ -63,25 +72,44 @@ class ClassificationService {
         }
     }
 
+    @Deprecated
     Node isNameInAPC(Name name) {
-        isNameInClassification(name, 'APC')
+        isNameInClassification(name,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.classificationTree as String)
     }
 
+    @Deprecated
     Node isNameInAPNI(Name name) {
-        isNameInClassification(name, 'APNI')
+        isNameInClassification(name,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.nameTree as String)
     }
 
+    @Deprecated
     Node isInstanceInAPC(Instance instance) {
-        isInstanceInClassification(instance, 'APC')
+        isInstanceInClassification(instance,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.classificationTree as String)
     }
 
+    @Deprecated
     Node isInstanceInAPNI(Instance instance) {
-        isInstanceInClassification(instance, 'APNI')
+        isInstanceInClassification(instance,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.nameTree as String)
     }
 
+
+    @Deprecated
     Node isNameInClassification(Name name, String classification) {
+        log.warn('deprecated')
+        return isNameInClassification(name, Namespace.findByName(grailsApplication.config.services.classification.namespace as String), classification)
+    }
+
+    Node isNameInClassification(Name name, Namespace namespace, String classification) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                namespace,
                 classification)
         arrangement ? isNameInClassification(name, arrangement) : null
     }
@@ -95,8 +123,20 @@ class ClassificationService {
         }
     }
 
+    @Deprecated
     Node isInstanceInClassification(Instance instance, String classification) {
-        Arrangement arrangement = Arrangement.findByLabel(classification)
+        return isInstanceInClassification(
+                instance,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                classification)
+    }
+
+    Node isInstanceInClassification(Instance instance, Namespace namespace, String classification) {
+        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(namespace, classification)
+        arrangement ? getInstanceInClassification(instance, arrangement) : null
+    }
+
+    Node isInstanceInClassification(Instance instance, Arrangement arrangement) {
         if (arrangement) {
             List<Node> nodes = queryService.findCurrentNslInstance(arrangement, instance)
             nodes ? nodes.first() : null
@@ -105,23 +145,47 @@ class ClassificationService {
         }
     }
 
+    @Deprecated
     Name getAPNIFamilyName(Name name) {
-        getFamilyName(name, 'APNI')
+        getFamilyName(
+                name,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.nameTree as String
+        )
     }
 
+    @Deprecated
     Name getAPCFamilyName(Name name) {
-        getFamilyName(name, 'APC')
+        getFamilyName(
+                name,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.classificationTree as String
+        )
     }
 
+    @Deprecated
     Name getFamilyName(Name name, String tree) {
+        return getFamilyName(
+                name,
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                tree
+        )
+    }
+
+    Name getFamilyName(Name name, Namespace namespace, String tree) {
         NameRank familyRank = NameRank.findByName('Familia')
-        List<Name> namesInPath = getPath(name, tree)
+        List<Name> namesInPath = getPath(name, namespace, tree)
         return namesInPath.find { Name n ->
             return n?.nameRank == familyRank
         }
     }
 
+    @Deprecated
     Instance getAcceptedInstance(Name name, String tree, String nodeTypeId = 'ApcConcept') {
+      return getAcceptedInstance(name, Namespace.findByName(grailsApplication.config.services.classification.namespace as String), tree, nodeTypeId)
+    }
+
+    Instance getAcceptedInstance(Name name, Namespace namespace, String tree, String nodeTypeId) {
         List<Instance> instances = Instance.executeQuery('''select nd.instance
 from Instance i,
  Node nd
@@ -129,20 +193,28 @@ from Instance i,
  and nd.instance = i.citedBy
  and nd.checkedInAt is not null
  and nd.next is null
+ and nd.root.namespace = :namespace
  and nd.root.label = :tree
  and nd.typeUriIdPart = :nodeTypeId
 ''',
-                [name: name, tree: tree, nodeTypeId: nodeTypeId])
+                [name: name, namespace: namespace, tree: tree, nodeTypeId: nodeTypeId])
         //there should only be one
         if (instances.size() == 1) {
             return instances.first()
         }
     }
 
+    @Deprecated
     Node placeNameInAPNI(Name supername, Name name) {
-        Arrangement apni = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
-                grailsApplication.config.services.classification.nameTree as String)
+        return placeNameInAPNI(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.nameTree as String,
+                supername, name
+        )
+    }
+
+    Node placeNameInAPNI(Namespace namespace, String nameTreeLabel, Name supername, Name name) {
+        Arrangement apni = Arrangement.findByNamespaceAndLabel(namespace, nameTreeLabel)
 
         Collection<Node> currentInApni = queryService.findCurrentNslName(apni, name)
 
