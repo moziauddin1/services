@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl
 
 import grails.plugins.rest.client.RestBuilder
 import grails.transaction.Transactional
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 /**
  * The Classification service is a high level service over the tree service plugin services. It's primary aim is to provide
@@ -28,6 +29,7 @@ import grails.transaction.Transactional
 @Transactional
 class ClassificationService {
 
+    GrailsApplication grailsApplication
     def treeOperationsService
     def queryService
 
@@ -43,7 +45,10 @@ class ClassificationService {
     }
 
     List<Name> getPath(Name name, String classification) {
-        Arrangement arrangement = Arrangement.findByLabel(classification)
+        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                classification)
+
         if (arrangement) {
             List<Node> nodes = queryService.findCurrentNslName(arrangement, name)
             if (nodes) {
@@ -75,7 +80,9 @@ class ClassificationService {
     }
 
     Node isNameInClassification(Name name, String classification) {
-        Arrangement arrangement = Arrangement.findByLabel(classification)
+        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                classification)
         arrangement ? isNameInClassification(name, arrangement) : null
     }
 
@@ -133,7 +140,9 @@ from Instance i,
     }
 
     Node placeNameInAPNI(Name supername, Name name) {
-        Arrangement apni = Arrangement.findByLabel('APNI')
+        Arrangement apni = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                grailsApplication.config.services.classification.nameTree as String)
 
         Collection<Node> currentInApni = queryService.findCurrentNslName(apni, name)
 

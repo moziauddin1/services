@@ -19,9 +19,11 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.tree.ClassificationManagerService
 import au.org.biodiversity.nsl.tree.ServiceException
 import org.apache.shiro.authz.annotation.RequiresRoles
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 class ClassificationController {
 
+    GrailsApplication grailsApplication
     ClassificationManagerService classificationManagerService;
 
     private static String VALIDATION_RESULTS_KEY = ClassificationController.class.getName() + '#validationREsults';
@@ -46,7 +48,10 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def editForm() {
-        Arrangement classification = Arrangement.findByLabel(params['classification'] as String)
+        Arrangement classification = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                params['classification'] as String
+        );
         [classification: classification, inputLabel: classification.label, inputDescription: classification.description]
     }
 
@@ -58,7 +63,9 @@ class ClassificationController {
                     flash.validation = "Label and Description required";
                 } else {
                     if (params['copyNameChk']) {
-                        Arrangement copyNameIn = Arrangement.findByLabel(params['inputCopyNameIn'] as String)
+                        Arrangement copyNameIn = Arrangement.findByNamespaceAndLabel(
+                                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                                params['inputCopyNameIn'] as String)
                         classificationManagerService.createClassification(label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
                     } else {
                         classificationManagerService.createClassification(label: params.inputLabel, description: params.inputDescription);
@@ -91,7 +98,9 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def doEdit() {
-        Arrangement classification = Arrangement.findByLabel(params['classification'] as String)
+        Arrangement classification = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                params['classification'] as String)
 
         if (!classification) {
             flash.message = 'no classification specified'

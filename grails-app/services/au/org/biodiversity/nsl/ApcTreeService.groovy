@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.tree.*
 import grails.transaction.Transactional
+import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.hibernate.Session
 import org.hibernate.SessionFactory
 import org.hibernate.jdbc.Work
@@ -35,6 +36,7 @@ import java.sql.Statement
  */
 @Transactional
 class ApcTreeService {
+    GrailsApplication grailsApplication
     SessionFactory sessionFactory_nsl
     BasicOperationsService basicOperationsService;
     QueryService queryService
@@ -75,7 +77,10 @@ class ApcTreeService {
 
         log.debug "${fixups.size()} fixups needed."
 
-        Arrangement apc = Arrangement.findByLabel('APC');
+        Arrangement apc = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                grailsApplication.config.services.classification.classificationTree
+        );
 
         if (!apc) {
             throw new IllegalStateException('No APC tree?')

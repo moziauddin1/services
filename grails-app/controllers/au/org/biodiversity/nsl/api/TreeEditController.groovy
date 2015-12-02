@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl.api
 
+import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.hibernate.SessionFactory
 
 import grails.converters.JSON
@@ -27,6 +28,7 @@ import static au.org.biodiversity.nsl.tree.DomainUtils.*
 
 @Transactional
 class TreeEditController {
+    GrailsApplication grailsApplication
     AsRdfRenderableService asRdfRenderableService
     SessionFactory sessionFactory_nsl
     TreeViewService treeViewService
@@ -52,7 +54,9 @@ class TreeEditController {
             return render(result as JSON)
         }
 
-        Arrangement apc = Arrangement.findByLabel('APC')
+        Arrangement apc = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                grailsApplication.config.services.classification.classificationTree as String)
 
 //		Uri nameUri = uri('nsl-name', p.instance.name.id)
 //		Uri supernameUri = p.supername ? uri('nsl-name', p.supername.id) : null
@@ -176,7 +180,9 @@ class TreeEditController {
             return render(result as JSON)
         }
 
-        Arrangement apc = Arrangement.findByLabel('APC')
+        Arrangement apc = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                grailsApplication.config.services.classification.classificationTree as String)
 
         try {
             log.debug "perform remove"

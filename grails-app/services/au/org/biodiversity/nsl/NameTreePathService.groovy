@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import groovy.sql.Sql
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 /**
  * NameTreePaths are a view of a tree linking directly to Names. The contain the tree path from root to the current name
@@ -33,6 +34,7 @@ import groovy.sql.Sql
 @Transactional
 class NameTreePathService {
 
+    GrailsApplication grailsApplication
     def classificationService
 
     /**
@@ -204,8 +206,10 @@ class NameTreePathService {
         return null
     }
 
-    static NameTreePath findCurrentNameTreePath(Name name, String treeLabel) {
-        Arrangement arrangement = Arrangement.findByLabel(treeLabel)
+    NameTreePath findCurrentNameTreePath(Name name, String treeLabel) {
+        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                treeLabel)
         arrangement ? findCurrentNameTreePath(name, arrangement) : null
     }
 
@@ -222,7 +226,9 @@ class NameTreePathService {
     }
 
     Integer treePathReport(String treeLabel) {
-        Arrangement arrangement = Arrangement.findByLabel(treeLabel)
+        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                treeLabel)
         if (arrangement) {
             List results = Node.executeQuery('''
         select count(nd) from Node nd
@@ -231,7 +237,9 @@ class NameTreePathService {
             and nd.checkedInAt IS NOT NULL
             and nd.next IS NULL
             and nd.nameUriIdPart IS NOT NULL
-            and not exists (select 1 from NameTreePath ntp where ntp.id = nd.id)''', [tree: Arrangement.findByLabel(treeLabel)])
+            and not exists (select 1 from NameTreePath ntp where ntp.id = nd.id)''', [tree: Arrangement.findByNamespaceAndLabel(
+                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    treeLabel)])
             results?.first() as Integer
         } else {
             return 0

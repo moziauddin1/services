@@ -19,10 +19,12 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Instance
+import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.TreeViewService
 import grails.converters.JSON
 import grails.transaction.Transactional
 import grails.validation.Validateable
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 @Transactional
 class TreeViewController {
@@ -63,6 +65,7 @@ class TreeViewController {
 
 @Validateable
 class TreeViewParam {
+	GrailsApplication grailsApplication
 	String treeLabel
 	String nameId
 
@@ -75,7 +78,9 @@ class TreeViewParam {
 	}
 
 	Arrangement getTree() {
-		return Arrangement.findByLabel(treeLabel)
+		return Arrangement.findByNamespaceAndLabel(
+				Namespace.findByName(grailsApplication.config.services.classification.namespace),
+				treeLabel)
 	}
 
 	static constraints = {
@@ -86,6 +91,7 @@ class TreeViewParam {
 
 @Validateable
 class TreeViewInstanceParam {
+	GrailsApplication grailsApplication
 	String treeLabel
 	String instanceId
 
@@ -98,7 +104,9 @@ class TreeViewInstanceParam {
 	}
 
 	Arrangement getTree() {
-		return Arrangement.findByLabel(treeLabel)
+		return Arrangement.findByNamespaceAndLabel(
+				Namespace.findByName(grailsApplication.config.services.classification.namespace),
+				treeLabel)
 	}
 
 	static constraints = {

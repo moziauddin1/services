@@ -19,13 +19,14 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.*
 import grails.converters.XML
 import grails.transaction.Transactional
+import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.grails.plugins.metrics.groovy.Timed
 
 import static org.springframework.http.HttpStatus.NOT_FOUND
 import static org.springframework.http.HttpStatus.OK
 
 class RestResourceController {
-
+    GrailsApplication grailsApplication
     def linkService
     def apniFormatService
     def queryService
@@ -96,7 +97,9 @@ class RestResourceController {
                 return notFound("No tree with id $idNumber found")
             }
         } else {
-            tree = Arrangement.findByLabel(shard)
+            tree = Arrangement.findByNamespaceAndLabel(
+                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    shard)
             if (tree == null) {
                 return notFound("No tree with name $shard found")
             }
