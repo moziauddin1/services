@@ -90,43 +90,32 @@ class RestResourceController {
 
     @Timed()
     def tree(String shard, Long idNumber) {
-        Arrangement tree;
-        if (shard == "tree") {
-            tree = Arrangement.get(idNumber);
-            if (tree == null) {
-                return notFound("No tree with id $idNumber found")
-            }
-        } else {
-            tree = Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
-                    shard)
-            if (tree == null) {
-                return notFound("No tree with name $shard found")
-            }
+        Arrangement tree = Arrangement.get(idNumber);
+        if (tree == null) {
+            return notFound("No tree in $shard with id $idNumber found")
         }
-
         def links = linkService.getLinksForObject(tree)
-        respond tree, [model: [shard: shard, tree: tree, links: links], status: OK]
+        respond tree, [model: [tree: tree, links: links], status: OK]
     }
 
     @Timed()
     def node(String shard, Long idNumber) {
         Node node = Node.get(idNumber)
         if (node == null) {
-            return notFound("No node with id $idNumber found")
+            return notFound("No node in $shard with id $idNumber found")
         }
         def links = linkService.getLinksForObject(node)
-        respond node, [model: [shard: shard, node: node, links: links], status: OK]
+        respond node, [model: [node: node, links: links], status: OK]
     }
 
     @Timed()
     def event(String shard, Long idNumber) {
         Event event = Event.get(idNumber)
         if (event == null) {
-            return notFound("No event with id $idNumber found")
+            return notFound("No event in $shard with id $idNumber found")
         }
         def links = linkService.getLinksForObject(event)
-        respond event, [model: [shard: shard, event: event, links: links], status: OK]
+        respond event, [model: [event: event, links: links], status: OK]
     }
     
     @Timed()

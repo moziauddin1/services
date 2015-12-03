@@ -1,4 +1,7 @@
 <%@ page import="au.org.biodiversity.nsl.*; au.org.biodiversity.nsl.tree.*" %>
+<%
+    tree = tree as Arrangement
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -16,9 +19,16 @@
         <g:if test="${tree.title}"><dt>Title</dt><dd>${tree.title}</dd></g:if>
         <g:if test="${tree.description}"><dt>Description</dt><dd>${tree.description}</dd></g:if>
         <dt>Root node</dt><dd><td><g:render template="node" model="${[node: tree.node]}"/></td></dd>
+        <g:if test="${tree.arrangementType == ArrangementType.P}">
+            <dt>Current node</dt><dd><td><g:render template="node" model="${[node: DomainUtils.getSingleSubnode(tree.node)]}"/></td></dd>
+        </g:if>
     </dl>
 
     <% /* TODO: include some stats here */ %>
+
+    <h3>Tree</h3>
+    <g:render template="branch" model="${[node: DomainUtils.getSingleSubnode(tree.node), depth:1]}"/>
+
 
     <g:render template="links"/>
 

@@ -57,6 +57,8 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def doCreate() {
+        // TODO: tell the link service that we have made a classification. It should store
+        // [shard]/classification/[label] as a match for the node
         try {
             if (params['Create']) {
                 if (!params['inputLabel'] || !params['inputDescription']) {
@@ -98,6 +100,10 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def doEdit() {
+        // TODO: tell the link service that we have updated a classification. It should store
+        // [shard]/classification/[label] as a match for the node if the label has changed
+        // and remove the match is the classification is deleted
+
         Arrangement classification = Arrangement.findByNamespaceAndLabel(
                 Namespace.findByName(grailsApplication.config.services.classification.namespace),
                 params['classification'] as String)
