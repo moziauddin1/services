@@ -133,7 +133,7 @@ class ClassificationService {
 
     Node isInstanceInClassification(Instance instance, Namespace namespace, String classification) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(namespace, classification)
-        arrangement ? getInstanceInClassification(instance, arrangement) : null
+        arrangement ? isInstanceInClassification(instance, arrangement) : null
     }
 
     Node isInstanceInClassification(Instance instance, Arrangement arrangement) {

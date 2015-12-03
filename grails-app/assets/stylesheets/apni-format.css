@@ -206,3 +206,9 @@ name-tag {
 dt.divide {
     border-bottom: solid #cfcfcf 1px;
 }
+
+.branch_node.apc-voc.apc-concept {}
+
+.branch_node.apc-voc.apc-excluded { color: red; }
+
+.branch_node.apc-voc.declared-bt { color: darkgray; }
