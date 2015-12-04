@@ -94,7 +94,7 @@ class ApcTreeService {
         log.info "transferring profile data in ${apc}"
 
         log.debug "temp arrangement"
-        Arrangement tempSpace = basicOperationsService.createTemporaryArrangement()
+        Arrangement tempSpace = basicOperationsService.createTemporaryArrangement(namespace)
         apc = DomainUtils.refetchArrangement(apc)
         Link topLink = basicOperationsService.adoptNode(tempSpace.node, DomainUtils.getSingleSubnode(apc.node), VersioningMethod.F)
         basicOperationsService.checkoutLink(topLink)

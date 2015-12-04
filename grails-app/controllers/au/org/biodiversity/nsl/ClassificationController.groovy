@@ -181,9 +181,12 @@ class ClassificationController {
     @RequiresRoles('admin')
     def validateClassifications() {
         session[VALIDATION_RESULTS_KEY] = classificationManagerService.validateClassifications()
-
-        session[VALIDATION_RESULTS_KEY].c.each { key, value ->
-            value.each { fixLinksFor(it) }
+        session[VALIDATION_RESULTS_KEY].c.each { shardname, classifications ->
+            classifications.each { classificationLabel, errors ->
+                errors.each { error ->
+                    fixLinksFor(error)
+                }
+            }
         }
 
         redirect action: "index"

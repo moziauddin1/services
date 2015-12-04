@@ -50,18 +50,28 @@
             <g:link action="clearValidationResults">Clear validation results</g:link>
             <div>Classifications validated at ${validationResults.time}
                 <dl>
-                    <g:each in="${validationResults.c.keySet().sort()}" var="classification">
+                    <g:each in="${validationResults.c.keySet().sort()}" var="shardLabel">
                         <dt>
-                            ${classification}
+                            Shard ${shardLabel}
+                            <g:set var="shard" value="${validationResults.c[shardLabel]}"/>
                         </dt>
                         <dd>
-                            <g:if test="${validationResults.c[classification]}">
-                                <g:render template="nestedMessageList"
-                                          model="${[msgList: validationResults.c[classification]]}"/>
-                            </g:if>
-                            <g:else>
-                                No errors.
-                            </g:else>
+                            <g:each in="${shard.keySet().sort()}" var="classificationLabel">
+                                <dt>
+                                    Classification ${classificationLabel}
+                                    <g:set var="classificationErrors" value="${shard[classificationLabel]}"/>
+                                </dt>
+                                <dd>
+                                    <g:if test="${classificationErrors}">
+                                        <g:render template="nestedMessageList"
+                                                  model="${[msgList: classificationErrors]}"/>
+                                    </g:if>
+                                    <g:else>
+                                        No errors.
+                                    </g:else>
+                                </dd>
+                            </g:each>
+
                         </dd>
                     </g:each>
                 </dl>
