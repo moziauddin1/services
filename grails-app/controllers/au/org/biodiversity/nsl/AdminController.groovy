@@ -40,16 +40,13 @@ class AdminController {
 
     @RequiresRoles('admin') 
     def index() {
-
-        Namespace namespace = Namespace.findByName(grailsApplication.config.services.classification.namespace as String)
-
         Map stats = [:]
 
 
         stats.namesNeedingConstruction = nameService.countIncompleteNameStrings()
         stats.namesNotInApni = nameService.countNamesNotInApni()
-        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(namespace, grailsApplication.config.services.classification.nameTree as String)
-        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(namespace,  grailsApplication.config.services.classification.classificationTree as String)
+        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(grailsApplication.config.services.classification.nameTree as String)
+        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(grailsApplication.config.services.classification.classificationTree as String)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         //todo iterate trees add back stats if they don't interrupt ops.
         [pollingNames: nameService.pollingStatus(), stats: stats]

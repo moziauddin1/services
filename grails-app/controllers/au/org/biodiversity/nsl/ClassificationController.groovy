@@ -68,9 +68,9 @@ class ClassificationController {
                         Arrangement copyNameIn = Arrangement.findByNamespaceAndLabel(
                                 Namespace.findByName(grailsApplication.config.services.classification.namespace),
                                 params['inputCopyNameIn'] as String)
-                        classificationManagerService.createClassification(label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.services.classification.namespace), label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
                     } else {
-                        classificationManagerService.createClassification(label: params.inputLabel, description: params.inputDescription);
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.services.classification.namespace), label: params.inputLabel, description: params.inputDescription);
                     }
 
                     flash.success = "Classification \"${params['inputLabel']}\" created."
