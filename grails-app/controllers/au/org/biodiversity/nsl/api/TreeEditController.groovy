@@ -188,7 +188,7 @@ class TreeEditController {
             log.debug "perform remove"
             treeOperationsService.deleteNslInstance(apc, p.instance, p.replacementName)
             apc = refetchArrangement(apc)
-            p.refetch()
+            refetch(p)
         }
         catch (ServiceException ex) {
             RdfRenderable err = asRdfRenderableService.serviceExceptionAsRenderable(ex)
