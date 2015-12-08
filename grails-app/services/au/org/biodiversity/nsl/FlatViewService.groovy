@@ -211,6 +211,10 @@ SELECT
            WHERE i.name_id = n.id)
 """
 
+    static String nslNewTaxaQuery = """
+"""
+
+
     def createNSLTaxaView() {
         withSql { Sql sql ->
             sql.execute('DROP MATERIALIZED VIEW IF EXISTS nsl_taxa;')
