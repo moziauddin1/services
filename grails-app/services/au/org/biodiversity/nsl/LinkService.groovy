@@ -122,41 +122,13 @@ class LinkService {
     private String targetParams(target) {
         Map params = getParamMap(target)
         if (params) {
-            return "nameSpace=${params.nameSpace}&objectType=${params.objectType}&idNumber=${params.idNumber}"
-        }
+            // if this is the point where we are putting ampersands in, then this is the point where
+            // the paramters need to be encoded.
+            def nameSpace = URLEncoder.encode(params.nameSpace as String,'UTF-8')
+            def objectType = URLEncoder.encode(params.objectType as String,'UTF-8')
+            def idNumber = URLEncoder.encode(params.idNumber as String,'UTF-8')
 
-        /*
-         For tree and tree-related entities, we use the tree label as the namespace.
-         For tree events and for objects attached to trees that don't have labels, we just
-         use 'tree as the namespace'.
-
-         This admittedly makes the rule for decoding a little tricky.
-
-         If its type is tree and its id is zero, then the namespace is the label of the tree.
-         In all other cases, we can ignore the namespace and use just the type and id.
-
-
-         tree labels are uppercase at present. Perhaps we need an rdfId column on them,
-         as we have with the tree_ns_uri table.
-         */
-
-        if (target instanceof Event) {
-            return "nameSpace=tree&objectType=event&idNumber=${idNumber}"
-        }
-
-        if (target instanceof Arrangement) {
-            if (target.label) {
-                // a tree with a label is object 0 of its namespace
-                return "nameSpace=${target.label}&objectType=tree&idNumber=0"
-            } else {
-                // a tree without a label is simply an arrangement of nodes
-                return "nameSpace=tree&objectType=tree&idNumber=${target.id}"
-            }
-        }
-
-        if (target instanceof Node) {
-            String nameSpace = target.root.label ?: "tree"
-            return "nameSpace=${nameSpace}&objectType=node&idNumber=${target.id}"
+            return "nameSpace=${nameSpace}&objectType=${objectType}&idNumber=${idNumber}"
         }
 
         log.error "Target ${target?.class?.simpleName} ${target ?: 'null'} is not a mapped type."
@@ -176,6 +148,41 @@ class LinkService {
             Long idNumber = target.id
             return [nameSpace: nameSpace, objectType: objectType, idNumber: idNumber]
         }
+
+
+        /*
+         For tree and tree-related entities, we use the tree label as the namespace.
+         For tree events and for objects attached to trees that don't have labels, we just
+         use 'tree as the namespace'.
+
+         This admittedly makes the rule for decoding a little tricky.
+
+         If its type is tree and its id is zero, then the namespace is the label of the tree.
+         In all other cases, we can ignore the namespace and use just the type and id.
+
+
+         tree labels are uppercase at present. Perhaps we need an rdfId column on them,
+         as we have with the tree_ns_uri table.
+         */
+
+        if (target instanceof Event) {
+            return [nameSpace: 'tree', objectType: lowerFirst(target.class.simpleName), idNumber: target.id]
+        }
+
+        if (target instanceof Arrangement) {
+            if (target.label) {
+                // a tree with a label is object 0 of its namespace
+                return [nameSpace: target.label, objectType: lowerFirst(target.class.simpleName), idNumber: 0]
+            } else {
+                // a tree without a label is simply an arrangement of nodes
+                return [nameSpace: 'tree', objectType: lowerFirst(target.class.simpleName), idNumber: target.id]
+            }
+        }
+
+        if (target instanceof Node) {
+            return [nameSpace: target.root.label ?: 'tree', objectType: lowerFirst(target.class.simpleName), idNumber: target.id]
+        }
+
         return null
     }
 
