@@ -17,13 +17,6 @@
     List path = queryService.getLatestPathForNode(node);
 %>
 
-<%/*
-
-TODO: This page should display profile data for taxonomic nodes. This leaves the branch page free to display only branch
-
-*/%>
-
-
 <div class="rest-resource-content node-gsp">
     <div>
         <span><st:preferedLink target="${node.root}">${node.root.label ?: "Tree ${node.root.id}"}</st:preferedLink></span>
@@ -41,8 +34,8 @@ TODO: This page should display profile data for taxonomic nodes. This leaves the
     <dl class="dl-horizontal">
         <dt>Id</dt><dd>${node.id}</dd>
         <dt>Tree</dt><dd><g:render template="tree" model="${[tree: node.root]}"/></dd>
-        <g:if test="${name}"><dt>Name</dt><dd><g:link mapping="restResource" params="[namespace: 'api', shard: shard, idNumber: name.id]" action="name">${raw(name.fullNameHtml)}</g:link></dd></g:if>
-        <g:if test="${instance}"><dt>Instance</dt><dd><g:link mapping="restResource" params="[namespace: 'api', shard: shard, idNumber: instance.id]" action="instance">in ${raw(instance.reference?.citationHtml)}</g:link></dd></g:if>
+        <g:if test="${name}"><dt>Name</dt><dd><st:preferedLink target="${name}">${raw(name.fullNameHtml)}</st:preferedLink></dd></g:if>
+        <g:if test="${instance}"><dt>Instance</dt><dd><st:preferedLink target="${instance}"> in ${raw(instance.reference?.citationHtml)}</st:preferedLink></dd></g:if>
         <dt>Type URI</dt><dd><a href="${DomainUtils.getNodeTypeUri(node).asUri()}">${DomainUtils.getNodeTypeUri(node).asQNameIfOk()}</a></dd>
         <g:if test="${DomainUtils.getNameUri(node)}"><dt>Name URI</dt><dd><a href="${DomainUtils.getNameUri(node).asUri()}">${DomainUtils.getNameUri(node).asQNameIfOk()}</a></dd></g:if>
         <g:if test="${DomainUtils.getTaxonUri(node)}"><dt>Taxon URI</dt><dd><a href="${DomainUtils.getTaxonUri(node).asUri()}">${DomainUtils.getTaxonUri(node).asQNameIfOk()}</a></dd></g:if>

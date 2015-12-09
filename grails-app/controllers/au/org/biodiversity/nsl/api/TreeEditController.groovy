@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl.api
 
+import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.hibernate.SessionFactory
 
 import grails.converters.JSON
@@ -27,6 +28,7 @@ import static au.org.biodiversity.nsl.tree.DomainUtils.*
 
 @Transactional
 class TreeEditController {
+    GrailsApplication grailsApplication
     AsRdfRenderableService asRdfRenderableService
     SessionFactory sessionFactory_nsl
     TreeViewService treeViewService
@@ -52,7 +54,9 @@ class TreeEditController {
             return render(result as JSON)
         }
 
-        Arrangement apc = Arrangement.findByLabel('APC')
+        Arrangement apc = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                grailsApplication.config.services.classification.classificationTree as String)
 
 //		Uri nameUri = uri('nsl-name', p.instance.name.id)
 //		Uri supernameUri = p.supername ? uri('nsl-name', p.supername.id) : null
@@ -110,7 +114,7 @@ class TreeEditController {
                 treeOperationsService.addNslName(apc, p.instance.name, p.supername, p.instance, nodeTypeUri: nodeTypeUri, linkTypeUri: linkTypeUri, profileData)
 
             apc = refetchArrangement(apc)
-            p.refetch()
+            refetch(p)
         }
         catch (ServiceException ex) {
             RdfRenderable err = asRdfRenderableService.serviceExceptionAsRenderable(ex)//, message_param_detangler)
@@ -176,13 +180,15 @@ class TreeEditController {
             return render(result as JSON)
         }
 
-        Arrangement apc = Arrangement.findByLabel('APC')
+        Arrangement apc = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                grailsApplication.config.services.classification.classificationTree as String)
 
         try {
             log.debug "perform remove"
             treeOperationsService.deleteNslInstance(apc, p.instance, p.replacementName)
             apc = refetchArrangement(apc)
-            p.refetch()
+            refetch(p)
         }
         catch (ServiceException ex) {
             RdfRenderable err = asRdfRenderableService.serviceExceptionAsRenderable(ex)
@@ -201,6 +207,17 @@ class TreeEditController {
 
         log.debug "render(result as JSON)"
         return render(result as JSON)
+    }
+
+    private void refetch(PlaceApcInstanceParam p) {
+        p.instance = DomainUtils.refetchInstance(p.instance);
+        p.supername = DomainUtils.refetchName(p.supername);
+    }
+
+    private void refetch(RemoveApcInstanceParam p) {
+        p.instance = DomainUtils.refetchInstance(p.instance);
+        p.replacementName = DomainUtils.refetchName(p.replacementName);
+        p.replacementInstance = DomainUtils.refetchInstance(p.replacementInstance);
     }
 }
 
@@ -256,8 +273,6 @@ class TMP_RDF_TO_MAP {
     static Object resourceAsMap(RdfRenderable.Resource r) {
         return r.uri
     }
-
-
 }
 
 @Validateable
@@ -295,11 +310,6 @@ class PlaceApcInstanceParam {
         return [instance: instance, supername: supername, placementType: placementType].toString()
     }
 
-    void refetch() {
-        if (instance != null) instance = Instance.get(instance.id)
-        if (supername != null) supername = Name.get(supername.id)
-    }
-
     static constraints = {
         instance nullable: false
         supername nullable: true
@@ -315,12 +325,6 @@ class RemoveApcInstanceParam {
 
     String toString() {
         return [instance: instance, replacementName: replacementName].toString()
-    }
-
-    void refetch() {
-        if (instance != null) instance = Instance.get(instance.id)
-        if (replacementName != null) replacementName = Name.get(replacementName.id)
-        if (replacementInstance != null) replacementInstance = Instance.get(replacementInstance.id)
     }
 
     static constraints = {

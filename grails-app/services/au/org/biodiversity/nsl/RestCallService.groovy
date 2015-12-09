@@ -32,7 +32,7 @@ class RestCallService {
     def grailsApplication
 
     private String serviceUri = null
-    private RestBuilder rest = new RestBuilder()
+    private RestBuilder rest = new RestBuilder(proxy:java.net.Proxy.NO_PROXY)
 
     // todo make config for multiple services by name
     String getServiceUri(String name) {

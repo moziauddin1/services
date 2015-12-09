@@ -19,46 +19,61 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Instance
+import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.TreeViewService
 import grails.converters.JSON
 import grails.transaction.Transactional
 import grails.validation.Validateable
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 @Transactional
 class TreeViewController {
+	GrailsApplication grailsApplication
 	TreeViewService treeViewService
 
 	def index(TreeViewParam p) {
-		return [tree: p.tree, name: p.name]
+		return [tree: p.getTree(grailsApplication), name: p.name]
 	}
 
 	def namePlacementPath(TreeViewParam p) {
-		render treeViewService.getPathForName(p.tree, p.name) as JSON
+		render treeViewService.getPathForName(getTree(p), p.name) as JSON
 	}
 
 	def treeTopPath(TreeViewParam p) {
-		render treeViewService.getPathForTree(p.tree) as JSON
+		render treeViewService.getPathForTree(getTree(p)) as JSON
 	}
 
 	def namePlacementBranch(TreeViewParam p) {
-		render treeViewService.getBranchForName(p.tree, p.name) as JSON
+		render treeViewService.getBranchForName(getTree(p), p.name) as JSON
 	}
 
 	def treeTopBranch(TreeViewParam p) {
-		render treeViewService.getBranchForTree(p.tree) as JSON
+		render treeViewService.getBranchForTree(getTree(p)) as JSON
 	}
 
 	def nameInTree(TreeViewParam p) {
-		render treeViewService.getNameInTree(p.tree, p.name) as JSON
+		render treeViewService.getNameInTree(getTree(p), p.name) as JSON
 	}
 
 	def namePlacementInTree(TreeViewParam p) {
-		render treeViewService.getNamePlacementInTree(p.tree, p.name) as JSON
+		render treeViewService.getNamePlacementInTree(getTree(p), p.name) as JSON
 	}
 
 	def instancePlacementInTree(TreeViewInstanceParam p) {
-		render treeViewService.getInstancePlacementInTree(p.tree, p.instance) as JSON
+		render treeViewService.getInstancePlacementInTree(getTree(p), p.instance) as JSON
 	}
+
+    private Arrangement getTree(TreeViewParam p) {
+        return Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                p.treeLabel)
+    }
+
+    private Arrangement getTree(TreeViewInstanceParam p) {
+        return Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                p.treeLabel)
+    }
 }
 
 @Validateable
@@ -72,10 +87,6 @@ class TreeViewParam {
 
 	Name getName() {
 		return nameId ? Name.get(nameId as Long) : null
-	}
-
-	Arrangement getTree() {
-		return Arrangement.findByLabel(treeLabel)
 	}
 
 	static constraints = {
@@ -95,10 +106,6 @@ class TreeViewInstanceParam {
 
 	Instance getInstance() {
 		return instanceId ? Instance.get(instanceId as Long) : null
-	}
-
-	Arrangement getTree() {
-		return Arrangement.findByLabel(treeLabel)
 	}
 
 	static constraints = {

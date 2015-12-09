@@ -140,7 +140,8 @@ class LinkService {
                 target instanceof Author ||
                 target instanceof Instance ||
                 target instanceof Reference ||
-                target instanceof InstanceNote
+                target instanceof InstanceNote ||
+                target instanceof Event
         ) {
             target = JsonRendererService.initializeAndUnproxy(target)
             String objectType = lowerFirst(target.class.simpleName)
@@ -149,38 +150,22 @@ class LinkService {
             return [nameSpace: nameSpace, objectType: objectType, idNumber: idNumber]
         }
 
-
-        /*
-         For tree and tree-related entities, we use the tree label as the namespace.
-         For tree events and for objects attached to trees that don't have labels, we just
-         use 'tree as the namespace'.
-
-         This admittedly makes the rule for decoding a little tricky.
-
-         If its type is tree and its id is zero, then the namespace is the label of the tree.
-         In all other cases, we can ignore the namespace and use just the type and id.
-
-
-         tree labels are uppercase at present. Perhaps we need an rdfId column on them,
-         as we have with the tree_ns_uri table.
-         */
-
-        if (target instanceof Event) {
-            return [nameSpace: 'tree', objectType: lowerFirst(target.class.simpleName), idNumber: target.id]
-        }
-
         if (target instanceof Arrangement) {
-            if (target.label) {
-                // a tree with a label is object 0 of its namespace
-                return [nameSpace: target.label, objectType: lowerFirst(target.class.simpleName), idNumber: 0]
-            } else {
-                // a tree without a label is simply an arrangement of nodes
-                return [nameSpace: 'tree', objectType: lowerFirst(target.class.simpleName), idNumber: target.id]
-            }
+            // override the default, because we use 'tree' rather than 'arrangement'
+            target = JsonRendererService.initializeAndUnproxy(target)
+            String objectType = 'tree'
+            String nameSpace = target.namespace.name.toLowerCase()
+            Long idNumber = target.id
+            return [nameSpace: nameSpace, objectType: objectType, idNumber: idNumber]
         }
 
         if (target instanceof Node) {
-            return [nameSpace: target.root.label ?: 'tree', objectType: lowerFirst(target.class.simpleName), idNumber: target.id]
+            // override the default, because the namespace id on the node root rather than the root itself
+            target = JsonRendererService.initializeAndUnproxy(target)
+            String objectType = lowerFirst(target.class.simpleName)
+            String nameSpace = ((Node)target).root.namespace.name.toLowerCase()
+            Long idNumber = target.id
+            return [nameSpace: nameSpace, objectType: objectType, idNumber: idNumber]
         }
 
         return null

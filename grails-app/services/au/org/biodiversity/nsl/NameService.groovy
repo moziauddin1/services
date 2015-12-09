@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import org.apache.shiro.grails.annotations.RoleRequired
+import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.quartz.Scheduler
 import org.springframework.transaction.TransactionStatus
 
@@ -26,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Transactional
 class NameService {
 
+    GrailsApplication grailsApplication
     def simpleNameService
     def restCallService
     def classificationService
@@ -220,7 +222,9 @@ class NameService {
  */
     void removeNameFromApni(Name name) {
         //replace the name with an end Node.
-        Arrangement apni = Arrangement.findByLabel('APNI')
+        Arrangement apni = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                grailsApplication.config.services.classification.nameTree as String)
         if (Node.countByNameAndRoot(name, apni)) { //only remove if it's in there, e.g. not a common name
             treeOperationsService.deleteNslName(apni, name, null)
             name.refresh() //reload the name because ... tree services

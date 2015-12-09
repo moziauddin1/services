@@ -1,17 +1,28 @@
-<%@ page import="au.org.biodiversity.nsl.Instance; au.org.biodiversity.nsl.tree.DomainUtils" %>
+<%@ page import="au.org.biodiversity.nsl.Node; au.org.biodiversity.nsl.Instance; au.org.biodiversity.nsl.tree.DomainUtils" %>
 <%@ page import="au.org.biodiversity.nsl.NodeInternalType" %>
 
-<st:preferedLink target="${node}">
+<%
+    node = node as au.org.biodiversity.nsl.Node
+%>
+
 <tree:getNodeNameAndInstance node="${node}">
     <span class="node ${DomainUtils.getNodeTypeUri(node).asCssClass()}
     ${node.checkedInAt ? node.replacedAt ? 'replaced' : 'current' : 'draft'}
     ${node.synthetic ? 'synthetic' : ''}
     ">
         <g:if test="${node.internalType == NodeInternalType.S}">
-            System node <st:preferedLink target="${node}">${node}</st:preferedLink>
+            ${DomainUtils.getNodeTypeUri(node)?.asQNameIfOk() ?: 'System node'} <st:preferedLink target="${node}">${node.id}</st:preferedLink>
         </g:if>
         <g:elseif test="${node.internalType == NodeInternalType.Z}">
-            Temporary node  <st:preferedLink target="${node}">${node}</st:preferedLink>
+            ${DomainUtils.getNodeTypeUri(node)?.asQNameIfOk() ?: 'Temporary node'} <st:preferedLink target="${node}">${node.id}</st:preferedLink>
+        </g:elseif>
+        <g:elseif test="${node.typeUriIdPart == 'classification-root'}">
+            <g:render template="tree" model="${[tree: node.root]}"/>
+            from
+            <g:render template="event" model="${[event: node.checkedInAt]}"/>
+            to
+            <g:render template="event" model="${[event: node.replacedAt]}"/>
+            (node id <st:preferedLink target="${node}">${node.id}</st:preferedLink>)
         </g:elseif>
         <g:elseif test="${node.internalType == NodeInternalType.T}">
             <g:if test="${DomainUtils.hasName(node)}">
@@ -51,4 +62,3 @@
         </g:elseif>
     </span>
 </tree:getNodeNameAndInstance>
-    </st:preferedLink>

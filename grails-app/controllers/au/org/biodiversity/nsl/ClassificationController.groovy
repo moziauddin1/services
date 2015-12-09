@@ -19,9 +19,11 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.tree.ClassificationManagerService
 import au.org.biodiversity.nsl.tree.ServiceException
 import org.apache.shiro.authz.annotation.RequiresRoles
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 class ClassificationController {
 
+    GrailsApplication grailsApplication
     ClassificationManagerService classificationManagerService;
 
     private static String VALIDATION_RESULTS_KEY = ClassificationController.class.getName() + '#validationREsults';
@@ -46,22 +48,29 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def editForm() {
-        Arrangement classification = Arrangement.findByLabel(params['classification'] as String)
+        Arrangement classification = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                params['classification'] as String
+        );
         [classification: classification, inputLabel: classification.label, inputDescription: classification.description]
     }
 
     @RequiresRoles('admin')
     def doCreate() {
+        // TODO: tell the link service that we have made a classification. It should store
+        // [shard]/classification/[label] as a match for the node
         try {
             if (params['Create']) {
                 if (!params['inputLabel'] || !params['inputDescription']) {
                     flash.validation = "Label and Description required";
                 } else {
                     if (params['copyNameChk']) {
-                        Arrangement copyNameIn = Arrangement.findByLabel(params['inputCopyNameIn'] as String)
-                        classificationManagerService.createClassification(label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
+                        Arrangement copyNameIn = Arrangement.findByNamespaceAndLabel(
+                                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                                params['inputCopyNameIn'] as String)
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.services.classification.namespace), label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
                     } else {
-                        classificationManagerService.createClassification(label: params.inputLabel, description: params.inputDescription);
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.services.classification.namespace), label: params.inputLabel, description: params.inputDescription);
                     }
 
                     flash.success = "Classification \"${params['inputLabel']}\" created."
@@ -91,7 +100,13 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def doEdit() {
-        Arrangement classification = Arrangement.findByLabel(params['classification'] as String)
+        // TODO: tell the link service that we have updated a classification. It should store
+        // [shard]/classification/[label] as a match for the node if the label has changed
+        // and remove the match is the classification is deleted
+
+        Arrangement classification = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                params['classification'] as String)
 
         if (!classification) {
             flash.message = 'no classification specified'
@@ -166,9 +181,12 @@ class ClassificationController {
     @RequiresRoles('admin')
     def validateClassifications() {
         session[VALIDATION_RESULTS_KEY] = classificationManagerService.validateClassifications()
-
-        session[VALIDATION_RESULTS_KEY].c.each { key, value ->
-            value.each { fixLinksFor(it) }
+        session[VALIDATION_RESULTS_KEY].c.each { shardname, classifications ->
+            classifications.each { classificationLabel, errors ->
+                errors.each { error ->
+                    fixLinksFor(error)
+                }
+            }
         }
 
         redirect action: "index"

@@ -26,6 +26,7 @@ class ApniFormatTagLib {
     def constructedNameService
     def nameTreePathService
     def instanceService
+    LinkService linkService
 
 //    static defaultEncodeAs = 'html'
     static encodeAsForTags = [tagName: 'raw']
@@ -141,10 +142,14 @@ class ApniFormatTagLib {
 
             out << '<ul>'
             nodesInBranch.each { Node n ->
-                def href = createLink( mapping: 'restResource', action: 'node', params: [shard: n.root.label, idNumber: n.id])
-//                out << "<li><a href='${href}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                def link = linkService.getPreferredLinkForObject(n)
                 //todo put the above back in when issues with links and display are solved, see NSL-1413
-                out << "<li>${n.name.nameElement} <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                if(link) {
+                    out << "<li><a href='${link.link}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                }
+                else {
+                    out << "<li>${n.name.nameElement} <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                }
             }
             out << '</ul></branch>'
         }

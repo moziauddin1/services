@@ -3,6 +3,7 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.tree.ClassificationManagerService
 import au.org.biodiversity.nsl.tree.ServiceException
 import org.apache.shiro.authz.annotation.RequiresRoles
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 /**
  * This controller allows the user to manually perform versioning on nodes.
@@ -15,6 +16,7 @@ import org.apache.shiro.authz.annotation.RequiresRoles
  */
 class TreeFixupController {
     private static String SELECTED_NODES_KEY = TreeFixupController.class.getName() + '#selectedNodes';
+    GrailsApplication grailsApplication
     ClassificationManagerService classificationManagerService;
 
 
@@ -23,7 +25,9 @@ class TreeFixupController {
         def state = []
         session[SELECTED_NODES_KEY] = state;
 
-        Arrangement c = Arrangement.findByLabelAndArrangementType(params['classification'], ArrangementType.P)
+        Arrangement c = Arrangement.findByNamespaceAndLabelAndArrangementType(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                params['classification'], ArrangementType.P)
         Name n = Name.get(params['nameId'])
 
        [
@@ -38,7 +42,11 @@ class TreeFixupController {
     def doUseNameNode() {
         log.debug 'about to call fixClassificationUseNodeForName'
         try {
-            classificationManagerService.fixClassificationUseNodeForName(Arrangement.findByLabel(params['classification']), Name.get(params['nameId']), Node.get(params['nodeId']));
+            classificationManagerService.fixClassificationUseNodeForName(Arrangement.findByNamespaceAndLabel(
+                    Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                    params['classification']),
+                    Name.get(params['nameId']),
+                    Node.get(params['nodeId']));
             log.debug 'done call fixClassificationUseNodeForName'
             flash.message = "All placements of name ${params['nameId']} in ${params['classification']} merged into node  ${params['nodeId']}"
         }

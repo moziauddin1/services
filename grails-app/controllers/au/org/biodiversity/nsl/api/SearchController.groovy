@@ -18,14 +18,17 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Name
+import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.UriNs
 import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 import javax.servlet.http.Cookie
 
 class SearchController {
+    GrailsApplication grailsApplication
     def searchService
 
     def search(Integer max) {
@@ -38,7 +41,9 @@ class SearchController {
         }
 
         if (params.product) {
-            Arrangement tree = Arrangement.findByLabel(params.product.toUpperCase())
+            Arrangement tree = Arrangement.findByNamespaceAndLabel(
+                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    params.product.toUpperCase())
             if (tree) {
                 params.tree = [id: tree.id]
                 params.display = params.product

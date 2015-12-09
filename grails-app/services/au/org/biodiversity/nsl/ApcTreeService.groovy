@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.tree.*
 import grails.transaction.Transactional
+import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.hibernate.Session
 import org.hibernate.SessionFactory
 import org.hibernate.jdbc.Work
@@ -35,6 +36,7 @@ import java.sql.Statement
  */
 @Transactional
 class ApcTreeService {
+    GrailsApplication grailsApplication
     SessionFactory sessionFactory_nsl
     BasicOperationsService basicOperationsService;
     QueryService queryService
@@ -52,8 +54,16 @@ class ApcTreeService {
         boolean dist_diff;
     }
 
-
+    @Deprecated
     def transferApcProfileData() {
+        log.warn 'deprecated'
+        return transferApcProfileData(
+                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
+                grailsApplication.config.services.classification.classificationTree as String
+        )
+    }
+
+    def transferApcProfileData(Namespace namespace, String classificationTreeLabel) {
         log.debug "applying instance APC comments and distribution text to the APC tree"
 
         /**
@@ -75,7 +85,7 @@ class ApcTreeService {
 
         log.debug "${fixups.size()} fixups needed."
 
-        Arrangement apc = Arrangement.findByLabel('APC');
+        Arrangement apc = Arrangement.findByNamespaceAndLabel(namespace, classificationTreeLabel);
 
         if (!apc) {
             throw new IllegalStateException('No APC tree?')
@@ -84,7 +94,7 @@ class ApcTreeService {
         log.info "transferring profile data in ${apc}"
 
         log.debug "temp arrangement"
-        Arrangement tempSpace = basicOperationsService.createTemporaryArrangement()
+        Arrangement tempSpace = basicOperationsService.createTemporaryArrangement(namespace)
         apc = DomainUtils.refetchArrangement(apc)
         Link topLink = basicOperationsService.adoptNode(tempSpace.node, DomainUtils.getSingleSubnode(apc.node), VersioningMethod.F)
         basicOperationsService.checkoutLink(topLink)
