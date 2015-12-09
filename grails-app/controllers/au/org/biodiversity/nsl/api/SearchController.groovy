@@ -49,7 +49,7 @@ class SearchController {
                 params.display = params.product
             } else {
                 flash.message = "Unknown product ${params.product}"
-                return redirect(action: 'search')
+                return redirect(url: '/')
             }
         } else {
             params.display = params.display ?: 'apni'
