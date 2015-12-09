@@ -130,6 +130,13 @@ class ServiceTagLib {
         out << url
     }
 
+    def googleAnalytics = { attrs ->
+        String script = grailsApplication?.config?.services?.googleAnalytics
+        if(script) {
+            out << script
+        }
+    }
+
     def linkedData = { attr ->
         if (attr.val != null) {
             String description = ''
