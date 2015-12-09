@@ -112,7 +112,8 @@ class NameTreePathService {
     public Name updateNameTreePath(Name name) {
         log.debug "Update Name Tree Path for $name"
         if (name.nameType.scientific || name.nameType.cultivar) {
-            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) { //we don't need domains to have a parent
+            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) {
+                //we don't need domains to have a parent
                 Node currentNode = classificationService.isNameInAPNI(name)
                 if (currentNode) {
                     NameTreePath ntp = findCurrentNameTreePath(name, currentNode.root)
@@ -206,10 +207,8 @@ class NameTreePathService {
         return null
     }
 
-    NameTreePath findCurrentNameTreePath(Name name, String treeLabel) {
-        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
-                treeLabel)
+    static NameTreePath findCurrentNameTreePath(Name name, String treeLabel) {
+        Arrangement arrangement = Arrangement.findByLabel(treeLabel)
         arrangement ? findCurrentNameTreePath(name, arrangement) : null
     }
 
