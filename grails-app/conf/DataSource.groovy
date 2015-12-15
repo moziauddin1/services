@@ -22,8 +22,8 @@ dataSource {
 }
 hibernate {
     cache.use_second_level_cache = false
-    cache.use_query_cache = false
-    cache.region.factory_class = 'org.hibernate.cache.ehcache.EhCacheRegionFactory' // Hibernate 4
+    cache.use_query_cache = true
+    cache.region.factory_class = 'grails.plugin.cache.ehcache.hibernate.BeanEhcacheRegionFactory4' // Hibernate 4
     singleSession = true // configure OSIV singleSession mode
     flush.mode = 'manual' // OSIV session flush mode outside of transactional context
 }
@@ -46,7 +46,9 @@ environments {
             properties {
                 defaultTransactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED
                 initialSize = 2
-                maxActive = 5
+                minIdle = 5
+                maxIdle = 10
+                maxActive = 20
                 minEvictableIdleTimeMillis = 1800000
                 timeBetweenEvictionRunsMillis = 1800000
                 numTestsPerEvictionRun = 3
@@ -97,7 +99,9 @@ environments {
             properties {
                 defaultTransactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED
                 initialSize = 2
-                maxActive = 10
+                minIdle = 5
+                maxIdle = 10
+                maxActive = 20
                 minEvictableIdleTimeMillis = 1800000
                 timeBetweenEvictionRunsMillis = 1800000
                 numTestsPerEvictionRun = 3

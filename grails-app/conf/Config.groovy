@@ -203,6 +203,31 @@ log4j.main = {
     debug 'grails.app'
 }
 
+grails.cache.config = {
+    cache {
+        name 'linkcache'
+        timeToLiveSeconds 600
+    }
+
+    defaultCache {
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 120
+        timeToLiveSeconds 120
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 120
+        memoryStoreEvictionPolicy 'LRU'
+    }
+
+    defaults {
+        maxElementsInMemory 10000
+        eternal false
+        overflowToDisk false
+        maxElementsOnDisk 0
+    }
+}
 
 grails.assets.minifyCss = false
 grails.assets.minifyJs = false

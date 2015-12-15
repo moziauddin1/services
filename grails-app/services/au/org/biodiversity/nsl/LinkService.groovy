@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl
 
+import grails.plugin.cache.Cacheable
 import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
 import org.grails.plugins.metrics.groovy.Timed
@@ -74,6 +75,8 @@ class LinkService {
     }
 
     @Timed()
+    @Cacheable('linkcache')
+
     Map getPreferredLinkForObject(target) {
         try {
             String url = getLinkServiceUrl(target, 'preferredLink', true)

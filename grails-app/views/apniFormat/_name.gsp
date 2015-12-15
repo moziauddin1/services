@@ -1,3 +1,4 @@
+<cache:block key="${name.id}">
 <div class="name" id="${name.id}">
   <family>
     <g:if test="${familyName}">
@@ -58,3 +59,4 @@
   </div>
 
 </div>
+</cache:block>

@@ -81,7 +81,8 @@ grails.project.dependency.resolution = {
 
         // plugins for the compile step
         compile ":scaffolding:2.1.2"
-        compile ':cache:1.1.7'
+        compile ':cache:1.1.8'
+        compile "org.grails.plugins:cache-ehcache:1.0.5"
         compile ":asset-pipeline:2.1.0"
         compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.1-SNAPSHOT"
         compile "au.org.biodiversity.grails.plugins:tree-services-plugin:1.1-SNAPSHOT"
