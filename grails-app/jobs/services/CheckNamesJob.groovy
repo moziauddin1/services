@@ -27,7 +27,7 @@ class CheckNamesJob {
 
     def concurrent = false
     def sessionRequired = true
-    def grailsCacheManager
+//    def grailsCacheManager
 
     static triggers = {
         simple repeatInterval: 5000l // execute job once in 5 seconds
@@ -36,10 +36,10 @@ class CheckNamesJob {
     def execute() {
         Name.withTransaction {
             List<Notification> notifications = Notification.list()
-            if (notifications) {
-                grailsCacheManager.getCache('apniblockcache')?.clear()
-                grailsCacheManager.getCache('apcblockcache')?.clear()
-            }
+//            if (notifications) {
+//                grailsCacheManager.getCache('apniblockcache')?.clear()
+//                grailsCacheManager.getCache('apcblockcache')?.clear()
+//            }
             notifications.each { Notification note ->
                 switch (note.message) {
                     case 'name updated':
