@@ -46,12 +46,12 @@ $(function () {
                     }
                 };
                 window.setTimeout(getName, delay);
-                delay = delay + 50;
+                delay = delay + 100;
             }
         )
         ;
     };
-    window.setTimeout(lazyLoad, 50);
+    window.setTimeout(lazyLoad, 100);
 
     $('.toggleNext').unbind('click').click(function () {
         toggleNext(this);
