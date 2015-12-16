@@ -209,6 +209,32 @@ grails.cache.config = {
         timeToLiveSeconds 600
     }
 
+    cache {
+        name 'apniblockcache'
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 120
+        timeToLiveSeconds 120
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 120
+        memoryStoreEvictionPolicy 'LRU'
+    }
+
+    cache {
+        name 'apcblockcache'
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 120
+        timeToLiveSeconds 120
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 120
+        memoryStoreEvictionPolicy 'LRU'
+    }
+
     defaultCache {
         maxElementsInMemory 10000
         eternal false
@@ -226,6 +252,8 @@ grails.cache.config = {
         eternal false
         overflowToDisk false
         maxElementsOnDisk 0
+        timeToLiveSeconds 120
+        memoryStoreEvictionPolicy 'LRU'
     }
 }
 

@@ -384,6 +384,10 @@ order by n.simpleName asc, n.fullName asc''',
         }
 
         suggestService.addSuggestionHandler('apni-search') { String subject, String query, Map params ->
+            if(!query) {
+                return []
+            }
+
             query = query.trim()
             log.debug "$query -> tokenized query ${regexTokenizeNameQueryString(query.toLowerCase())}"
             if (query.contains('\n')) {

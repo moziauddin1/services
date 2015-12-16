@@ -1,4 +1,4 @@
-<cache:block key="${name.id}">
+<cache:block key="${name.id}" cache="apcblockcache">
   <div class="apc name" id="${name.id}">
     <st:primaryInstance var="primaryInstance" name="${name}">
       <g:if test="${apcInstance}">

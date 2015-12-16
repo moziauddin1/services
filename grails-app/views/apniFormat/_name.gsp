@@ -1,4 +1,4 @@
-<cache:block key="${name.id}">
+<cache:block key="${name.id}" cache="apniblockcache">
 <div class="name" id="${name.id}">
   <family>
     <g:if test="${familyName}">
