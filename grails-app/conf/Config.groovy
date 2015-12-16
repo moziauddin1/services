@@ -206,8 +206,15 @@ log4j.main = {
 grails.cache.config = {
     cache {
         name 'linkcache'
-        timeToLiveSeconds 600
-    }
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 600
+        timeToLiveSeconds 3600
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 600
+        memoryStoreEvictionPolicy 'LRU'}
 
     cache {
         name 'apniblockcache'

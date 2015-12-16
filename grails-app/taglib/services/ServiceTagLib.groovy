@@ -81,10 +81,10 @@ class ServiceTagLib {
         if (target) {
             target = HibernateDomainUtils.initializeAndUnproxy(target)
             try {
-                def link = linkService.getPreferredLinkForObject(target)
+                String link = linkService.getPreferredLinkForObject(target)
                 if (link) {
-                    out << "<a href='${link.link}'>"
-                    out << body(link: link.link)
+                    out << "<a href='${link}'>"
+                    out << body(link: link)
                     out << "</a>"
                 } else {
                     out << body(link: '/')
@@ -199,9 +199,9 @@ class ServiceTagLib {
         if (obj.properties.containsKey('id')) {
             def target = HibernateDomainUtils.initializeAndUnproxy(obj)
             try {
-                def link = linkService.getPreferredLinkForObject(target)
+                String link = linkService.getPreferredLinkForObject(target)
                 if (link) {
-                    out << "<a href='${link.link}'>${obj}</a>"
+                    out << "<a href='${link}'>${obj}</a>"
                 } else {
                     out << "<strong>$obj</strong>"
                 }

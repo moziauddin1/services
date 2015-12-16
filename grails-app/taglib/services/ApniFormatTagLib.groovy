@@ -142,10 +142,10 @@ class ApniFormatTagLib {
 
             out << '<ul>'
             nodesInBranch.each { Node n ->
-                def link = linkService.getPreferredLinkForObject(n)
+                String link = linkService.getPreferredLinkForObject(n)
                 //todo put the above back in when issues with links and display are solved, see NSL-1413
                 if(link) {
-                    out << "<li><a href='${link.link}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                    out << "<li><a href='${link}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
                 }
                 else {
                     out << "<li>${n.name.nameElement} <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
