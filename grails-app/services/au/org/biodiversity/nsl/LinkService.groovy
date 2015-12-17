@@ -20,13 +20,11 @@ import grails.plugin.cache.Cacheable
 import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
 import org.grails.plugins.metrics.groovy.Timed
-import org.springframework.cache.Cache
 
 @Transactional
 class LinkService {
     def restCallService
     def grailsApplication
-    def grailsCacheManager
 
     @Timed()
     ArrayList getLinksForObject(target) {
@@ -77,28 +75,19 @@ class LinkService {
     }
 
     @Timed()
+    @Cacheable(value = 'linkcache', key = '#target.id')
     String getPreferredLinkForObject(target) {
         try {
-            String cacheName = grailsApplication.config.grails.linkservice.cacheName
-            Cache cache = grailsCacheManager.getCache(cacheName)
-            String preferredLink = cache.get(target.id.toString())
-            if(preferredLink) {
-                log.debug "link cache ($cacheName) hit"
-                return preferredLink
-            }
-
             String url = getLinkServiceUrl(target, 'preferredLink', true)
             if (url) {
                 RestResponse response = restCallService.nakedGet(url)
                 if (response.status == 200) {
-                    cache.put(target.id.toString(), response.json.link as String)
                     return response.json.link as String
                 }
                 if (response.status == 404) {
                     if (addTargetLink(target)) {
                         response = restCallService.nakedGet(url)
                         if (response.status == 200) {
-                            cache.put(target.id.toString(), response.json.link as String)
                             return response.json.link as String
                         }
                         log.error "Link not found for $target, but should be there."

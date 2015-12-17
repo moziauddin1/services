@@ -203,11 +203,9 @@ log4j.main = {
     debug 'grails.app'
 }
 
-grails.linkservice.cacheName = "linkcache${appVersion}"
-
 grails.cache.config = {
     cache {
-        name "linkcache${appVersion}"
+        name 'linkcache'
         maxElementsInMemory 10000
         eternal false
         timeToIdleSeconds 600
