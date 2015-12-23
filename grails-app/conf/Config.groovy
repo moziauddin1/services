@@ -203,6 +203,67 @@ log4j.main = {
     debug 'grails.app'
 }
 
+grails.cache.config = {
+    cache {
+        name 'linkcache'
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 600
+        timeToLiveSeconds 3600
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 600
+        memoryStoreEvictionPolicy 'LRU'}
+
+    //currently not used while we work out eviction policy
+//    cache {
+//        name 'apniblockcache'
+//        maxElementsInMemory 10000
+//        eternal false
+//        timeToIdleSeconds 120
+//        timeToLiveSeconds 120
+//        overflowToDisk true
+//        maxElementsOnDisk 10000000
+//        diskPersistent false
+//        diskExpiryThreadIntervalSeconds 120
+//        memoryStoreEvictionPolicy 'LRU'
+//    }
+//
+//    cache {
+//        name 'apcblockcache'
+//        maxElementsInMemory 10000
+//        eternal false
+//        timeToIdleSeconds 120
+//        timeToLiveSeconds 120
+//        overflowToDisk true
+//        maxElementsOnDisk 10000000
+//        diskPersistent false
+//        diskExpiryThreadIntervalSeconds 120
+//        memoryStoreEvictionPolicy 'LRU'
+//    }
+
+    defaultCache {
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 120
+        timeToLiveSeconds 120
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 120
+        memoryStoreEvictionPolicy 'LRU'
+    }
+
+    defaults {
+        maxElementsInMemory 10000
+        eternal false
+        overflowToDisk false
+        maxElementsOnDisk 0
+        timeToLiveSeconds 120
+        memoryStoreEvictionPolicy 'LRU'
+    }
+}
 
 grails.assets.minifyCss = false
 grails.assets.minifyJs = false

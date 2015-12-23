@@ -184,9 +184,9 @@ class JsonRendererService {
     }
 
     Map getPreferredLink(target) {
-        def link = linkService.getPreferredLinkForObject(target)
+        String link = linkService.getPreferredLinkForObject(target)
         if (link) {
-            ResourceLink resourceLink = new ResourceLink(1 as Integer, link.link as String, true)
+            ResourceLink resourceLink = new ResourceLink(1 as Integer, link, true)
             return [permalink: resourceLink]
         }
         return [permalink: []]

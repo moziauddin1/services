@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Name
 import grails.converters.JSON
+import grails.plugin.cache.Cacheable
 import org.grails.plugins.metrics.groovy.Timed
 
 /**

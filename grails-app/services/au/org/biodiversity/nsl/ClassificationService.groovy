@@ -33,7 +33,30 @@ class ClassificationService {
     def treeOperationsService
     def queryService
 
-    private RestBuilder rest = new RestBuilder()
+    private Namespace nameSpaceName
+    private String nameTreeName
+    private String classificationTree
+
+    private Namespace getNameSpace() {
+        if (!nameSpaceName) {
+            nameSpaceName = Namespace.findByName(grailsApplication.config.services.classification.namespace as String)
+        }
+        return nameSpaceName
+    }
+
+    private String getNameTreeName() {
+        if (!nameTreeName) {
+            nameTreeName = grailsApplication.config.services.classification.nameTree
+        }
+        return nameTreeName
+    }
+
+    private String getClassificationTreeName() {
+        if (!classificationTree) {
+            classificationTree = grailsApplication.config.services.classification.classificationTree
+        }
+        return classificationTree
+    }
 
     /**
      * Get the list of names in the path
@@ -42,21 +65,11 @@ class ClassificationService {
      */
     @Deprecated
     List<Name> getPath(Name name) {
-        getPath(name,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.nameTree as String)
-    }
-
-    @Deprecated
-    List<Name> getPath(Name name, String classification) {
-        log.warn 'deprecated'
-        return getPath(name, Namespace.findByName(grailsApplication.config.services.classification.namespace as String), classification)
+        getPath(name, getNameSpace(), getNameTreeName())
     }
 
     List<Name> getPath(Name name, Namespace namespace, String classification) {
-        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
-                namespace,
-                classification)
+        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(namespace, classification)
 
         if (arrangement) {
             List<Node> nodes = queryService.findCurrentNslName(arrangement, name)
@@ -74,43 +87,21 @@ class ClassificationService {
 
     @Deprecated
     Node isNameInAPC(Name name) {
-        isNameInClassification(name,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.classificationTree as String)
+        isNameInClassification(name, getNameSpace(), getClassificationTreeName())
     }
 
     @Deprecated
     Node isNameInAPNI(Name name) {
-        isNameInClassification(name,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.nameTree as String)
+        isNameInClassification(name, getNameSpace(), getNameTreeName())
     }
 
     @Deprecated
     Node isInstanceInAPC(Instance instance) {
-        isInstanceInClassification(instance,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.classificationTree as String)
-    }
-
-    @Deprecated
-    Node isInstanceInAPNI(Instance instance) {
-        isInstanceInClassification(instance,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.nameTree as String)
-    }
-
-
-    @Deprecated
-    Node isNameInClassification(Name name, String classification) {
-        log.warn('deprecated')
-        return isNameInClassification(name, Namespace.findByName(grailsApplication.config.services.classification.namespace as String), classification)
+        isInstanceInClassification(instance, getNameSpace(), getClassificationTreeName())
     }
 
     Node isNameInClassification(Name name, Namespace namespace, String classification) {
-        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
-                namespace,
-                classification)
+        Arrangement arrangement = Arrangement.findByNamespaceAndLabel(namespace, classification)
         arrangement ? isNameInClassification(name, arrangement) : null
     }
 
@@ -121,14 +112,6 @@ class ClassificationService {
         } else {
             return null
         }
-    }
-
-    @Deprecated
-    Node isInstanceInClassification(Instance instance, String classification) {
-        return isInstanceInClassification(
-                instance,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                classification)
     }
 
     Node isInstanceInClassification(Instance instance, Namespace namespace, String classification) {
@@ -147,29 +130,7 @@ class ClassificationService {
 
     @Deprecated
     Name getAPNIFamilyName(Name name) {
-        getFamilyName(
-                name,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.nameTree as String
-        )
-    }
-
-    @Deprecated
-    Name getAPCFamilyName(Name name) {
-        getFamilyName(
-                name,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.classificationTree as String
-        )
-    }
-
-    @Deprecated
-    Name getFamilyName(Name name, String tree) {
-        return getFamilyName(
-                name,
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                tree
-        )
+        getFamilyName(name, getNameSpace(), getNameTreeName())
     }
 
     Name getFamilyName(Name name, Namespace namespace, String tree) {
@@ -182,7 +143,7 @@ class ClassificationService {
 
     @Deprecated
     Instance getAcceptedInstance(Name name, String tree, String nodeTypeId = 'ApcConcept') {
-      return getAcceptedInstance(name, Namespace.findByName(grailsApplication.config.services.classification.namespace as String), tree, nodeTypeId)
+        return getAcceptedInstance(name, getNameSpace(), tree, nodeTypeId)
     }
 
     Instance getAcceptedInstance(Name name, Namespace namespace, String tree, String nodeTypeId) {
@@ -206,11 +167,7 @@ from Instance i,
 
     @Deprecated
     Node placeNameInAPNI(Name supername, Name name) {
-        return placeNameInAPNI(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.nameTree as String,
-                supername, name
-        )
+        return placeNameInAPNI(getNameSpace(), getNameTreeName(), supername, name)
     }
 
     Node placeNameInAPNI(Namespace namespace, String nameTreeLabel, Name supername, Name name) {

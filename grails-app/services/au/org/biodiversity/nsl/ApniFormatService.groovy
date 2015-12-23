@@ -24,7 +24,7 @@ class ApniFormatService {
     def classificationService
 
     Map getNameModel(Name name) {
-        Name familyName = classificationService.getAPNIFamilyName(name)
+        Name familyName = RankUtils.getParentOfRank(name, 'Familia')
         Node apc = classificationService.isNameInAPC(name)
         Map model = [name: name, apc: apc, familyName: familyName]
         model.putAll(nameReferenceInstanceMap(name) as Map)

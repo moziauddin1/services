@@ -384,6 +384,10 @@ order by n.simpleName asc, n.fullName asc''',
         }
 
         suggestService.addSuggestionHandler('apni-search') { String subject, String query, Map params ->
+            if(!query) {
+                return []
+            }
+
             query = query.trim()
             log.debug "$query -> tokenized query ${regexTokenizeNameQueryString(query.toLowerCase())}"
             if (query.contains('\n')) {
@@ -430,7 +434,7 @@ order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQu
             List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
             return Name.executeQuery('''select n from Name n where (regex(lower(n.fullName), :query) = true or regex(lower(n.simpleName), :query) = true) and n.instances.size > 0 and n.nameStatus.name in (:ns) order by n.simpleName asc''',
                     [query: regexTokenizeNameQueryString(query.toLowerCase()), ns: status], [max: 15])
-                       .collect { name -> [name: name.fullName, link: linkService.getPreferredLinkForObject(name)?.link] }
+                       .collect { name -> [name: name.fullName, link: linkService.getPreferredLinkForObject(name)] }
         }
 
         suggestService.addSuggestionHandler('author') { String query ->

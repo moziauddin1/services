@@ -27,6 +27,7 @@ class CheckNamesJob {
 
     def concurrent = false
     def sessionRequired = true
+//    def grailsCacheManager
 
     static triggers = {
         simple repeatInterval: 5000l // execute job once in 5 seconds
@@ -35,6 +36,10 @@ class CheckNamesJob {
     def execute() {
         Name.withTransaction {
             List<Notification> notifications = Notification.list()
+//            if (notifications) {
+//                grailsCacheManager.getCache('apniblockcache')?.clear()
+//                grailsCacheManager.getCache('apcblockcache')?.clear()
+//            }
             notifications.each { Notification note ->
                 switch (note.message) {
                     case 'name updated':
@@ -69,7 +74,13 @@ class CheckNamesJob {
                         break
                     case 'author created':
                     case 'author deleted':
-                            //NSL-1032 ignore for now, deleted authors can't have names
+                        //NSL-1032 ignore for now, deleted authors can't have names
+                        break
+                    case 'reference updated':
+                        log.debug "Reference $note.objectId updated"
+                        break
+                    case 'reference created':
+                    case 'reference deleted':
                         break
                     default:
                         //probably caused by previous error. This note will be deleted

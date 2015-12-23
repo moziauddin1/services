@@ -46,7 +46,7 @@ $(function () {
                     }
                 };
                 window.setTimeout(getName, delay);
-                delay = delay + 200;
+                delay = delay + 100;
             }
         )
         ;

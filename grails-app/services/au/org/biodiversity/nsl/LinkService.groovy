@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl
 
+import grails.plugin.cache.Cacheable
 import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
 import org.grails.plugins.metrics.groovy.Timed
@@ -74,30 +75,34 @@ class LinkService {
     }
 
     @Timed()
-    Map getPreferredLinkForObject(target) {
+    @Cacheable(value = 'linkcache', key = '#target.id')
+    String getPreferredLinkForObject(target) {
         try {
             String url = getLinkServiceUrl(target, 'preferredLink', true)
             if (url) {
                 RestResponse response = restCallService.nakedGet(url)
                 if (response.status == 200) {
-                    return response.json as Map
+                    return response.json.link as String
                 }
                 if (response.status == 404) {
                     if (addTargetLink(target)) {
                         response = restCallService.nakedGet(url)
-                        if (response.status != 200) {
-                            log.error "Link not found for $target, but should be there."
+                        if (response.status == 200) {
+                            return response.json.link as String
                         }
+                        log.error "Link not found for $target, but should be there."
+                        return null
                     } else {
                         log.error "Link not found for $target, and couldn't be added."
+                        return null
                     }
                 }
-                log.debug "Couldn't get links, response headers are $response.headers\n response body is: $response.body"
+                log.debug "Couldn't get links, status $response.status, response headers are $response.headers\n response body is: $response.body"
             }
         } catch (Exception e) {
             log.error "Error $e.message getting preferred link for $target"
         }
-        return [:]
+        return null
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {
@@ -266,5 +271,4 @@ class LinkService {
         }
         return errors
     }
-
 }

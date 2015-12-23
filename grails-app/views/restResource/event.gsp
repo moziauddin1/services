@@ -17,17 +17,6 @@
         <g:if test="${event.note}"><dt>Note</dt><dd>${event.note}</dd></g:if>
     </dl>
 
-    <tree:getEventInfo event="${event}">
-        <g:if test="${eventInfo.pairs}">
-            <table>
-                <tr><td><h3>Old node</h3></td><td><h3>New node</h3></td></tr>
-                <g:each in="${eventInfo.pairs}">
-                    <tr><td><g:if test="${it.prev}"><g:render template="node" model="${[node: it.prev]}"/></g:if></td><td><g:if test="${it.next}"><g:render template="node" model="${[node: it.next]}"/></g:if></td></tr>
-                </g:each>
-            </table>
-        </g:if>
-    </tree:getEventInfo>
-
     <g:render template="links"/>
 
 </div>
