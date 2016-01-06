@@ -70,85 +70,88 @@
       </g:if>
 
       <st:primaryInstance name="${name}" var="instance">
-        <g:if test="${!instance}">
+        <g:if test="${!instance && references}">
           <g:set var="instance" value="${instancesByRef[references[0]][0]}"/>
         </g:if>
 
-        <reference data-referenceId="${instance.reference.id}">
-          <ref-citation>
-            %{--don't reformat the citationHtml line--}%
-            <st:preferedLink target="${instance}">${raw(instance.reference?.citationHtml)}</st:preferedLink>:
-          </ref-citation>
+        <g:if test="${instance}">
+          <reference data-referenceId="${instance.reference.id}">
+            <ref-citation>
+              %{--don't reformat the citationHtml line--}%
+              <st:preferedLink target="${instance}">${raw(instance.reference?.citationHtml)}</st:preferedLink>:
+            </ref-citation>
 
-          <page><af:page instance="${instance}"/></page>
+            <page><af:page instance="${instance}"/></page>
 
-          <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
-          <span title="Reference link">
-            <st:preferedLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferedLink>
-          </span>
-          <span class="vertbar">
-            <a href="${g.createLink(controller: 'search', params: [publication: instance.reference?.citation, search: true, advanced: true, display: 'apni'])}"
-               title="Search for names in this reference.">
-              <i class="fa fa-search"></i></a>
-          </span>
-          <instance data-instanceId="${instance.id}">
+            <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
+            <span title="Reference link">
+              <st:preferedLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferedLink>
+            </span>
+            <span class="vertbar">
+              <a href="${g.createLink(controller: 'search', params: [publication: instance.reference?.citation, search: true, advanced: true, display: 'apni'])}"
+                 title="Search for names in this reference.">
+                <i class="fa fa-search"></i></a>
+            </span>
+            <instance data-instanceId="${instance.id}">
 
-            <ul class="instance-notes list-unstyled">
-              <af:getTypeNotes instance="${instance}" var="instanceNote">
-                <li>
-                  <instance-note-key
-                      class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
-                  <instance-note><af:replaceXics text="${instanceNote.value}"/></instance-note>
-                </li>
-              </af:getTypeNotes>
-            </ul>
+              <ul class="instance-notes list-unstyled">
+                <af:getTypeNotes instance="${instance}" var="instanceNote">
+                  <li>
+                    <instance-note-key
+                        class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
+                    <instance-note><af:replaceXics text="${instanceNote.value}"/></instance-note>
+                  </li>
+                </af:getTypeNotes>
+              </ul>
 
-            <g:if test="${instance.instanceType.synonym || instance.instanceType.unsourced}">
-              <g:render template="/apniFormat/synonymOf" model="[instance: instance]"/>
-            </g:if>
+              <g:if test="${instance.instanceType.synonym || instance.instanceType.unsourced}">
+                <g:render template="/apniFormat/synonymOf" model="[instance: instance]"/>
+              </g:if>
 
-            <g:if test="${instance.cites}">
-              <has-synonym>
-                Cites <synonym-type
-                  class="${instance.cites.instanceType.name}">${instance.cites.instanceType.name}:</synonym-type>
-                <st:preferedLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferedLink>
-                <name-status
-                    class="${instance.cites.name.nameStatus.name}">${instance.cites.name.nameStatus.name}</name-status>
+              <g:if test="${instance.cites}">
+                <has-synonym>
+                  Cites <synonym-type
+                    class="${instance.cites.instanceType.name}">${instance.cites.instanceType.name}:</synonym-type>
+                  <st:preferedLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferedLink>
+                  <name-status
+                      class="${instance.cites.name.nameStatus.name}">${instance.cites.name.nameStatus.name}</name-status>
 
-                <af:apniLink name="${instance.cites.name}"/>
+                  <af:apniLink name="${instance.cites.name}"/>
 
-              </has-synonym>
-            </g:if>
+                </has-synonym>
+              </g:if>
 
-            <g:if test="${instance.instancesForCitedBy}">
-              <g:render template="/apniFormat/hasSynonym"
-                        model="[instances: instance.instancesForCitedBy.findAll { it.instanceType.nomenclatural }]"/>
-            </g:if>
+              <g:if test="${instance.instancesForCitedBy}">
+                <g:render template="/apniFormat/hasSynonym"
+                          model="[instances: instance.instancesForCitedBy.findAll { it.instanceType.nomenclatural }]"/>
+              </g:if>
 
 
-            <ul class="instance-notes list-unstyled">
-              <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote">
-                <li>
-                  <instance-note-key
-                      class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
-                  <instance-note><af:replaceXics text="${instanceNote.value}"/></instance-note>
-                </li>
-              </af:getDisplayableNonTypeNotes>
-            </ul>
+              <ul class="instance-notes list-unstyled">
+                <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote">
+                  <li>
+                    <instance-note-key
+                        class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
+                    <instance-note><af:replaceXics text="${instanceNote.value}"/></instance-note>
+                  </li>
+                </af:getDisplayableNonTypeNotes>
+              </ul>
 
-            <g:if test="${instance.instancesForCites}">
-              <h4>Nomenclatural links</h4>
-              <af:sortedInstances instances="${instance.instancesForCites.findAll { it.instanceType.nomenclatural }}"
-                                  var="synonym">
-                <g:render template="/apniFormat/synonymOf" model="[instance: synonym]"/>
-              </af:sortedInstances>
+              <g:if test="${instance.instancesForCites}">
+                <h4>Nomenclatural links</h4>
+                <af:sortedInstances instances="${instance.instancesForCites.findAll { it.instanceType.nomenclatural }}"
+                                    var="synonym">
+                  <g:render template="/apniFormat/synonymOf" model="[instance: synonym]"/>
+                </af:sortedInstances>
 
-              <g:render template="/apniFormat/missapplication"
-                        model="[instances: instance.instancesForCites.findAll { it.instanceType.misapplied }]"/>
-            </g:if>
+                <g:render template="/apniFormat/missapplication"
+                          model="[instances: instance.instancesForCites.findAll { it.instanceType.misapplied }]"/>
+              </g:if>
 
-          </instance>
-        </reference>
+            </instance>
+          </reference>
+        </g:if>
+
       </st:primaryInstance>
     </div>
 
