@@ -78,11 +78,15 @@ class RankUtils {
     }
 
     public static Name getParentOfRank(Name name, String rank, String treeName) {
+        if(name.parent?.nameRank?.name == rank) {
+            return name.parent
+        }
         NameTreePath nameTreePath = NameTreePathService.findCurrentNameTreePath(name, treeName)
         if (nameTreePath) {
             List<Name> namesInBranch = nameTreePath.namesInBranch()
             return namesInBranch.reverse().find { (it && it.nameRank.name == rank) }
         }
+        return null
     }
 
     public static previousRank(NameRank rank) {

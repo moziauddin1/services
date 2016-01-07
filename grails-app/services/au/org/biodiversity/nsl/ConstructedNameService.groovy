@@ -249,9 +249,8 @@ class ConstructedNameService {
 
             //NSL-856 cultivar hybrid display genus + epithet
             if (name.nameType.hybrid && name.nameType.cultivar) {
-                if (name.parent == parent) {
-                    return RankUtils.getParentOfRank(name, 'Genus')
-                }
+                //NSL-1546 removed check for name parent == parent as that looks up tree for a name not in the tree yet
+                // This isn't necessary as getParentOfRank will always return the same, correct result.
                 return RankUtils.getParentOfRank(name.parent, 'Genus')
             }
             //NSL-927 cultivar display to lowest parent rank
