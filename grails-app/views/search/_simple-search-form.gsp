@@ -61,7 +61,7 @@
       <g:render template="/search/submit"/>
     </div>
 
-    <div class="col-lg-2 col-md-2 col-sm-0 col-xs-0">
+    <div class="col-lg-2 col-md-2 col-sm-1 col-xs-1">
       &nbsp;
     </div>
   </div>
