@@ -32,6 +32,7 @@ class JsonRendererService {
     def instanceService
 
     def registerObjectMashallers() {
+        JSON.registerObjectMarshaller(Namespace) { Namespace namespace -> getBriefNamespace(namespace) }
         JSON.registerObjectMarshaller(Name) { Name name -> marshallName(name) }
         JSON.registerObjectMarshaller(Instance) { Instance instance -> marshallInstance(instance) }
         JSON.registerObjectMarshaller(Reference) { Reference reference -> marshallReference(reference) }
@@ -44,6 +45,7 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Event) { Event event -> marshallEvent(event) }
 
         XML.registerObjectMarshaller(new XmlMapMarshaller())
+        XML.registerObjectMarshaller(Namespace) { Namespace namespace, XML xml -> xml.convertAnother(getBriefNamespace(namespace)) }
         XML.registerObjectMarshaller(Name) { Name name, XML xml -> xml.convertAnother(marshallName(name)) }
         XML.registerObjectMarshaller(Instance) { Instance instance, XML xml -> xml.convertAnother(marshallInstance(instance)) }
         XML.registerObjectMarshaller(Reference) { Reference reference, XML xml -> xml.convertAnother(marshallReference(reference)) }
@@ -61,6 +63,14 @@ class JsonRendererService {
         XML.registerObjectMarshaller(Link) { Link link, XML xml -> xml.convertAnother(marshallLink(link)) }
         XML.registerObjectMarshaller(Arrangement) { Arrangement arrangement, XML xml -> xml.convertAnother(marshallArrangement(arrangement)) }
         XML.registerObjectMarshaller(Event) { Event event, XML xml -> xml.convertAnother(marshallEvent(event)) }
+    }
+
+    Map getBriefNamespace(Namespace namespace) {
+        [
+                class : namespace?.class?.name,
+                name: namespace?.name,
+                descriptionHtml: namespace?.descriptionHtml
+        ]
     }
 
     Map getBriefName(Name name) {
@@ -359,7 +369,8 @@ class JsonRendererService {
                 subNode         : brief(link.subnode, [id: link.subnodeId]),
                 linkSeq         : link.linkSeq,
                 versioningMethod: link.versioningMethod,
-                isSynthetic     : link.synthetic
+                isSynthetic     : link.synthetic,
+                namespace       : getBriefNamespace(link.supernode.root.namespace),
         ]);
 
         return data;
@@ -379,7 +390,8 @@ class JsonRendererService {
                 isCurrent  : node.checkedInAt && !node.replacedAt,
                 isDraft    : (node.checkedInAt == null),
                 isReplaced : (node.replacedAt != null),
-                isSynthetic: node.synthetic
+                isSynthetic: node.synthetic,
+                namespace  : getBriefNamespace(node.root.namespace),
         ]
 
         switch (node.internalType) {
@@ -417,15 +429,16 @@ class JsonRendererService {
                 description    : arrangement.description,
                 synthetic      : arrangement.synthetic == 'Y' ? true : arrangement.synthetic == 'N' ? false : null,
                 node           : brief(arrangement.node, [:]),
+                namespace      : getBriefNamespace(arrangement.namespace),
         ];
         return data;
     }
 
     Map marshallEvent(Event event) {
         Map data = brief event, [
-                timeStamp: event.timeStamp,
-                note     : event.note
-
+                timeStamp : event.timeStamp,
+                note      : event.note,
+                namespace : getBriefNamespace(event.namespace),
         ];
         return data;
     }
