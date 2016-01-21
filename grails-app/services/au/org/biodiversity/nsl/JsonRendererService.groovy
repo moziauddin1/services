@@ -363,15 +363,53 @@ class JsonRendererService {
     }
 
     Map marshallLink(Link link) {
+        // links do not have mapper ids in and of themselves.
+        // so rather than use brief(), this gets done by hand
+
+        def data
+        link = initializeAndUnproxy(link)
+
+        if(link.subnode.internalType == NodeInternalType.V) {
+            data = getBriefLiteralLinkNoSupernode(link)
+        }
+        else {
+            data = getBriefLinkNoSupernode(link)
+        }
+
+        data << [
+            superNode       : brief(link.supernode, [id: link.supernodeId]),
+            namespace       : getBriefNamespace(link.supernode.root.namespace),
+        ]
+
+        return data;
+    }
+
+    Map getBriefLinkNoSupernode(Link link) {
+        // links do not have mapper ids in and of themselves.
+        // so rather than use brief(), this gets done by hand
         Map data = brief(link, [
+                class           : link.class.name,
                 typeUri         : getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
-                superNode       : brief(link.supernode, [id: link.supernodeId]),
                 subNode         : brief(link.subnode, [id: link.subnodeId]),
                 linkSeq         : link.linkSeq,
                 versioningMethod: link.versioningMethod,
                 isSynthetic     : link.synthetic,
-                namespace       : getBriefNamespace(link.supernode.root.namespace),
         ]);
+
+        return data;
+    }
+
+    Map getBriefLiteralLinkNoSupernode(Link link) {
+        // links do not have mapper ids in and of themselves.
+        // so rather than use brief(), this gets done by hand
+        Map data = [
+                class           : link.class.name,
+                linkTypeUri     : getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
+                linkSeq         : link.linkSeq,
+                valueType       : getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
+                valueUri        : DomainUtils.hasResource(link.subnode) ? getBriefTreeUri(DomainUtils.getResourceUri(link.subnode)) : null,
+                value           : DomainUtils.hasResource(link.subnode) ? null : link.subnode.literal
+        ]
 
         return data;
     }
@@ -392,9 +430,13 @@ class JsonRendererService {
                 isReplaced : (node.replacedAt != null),
                 isSynthetic: node.synthetic,
                 namespace  : getBriefNamespace(node.root.namespace),
+
                 // a node's sublinks are part-of the node itself, so the JSON should provide them
                 // a node's supernodes are not part-of the node. we provide separate 'get placements of node' services
-                subnodes  : node.subLink.sort(),
+                subnodes   : node.subLink.sort().findAll { it.subnode.internalType != NodeInternalType.V } .collect { getBriefLinkNoSupernode(it) },
+
+                // a node's literal values are also part-of the node itself
+                values     : node.subLink.sort().findAll { it.subnode.internalType == NodeInternalType.V } .collect { getBriefLiteralLinkNoSupernode(it) },
         ]
 
         switch (node.internalType) {
@@ -407,11 +449,13 @@ class JsonRendererService {
                 if (DomainUtils.hasTaxon(node)) data.taxonUri = getBriefTreeUri(DomainUtils.getTaxonUri(node));
                 if (node.instance) data.instance = node.instance;
                 if (node.name) data.name = node.name;
-        // fall through
+            // fall through
             case NodeInternalType.D:
                 if (DomainUtils.hasResource(node)) data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node));
                 break;
 
+            // this should never happen. Value nodes are not directly used by anything, they appear as values on the
+            // supernode. However, we will handle the case here.
             case NodeInternalType.V:
                 if (DomainUtils.hasResource(node)) {
                     data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node))
