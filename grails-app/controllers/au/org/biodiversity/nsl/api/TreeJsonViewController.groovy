@@ -14,34 +14,18 @@ class TreeJsonViewController {
     GrailsApplication grailsApplication
     TreeViewService treeViewService
     JsonRendererService jsonRendererService
+    LinkService linkService
 
     def test() {
-        def result =  [ ok: true, content: [msg: 'TreeJsonEditController'], messages: [] ]
-
-        result << sessionData()
+        def result =  'TreeJsonEditController'
 
         render result as JSON
     }
 
     def listClassifications() {
-        def result = [
-            ok: true,
-            content: Arrangement.findAll { arrangementType == ArrangementType.P } .sort { Arrangement a, Arrangement b -> a.label <=> b.label },
-            messages : [],
-        ]
-
-        result << sessionData()
-
+        def result = Arrangement.findAll { arrangementType == ArrangementType.P }
+                .sort { Arrangement a, Arrangement b -> a.label <=> b.label }
+                .collect { linkService.getPreferredLinkForObject(it)}
         render result as JSON
-    }
-
-    def sessionData() {
-        return [
-            session: [
-                authenticated: SecurityUtils.subject.isAuthenticated(),
-                remembered: SecurityUtils.subject.isRemembered(),
-                principal: SecurityUtils.subject?.getPrincipal(),
-            ]
-        ]
     }
 }

@@ -392,6 +392,9 @@ class JsonRendererService {
                 isReplaced : (node.replacedAt != null),
                 isSynthetic: node.synthetic,
                 namespace  : getBriefNamespace(node.root.namespace),
+                // a node's sublinks are part-of the node itself, so the JSON should provide them
+                // a node's supernodes are not part-of the node. we provide separate 'get placements of node' services
+                subnodes  : node.subLink.sort(),
         ]
 
         switch (node.internalType) {
