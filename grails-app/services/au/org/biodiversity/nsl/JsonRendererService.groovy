@@ -433,7 +433,9 @@ class JsonRendererService {
 
                 // a node's sublinks are part-of the node itself, so the JSON should provide them
                 // a node's supernodes are not part-of the node. we provide separate 'get placements of node' services
-                subnodes   : node.subLink.sort().findAll { it.subnode.internalType != NodeInternalType.V } .collect { getBriefLinkNoSupernode(it) },
+                subnodes   : node.subLink.sort { Link a, Link b ->
+
+                }.findAll { it.subnode.internalType != NodeInternalType.V } .collect { getBriefLinkNoSupernode(it) },
 
                 // a node's literal values are also part-of the node itself
                 values     : node.subLink.sort().findAll { it.subnode.internalType == NodeInternalType.V } .collect { getBriefLiteralLinkNoSupernode(it) },
@@ -447,8 +449,8 @@ class JsonRendererService {
             case NodeInternalType.T:
                 if (DomainUtils.hasName(node)) data.nameUri = getBriefTreeUri(DomainUtils.getNameUri(node));
                 if (DomainUtils.hasTaxon(node)) data.taxonUri = getBriefTreeUri(DomainUtils.getTaxonUri(node));
-                if (node.instance) data.instance = node.instance;
-                if (node.name) data.name = node.name;
+                if (node.instance) data.instance = getBriefInstance(node.instance);
+                if (node.name) data.name = getBriefName(node.name);
             // fall through
             case NodeInternalType.D:
                 if (DomainUtils.hasResource(node)) data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node));
