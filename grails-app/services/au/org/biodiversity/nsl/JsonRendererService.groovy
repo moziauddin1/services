@@ -433,8 +433,17 @@ class JsonRendererService {
 
                 // a node's sublinks are part-of the node itself, so the JSON should provide them
                 // a node's supernodes are not part-of the node. we provide separate 'get placements of node' services
-                subnodes   : node.subLink.sort { Link a, Link b ->
 
+                subnodes   : node.subLink.sort { Link a, Link b ->
+                    if(a.subnode.internalType != b.subnode.internalType) {
+                        return a.subnode.internalType <=> b.subnode.internalType;
+                    }
+                    else if(a.subnode.internalType == NodeInternalType.T) {
+                        return (a.subnode.name?.fullName ?: '') <=> (b.subnode.name?.fullName ?: '');
+                    }
+                    else {
+                        return a <=> b;
+                    }
                 }.findAll { it.subnode.internalType != NodeInternalType.V } .collect { getBriefLinkNoSupernode(it) },
 
                 // a node's literal values are also part-of the node itself
