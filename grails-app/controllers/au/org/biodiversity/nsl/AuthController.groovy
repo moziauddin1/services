@@ -94,7 +94,11 @@ class AuthController {
 
             JsonToken jsonToken = new JsonToken( SecurityUtils.subject)
 
-            def result = [ success: true, principal: SecurityUtils.subject?.principal, jwt: jsonToken.getCredentials() ]
+            def result = [
+                    success    : true,
+                    principal  : SecurityUtils.subject?.principal,
+                    jwt        : jsonToken.getCredentials()
+            ]
             render result as JSON
         }
         catch (AuthenticationException ex) {
