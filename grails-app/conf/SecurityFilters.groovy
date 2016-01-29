@@ -20,6 +20,7 @@
  */
 
 import au.org.biodiversity.nsl.ApiKeyToken
+import au.org.biodiversity.nsl.JsonToken
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
 import org.codehaus.groovy.grails.web.util.WebUtils
@@ -62,6 +63,26 @@ class SecurityFilters {
                         return false
                     }
                 }
+
+                // if a JSON token is set then log in with that
+                if(request.getHeader('nsl-jwt')) {
+                    try {
+                        response.setHeader('Access-Control-Allow-Origin', '*')
+                        response.addHeader('Access-Control-Allow-Header', 'nsl-jwt')
+
+                        String jwt = request.getHeader('nsl-jwt')
+                        JsonToken jsonToken = new JsonToken(jwt)
+                        Long start = System.currentTimeMillis()
+                        SecurityUtils.subject.login(jsonToken)
+                        log.debug "json token processing took ${System.currentTimeMillis() - start}ms"
+                        return true
+                    } catch (AuthenticationException e) {
+                        log.info e.message
+                        redirect(controller: 'auth', action: 'unauthorized', params: [format: params.format])
+                        return false
+                    }
+                }
+
             }
         }
 

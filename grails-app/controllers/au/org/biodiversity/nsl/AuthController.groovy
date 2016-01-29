@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl
 
+import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
@@ -85,6 +86,35 @@ class AuthController {
             redirect(action: "login", params: m)
         }
     }
+
+    def signInJson = {
+        def authToken = new UsernamePasswordToken(params.username, params.password as String)
+        try {
+            SecurityUtils.subject.login(authToken)
+
+            JsonToken jsonToken = new JsonToken( SecurityUtils.subject)
+
+            def result = [ success: true, principal: SecurityUtils.subject?.principal, jwt: jsonToken.getCredentials() ]
+            render result as JSON
+        }
+        catch (AuthenticationException ex) {
+            response.setStatus(401)
+            def result = [ success: false, principal: null ]
+            render result as JSON
+        }
+    }
+
+    def signOutJson = {
+        SecurityUtils.subject?.logout()
+        def result = [ success: true, principal: null ] as JSON
+        render result
+    }
+
+    def getInfoJson = {
+        def result = [ success: true, principal: SecurityUtils.subject?.principal, jwt: SecurityUtils.subject ? new JsonToken( SecurityUtils.subject).getCredentials() : null ] as JSON
+        render result
+    }
+
 
     def signOut = {
         // Log the user out of the application.
