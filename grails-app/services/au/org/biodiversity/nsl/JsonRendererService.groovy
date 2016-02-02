@@ -485,6 +485,7 @@ class JsonRendererService {
                 label          : arrangement.label,
                 title          : arrangement.title,
                 description    : arrangement.description,
+                owner          : arrangement.owner,
                 synthetic      : arrangement.synthetic == 'Y' ? true : arrangement.synthetic == 'N' ? false : null,
                 node           : brief(arrangement.node, [:]),
                 namespace      : getBriefNamespace(arrangement.namespace),
