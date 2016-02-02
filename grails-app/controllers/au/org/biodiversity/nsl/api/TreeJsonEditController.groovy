@@ -36,7 +36,7 @@ class TreeJsonEditController {
             msg += param.errors.fieldErrors.collect { FieldError it -> [ msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)]}
 
             def result = [
-                    success: true,
+                    success: false,
                     msg    : msg,
                     errors    : param.errors,
             ];
