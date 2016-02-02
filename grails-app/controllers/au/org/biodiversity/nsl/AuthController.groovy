@@ -115,7 +115,7 @@ class AuthController {
     }
 
     def getInfoJson = {
-        def result = [ success: true, principal: SecurityUtils.subject?.principal, jwt: SecurityUtils.subject ? new JsonToken( SecurityUtils.subject).getCredentials() : null ] as JSON
+        def result = [ success: true, principal: SecurityUtils.subject?.principal, jwt: SecurityUtils.subject.principal ? new JsonToken( SecurityUtils.subject).getCredentials() : null ] as JSON
         render result
     }
 
