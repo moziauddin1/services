@@ -28,4 +28,9 @@ class TreeJsonViewController {
                 .collect { linkService.getPreferredLinkForObject(it)}
         render result as JSON
     }
+
+    def listNamespaces() {
+        def result = Namespace.findAll() .sort { Namespace a, Namespace b -> a.name <=> b.name }
+        render result as JSON
+    }
 }
