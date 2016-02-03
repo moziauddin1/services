@@ -108,6 +108,18 @@ class LinkService {
         return null
     }
 
+    /**
+     * Ask the mapper for the single mapper id (triple) for a URI, and recover the object. Returns null
+     * if the uri is not known to the mapper, if there are multiple ids for the uri, or if the objectType
+     * is unknown, or if the namespaces of the mapper triple and the object do not match.
+     *
+     * The namespace check helps ward against the situation where a shard service is given a uri belonging
+     * to some other shard, and there is an idNumber collision.
+     *
+     * @param uri a uri known to the mapper
+     * @return The Mapper JSON. This includes nameSpace, objectType, and idNumber.
+     */
+
     /*
      This method is not marked cacheable because it returns hibernate objects. It calls getMapperIdForLink()
      which *is* cacheable. It might be possible to make this method cacheable depending on how the cache plugin
@@ -149,6 +161,9 @@ class LinkService {
             // the node namespace is handled a little differently
             ns = ((Node)obj)?.root?.namespace
         }
+        else {
+            return null
+        }
 
         if(!obj) {
             log.warn "Object for $id not found"
@@ -165,6 +180,12 @@ class LinkService {
         return obj
     }
 
+    /**
+     * Ask the mapper for the single mapper id (triple) for a URI. If the id matches multiple triples,
+     * this method returns null. This method also returns null if the uri is unknown to the mapper.
+     * @param uri a uri known to the mapper
+     * @return The Mapper JSON. This includes nameSpace, objectType, and idNumber.
+     */
     /* todo: add @Cacheable annotation.
      * In order to make this work properly, other methods here that as the mapper to create and delete ids need to
      * update the cache
