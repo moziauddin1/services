@@ -1,6 +1,8 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Arrangement
+import au.org.biodiversity.nsl.ArrangementType
+import au.org.biodiversity.nsl.LinkService
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
 import grails.converters.JSON
@@ -23,6 +25,7 @@ class TreeJsonEditController {
     GrailsApplication grailsApplication
     UserWorkspaceManagerService userWorkspaceManagerService
     MessageSource messageSource
+    LinkService linkService
 
     def test() {
         def msg = [msg: 'TreeJsonEditController']
@@ -31,19 +34,7 @@ class TreeJsonEditController {
 
 
     def createWorkspace(CreateWorkspaceParam param) {
-        if (!param.validate()) {
-            def msg = [];
-
-            msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
-            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
-
-            def result = [
-                    success: false,
-                    msg    : msg,
-                    errors : param.errors,
-            ];
-            return render(result as JSON)
-        }
+        if (!param.validate()) return renderValidationErrors(param)
 
         String title = param.title ?: "${SecurityUtils.subject.principal} ${new Date()}"
         Namespace ns = Namespace.findByName(param.namespace)
@@ -57,6 +48,7 @@ class TreeJsonEditController {
                     success: false,
                     msg    : msg
             ];
+            response.status = 400
             return render(result as JSON)
         }
 
@@ -72,7 +64,68 @@ class TreeJsonEditController {
                 uri    : null
         ];
 
-        render result as JSON
+        response.status = 201
+        return render(result as JSON)
+    }
+
+    def deleteWorkspace(DeleteWorkspaceParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        Object o = linkService.getObjectForLink(param.uri)
+        if (o == null) {
+            def result = [
+                    success: false,
+                    msg    : [
+                            [msg: 'Not Found', body: "Workspace \"${param.uri}\" not found", status: 'warning'],
+                    ]
+            ]
+            response.status = 404
+            return render(result as JSON)
+        }
+        if (!(o instanceof Arrangement) || ((Arrangement)o).arrangementType != ArrangementType.U) {
+            def result = [
+                    success: false,
+                    msg    : [
+                            [msg: 'Not Found', body: "\"${param.uri}\" is not a workspace", status: 'warning'],
+                    ]
+            ]
+            response.status = 404
+            return render(result as JSON)
+        }
+
+        Arrangement a = (Arrangement) o;
+
+        if(o.owner != SecurityUtils.subject.principal) {
+            def result = [
+                    success: true,
+                    msg    : [
+                            [msg: 'Authorisation', body: "You do not have permission to delete workspace ${a.title}", status: 'warning'],
+                    ]
+            ]
+            response.status = 403
+            return render(result as JSON)
+        }
+
+        userWorkspaceManagerService.deleteWorkspace(a);
+
+        response.status = 200
+        return render([
+                success: true,
+                msg    : [
+                        [msg: 'Deleted', body: "Workspace ${a.title} deleted", status: 'success']
+                ]
+        ] as JSON)
+    }
+
+    private renderValidationErrors(param) {
+        def msg = [];
+        msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+        msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+        response.status = 400
+        return render([
+                success: false,
+                msg    : msg
+        ] as JSON)
     }
 }
 
@@ -94,5 +147,13 @@ class CreateWorkspaceParam {
         namespace nullable: false
         title nullable: false
         description nullable: true
+    }
+}
+
+@Validateable
+class DeleteWorkspaceParam {
+    String uri
+    static constraints = {
+        uri nullable: false
     }
 }

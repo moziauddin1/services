@@ -65,7 +65,7 @@ class TreeJsonViewController {
         }
 
         def result = Arrangement.findAll { arrangementType == ArrangementType.U && namespace.name == param.namespace }
-                .sort { Arrangement a, Arrangement b -> a.label <=> b.label }
+                .sort { Arrangement a, Arrangement b -> a.title <=> b.title }
                 .collect { linkService.getPreferredLinkForObject(it) }
         render result as JSON
     }
