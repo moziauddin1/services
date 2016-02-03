@@ -82,7 +82,7 @@ class TreeJsonEditController {
             response.status = 404
             return render(result as JSON)
         }
-        if (!(o instanceof Arrangement) || ((Arrangement)o).arrangementType != ArrangementType.U) {
+        if (!(o instanceof Arrangement) || ((Arrangement) o).arrangementType != ArrangementType.U) {
             def result = [
                     success: false,
                     msg    : [
@@ -95,7 +95,7 @@ class TreeJsonEditController {
 
         Arrangement a = (Arrangement) o;
 
-        if(o.owner != SecurityUtils.subject.principal) {
+        if (o.owner != SecurityUtils.subject.principal) {
             def result = [
                     success: true,
                     msg    : [
@@ -117,6 +117,56 @@ class TreeJsonEditController {
         ] as JSON)
     }
 
+    def updateWorkspace(UpdateWorkspaceParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        Object o = linkService.getObjectForLink(param.uri)
+        if (o == null) {
+            def result = [
+                    success: false,
+                    msg    : [
+                            [msg: 'Not Found', body: "Workspace \"${param.uri}\" not found", status: 'warning'],
+                    ]
+            ]
+            response.status = 404
+            return render(result as JSON)
+        }
+        if (!(o instanceof Arrangement) || ((Arrangement) o).arrangementType != ArrangementType.U) {
+            def result = [
+                    success: false,
+                    msg    : [
+                            [msg: 'Not Found', body: "\"${param.uri}\" is not a workspace", status: 'warning'],
+                    ]
+            ]
+            response.status = 404
+            return render(result as JSON)
+        }
+
+        Arrangement a = (Arrangement) o;
+
+        if (o.owner != SecurityUtils.subject.principal) {
+            def result = [
+                    success: true,
+                    msg    : [
+                            [msg: 'Authorisation', body: "You do not have permission to alter workspace ${a.title}", status: 'warning'],
+                    ]
+            ]
+            response.status = 403
+            return render(result as JSON)
+        }
+
+        userWorkspaceManagerService.updateWorkspace(a, param.title, param.description);
+
+        response.status = 200
+        return render([
+                success: true,
+                msg    : [
+                        [msg: 'Updated', body: "Workspace ${a.title} updated", status: 'success']
+                ]
+        ] as JSON)
+
+    }
+
     private renderValidationErrors(param) {
         def msg = [];
         msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -135,16 +185,21 @@ class CreateWorkspaceParam {
     String title
     String description
 
-    String toString() {
-        return [
-                namespace  : namespace,
-                title      : title,
-                description: description
-        ].toString()
-    }
-
     static constraints = {
         namespace nullable: false
+        title nullable: false
+        description nullable: true
+    }
+}
+
+@Validateable
+class UpdateWorkspaceParam {
+    String uri
+    String title
+    String description
+
+    static constraints = {
+        uri nullable: false
         title nullable: false
         description nullable: true
     }
