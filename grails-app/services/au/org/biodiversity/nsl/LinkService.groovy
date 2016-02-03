@@ -121,9 +121,9 @@ class LinkService {
      */
 
     /*
-     This method is not marked cacheable because it returns hibernate objects. It calls getMapperIdForLink()
-     which *is* cacheable. It might be possible to make this method cacheable depending on how the cache plugin
-      manages transaction boundaries
+     * This method is not marked cacheable because it returns hibernate objects. It calls getMapperIdForLink()
+     * which *is* cacheable. It might be possible to make this method cacheable depending on how the cache plugin
+     * manages transaction boundaries
      */
     Object getObjectForLink(String uri) {
         def id = getMapperIdForLink(uri)
@@ -187,7 +187,7 @@ class LinkService {
      * @return The Mapper JSON. This includes nameSpace, objectType, and idNumber.
      */
     /* todo: add @Cacheable annotation.
-     * In order to make this work properly, other methods here that as the mapper to create and delete ids need to
+     * In order to make this work properly, other methods here that ask the mapper to create and delete ids need to
      * update the cache
      */
     @Timed()
