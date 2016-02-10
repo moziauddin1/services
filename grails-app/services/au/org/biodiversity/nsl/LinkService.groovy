@@ -16,9 +16,12 @@
 
 package au.org.biodiversity.nsl
 
+import com.google.gson.JsonElement
 import grails.plugin.cache.Cacheable
 import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
+import org.codehaus.groovy.grails.web.json.JSONArray
+import org.codehaus.groovy.grails.web.json.JSONElement
 import org.grails.plugins.metrics.groovy.Timed
 
 @Transactional
@@ -103,6 +106,120 @@ class LinkService {
             log.error "Error $e.message getting preferred link for $target"
         }
         return null
+    }
+
+    /**
+     * Ask the mapper for the single mapper id (triple) for a URI, and recover the object. Returns null
+     * if the uri is not known to the mapper, if there are multiple ids for the uri, or if the objectType
+     * is unknown, or if the namespaces of the mapper triple and the object do not match.
+     *
+     * The namespace check helps ward against the situation where a shard service is given a uri belonging
+     * to some other shard, and there is an idNumber collision.
+     *
+     * @param uri a uri known to the mapper
+     * @return The Mapper JSON. This includes nameSpace, objectType, and idNumber.
+     */
+
+    /*
+     * This method is not marked cacheable because it returns hibernate objects. It calls getMapperIdForLink()
+     * which *is* cacheable. It might be possible to make this method cacheable depending on how the cache plugin
+     * manages transaction boundaries
+     */
+    Object getObjectForLink(String uri) {
+        def id = getMapperIdForLink(uri)
+        if(!id) {
+            return null;
+        }
+
+
+        def obj = null
+        Namespace ns = null
+
+        if(id.objectType == 'name') {
+            obj = Name.get(id.idNumber)
+        }
+        else if(id.objectType == 'author') {
+            obj = Author.get(id.idNumber)
+        }
+        else if(id.objectType == 'instance') {
+            obj = Instance.get(id.idNumber)
+        }
+        else if(id.objectType == 'reference') {
+            obj = Reference.get(id.idNumber)
+        }
+        else if(id.objectType == 'instanceNote') {
+            obj = InstanceNote.get(id.idNumber)
+        }
+        else if(id.objectType == 'event') {
+            obj = Event.get(id.idNumber)
+        }
+        else if(id.objectType == 'tree') {
+            obj = Arrangement.get(id.idNumber)
+        }
+        else if(id.objectType == 'node') {
+            obj = Node.get(id.idNumber)
+            // the node namespace is handled a little differently
+            ns = ((Node)obj)?.root?.namespace
+        }
+        else {
+            return null
+        }
+
+        if(!obj) {
+            log.warn "Object for $id not found"
+            return null;
+        }
+
+        if(!ns) ns = obj.namespace;
+
+        if(ns.name.toLowerCase() != id.nameSpace) {
+            log.warn "namespace mismatch on $id. Should be ${ns.name.toLowerCase()}."
+            return null;
+        }
+
+        return obj
+    }
+
+    /**
+     * Ask the mapper for the single mapper id (triple) for a URI. If the id matches multiple triples,
+     * this method returns null. This method also returns null if the uri is unknown to the mapper.
+     * @param uri a uri known to the mapper
+     * @return The Mapper JSON. This includes nameSpace, objectType, and idNumber.
+     */
+    /* todo: add @Cacheable annotation.
+     * In order to make this work properly, other methods here that as the mapper to create and delete ids need to
+     * update the cache
+     */
+    @Timed()
+    def getMapperIdForLink(String uri) {
+        try {
+            /*
+              The usual kind of issue: sending this without encoding the uri is technically wrong, but if I
+              ULREncode it then something along the way double-encodes it and I get a 404.
+
+              String url = "${mapper(false)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
+             */
+
+            String url = "${mapper(false)}/broker/getCurrentIdentity?uri=${uri}"
+            log.debug(url);
+            RestResponse response = restCallService.nakedGet(url)
+            if(response.status != 200) return null;
+            if(!response.json) {
+                log.warn "expected a json response for $uri"
+                return null
+            }
+            if(!(response.json instanceof JSONArray)) {
+                log.warn "expected a json array for $uri"
+                return null
+            }
+            if(((JSONArray)response.json).size() != 1) {
+                log.warn "expected 1 and only 1 identity for $uri"
+                return null
+            }
+            return ((JSONArray)response.json)[0];
+        } catch (Exception e) {
+            log.error "Error $e.message getting mapper id for $uri"
+        }
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {
