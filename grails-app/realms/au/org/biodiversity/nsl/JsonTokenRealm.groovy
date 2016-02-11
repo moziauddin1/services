@@ -6,15 +6,17 @@ package au.org.biodiversity.nsl
 class JsonTokenRealm {
     static authTokenClass = JsonToken
 
+    /*
+    todo: certificates and whatnot
+    This method may be the correct place to do timeouts, certificate stamping and whatnot.
+     */
+
     String authenticate(JsonToken authToken) {
         // no checking whatsoever
         return authToken.principal
     }
 
-    // do we actually need these methods? Or will shiro check all the realms
-    // no matter which realm you logged on under?
+    void foo() {
 
-    // it seems to check all the realms for the principal, which I thought would be wrong
-    // the whole point of a security realm is that the objects in each realm are
-    // nothing to do with one another, even if they happen to have the same id
+    }
 }

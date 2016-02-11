@@ -28,7 +28,6 @@ import org.codehaus.groovy.grails.web.util.WebUtils
 import static org.springframework.http.HttpStatus.*
 
 class SecurityFilters {
-
     def filters = {
 
         all(uri: "/**") {
@@ -64,14 +63,16 @@ class SecurityFilters {
                     }
                 }
 
-                // if a JSON token is set then log in with that
+                // if a JSON token is set then log in with that, also
+                // add CORS stamp to the response to indicate that we are ok
+                // with nsl-jwt being passed as a header
                 if(request.getHeader('nsl-jwt')) {
                     try {
                         response.setHeader('Access-Control-Allow-Origin', '*')
                         response.addHeader('Access-Control-Allow-Header', 'nsl-jwt')
 
                         String jwt = request.getHeader('nsl-jwt')
-                        JsonToken jsonToken = new JsonToken(jwt)
+                        JsonToken jsonToken = JsonToken.buildUsingCredentials(jwt)
                         Long start = System.currentTimeMillis()
                         SecurityUtils.subject.login(jsonToken)
                         log.debug "json token processing took ${System.currentTimeMillis() - start}ms"

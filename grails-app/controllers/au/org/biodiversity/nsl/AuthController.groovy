@@ -92,7 +92,8 @@ class AuthController {
         try {
             SecurityUtils.subject.login(authToken)
 
-            JsonToken jsonToken = new JsonToken( SecurityUtils.subject)
+            // todo: it may be that this actually needs to call a JSonTokenRealm builder
+            JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject)
 
             def result = [
                     success    : true,
@@ -110,15 +111,25 @@ class AuthController {
 
     def signOutJson = {
         SecurityUtils.subject?.logout()
-        def result = [ success: true, principal: null ] as JSON
+        def result = [
+                success: true,
+                principal: null
+        ] as JSON
         render result
     }
 
     def getInfoJson = {
-        def result = [ success: true, principal: SecurityUtils.subject?.principal, jwt: SecurityUtils.subject.principal ? new JsonToken( SecurityUtils.subject).getCredentials() : null ] as JSON
+        def result = [
+                success: true,
+                principal: SecurityUtils.subject?.principal,
+                // todo: it may be that this actually needs to call a JsonTokenRealm builder
+                // actually, it's a bit tricky. If the request comes from a user logged in with JSON,
+                // we don't want to build a whole new request. I suspect that this getInfo method does nothing
+                // and is not needed. Either that, or it should not be returning a jwt.
+                jwt: SecurityUtils.subject.principal ? JsonToken.buildUsingSubject(SecurityUtils.subject).getCredentials() : null
+        ] as JSON
         render result
     }
-
 
     def signOut = {
         // Log the user out of the application.
