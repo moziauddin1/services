@@ -1,7 +1,16 @@
 package au.org.biodiversity.nsl;
 
+import grails.converters.JSON;
+import org.apache.log4j.Logger;
 import org.apache.shiro.authc.AuthenticationToken;
+import org.apache.shiro.codec.Base64;
 import org.apache.shiro.subject.Subject;
+import org.codehaus.groovy.grails.web.converters.exceptions.ConverterException;
+import org.codehaus.groovy.grails.web.json.JSONElement;
+import org.codehaus.groovy.grails.web.json.JSONObject;
+
+import java.io.IOException;
+import java.io.Writer;
 
 /**
  * At present, a JsonToken is nothing but the principal - no password, no nothing, not even any actual JSON.
@@ -21,15 +30,38 @@ public class JsonToken implements AuthenticationToken {
 
     /**
      * Rehydrate a credentials string as given by the getCredentials method.
-     * @todo this method will need to parse JSON
+     * @todo implement the rest of JWT
      */
 
     public static JsonToken buildUsingCredentials(String credentials) {
-        return new JsonToken(credentials, credentials);
+        try {
+            if (credentials == null) return null;
+
+            int dot1 = credentials.indexOf('.');
+            if (dot1 == -1) return null;
+            int dot2 = dot1 + 1 + credentials.substring(dot1 + 1).indexOf('.');
+            if (dot2 == dot1) return null;
+
+            String header = Base64.decodeToString(credentials.substring(0, dot1));
+            String payload = Base64.decodeToString(credentials.substring(dot1 + 1, dot2));
+            String signature = credentials.substring(dot2 + 1);
+
+            JSONObject headerJ = (JSONObject) JSON.parse(header);
+            JSONObject payloadJ = (JSONObject) JSON.parse(payload);
+
+            String principal = payloadJ.getString("sub"); // JWT subject
+
+            return new JsonToken(credentials, principal);
+        }
+        catch(RuntimeException ex) {
+            ex.printStackTrace();
+            return null;
+        }
     }
 
     /**
      * Build a token for a subject. This builder method will require more parameters - timeouts, certificates and so on.
+     * These things are owned by the JsonTokenRealm class. Perhaps the code in this builder really belongs there.
      * @todo implement the rest of JWT
      */
 
@@ -46,7 +78,19 @@ public class JsonToken implements AuthenticationToken {
             principal = subject.getPrincipal().toString();
         }
 
-        return new JsonToken(principal, principal);
+        JSONObject header = new JSONObject() ;
+        JSONObject payload = new JSONObject() ;
+
+        header.put("type", "JWT");
+        header.put("alg", "none");
+
+        payload.put("sub", principal);
+
+        String header64 = Base64.encodeToString(header.toString().getBytes());
+        String payload64 = Base64.encodeToString(payload.toString().getBytes());
+        String signature64 = Base64.encodeToString("".getBytes()); // signature is an empty string
+
+        return new JsonToken(header64 + "." + payload64 + "." + signature64, principal);
 
     }
 

@@ -73,9 +73,11 @@ class SecurityFilters {
 
                         String jwt = request.getHeader('nsl-jwt')
                         JsonToken jsonToken = JsonToken.buildUsingCredentials(jwt)
-                        Long start = System.currentTimeMillis()
-                        SecurityUtils.subject.login(jsonToken)
-                        log.debug "json token processing took ${System.currentTimeMillis() - start}ms"
+                        if(jsonToken) {
+                            Long start = System.currentTimeMillis()
+                            SecurityUtils.subject.login(jsonToken)
+                            log.debug "json token processing took ${System.currentTimeMillis() - start}ms"
+                        }
                         return true
                     } catch (AuthenticationException e) {
                         log.info e.message
