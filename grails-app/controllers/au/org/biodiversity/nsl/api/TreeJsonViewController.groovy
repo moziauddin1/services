@@ -74,6 +74,29 @@ class TreeJsonViewController {
         def result = Namespace.findAll().sort { Namespace a, Namespace b -> a.name <=> b.name }
         render result as JSON
     }
+
+    def permissions(PermissionsParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return render(status: 400) { result as JSON }
+        }
+
+        def o = linkService.getObjectForLink(param.uri)
+
+        def result = [:]
+        render result as JSON
+
+    }
 }
 
 @Validateable
@@ -90,3 +113,12 @@ class NamespaceParam {
         namespace nullable: false
     }
 }
+
+@Validateable
+class PermissionsParam {
+    String uri
+    static constraints = {
+        uri nullable: false
+    }
+}
+
