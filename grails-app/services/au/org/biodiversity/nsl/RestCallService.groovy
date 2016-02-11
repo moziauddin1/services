@@ -32,7 +32,7 @@ class RestCallService {
     def grailsApplication
 
     private String serviceUri = null
-    private RestBuilder rest = new RestBuilder(proxy:java.net.Proxy.NO_PROXY)
+    private RestBuilder rest = new RestBuilder(proxy: Proxy.NO_PROXY)
 
     // todo make config for multiple services by name
     String getServiceUri(String name) {
@@ -46,7 +46,7 @@ class RestCallService {
         return serviceUri
     }
 
-    def get(String uri) {
+    def get(String uri) throws RestCallException {
         log.debug "get json ${uri}"
         withRest {
             return rest.get(uri) {
@@ -63,7 +63,7 @@ class RestCallService {
     }
 
 
-    def post(String uri, List params) {
+    def post(String uri, List params) throws RestCallException {
         log.debug "call json ${uri} $params"
         withRest {
             return rest.post(uri) {
@@ -78,7 +78,7 @@ class RestCallService {
             RestResponse resp = restCall()
             def data = resp.json
             if (resp.status != 200) {
-                throw new RestCallException("Error talking to Service: $resp.status, error: ${data?.error}")
+                throw new RestCallException("Error talking to Service: $resp.status. ${data?.error ?: ''}")
             }
             if (data && data instanceof Map && data.error) {
                 throw new RestCallException("Service error: ${data?.error}")
