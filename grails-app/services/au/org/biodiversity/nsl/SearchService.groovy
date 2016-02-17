@@ -216,8 +216,8 @@ class SearchService {
                 List<String> ors = []
                 if (params.nameCheck) {
                     nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                        ors << "regex(lower(n.simpleName), :name${i}) = true"
+                        queryParams["name${i}"] = tokenizeQueryString(n)
+                        ors << "lower(n.simpleName) like :name${i}"
                     }
                     and << "(${ors.join(' or ')})"
                 } else {
@@ -301,6 +301,11 @@ class SearchService {
             return tokenizedString
         }
     }
+
+    /**
+     * Name Check - take a list of
+     * @return
+     */
 
 
     static Sql getNSL() {
