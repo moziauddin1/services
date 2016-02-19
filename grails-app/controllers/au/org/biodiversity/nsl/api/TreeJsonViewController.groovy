@@ -1,6 +1,7 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.tree.DomainUtils
 import grails.converters.JSON
 import grails.validation.Validateable
 import org.apache.shiro.SecurityUtils
@@ -75,7 +76,7 @@ class TreeJsonViewController {
         render result as JSON
     }
 
-    def permissions(PermissionsParam param) {
+    def permissions(UriParam param) {
         if (!param.validate()) {
             def msg = [];
 
@@ -97,6 +98,49 @@ class TreeJsonViewController {
         render result as JSON
 
     }
+
+    def getTreeHistory(UriParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return render(status: 400) { result as JSON }
+        }
+
+        def o = linkService.getObjectForLink(param.uri)
+
+        if(!o  || !(o instanceof Arrangement)) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Not found', status: 'warning', body: "No tree named <tt>${param.uri}</tt>"],
+                    errors : param.errors,
+            ];
+
+            return render(status: 404) { result as JSON }
+        }
+
+        Arrangement a = o as Arrangement
+
+        def result = [];
+        for(Node n = DomainUtils.getSingleSubnode(a.node); n; n = n.prev) {
+            result.add([date: n.checkedInAt?.timeStamp, note: n.checkedInAt?.note, uri: linkService.getPreferredLinkForObject(n)])
+        }
+
+        return render(result as JSON)
+    }
 }
 
 @Validateable
@@ -115,7 +159,7 @@ class NamespaceParam {
 }
 
 @Validateable
-class PermissionsParam {
+class UriParam {
     String uri
     static constraints = {
         uri nullable: false
