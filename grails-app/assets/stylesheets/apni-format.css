@@ -214,8 +214,8 @@ dt.divide {
 .branch_node.apc-voc.declared-bt { color: darkgray; }
 
 div#page-footer {
-  background: black none repeat scroll 0 0;
-  color: lightgray;
+  background: white none repeat scroll 0 0;
+  color: black;
   border-top: 1px solid gray;
   bottom: 0;
   height: 4em;
@@ -227,7 +227,7 @@ div#page-footer {
 }
 
 div#page-footer a.twitter-link {
-  color: lightgray;
+  color: black;
 }
 
 span#page-footer-inner-right {
