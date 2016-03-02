@@ -22,11 +22,13 @@ import grails.transaction.Transactional
 class ApniFormatService {
 
     def classificationService
+    def linkService
 
     Map getNameModel(Name name) {
         Name familyName = RankUtils.getParentOfRank(name, 'Familia')
         Node apc = classificationService.isNameInAPC(name)
-        Map model = [name: name, apc: apc, familyName: familyName]
+        String link = linkService.getPreferredLinkForObject(name)
+        Map model = [name: name, apc: apc, familyName: familyName, preferredNameLink: link]
         model.putAll(nameReferenceInstanceMap(name) as Map)
         return model
     }

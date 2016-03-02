@@ -78,11 +78,15 @@ class ServiceTagLib {
 
     def preferedLink = { attrs, body ->
         def target = attrs.target
+        def api = attrs.api
         if (target) {
             target = HibernateDomainUtils.initializeAndUnproxy(target)
             try {
                 String link = linkService.getPreferredLinkForObject(target)
                 if (link) {
+                    if (api) {
+                        link += "/$api"
+                    }
                     out << "<a href='${link}'>"
                     out << body(link: link)
                     out << "</a>"

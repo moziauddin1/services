@@ -144,10 +144,9 @@ class ApniFormatTagLib {
             nodesInBranch.each { Node n ->
                 String link = linkService.getPreferredLinkForObject(n)
                 //todo put the above back in when issues with links and display are solved, see NSL-1413
-                if(link) {
+                if (link) {
                     out << "<li><a href='${link}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
-                }
-                else {
+                } else {
                     out << "<li>${n.name.nameElement} <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
                 }
             }
@@ -192,7 +191,7 @@ class ApniFormatTagLib {
                 params << [product: 'apni']
             }
         }
-        out << g.createLink(controller: 'search', params: params)
+        out << g.createLink(absolute: true, controller: 'search', params: params)
     }
 
     def refAPCSearchLink = { attrs ->
@@ -211,13 +210,19 @@ class ApniFormatTagLib {
     }
 
     def apniLink = { attrs ->
-        Name name = attrs.name
-        out << """<apnilink>
-      <a class="vertbar" href="${g.createLink(controller: 'apniFormat', action: 'display', id: name.id)}">
+        String link = attrs.link
+        if(!link) {
+            Name name = attrs.name
+            link = linkService.getPreferredLinkForObject(name) + '/api/apni-format'
+        }
+        if (link) {
+            out << """<apnilink>
+      <a class="vertbar" href="${link}">
         <i class="fa fa-list-alt see-through"></i>
         apni
       </a>
     </apnilink>"""
+        }
     }
 
     def tick = { attrs ->

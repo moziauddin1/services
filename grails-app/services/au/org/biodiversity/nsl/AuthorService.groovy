@@ -25,6 +25,11 @@ class AuthorService {
 
     def autoDeduplicate() {
         runAsync {
+            List<Author> authorsMarkedAsDuplicates = Author.findAllByDuplicateOfIsNotNull()
+            authorsMarkedAsDuplicates.each { Author author ->
+                dedupe([author], author.duplicateOf)
+            }
+
             List<String> namesWithDuplicates = Author.executeQuery('select distinct(a.name) from Author a where exists (select 1 from Author a2 where a2.id <> a.id and a2.name = a.name)') as List<String>
             namesWithDuplicates.each { String name ->
                 List<Author> authors = Author.findAllByName(name)
@@ -58,6 +63,8 @@ class AuthorService {
                 linkService.moveTargetLinks(dupeAuthor, targetAuthor)
                 log.info "About to delete $dupeAuthor"
                 dupeAuthor.delete()
+                targetAuthor.duplicateOf = null
+                targetAuthor.save()
             }
         }
     }

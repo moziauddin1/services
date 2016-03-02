@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import org.apache.shiro.grails.annotations.RoleRequired
+import org.hibernate.engine.spi.Status
 import org.springframework.transaction.TransactionStatus
 
 import java.sql.Timestamp
@@ -174,12 +175,18 @@ class ReferenceService {
  */
     @Transactional
     Map moveReference(Reference source, Reference target, String user) {
+        if(target.duplicateOf) {
+            throw new Exception("Target $target is a duplicate")
+        }
         if (!user) {
             return [ok: false, errors: ['You must supply a user.']]
         }
-        if (source.referencesForDuplicateOf.size() > 0) {
-            return [ok: false, errors: ['References say they are a duplicate of the source.']]
+        if(!source) {
+            return [ok: false, errors: ['You must supply source.']]
         }
+            if (source.referencesForDuplicateOf.size() > 0) {
+                return [ok: false, errors: ['References say they are a duplicate of the source.']]
+            }
         InstanceNoteKey refNote = instanceService.getInstanceNoteKey('Reference Note', true)
         try {
             Reference.withTransaction { t ->
@@ -213,31 +220,31 @@ class ReferenceService {
                         }
                     }
 
-                    source.instances.each { instance ->
+                    Instance.executeQuery('select i from Instance i where reference = :ref', [ref: source]).each { instance ->
                         log.info "Moving instance $instance to $target"
                         instance.reference = target
                         instance.updatedAt = now
                         instance.updatedBy = user
-                        instance.save()
+                        instance.save(flush: true)
                     }
                     source.externalRefs.each { extRef ->
                         log.info "Moving external reference $extRef to $target"
                         extRef.reference = target
-                        extRef.save()
+                        extRef.save(flush: true)
                     }
                     source.referencesForParent.each { ref ->
                         log.info "Moving parent of $ref to $target"
                         ref.parent = target
                         ref.parent.updatedAt = now
                         ref.parent.updatedBy = user
-                        ref.save()
+                        ref.save(flush: true)
                     }
                     source.comments.each { comment ->
                         log.info "Moving comment $comment to $target"
                         comment.reference = target
                         comment.updatedAt = now
                         comment.updatedBy = user
-                        comment.save()
+                        comment.save(flush: true)
                     }
 
                     Map response = linkService.moveTargetLinks(source, target)
@@ -250,9 +257,9 @@ class ReferenceService {
                     }
                     target.updatedAt = now
                     target.updatedBy = user
-                    target.save()
-                    source.delete()
-                    session.flush()
+                    target.save(flush: true)
+                    source.save(flush: true)
+                    source.delete(flush: true)
                     return [ok: true]
                 }
             }

@@ -17,7 +17,7 @@
           class="fa fa-search"></i></a>
     </g:if>
     <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.taxonUriIdPart == instance.id.toString()}">
-      <a href="${g.createLink(controller: 'apcFormat', action: 'display', id: name.id)}">
+      <a href="${g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: name.id)}">
         <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.typeUriIdPart == 'ApcConcept'}">
           <apc><i class="fa fa-check"></i>APC</apc>
         </g:if>

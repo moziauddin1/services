@@ -4,12 +4,12 @@
 
         <div data-nameId="${name.id}">
           <g:if test="${!excluded}">
-            <accepted-name title='Accepted name'><st:preferedLink
-                target="${primaryInstance ?: name}">${raw(name.fullNameHtml)}</st:preferedLink></accepted-name>
+            <accepted-name title='Accepted name'><a href="${preferredNameLink + '/api/apni-format'}">
+              ${raw(name.fullNameHtml)}</a></accepted-name>
           </g:if>
           <g:else>
-            <excluded-name title='excluded name'><st:preferedLink
-                target="${primaryInstance ?: name}">${raw(name.fullNameHtml)}</st:preferedLink>
+            <excluded-name title='excluded name'><a href="${preferredNameLink + '/api/apni-format'}">
+              ${raw(name.fullNameHtml)}</a>
               <apc title="excluded from APC"><i class="fa fa-ban"></i>APC</apc></excluded-name>
           </g:else>
           <name-status class="${name.nameStatus.name}">${name.nameStatus.name}</name-status>
@@ -25,7 +25,7 @@
           <af:apniLink name="${name}"/>
 
           <span class="vertbar">
-            <st:preferedLink target="${name}"><i title="citable link to name" class="fa fa-link"></i></st:preferedLink>
+          <a href="${preferredNameLink}"><i title="Link to Name" class="fa fa-link"></i></a>
           </span>
 
           <span class="toggleNext vertbar">
