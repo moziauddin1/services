@@ -141,6 +141,49 @@ class TreeJsonViewController {
 
         return render(result as JSON)
     }
+
+
+    def findPath(FindPathParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return render(status: 400) { result as JSON }
+        }
+
+        def root = linkService.getObjectForLink(param.root)
+        def focus = linkService.getObjectForLink(param.focus)
+
+        if(!root  || !(root instanceof Node) || !focus  || !(focus instanceof Node)) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Not found', status: 'warning', body: "Nodes not found"],
+                    errors : param.errors,
+            ];
+
+            return render(status: 404) { result as JSON }
+        }
+
+        List<Node> pathNodes = treeViewService.findPath(root, focus);
+
+        pathNodes.each { log.fatal(it);}
+
+        def result = pathNodes.collect { linkService.getPreferredLinkForObject(it) }
+        return render(result as JSON)
+    }
 }
 
 @Validateable
@@ -163,6 +206,16 @@ class UriParam {
     String uri
     static constraints = {
         uri nullable: false
+    }
+}
+
+@Validateable
+class FindPathParam {
+    String root
+    String focus
+    static constraints = {
+        root nullable: false
+        focus nullable: false
     }
 }
 

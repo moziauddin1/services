@@ -325,6 +325,10 @@ class TreeViewService {
 		return o;
 	}
 
+	def findPath(Node root, Node focus) {
+		return queryService.findPath(root, focus);
+	}
+
 	private static int sortLinks(Link a, Link b) {
 		Uri auri = DomainUtils.getNameUri(a.subnode);
 		Uri buri = DomainUtils.getNameUri(b.subnode);
