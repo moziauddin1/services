@@ -179,8 +179,6 @@ class TreeJsonViewController {
 
         List<Node> pathNodes = treeViewService.findPath(root, focus);
 
-        pathNodes.each { log.fatal(it);}
-
         def result = pathNodes.collect { linkService.getPreferredLinkForObject(it) }
         return render(result as JSON)
     }
