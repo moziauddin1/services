@@ -214,89 +214,126 @@ class TreeJsonViewController {
         final List<?> result = [];
         sessionFactory_nsl.currentSession.doWork(new Work() {
             void execute(Connection connection) throws SQLException {
-                if (param.namesOnly) {
+
+                String names_subq;
+
+                if(param.includeSubnames) {
+                    names_subq = """
+                        with recursive nn as (
+                                SELECT id
+                                FROM Name
+                                WHERE simple_name LIKE ?
+                            union all
+                                select name.id from nn join name on nn.id = name.parent_id
+                        )
+                        SELECT distinct id
+                        FROM nn
+                    """
+                }
+                else {
+                    names_subq = """
+                        SELECT name.id
+                        FROM name
+                        WHERE simple_name LIKE ?
+                    """
+                }
+
+
+                if (param.namesOnly || (!param.reference && !param.allReferences)) {
                     PreparedStatement ps = connection.prepareStatement("""
-                        SELECT id
-                        FROM Name
-                        WHERE full_name LIKE ?
-                        ORDER BY full_name
-                        LIMIT 200
-                    """)
+                        select nn.id
+                        from (${names_subq}) as nn
+                        join name on nn.id = name.id
+                        join namespace on name.namespace_id = namespace.id
+                        where namespace.name = ?
+                        order by name.simple_name
+                    """
+                     )
                     ps.setString(1, param.name);
+                    ps.setString(2, param.namespace);
                     ResultSet rs = ps.executeQuery();
                     while (rs.next()) {
                         result.add(Name.get(rs.getLong(1)));
                     }
                     rs.close();
                     ps.close();
-                } else if (param.allReferences) {
+                }
+                else if (param.allReferences) {
                     PreparedStatement ps = connection.prepareStatement("""
                         select instance.id
-                        from name
-                        join instance on instance.name_id = name.id
-                        where name.full_name like ?
+                        from (${names_subq}) as nn
+                        join name on name.id = nn.id
+                        join instance on instance.name_id = nn.id
+                        join namespace on instance.namespace_id = namespace.id
+                        join reference on instance.reference_id = reference.id
+                        where namespace.name = ?
                         ${param.primaryInstancesOnly ? ' and instance.cites_id is null ' : ''}
-                        order by name.full_name
+                        order by name.full_name, reference.citation
                         limit 200
                     """)
                     ps.setString(1, param.name);
+                    ps.setString(2, param.namespace);
                     ResultSet rs = ps.executeQuery();
                     while (rs.next()) {
                         result.add(Instance.get(rs.getLong(1)));
                     }
                     rs.close();
                     ps.close();
-                } else if (!param.includeSubreferences) {
-                    PreparedStatement ps = connection.prepareStatement("""
-                    select instance.id
-                    from name
-                    join instance on instance.name_id = name.id
-                    join reference on instance.reference_id = reference.id
-                    where name.full_name like ?
-                    and reference.citation like ?
-                    ${param.primaryInstancesOnly ? ' and instance.cites_id is null ' : ''}
-                    order by name.full_name, reference.citation
-                    limit 200
-                    """)
+                }
+
+                else {
+                    String references_subq
+
+                    if (!param.includeSubreferences) {
+                        references_subq = """
+                            select id from reference
+                            where reference.citation like ?
+                        """
+                    }
+                    else {
+                        references_subq = """
+                            with recursive rr as (
+                                select reference.id from reference
+                                where reference.citation like ?
+                                union all
+                                select reference.id
+                                from rr join reference on rr.id = reference.parent_id
+                            )
+                            select distinct id from rr
+                        """
+                    }
+
+
+                    String sql = """
+                        select instance.id
+                        from
+                            (${names_subq}) as nn join name on nn.id = name.id
+                            join instance on instance.name_id = nn.id
+                            join (${references_subq}) rr on instance.reference_id = rr.id
+                            join reference on instance.reference_id = reference.id
+                            join namespace on instance.namespace_id = namespace.id
+                        where
+                            namespace.name = ?
+                            ${param.primaryInstancesOnly ? ' and instance.cites_id is null ' : ''}
+                        order by name.full_name, reference.citation
+                        limit 200
+                    """
+
+                    PreparedStatement ps = connection.prepareStatement(sql);
                     ps.setString(1, param.name);
                     ps.setString(2, param.reference);
-                    ResultSet rs = ps.executeQuery();
-                    while (rs.next()) {
-                        result.add(Instance.get(rs.getLong(1)));
-                    }
-                    rs.close();
-                    ps.close();
-                } else {
-                    PreparedStatement ps = connection.prepareStatement("""
-                    select instance.id, name.full_name, reference.citation, reference.id, reference.parent_id
-                    from name
-                    join instance on instance.name_id = name.id
-                    join reference on instance.reference_id = reference.id
-                    join (
-                        with recursive ref as (
-                            select id from reference where citation like ?
-                            union all
-                            select reference.id from ref join reference on ref.id = reference.parent_id
-                        )
-                        select distinct id from ref
-                    ) as distinctref on reference.id = distinctref.id
-                    where name.full_name like ?
-                    order by name.full_name, reference.citation
-                    limit 200
-                    """)
-                    ps.setString(1, param.reference);
-                    ps.setString(2, param.name);
-                    ResultSet rs = ps.executeQuery();
-                    while (rs.next()) {
-                        result.add(Instance.get(rs.getLong(1)));
-                    }
-                    rs.close();
-                    ps.close();
+                    ps.setString(3, param.namespace);
 
+                    ResultSet rs = ps.executeQuery();
+                    while (rs.next()) {
+                        result.add(Instance.get(rs.getLong(1)));
+                    }
+                    rs.close();
+                    ps.close();
                 }
-            }
-        }
-        );
+            } // execute
+        } // Work
+        ); // doWork
 
         return render(result.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }
@@ -337,7 +374,9 @@ class FindPathParam {
 
 @Validateable
 class SearchNamesRefsParam {
+    String namespace
     String name
+    boolean includeSubnames
     String reference
     boolean namesOnly
     boolean allReferences

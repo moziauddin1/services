@@ -2,7 +2,9 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.ArrangementType
+import au.org.biodiversity.nsl.Instance
 import au.org.biodiversity.nsl.LinkService
+import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
@@ -195,6 +197,37 @@ class TreeJsonEditController {
 
     }
 
+    def addNamesToNode(AddNamesToNodeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        Node root = linkService.getObjectForLink(param.root) as Node
+        Node focus = linkService.getObjectForLink(param.focus) as Node
+
+        def names = [];
+
+        // TODO better error handling here.
+
+        for(uri in param.names) {
+            def o = linkService.getObjectForLink(uri);
+            if(!(o instanceof Name) && !(o instanceof Instance)) {
+                throw new IllegalArgumentException(uri);
+            }
+            names.add(o)
+        }
+
+        Node newfocus = userWorkspaceManagerService.addNamesToNode(root, focus, names);
+
+        response.status = 200
+        return render([
+                success: true,
+                newFocus: linkService.getPreferredLinkForObject(newFocus),
+                msg    : [
+                        [msg: 'Updated', body: "Names added", status: 'success']
+                ]
+        ] as JSON)
+
+    }
+
     private renderValidationErrors(param) {
         def msg = [];
         msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -240,5 +273,14 @@ class DeleteWorkspaceParam {
     String uri
     static constraints = {
         uri nullable: false
+    }
+}
+
+@Validateable
+class AddNamesToNodeParam {
+    String root
+    String focus
+    List<String> names
+    static constraints = {
     }
 }
