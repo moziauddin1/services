@@ -4,6 +4,7 @@ import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.ArrangementType
 import au.org.biodiversity.nsl.LinkService
 import au.org.biodiversity.nsl.Namespace
+import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
 import grails.converters.JSON
 import grails.validation.Validateable
@@ -52,7 +53,34 @@ class TreeJsonEditController {
             return render(result as JSON)
         }
 
-        Arrangement a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, title, param.description)
+        Node checkout = null;
+
+        if(param.checkout) {
+            Object o = linkService.getObjectForLink(param.checkout)
+            if (o == null) {
+                def result = [
+                        success: false,
+                        msg    : [
+                                [msg: 'Not Found', body: "Node \"${param.checkout}\" not found", status: 'warning'],
+                        ]
+                ]
+                response.status = 404
+                return render(result as JSON)
+            }
+            if (!(o instanceof Node)) {
+                def result = [
+                        success: false,
+                        msg    : [
+                                [msg: 'Not Found', body: "\"${param.node}\" is not a node", status: 'warning'],
+                        ]
+                ]
+                response.status = 404
+                return render(result as JSON)
+            }
+            checkout = o as Node
+        }
+
+        Arrangement a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, title, param.description, checkout)
 
         def msg = [
                 [msg: 'Created Workspace', body: a.title, status: 'success'],
@@ -184,11 +212,13 @@ class CreateWorkspaceParam {
     String namespace
     String title
     String description
+    String checkout
 
     static constraints = {
         namespace nullable: false
         title nullable: false
         description nullable: true
+        description checkout: true
     }
 }
 
