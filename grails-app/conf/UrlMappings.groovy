@@ -34,7 +34,6 @@ class UrlMappings {
         "/api/tree/remove-apc-instance"(controller: 'treeEdit', action: 'removeApcInstance')
 
         "/search"(controller: 'search', action: 'search')
-        "/search/form"(controller: 'search', action: 'searchForm')
         "/auth/$action"(controller: 'auth')
         "/$product"(controller: 'search', action: 'search')
 
