@@ -44,7 +44,7 @@
       <i class="fa fa-search"></i></a>
       <ol>
         <g:each
-            in="${au.org.biodiversity.nsl.Instance.executeQuery('select i.name from Instance i where i.reference = :ref order by i.name.simpleName asc', [ref: reference])}"
+            in="${(au.org.biodiversity.nsl.Instance.executeQuery('select distinct(i.name) from Instance i where i.reference = :ref', [ref: reference])).sort {it.simpleName}}"
             var="name">
           <li>${raw(name.fullNameHtml)}</li>
         </g:each>

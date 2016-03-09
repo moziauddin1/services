@@ -16,7 +16,7 @@
               <li>You can use a % as a wild card inside the search query e.g. hakea elon% be or "hakea % var. elon% benth." to find "Hakea ceratophylla var. elongata Benth."</li>
             </ul>
           </div>
-        </help><span class="text-muted small">click the <i class="fa fa-info-circle"></i> for help.</span>
+        </help> <span class="text-muted small">click the <i class="fa fa-info-circle"></i> for help.</span>
 
 
         <input type="text" name="name" placeholder="Enter a name" value="${query.name}"
