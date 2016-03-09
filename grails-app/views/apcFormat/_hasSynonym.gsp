@@ -2,7 +2,8 @@
   <af:apcSortedInstances instances="${instances.findAll { !it.instanceType.misapplied && it.instanceType.synonym }}" var="synonym">
     <has-synonym>
       <g:if test="${synonym.instanceType.doubtful}">?</g:if>
-      <st:preferedLink target="${synonym}">${raw(synonym.name.fullNameHtml)}</st:preferedLink>
+      <st:preferedLink target="${synonym.name}" api="api/apni-format">${raw(synonym.name.fullNameHtml)}</st:preferedLink>
+      <st:preferedLink target="${synonym}"><i title="Use in reference" class="fa fa-book"></i></st:preferedLink>
       <name-status class="${synonym.name.nameStatus.name}">${synonym.name.nameStatus.name}</name-status>
 
       <g:if test="${synonym.instanceType.proParte}">p.p.</g:if>
@@ -14,7 +15,8 @@
   <af:apcSortedInstances instances="${instances.findAll { it.instanceType.misapplied }}" var="synonym">
     <has-synonym>
       <g:if test="${synonym.instanceType.doubtful}"><span class="fa fa-question-circle"></span></g:if>
-      <st:preferedLink target="${synonym}">${raw(synonym.name.simpleNameHtml)}</st:preferedLink>
+      <st:preferedLink target="${synonym.name}" api="api/apni-format">${raw(synonym.name.fullNameHtml)}</st:preferedLink>
+      <st:preferedLink target="${synonym}"><i title="Use in reference" class="fa fa-book"></i></st:preferedLink>
 
       <g:if test="${synonym.instanceType.misapplied}">
         auct. non <af:author name="${synonym.name}"/>:

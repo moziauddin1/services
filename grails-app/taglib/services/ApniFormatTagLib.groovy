@@ -197,7 +197,7 @@ class ApniFormatTagLib {
     def refAPCSearchLink = { attrs ->
         String citation = attrs.citation
         String product = attrs.product
-        Map params = [publication: citation, search: true, advanced: true, display: 'apc', 'tree.id': 1133571]
+        Map params = [publication: citation, search: true, advanced: true, display: 'apc', 'tree.id': 1133571] //todo remove hard coded reference number
         if (product) {
             params << [product: product]
         } else {

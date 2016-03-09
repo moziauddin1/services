@@ -59,7 +59,8 @@
       </a>
     </span>
     <span id="page-footer-inner-right" class="pull-right">
-      <a href="https://twitter.com/aubiodiversity" class="twitter-link">Twitter</a>
+      <a href="https://twitter.com/aubiodiversity" class="twitter-link"><i class="fa fa-twitter fa-2x" style="color: #55acee"></i>
+        </a>
     </span>
   <div>
 </div>

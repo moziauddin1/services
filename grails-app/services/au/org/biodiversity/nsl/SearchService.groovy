@@ -303,7 +303,8 @@ class SearchService {
     }
 
     /**
-     * Name Check - take a list of
+     * Name Check - take a list of names and check if they exist in the database. Possibly check names that don't exists
+     * against close matches.
      * @return
      */
 
