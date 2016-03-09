@@ -8,7 +8,7 @@
   <div data-nameId="${name.id}">
     <st:primaryInstance name="${name}" var="primaryInstance">
     %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-    <accepted-name><st:preferedLink target="${name}">${raw(name.fullNameHtml)}</st:preferedLink>
+    <accepted-name><a href="${preferredNameLink + '/api/apni-format'}">${raw(name.fullNameHtml)}</a>
     </accepted-name><name-status class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
       class="${name.nameType.name}">, ${name.nameType.name}</name-type>
     <g:if test="${!familyName}">
@@ -21,10 +21,10 @@
       <st:editorLink nameId="${name.id}"><i class="fa fa-edit" title="Edit"></i></st:editorLink>
     </editor>
 
-    <af:apniLink name="${name}"/>
+    <af:apniLink link="${preferredNameLink + '/api/apni-format'}"/>
 
     <span class="vertbar">
-      <st:preferedLink target="${name}"><i title="citable link to name" class="fa fa-link"></i></st:preferedLink>
+      <a href="${preferredNameLink}"><i title="Link to Name" class="fa fa-link"></i></a>
     </span>
 
     <span class="toggleNext vertbar">

@@ -71,6 +71,50 @@
       </div>
     </div>
   </g:if>
+  <g:elseif test="${count == 0}">
+    <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
+      <div class="panel-heading">
+          <strong>No results found</strong>
+        <div class="text text-info">
+          <g:message code="product.search.tip.${params.product}" default=""/>
+        </div>
+      </div>
+
+      <div class="panel-body">
+        <div class="results">
+          <h2>No results found<g:if test="${query.name}"> for &quot;${query.name}&quot;</g:if>.</h2>
+          <p>Try searching for a different name, e.g. "Doodia"</p>
+        </div>
+      </div>
+    </div>
+  </g:elseif>
+  <g:else>
+    <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
+      <div class="panel-heading">
+        <strong>No results yet</strong>
+        <div class="text text-info">
+          <g:message code="product.search.tip.${params.product}" default=""/>
+        </div>
+      </div>
+
+      <div class="panel-body">
+        <div class="results">
+          <h2>Your results will be here.</h2>
+          <p>Type a name into the search form above.</p>
+          <div>
+            <ul>
+              <li>You will get suggestions as you type in your query, they tell you what your query will return, and you can select one for an exact match.</li>
+              <li>The query is <b>not</b> case sensitive.</li>
+              <li>This search uses an automatic wild card at the end of the query to match all endings (unless the query is in double quotes).</li>
+              <li>The query is an ordered set of search terms, so viola l. will match "Viola L." and "Viola L. sect Viola."</li>
+              <li>Putting double quotes around your entire query will cause it to be matched exactly (except case). e.g. "Viola L." will match just Viola L.</li>
+              <li>You can use a % as a wild card inside the search query e.g. hakea elon% be or "hakea % var. elon% benth." to find "Hakea ceratophylla var. elongata Benth."</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </g:else>
 
   <g:if test="${query.sparql}">
     <g:render template="/search/sparql-results"/>

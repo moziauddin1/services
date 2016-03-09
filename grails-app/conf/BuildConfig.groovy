@@ -72,7 +72,7 @@ grails.project.dependency.resolution = {
         compile 'net.htmlparser.jericho:jericho-html:3.2', {
             excludes 'log4j', 'commons-logging-api','slf4j-api'
         }
-
+        test "org.gebish:geb-spock:0.12.2"
     }
 
     plugins {
@@ -108,5 +108,7 @@ grails.project.dependency.resolution = {
         //compile ":less-asset-pipeline:1.10.0"
         //compile ":coffee-asset-pipeline:1.8.0"
         //compile ":handlebars-asset-pipeline:1.3.0.3"
+
+        test "org.grails.plugins:geb:0.12.2"
     }
 }

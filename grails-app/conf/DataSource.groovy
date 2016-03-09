@@ -40,6 +40,7 @@ environments {
 //            dialect = "org.hibernate.dialect.PostgreSQLDialect"
             dialect = "au.org.biodiversity.nsl.ExtendedPostgreSQLDialect"
             url = "jdbc:postgresql://localhost:5432/nsl"
+//            url = "jdbc:postgresql://localhost:5432/nslimport"
             formatSql = true
 //            logSql = true
             //noinspection GroovyAssignabilityCheck
@@ -67,7 +68,7 @@ environments {
             password = "nsldev"
             dialect = "au.org.biodiversity.nsl.ExtendedPostgreSQLDialect"
             dbCreate = "update"
-            url = "jdbc:postgresql://localhost:5432/nslimport"
+            url = "jdbc:postgresql://localhost:5432/nsl"
             formatSql = false
             logSql = false
             //noinspection GroovyAssignabilityCheck

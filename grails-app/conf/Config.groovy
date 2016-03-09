@@ -121,6 +121,21 @@ environments {
             search.pass = 'secret'
         }
     }
+    test {
+        grails.logging.jul.usebridge = true
+        grails.serverURL = 'http://localhost:8080/services'
+        nslServices.rulesEngine.uri = 'http://localhost:7070/rulesEngine/'
+        quartz {
+            autoStartup = false
+        }
+        ldap {
+            domain = 'domain'
+            server.url = 'ldap://localhost:10389'
+            search.base = 'ou=users,dc=nsl,dc=bio,dc=org,dc=au'
+            search.user = 'uid=admin,ou=system'
+            search.pass = 'secret'
+        }
+    }
     production {
         grails.logging.jul.usebridge = false
         grails.serverURL = 'http://155.187.10.62:1521/nsl/services'

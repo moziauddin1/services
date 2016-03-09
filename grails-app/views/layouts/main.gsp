@@ -42,49 +42,30 @@
     [class: 'search', url: createLink(controller: 'search', action: 'search', params: [product: 'apc']), label: 'APC', icon: 'fa-search'],
 ]]"/>
 <st:systemNotification/>
-<div class="container-fluid">
+<div id="main-content" class="container-fluid">
   <div class="row">
-    <div class="col-md-2 col-lg-2 logo">
-
-      <a href="http://www.anbg.gov.au/chah/">
-        <asset:image src="CHAH-logo.png"/>
-      </a>
-
-      <div class="nsl">
-        National Species List
-      </div>
-
-      <div class="sublogo"><st:productName/></div>
-
-      <hr>
-      <twitter>
-        <a class="twitter-timeline"
-           data-chrome="nofooter noborders transparent noscrollbar"
-           href="https://twitter.com/AuBiodiversity"
-           data-widget-id="573301073391169536">Tweets by @AuBiodiversity</a>
-        <script>!function (d, s, id) {
-          var js, fjs = d.getElementsByTagName(s)[0], p = /^http:/.test(d.location) ? 'http' : 'https';
-          if (!d.getElementById(id)) {
-            js = d.createElement(s);
-            js.id = id;
-            js.src = p + "://platform.twitter.com/widgets.js";
-            fjs.parentNode.insertBefore(js, fjs);
-          }
-        }(document, "script", "twitter-wjs");</script>
-      </twitter>
-    </div>
-
-    <div class="col-sm-12 col-md-10 col-lg-10">
+    <div class="col-sm-12 col-md-12 col-lg-12">
       <g:layoutBody/>
     </div>
   </div>
 </div>
 
-<div class="footer text-muted container-fluid" role="contentinfo">
-  <div class="row">
-    Version: <g:meta name="app.version"/>
-  </div>
+<div id="page-footer" class="footer">
+  <div id="page-footer-inner">
+    <span id="page-footer-inner-left" class="pull-left">
+      Supported by
+      <a href="http://www.anbg.gov.au/chah/">
+        <asset:image src="CHAH-logo.png" height="42" />
+      </a>
+    </span>
+    <span id="page-footer-inner-right" class="pull-right">
+      <a href="https://twitter.com/aubiodiversity" class="twitter-link"><i class="fa fa-twitter fa-2x" style="color: #55acee"></i>
+        </a>
+    </span>
+  <div>
 </div>
+
+<!-- Version: <g:meta name="app.version"/> -->
 
 <div id="spinner" class="spinner" style="display:none;"><g:message code="spinner.alt" default="Loading&hellip;"/></div>
 

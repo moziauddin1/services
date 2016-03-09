@@ -150,4 +150,28 @@ class SearchController {
         return [query: params, max: max, displayFormats: displayFormats, stats: stats]
 
     }
+
+    def searchForm() {
+        if (!params.product && !SecurityUtils.subject?.authenticated) {
+            params.product = params.display ?: 'apni'
+        }
+
+        if (params.product) {
+            Arrangement tree = Arrangement.findByNamespaceAndLabel(
+                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    params.product.toUpperCase())
+            if (tree) {
+                params.tree = [id: tree.id]
+                params.display = params.product
+            } else {
+                flash.message = "Unknown product ${params.product}"
+                return redirect(url: '/')
+            }
+        } else {
+            params.display = params.display ?: 'apni'
+        }
+
+
+        render([template: 'advanced-search-form', model: [query: params, max: 100]])
+    }
 }

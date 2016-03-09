@@ -25,11 +25,13 @@ import org.grails.plugins.metrics.groovy.Timed
 class ApcFormatController {
 
     def classificationService
+    def linkService
 
     static responseFormats = [
             display: ['html'],
             name   : ['html']
     ]
+
     def index() {
         redirect(action: 'search')
     }
@@ -82,7 +84,14 @@ class ApcFormatController {
                 i.cites && classificationService.isInstanceInAPC(i.citedBy)
             }
         }
-        [name: name, synonymOf: synonymOf, misapplied: misapplied, apcInstance: apcInstance, instances: instances, excluded: excluded]
+        String preferredNameLink = linkService.getPreferredLinkForObject(name)
+        [name             : name,
+         synonymOf        : synonymOf,
+         misapplied       : misapplied,
+         apcInstance      : apcInstance,
+         instances        : instances,
+         excluded         : excluded,
+         preferredNameLink: preferredNameLink]
     }
 
 }

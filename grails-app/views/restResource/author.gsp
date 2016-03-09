@@ -72,7 +72,13 @@
         <dt>Sactioning author for:</dt> <dd>${author.namesForSanctioningAuthor.size()} names</dd>
       </g:if>
 
-      <dt>References:</dt> <dd>${author.references.size()}</dd>
+      ${author.references.size()} References:
+      <ol>
+        <g:each in="${author.references.sort{it.year}}" var="ref">
+          <li>${raw(ref.citationHtml)}</li>
+        </g:each>
+      </ol>
+
     </dl>
 
   </person>

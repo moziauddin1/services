@@ -1,4 +1,4 @@
-<%@ page import="au.org.biodiversity.nsl.Reference" %>
+<%@ page import="au.org.biodiversity.nsl.Instance; au.org.biodiversity.nsl.Reference" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -28,9 +28,6 @@
       %{--don't reformat the citationHtml line--}%
       <b>${raw(reference?.citationHtml)}</b> <st:preferedLink target="${reference}"><i
         class="fa fa-link"></i></st:preferedLink>
-      <a href="${g.createLink(controller: 'search', params: [publication: reference?.citation, search: true, advanced: true, display: 'apni'])}"
-         title="search for names in this reference">
-        <i class="fa fa-search"></i></a>
     </ref-citation>
     (<reference-type>${reference.refType.name}</reference-type>)
 
@@ -41,7 +38,18 @@
     </reference-author>
 
     <div>
-      Instances: ${reference.instances.size()}
+      Names in this reference: <a
+        href="${g.createLink(controller: 'search', params: [publication: reference?.citation, search: true, advanced: true, display: 'apni'])}"
+        title="search for (${reference.instances.size()}) name usages in this reference">
+      <i class="fa fa-search"></i></a>
+      <ol>
+        <g:each
+            in="${(au.org.biodiversity.nsl.Instance.executeQuery('select distinct(i.name) from Instance i where i.reference = :ref', [ref: reference])).sort {it.simpleName}}"
+            var="name">
+          <li>${raw(name.fullNameHtml)}</li>
+        </g:each>
+      </ol>
+
     </div>
   </reference>
 

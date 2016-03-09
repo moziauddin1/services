@@ -16,12 +16,10 @@
 
 package au.org.biodiversity.nsl
 
-import com.google.gson.JsonElement
 import grails.plugin.cache.Cacheable
 import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
 import org.codehaus.groovy.grails.web.json.JSONArray
-import org.codehaus.groovy.grails.web.json.JSONElement
 import org.grails.plugins.metrics.groovy.Timed
 
 @Transactional
@@ -71,7 +69,7 @@ class LinkService {
                 }
                 return true
             }
-        } catch (e){
+        } catch (e) {
             log.error "Error $e.message adding link for $target"
         }
         return false
@@ -109,116 +107,109 @@ class LinkService {
     }
 
     /**
-     * Ask the mapper for the single mapper id (triple) for a URI, and recover the object. Returns null
-     * if the uri is not known to the mapper, if there are multiple ids for the uri, or if the objectType
-     * is unknown, or if the namespaces of the mapper triple and the object do not match.
+     * Get the domain object matching a URI based identifier. This method asks
+     * the mapper for the mapper id (triple) for a URI, and recover the object.
      *
-     * The namespace check helps ward against the situation where a shard service is given a uri belonging
-     * to some other shard, and there is an idNumber collision.
+     * It returns null if:-
+     * - the uri is not known to the mapper,
+     * - there are multiple ids for the uri,
+     * - no object matches the id, namespace, and object type
      *
      * @param uri a uri known to the mapper
-     * @return The Mapper JSON. This includes nameSpace, objectType, and idNumber.
+     * @return a domain object matching the object type returned by the mapper identity
      */
-
-    /*
-     * This method is not marked cacheable because it returns hibernate objects. It calls getMapperIdForLink()
-     * which *is* cacheable. It might be possible to make this method cacheable depending on how the cache plugin
-     * manages transaction boundaries
-     */
+    @SuppressWarnings("GroovyUnusedDeclaration")
+    @Timed()
     Object getObjectForLink(String uri) {
-        def id = getMapperIdForLink(uri)
-        if(!id) {
-            return null;
-        }
-
-
-        def obj = null
-        Namespace ns = null
-
-        if(id.objectType == 'name') {
-            obj = Name.get(id.idNumber)
-        }
-        else if(id.objectType == 'author') {
-            obj = Author.get(id.idNumber)
-        }
-        else if(id.objectType == 'instance') {
-            obj = Instance.get(id.idNumber)
-        }
-        else if(id.objectType == 'reference') {
-            obj = Reference.get(id.idNumber)
-        }
-        else if(id.objectType == 'instanceNote') {
-            obj = InstanceNote.get(id.idNumber)
-        }
-        else if(id.objectType == 'event') {
-            obj = Event.get(id.idNumber)
-        }
-        else if(id.objectType == 'tree') {
-            obj = Arrangement.get(id.idNumber)
-        }
-        else if(id.objectType == 'node') {
-            obj = Node.get(id.idNumber)
-            // the node namespace is handled a little differently
-            ns = ((Node)obj)?.root?.namespace
-        }
-        else {
+        Map identity = getMapperIdentityForLink(uri)
+        if (!identity) {
             return null
         }
 
-        if(!obj) {
-            log.warn "Object for $id not found"
-            return null;
+        def domainObject = getDomainObjectFromIdentity(identity)
+
+        if (!domainObject) {
+            log.error "Object for $identity not found"
         }
 
-        if(!ns) ns = obj.namespace;
+        return domainObject
 
-        if(ns.name.toLowerCase() != id.nameSpace) {
-            log.warn "namespace mismatch on $id. Should be ${ns.name.toLowerCase()}."
-            return null;
+    }
+
+    /**
+     * Find the domain object for a given Identity Map (triple) of:
+     *
+     *  nameSpace, objectType, idNumber
+     *
+     * @param identity
+     * @return Domain object or null if not found
+     */
+    private static Object getDomainObjectFromIdentity(Map identity) {
+
+        Long idNumber = identity.idNumber
+        Namespace ns = Namespace.findByNameIlike(identity.nameSpace as String)
+
+        switch (identity.objectType) {
+            case 'name':
+                return Name.findByIdAndNamespace(idNumber, ns)
+                break
+            case 'author':
+                return Author.findByIdAndNamespace(idNumber, ns)
+                break
+            case 'instance':
+                return Instance.findByIdAndNamespace(idNumber, ns)
+                break
+            case 'reference':
+                return Reference.findByIdAndNamespace(idNumber, ns)
+                break
+            case 'instanceNote':
+                return InstanceNote.findByIdAndNamespace(idNumber, ns)
+                break
+            case 'event':
+                return Event.findByIdAndNamespace(idNumber, ns)
+                break
+            case 'tree':
+                return Arrangement.findByIdAndNamespace(idNumber, ns)
+                break
+            case 'node':
+                return Node.findByIdAndNamespace(idNumber, ns)
+                break
+            default:
+                return null
         }
 
-        return obj
     }
 
     /**
      * Ask the mapper for the single mapper id (triple) for a URI. If the id matches multiple triples,
      * this method returns null. This method also returns null if the uri is unknown to the mapper.
      * @param uri a uri known to the mapper
-     * @return The Mapper JSON. This includes nameSpace, objectType, and idNumber.
+     * @return The Mapper Identity as a Map including nameSpace, objectType, and idNumber.
      */
+
     /* todo: add @Cacheable annotation.
      * In order to make this work properly, other methods here that ask the mapper to create and delete ids need to
      * update the cache
      */
+
     @Timed()
-    def getMapperIdForLink(String uri) {
+    Map getMapperIdentityForLink(String uri) {
         try {
-            /*
-              The usual kind of issue: sending this without encoding the uri is technically wrong, but if I
-              ULREncode it then something along the way double-encodes it and I get a 404.
 
-              String url = "${mapper(false)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
-             */
-
-            String url = "${mapper(false)}/broker/getCurrentIdentity?uri=${uri}"
-            log.debug(url);
-            RestResponse response = restCallService.nakedGet(url)
-            if(response.status != 200) return null;
-            if(!response.json) {
-                log.warn "expected a json response for $uri"
+            String url = "${mapper(false)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
+            log.debug(url)
+            JSONArray data = restCallService.get(url) as JSONArray
+            if (data.size() != 1) {
+                log.error "expected only 1 identity for $uri"
                 return null
             }
-            if(!(response.json instanceof JSONArray)) {
-                log.warn "expected a json array for $uri"
-                return null
-            }
-            if(((JSONArray)response.json).size() != 1) {
-                log.warn "expected 1 and only 1 identity for $uri"
-                return null
-            }
-            return ((JSONArray)response.json)[0];
+            return data[0] as Map
+        } catch (RestCallException e) {
+            log.error "Error $e.message getting mapper id for $uri"
+            return null
         } catch (Exception e) {
             log.error "Error $e.message getting mapper id for $uri"
+            return null
         }
     }
 
@@ -246,9 +237,9 @@ class LinkService {
         if (params) {
             // if this is the point where we are putting ampersands in, then this is the point where
             // the paramters need to be encoded.
-            def nameSpace = URLEncoder.encode(params.nameSpace as String,'UTF-8')
-            def objectType = URLEncoder.encode(params.objectType as String,'UTF-8')
-            def idNumber = URLEncoder.encode(params.idNumber as String,'UTF-8')
+            def nameSpace = URLEncoder.encode(params.nameSpace as String, 'UTF-8')
+            def objectType = URLEncoder.encode(params.objectType as String, 'UTF-8')
+            def idNumber = URLEncoder.encode(params.idNumber as String, 'UTF-8')
 
             return "nameSpace=${nameSpace}&objectType=${objectType}&idNumber=${idNumber}"
         }
@@ -274,7 +265,7 @@ class LinkService {
 
         if (target instanceof Arrangement) {
             // override the default, because we use 'tree' rather than 'arrangement'
-            target = JsonRendererService.initializeAndUnproxy(target)
+            target = JsonRendererService.initializeAndUnproxy(target as Arrangement)
             String objectType = 'tree'
             String nameSpace = target.namespace.name.toLowerCase()
             Long idNumber = target.id
@@ -283,9 +274,9 @@ class LinkService {
 
         if (target instanceof Node) {
             // override the default, because the namespace id on the node root rather than the root itself
-            target = JsonRendererService.initializeAndUnproxy(target)
+            target = JsonRendererService.initializeAndUnproxy(target as Node)
             String objectType = lowerFirst(target.class.simpleName)
-            String nameSpace = ((Node)target).root.namespace.name.toLowerCase()
+            String nameSpace = (target).root.namespace.name.toLowerCase()
             Long idNumber = target.id
             return [nameSpace: nameSpace, objectType: objectType, idNumber: idNumber]
         }
@@ -380,10 +371,10 @@ class LinkService {
         List<String> errors = []
         if (response?.json) {
             if (response.json.error) {
-                errors << response.json.error
+                errors.add(response.json.error as String)
             }
             if (response.json.errors) {
-                errors.addAll(response.json.errors)
+                errors.addAll(response.json.errors as List<String>)
             }
         }
         return errors
