@@ -17,7 +17,8 @@
         | sensu
         <st:preferedLink
             target="${apcInstance?.reference}">${raw(apcInstance?.reference?.citationHtml)}</st:preferedLink>
-        <a href="${af.refAPCSearchLink(citation: apcInstance?.reference?.citation, product: params.product)}" title="Search for names in this reference in APC">
+        <a href="${af.refAPCSearchLink(citation: apcInstance?.reference?.citation, product: params.product)}"
+           title="Search for names in this reference in APC">
           <i class="fa fa-search"></i>
         </a>
 
@@ -47,23 +48,29 @@
         <af:sortedReferences instances="${misapplied}" var="synonym" sortOn="cites">
           <div data-nameId="${name.id}">
             <g:if test="${synonym.instanceType.misapplied}">
-              <st:preferedLink target="${primaryInstance ?: name}">${raw(name.simpleNameHtml)}</st:preferedLink>
+              <st:preferedLink target="${name}" api="api/apni-format">${raw(name.simpleNameHtml)}</st:preferedLink>
+              <st:preferedLink target="${primaryInstance}"><i title="Link to use in reference"
+                                                              class="fa fa-book"></i></st:preferedLink>
               auct. non <af:author name="${synonym.name}"/>: <af:harvard reference="${synonym.cites.reference}"/>
               [fide <af:harvard reference="${synonym.citedBy.reference}"/>]
             </g:if>
             <g:else>
-              <st:preferedLink target="${primaryInstance ?: name}">${raw(name.simpleNameHtml)}</st:preferedLink>
+              <st:preferedLink target="${name}" api="api/apni-format">${raw(name.simpleNameHtml)}</st:preferedLink>
+              <st:preferedLink target="${primaryInstance}"><i title="Link to use in reference"
+                                                              class="fa fa-book"></i></st:preferedLink>
               <name-status class="${name.nameStatus.name}">${name.nameStatus.name}</name-status>
             </g:else>
             <g:if test="${synonym.instanceType.proParte}">, p.p.</g:if>
             =
             <accepted-name title='Accepted name'>
-              <st:preferedLink target="${synonym.citedBy}">${raw(synonym.citedBy.name.fullNameHtml)}</st:preferedLink>
+              <st:preferedLink target="${synonym.citedBy.name}"
+                               api="api/apni-format">${raw(synonym.citedBy.name.fullNameHtml)}</st:preferedLink>
+              <st:preferedLink target="${synonym.citedBy}"><i title="Link to use in reference"
+                                                              class="fa fa-book"></i></st:preferedLink>
             </accepted-name>
-            <af:branch name="${synonym.citedBy.name}" tree="APC"><i class="fa fa-code-fork"></i></af:branch>
-
-            <af:apniLink name="${synonym.citedBy.name}"/>
-
+            <span class="vertbar">
+              <af:branch name="${synonym.citedBy.name}" tree="APC"><i class="fa fa-code-fork"></i></af:branch>
+            </span>
             <span class="vertbar">
               <st:preferedLink target="${name}"><i title="citable link to name"
                                                    class="fa fa-link"></i></st:preferedLink>
