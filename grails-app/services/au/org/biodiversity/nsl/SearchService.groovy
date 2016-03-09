@@ -307,7 +307,9 @@ class SearchService {
      * against close matches.
      * @return
      */
+    public Map nameCheck(Map params, Integer max){
 
+    }
 
     static Sql getNSL() {
         (Environment.executeForCurrentEnvironment {

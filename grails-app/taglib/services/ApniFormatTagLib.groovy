@@ -191,7 +191,7 @@ class ApniFormatTagLib {
                 params << [product: 'apni']
             }
         }
-        out << g.createLink(absolute: true, controller: 'search', params: params)
+        out << g.createLink(absolute: true, controller: 'search', action: 'search', params: params)
     }
 
     def refAPCSearchLink = { attrs ->
@@ -206,7 +206,7 @@ class ApniFormatTagLib {
                 params << [product: 'apc']
             }
         }
-        out << g.createLink(controller: 'search', params: params)
+        out << g.createLink(controller: 'search', action: 'search', params: params)
     }
 
     def apniLink = { attrs ->
