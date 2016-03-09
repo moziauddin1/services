@@ -200,8 +200,8 @@ class TreeJsonEditController {
     def addNamesToNode(AddNamesToNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        Node root = linkService.getObjectForLink(param.root) as Node
-        Node focus = linkService.getObjectForLink(param.focus) as Node
+        Node root = (Node) linkService.getObjectForLink(param.root as String)
+        Node focus = (Node) linkService.getObjectForLink(param.focus as String)
 
         def names = [];
 
@@ -215,7 +215,7 @@ class TreeJsonEditController {
             names.add(o)
         }
 
-        Node newfocus = userWorkspaceManagerService.addNamesToNode(root, focus, names);
+        Node newFocus = userWorkspaceManagerService.addNamesToNode(root, focus, names);
 
         response.status = 200
         return render([
@@ -282,5 +282,7 @@ class AddNamesToNodeParam {
     String focus
     List<String> names
     static constraints = {
+        root nullable: false
+        focus nullable: false
     }
 }
