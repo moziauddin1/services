@@ -199,6 +199,10 @@ name-tag {
     font-size: small;
 }
 
+name element.\[unnamed\] {
+    display: none;
+}
+
 .divide {
     line-height: 50%;
 }

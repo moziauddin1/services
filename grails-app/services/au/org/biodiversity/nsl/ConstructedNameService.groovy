@@ -136,7 +136,7 @@ class ConstructedNameService {
 
         Boolean italic = RankUtils.rankLowerThan(name.nameRank, 'Genus') && !name.nameType.cultivar && name.nameType.name != 'phrase name'
 
-        String el = "<element>${italic ? '<i>' : ''}$name.nameElement${italic ? '</i>' : ''}</element>"
+        String el = "<element class='${name.nameElement}'>${italic ? '<i>' : ''}${name.nameElement}${italic ? '</i>' : ''}</element>"
         Map nameElement = [fullMarkedUpName: el, simpleMarkedUpName: el]
 
         if (parent && name.nameType.formula) {
