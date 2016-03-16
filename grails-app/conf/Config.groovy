@@ -220,7 +220,7 @@ log4j.main = {
 
 grails.cache.config = {
     cache {
-        name 'linkcache'
+        name "linkcache-${appVersion}"
         maxElementsInMemory 10000
         eternal false
         timeToIdleSeconds 600
