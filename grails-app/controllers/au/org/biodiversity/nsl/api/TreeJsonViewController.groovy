@@ -28,6 +28,7 @@ class TreeJsonViewController {
     TreeViewService treeViewService
     JsonRendererService jsonRendererService
     LinkService linkService
+    SearchService searchService
 
     def test() {
         def result = 'TreeJsonEditController'
@@ -337,6 +338,12 @@ class TreeJsonViewController {
 
         return render(result.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }
+
+    def searchNames() {
+        Map results = searchService.searchForName(params, 200)
+        return render(results.names.collect { linkService.getPreferredLinkForObject(it) } as JSON)
+    }
+
 }
 
 @Validateable
