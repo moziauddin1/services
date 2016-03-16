@@ -219,8 +219,11 @@ log4j.main = {
 }
 
 grails.cache.config = {
+    provider {
+        name "ehcache-${appName}-${appVersion}"
+    }
     cache {
-        name "linkcache-${appVersion}"
+        name "linkcache"
         maxElementsInMemory 10000
         eternal false
         timeToIdleSeconds 600

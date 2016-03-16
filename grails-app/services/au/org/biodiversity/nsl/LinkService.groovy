@@ -77,7 +77,7 @@ class LinkService {
 
     @Timed()
     //target.id is unique for the linkable targets, if not this cache will break.
-    @Cacheable(value = 'linkcache-${appVersion}', key = '#target.id')
+    @Cacheable(value = 'linkcache', key = '#target.id')
     String getPreferredLinkForObject(target) {
         try {
             String url = getLinkServiceUrl(target, 'preferredLink', true)
