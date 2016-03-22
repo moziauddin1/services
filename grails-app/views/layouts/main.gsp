@@ -38,8 +38,8 @@
 <g:render template="/common/service-navigation" model="[links: [
     [class: 'dashboard', url: createLink(controller: 'dashboard', action: 'index'), label: 'Dash', icon: 'fa-bar-chart-o'],
     [class: 'search', url: createLink(controller: 'search', action: 'search'), label: 'Search', icon: 'fa-search', loggedIn: true],
-    [class: 'search', url: createLink(controller: 'search', action: 'search', params: [product: 'apni']), label: 'APNI', icon: 'fa-search'],
-    [class: 'search', url: createLink(controller: 'search', action: 'search', params: [product: 'apc']), label: 'APC', icon: 'fa-search'],
+    [class: 'search', url: createLink(controller: 'search', action: 'search', params: [product: 'apni']), label: 'Names (APNI)', icon: 'fa-search'],
+    [class: 'search', url: createLink(controller: 'search', action: 'search', params: [product: 'apc']), label: 'Taxonomy (APC)', icon: 'fa-search'],
 ]]"/>
 <st:systemNotification/>
 <div id="main-content" class="container-fluid">

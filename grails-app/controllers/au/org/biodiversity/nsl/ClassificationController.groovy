@@ -49,7 +49,7 @@ class ClassificationController {
     @RequiresRoles('admin')
     def editForm() {
         Arrangement classification = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                 params['classification'] as String
         );
         [classification: classification, inputLabel: classification.label, inputDescription: classification.description]
@@ -66,11 +66,11 @@ class ClassificationController {
                 } else {
                     if (params['copyNameChk']) {
                         Arrangement copyNameIn = Arrangement.findByNamespaceAndLabel(
-                                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                                 params['inputCopyNameIn'] as String)
-                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.services.classification.namespace), label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace), label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
                     } else {
-                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.services.classification.namespace), label: params.inputLabel, description: params.inputDescription);
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace), label: params.inputLabel, description: params.inputDescription);
                     }
 
                     flash.success = "Classification \"${params['inputLabel']}\" created."
@@ -105,7 +105,7 @@ class ClassificationController {
         // and remove the match is the classification is deleted
 
         Arrangement classification = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                 params['classification'] as String)
 
         if (!classification) {

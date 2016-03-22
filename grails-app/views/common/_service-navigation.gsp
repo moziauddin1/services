@@ -1,6 +1,6 @@
 <%@ page import="org.apache.shiro.SecurityUtils" %>
-<div class="container page-header">
-  <h1>${grailsApplication.config.nslServices.product}</h1>
+<div class="container">
+  <h1>${grailsApplication.config.shard.product}</h1>
 </div>
 <div class="navbar navbar-inverse" role="navigation">
   <div class="">

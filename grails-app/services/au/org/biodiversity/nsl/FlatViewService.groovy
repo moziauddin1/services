@@ -240,7 +240,7 @@ SELECT
      */
     public File exportSimpleNameToCSV() {
         Date date = new Date()
-        String tempFileDir = grailsApplication.config.nslServices.temp.file.directory
+        String tempFileDir = grailsApplication.config.shard.temp.file.directory
         String fileName = "nsl-taxa-${date.format('yyyy-MM-dd-mmss')}.csv"
         File outputFile = new File(tempFileDir, fileName)
         withSql { Sql sql ->

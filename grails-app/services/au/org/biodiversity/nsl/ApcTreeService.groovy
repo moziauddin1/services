@@ -54,15 +54,6 @@ class ApcTreeService {
         boolean dist_diff;
     }
 
-    @Deprecated
-    def transferApcProfileData() {
-        log.warn 'deprecated'
-        return transferApcProfileData(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.classificationTree as String
-        )
-    }
-
     def transferApcProfileData(Namespace namespace, String classificationTreeLabel) {
         log.debug "applying instance APC comments and distribution text to the APC tree"
 
@@ -104,7 +95,7 @@ class ApcTreeService {
         // OK! Now to fix up the profile data!
 
         log.debug "event"
-        Event transferEvent = basicOperationsService.newEvent("Transfer instance profile data to the APC tree")
+        Event transferEvent = basicOperationsService.newEvent(namespace, 'Transfer instance profile data to the APC tree')
 
         log.debug "persist"
         basicOperationsService.persistNode(transferEvent, tempSpace.node)

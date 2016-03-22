@@ -60,7 +60,7 @@ class DataExportService {
     }
 
     public File getBaseDir() {
-        String tempFileDir = grailsApplication.config.nslServices.temp.file.directory
+        String tempFileDir = grailsApplication.config.shard.temp.file.directory
         File baseDir = new File(tempFileDir, 'nsl-tmp')
         if (baseDir.exists()) {
             return baseDir

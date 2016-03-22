@@ -223,8 +223,8 @@ class NameService {
     void removeNameFromApni(Name name) {
         //replace the name with an end Node.
         Arrangement apni = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
-                grailsApplication.config.services.classification.nameTree as String)
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                grailsApplication.config.shard.classification.nameTree as String)
         if (Node.countByNameAndRoot(name, apni)) { //only remove if it's in there, e.g. not a common name
             treeOperationsService.deleteNslName(apni, name, null)
             name.refresh() //reload the name because ... tree services

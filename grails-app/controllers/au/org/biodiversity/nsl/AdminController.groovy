@@ -45,8 +45,8 @@ class AdminController {
 
         stats.namesNeedingConstruction = nameService.countIncompleteNameStrings()
         stats.namesNotInApni = nameService.countNamesNotInApni()
-        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(grailsApplication.config.services.classification.nameTree as String)
-        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(grailsApplication.config.services.classification.classificationTree as String)
+        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(grailsApplication.config.shard.classification.nameTree as String)
+        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(grailsApplication.config.shard.classification.classificationTree as String)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         //todo iterate trees add back stats if they don't interrupt ops.
         [pollingNames: nameService.pollingStatus(), stats: stats]
@@ -170,8 +170,8 @@ class AdminController {
     def transferApcProfileData() {
         log.debug "applying instance APC comments and distribution text to the APC tree"
         flash.message = apcTreeService.transferApcProfileData(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace as String),
-                grailsApplication.config.services.classification.classificationTree as String
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
+                grailsApplication.config.shard.classification.classificationTree as String
         )
         redirect(action: 'index')
     }

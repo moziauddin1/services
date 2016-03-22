@@ -55,8 +55,8 @@ class TreeEditController {
         }
 
         Arrangement apc = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
-                grailsApplication.config.services.classification.classificationTree as String)
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                grailsApplication.config.shard.classification.classificationTree as String)
 
 //		Uri nameUri = uri('nsl-name', p.instance.name.id)
 //		Uri supernameUri = p.supername ? uri('nsl-name', p.supername.id) : null
@@ -181,8 +181,8 @@ class TreeEditController {
         }
 
         Arrangement apc = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
-                grailsApplication.config.services.classification.classificationTree as String)
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                grailsApplication.config.shard.classification.classificationTree as String)
 
         try {
             log.debug "perform remove"

@@ -65,13 +65,13 @@ class TreeViewController {
 
     private Arrangement getTree(TreeViewParam p) {
         return Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                 p.treeLabel)
     }
 
     private Arrangement getTree(TreeViewInstanceParam p) {
         return Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                 p.treeLabel)
     }
 }

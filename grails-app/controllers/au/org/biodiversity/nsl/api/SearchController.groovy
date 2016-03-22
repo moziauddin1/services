@@ -42,7 +42,7 @@ class SearchController {
 
         if (params.product) {
             Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                     params.product.toUpperCase())
             if (tree) {
                 params.tree = [id: tree.id]
@@ -158,7 +158,7 @@ class SearchController {
 
         if (params.product) {
             Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                     params.product.toUpperCase())
             if (tree) {
                 params.tree = [id: tree.id]
@@ -183,7 +183,7 @@ class SearchController {
             params.product = 'apc'
         }
         Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                 params.product.toUpperCase())
         if (tree) {
             params.tree = [id: tree.id]
