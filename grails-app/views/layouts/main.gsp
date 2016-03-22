@@ -35,12 +35,9 @@
 </head>
 
 <body class="${st.scheme()}">
-<g:render template="/common/service-navigation" model="[links: [
-    [class: 'dashboard', url: createLink(controller: 'dashboard', action: 'index'), label: 'Dash', icon: 'fa-bar-chart-o'],
-    [class: 'search', url: createLink(controller: 'search', action: 'search'), label: 'Search', icon: 'fa-search', loggedIn: true],
-    [class: 'search', url: createLink(controller: 'search', action: 'search', params: [product: 'apni']), label: 'Names (APNI)', icon: 'fa-search'],
-    [class: 'search', url: createLink(controller: 'search', action: 'search', params: [product: 'apc']), label: 'Taxonomy (APC)', icon: 'fa-search'],
-]]"/>
+
+<g:render template="/common/service-navigation"/>
+
 <st:systemNotification/>
 <div id="main-content" class="container-fluid">
   <div class="row">
@@ -64,7 +61,7 @@
     </span>
   <div>
 </div>
-
+${params}
 <!-- Version: <g:meta name="app.version"/> -->
 
 <div id="spinner" class="spinner" style="display:none;"><g:message code="spinner.alt" default="Loading&hellip;"/></div>
