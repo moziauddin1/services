@@ -3,10 +3,12 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.ArrangementType
 import au.org.biodiversity.nsl.Instance
+import au.org.biodiversity.nsl.JsonRendererService
 import au.org.biodiversity.nsl.LinkService
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
 import grails.converters.JSON
 import grails.validation.Validateable
@@ -29,6 +31,7 @@ class TreeJsonEditController {
     UserWorkspaceManagerService userWorkspaceManagerService
     MessageSource messageSource
     LinkService linkService
+    JsonRendererService jsonRendererService
 
     def test() {
         def msg = [msg: 'TreeJsonEditController']
@@ -57,7 +60,7 @@ class TreeJsonEditController {
 
         Node checkout = null;
 
-        if(param.checkout) {
+        if (param.checkout) {
             Object o = linkService.getObjectForLink(param.checkout)
             if (o == null) {
                 def result = [
@@ -82,7 +85,23 @@ class TreeJsonEditController {
             checkout = o as Node
         }
 
-        Arrangement a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, title, param.description, checkout)
+        try {
+            Arrangement a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, title, param.description, checkout)
+        }
+        catch (ServiceException ex) {
+            response.status = 400
+
+            def result = [
+                    success             : false,
+                    msg                 : [
+                            [msg: 'Could not create workspace', body: ex.getLocalizedMessage(), status: 'warning'],
+                    ],
+                    treeServiceException: ex,
+                    uri                 : null
+            ];
+
+            return render(result as JSON)
+        }
 
         def msg = [
                 [msg: 'Created Workspace', body: a.title, status: 'success'],
@@ -127,7 +146,7 @@ class TreeJsonEditController {
 
         if (o.owner != SecurityUtils.subject.principal) {
             def result = [
-                    success: true,
+                    success: false,
                     msg    : [
                             [msg: 'Authorisation', body: "You do not have permission to delete workspace ${a.title}", status: 'warning'],
                     ]
@@ -136,7 +155,23 @@ class TreeJsonEditController {
             return render(result as JSON)
         }
 
-        userWorkspaceManagerService.deleteWorkspace(a);
+        try {
+            userWorkspaceManagerService.deleteWorkspace(a);
+        }
+        catch (ServiceException ex) {
+            response.status = 400
+
+            def result = [
+                    success             : false,
+                    msg                 : [
+                            [msg: 'Could not delete workspace', body: ex.getLocalizedMessage(), status: 'warning'],
+                    ],
+                    treeServiceException: ex,
+                    uri                 : null
+            ];
+
+            return render(result as JSON)
+        }
 
         response.status = 200
         return render([
@@ -176,7 +211,7 @@ class TreeJsonEditController {
 
         if (o.owner != SecurityUtils.subject.principal) {
             def result = [
-                    success: true,
+                    success: false,
                     msg    : [
                             [msg: 'Authorisation', body: "You do not have permission to alter workspace ${a.title}", status: 'warning'],
                     ]
@@ -185,7 +220,23 @@ class TreeJsonEditController {
             return render(result as JSON)
         }
 
-        userWorkspaceManagerService.updateWorkspace(a, param.title, param.description);
+        try {
+            userWorkspaceManagerService.updateWorkspace(a, param.title, param.description);
+        }
+        catch (ServiceException ex) {
+            response.status = 400
+
+            def result = [
+                    success             : false,
+                    msg                 : [
+                            [msg: 'Could not delete workspace', body: ex.getLocalizedMessage(), status: 'warning'],
+                    ],
+                    treeServiceException: ex,
+                    uri                 : null
+            ];
+
+            return render(result as JSON)
+        }
 
         response.status = 200
         return render([
@@ -207,21 +258,38 @@ class TreeJsonEditController {
 
         // TODO better error handling here.
 
-        for(uri in param.names) {
+        for (uri in param.names) {
             def o = linkService.getObjectForLink(uri);
-            if(!(o instanceof Name) && !(o instanceof Instance)) {
+            if (!(o instanceof Name) && !(o instanceof Instance)) {
                 throw new IllegalArgumentException(uri);
             }
             names.add(o)
         }
 
-        Node newFocus = userWorkspaceManagerService.addNamesToNode(root, focus, names);
+        Node newFocus
+        try {
+            newFocus = userWorkspaceManagerService.addNamesToNode(root, focus, names);
+        }
+        catch (ServiceException ex) {
+            response.status = 400
+
+            def result = [
+                    success             : false,
+                    msg                 : [
+                            [msg: 'Could not add names to node', body: ex.getLocalizedMessage(), status: 'warning'],
+                    ],
+                    treeServiceException: ex,
+                    uri                 : null
+            ];
+
+            return render(result as JSON)
+        }
 
         response.status = 200
         return render([
-                success: true,
+                success : true,
                 newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg    : [
+                msg     : [
                         [msg: 'Updated', body: "Names added", status: 'success']
                 ]
         ] as JSON)

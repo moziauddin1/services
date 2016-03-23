@@ -17,12 +17,16 @@
 package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.tree.DomainUtils
+import au.org.biodiversity.nsl.tree.Message
+import au.org.biodiversity.nsl.tree.Msg
+import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.Uri
 import grails.converters.JSON
 import grails.converters.XML
 import grails.transaction.Transactional
 import org.hibernate.Hibernate
 import org.hibernate.proxy.HibernateProxy
+import org.springframework.context.MessageSource
 
 @Transactional
 class JsonRendererService {
@@ -30,6 +34,7 @@ class JsonRendererService {
     def grailsApplication
     def linkService
     def instanceService
+    MessageSource messageSource
 
     def registerObjectMashallers() {
         JSON.registerObjectMarshaller(Namespace) { Namespace namespace -> getBriefNamespace(namespace) }
@@ -43,6 +48,8 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Link) { Link link -> marshallLink(link) }
         JSON.registerObjectMarshaller(Arrangement) { Arrangement arrangement -> marshallArrangement(arrangement) }
         JSON.registerObjectMarshaller(Event) { Event event -> marshallEvent(event) }
+        JSON.registerObjectMarshaller(ServiceException) { ServiceException serviceException -> marshallTreeServiceException(serviceException) }
+        JSON.registerObjectMarshaller(Message) { Message message -> marshallTreeServiceMessage(message) }
 
         XML.registerObjectMarshaller(new XmlMapMarshaller())
         XML.registerObjectMarshaller(Namespace) { Namespace namespace, XML xml -> xml.convertAnother(getBriefNamespace(namespace)) }
@@ -63,6 +70,8 @@ class JsonRendererService {
         XML.registerObjectMarshaller(Link) { Link link, XML xml -> xml.convertAnother(marshallLink(link)) }
         XML.registerObjectMarshaller(Arrangement) { Arrangement arrangement, XML xml -> xml.convertAnother(marshallArrangement(arrangement)) }
         XML.registerObjectMarshaller(Event) { Event event, XML xml -> xml.convertAnother(marshallEvent(event)) }
+        XML.registerObjectMarshaller(ServiceException) { ServiceException serviceException, XML xml -> xml.convertAnother(marshallTreeServiceException(serviceException)) }
+        XML.registerObjectMarshaller(Message) { Message message, XML xml -> xml.convertAnother(marshallTreeServiceMessgage(message)) }
     }
 
     Map getBriefNamespace(Namespace namespace) {
@@ -569,6 +578,36 @@ class JsonRendererService {
                 apcExcluded        : nslSimpleName.apcExcluded
         ]
         return data
+    }
+
+    Map marshallTreeServiceException(ServiceException exception) {
+        return [
+                treeServiceException : [
+                        plainText: exception.getLocalizedMessage(),
+                        message: exception.msg,
+                ]
+        ]
+    }
+
+    Map marshallTreeServiceMessage(Message msg) {
+        return [
+            msg: msg.msg.name(),
+            plainText: msg.getLocalisedString(),
+            message: messageSource.getMessage(msg, (Locale) null),
+            rawMessage: messageSource.getMessage(msg.msg.getKey(), (Object[])null, (Locale)null),
+            args: msg.args.collect { it ->
+                if(it in Node || it in Arrangement || it in Name || it in Instance || it in Reference) {
+                    brief(it)
+                }
+                else if(it in Link) {
+                    marshallLink(it as Link)
+                }
+                else {
+                    it
+                }
+            },
+            nested: msg.nested
+        ]
     }
 
     @SuppressWarnings("GroovyAssignabilityCheck")

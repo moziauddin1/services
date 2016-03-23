@@ -85,26 +85,66 @@ class TreeJsonViewController {
         render result as JSON
     }
 
-    def permissions(UriParam param) {
-        if (!param.validate()) {
-            def msg = [];
+    def permissions(String uri) {
 
-            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
-            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+        String principal = SecurityUtils.subject.principal as String;
 
-            def result = [
-                    success: false,
-                    msg    : msg,
-                    errors : param.errors,
-            ];
+        def userPermissions = [canCreateWorkspaces: SecurityUtils.subject.hasRole('treebuilder')];
+        def uriPermissions = [:];
 
-            return render(status: 400) { result as JSON }
+        if (!uri) {
+            uriPermissions.uriType = null;
+        } else {
+            def o = linkService.getObjectForLink(uri)
+
+            if (!o) {
+                return render([
+                        success  : false,
+                        uri      : uri,
+                        principal: principal,
+                        error    : 'uri not found'
+                ] as JSON);
+            }
+
+
+            Arrangement a = null;
+            Node n = null;
+
+            if (o instanceof Arrangement) {
+                a = (Arrangement) o;
+                uriPermissions.uriType = 'tree';
+            } else if (o instanceof Node) {
+                uriPermissions.uriType = 'node';
+                n = (Node) o;
+                a = n.root;
+            } else {
+                return render([
+                        success  : false,
+                        uri      : uri,
+                        principal: principal,
+                        error    : 'unrecognised type'
+                ] as JSON);
+            }
+
+            if (n) {
+                uriPermissions.isDraftNode = n.checkedInAt == null;
+            }
+
+            uriPermissions.isClassification = a.arrangementType == ArrangementType.P;
+            uriPermissions.isWorkspace = a.arrangementType == ArrangementType.U;
+            uriPermissions.canEdit = (uriPermissions.isWorkspace && principal == a.owner) || (uriPermissions.isClassification && SecurityUtils.subject.hasRole(a.label));
         }
 
-        def o = linkService.getObjectForLink(param.uri)
 
-        def result = [:]
-        render result as JSON
+        def result = [
+                success    : true,
+                uri        : uri,
+                principal  : principal,
+                userPermissions: userPermissions,
+                uriPermissions: uriPermissions
+        ]
+
+        return render(result as JSON);
 
     }
 
@@ -218,20 +258,19 @@ class TreeJsonViewController {
 
                 String names_subq;
 
-                if(param.includeSubnames) {
+                if (param.includeSubnames) {
                     names_subq = """
-                        with recursive nn as (
+                        WITH RECURSIVE nn AS (
                                 SELECT id
                                 FROM Name
                                 WHERE simple_name LIKE ?
-                            union all
-                                select name.id from nn join name on nn.id = name.parent_id
+                            UNION ALL
+                                SELECT name.id FROM nn JOIN name ON nn.id = name.parent_id
                         )
-                        SELECT distinct id
+                        SELECT DISTINCT id
                         FROM nn
                     """
-                }
-                else {
+                } else {
                     names_subq = """
                         SELECT name.id
                         FROM name
@@ -249,7 +288,7 @@ class TreeJsonViewController {
                         where namespace.name = ?
                         order by name.simple_name
                     """
-                     )
+                    )
                     ps.setString(1, param.name);
                     ps.setString(2, param.namespace);
                     ResultSet rs = ps.executeQuery();
@@ -258,8 +297,7 @@ class TreeJsonViewController {
                     }
                     rs.close();
                     ps.close();
-                }
-                else if (param.allReferences) {
+                } else if (param.allReferences) {
                     PreparedStatement ps = connection.prepareStatement("""
                         select instance.id
                         from (${names_subq}) as nn
@@ -280,27 +318,24 @@ class TreeJsonViewController {
                     }
                     rs.close();
                     ps.close();
-                }
-
-                else {
+                } else {
                     String references_subq
 
                     if (!param.includeSubreferences) {
                         references_subq = """
-                            select id from reference
-                            where reference.citation like ?
+                            SELECT id FROM reference
+                            WHERE reference.citation LIKE ?
                         """
-                    }
-                    else {
+                    } else {
                         references_subq = """
-                            with recursive rr as (
-                                select reference.id from reference
-                                where reference.citation like ?
-                                union all
-                                select reference.id
-                                from rr join reference on rr.id = reference.parent_id
+                            WITH RECURSIVE rr AS (
+                                SELECT reference.id FROM reference
+                                WHERE reference.citation LIKE ?
+                                UNION ALL
+                                SELECT reference.id
+                                FROM rr JOIN reference ON rr.id = reference.parent_id
                             )
-                            select distinct id from rr
+                            SELECT DISTINCT id FROM rr
                         """
                     }
 
