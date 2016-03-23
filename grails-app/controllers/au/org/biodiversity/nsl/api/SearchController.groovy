@@ -83,7 +83,7 @@ class SearchController {
             }
             withFormat {
                 html {
-                    return render(view: 'search', model: [names: models, query: params, count: results.count, max: max, displayFormats: displayFormats, stats: stats])
+                    return render(view: 'search', model: [names: models, query: params, count: results.count, max: max, displayFormats: displayFormats])
                 }
                 json {
                     return render(contentType: 'application/json') { models }
