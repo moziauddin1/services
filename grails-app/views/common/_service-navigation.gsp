@@ -35,7 +35,7 @@
         </li>
         <li class="${params.product == 'apc' ? 'active' : ''}">
           <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: 'apc'])}"><i
-              class="fa fa-search"></i> Classification (APC)</a>
+              class="fa fa-search"></i> APC Taxonomy</a>
         </li>
       </ul>
 
