@@ -73,15 +73,6 @@ class SearchController {
         incCookie.maxAge = 3600 //1 hour
         response.addCookie(incCookie)
 
-        Map stats = [:]
-        stats.scientific = Name.executeQuery("select count(*) from Name where nameType.scientific = true and instances.size > 0")[0]
-        stats.cultigen = Name.executeQuery("select count(*) from Name where nameType.cultivar = true and instances.size > 0")[0]
-        stats.hybrid = Name.executeQuery("select count(*) from Name where nameType.hybrid = true and instances.size > 0")[0]
-        stats.formula = Name.executeQuery("select count(*) from Name where nameType.formula = true and instances.size > 0")[0]
-        stats.autonym = Name.executeQuery("select count(*) from Name where nameType.autonym = true and instances.size > 0")[0]
-        stats.other = Name.executeQuery("select count(*) from Name where instances.size > 0")[0] -
-                (stats.scientific + stats.cultigen + stats.hybrid + stats.formula + stats.autonym)
-
         List displayFormats = ['apni', 'apc']
         if (params.search == 'true' || params.advanced == 'true' || params.nameCheck == 'true') {
             log.debug "doing search"
@@ -147,7 +138,7 @@ class SearchController {
             return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: stats]
         }
 
-        return [query: params, max: max, displayFormats: displayFormats, stats: stats]
+        return [query: params, max: max, displayFormats: displayFormats]
 
     }
 
