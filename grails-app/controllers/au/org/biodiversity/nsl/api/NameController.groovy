@@ -223,8 +223,13 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             respond(new ResultObject(text: "unregistered $uri"))
         }
     }
-
+    /**
+     * export simplename - this is going to be removed as the data is out of date
+     * @param exportFormat
+     * @return
+     */
     @Timed()
+    @Deprecated
     def exportNslSimple(String exportFormat) {
         File exportFile
         if (exportFormat == 'csv') {

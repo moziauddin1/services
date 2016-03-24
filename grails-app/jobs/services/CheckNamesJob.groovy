@@ -36,10 +36,6 @@ class CheckNamesJob {
     def execute() {
         Name.withTransaction {
             List<Notification> notifications = Notification.list()
-//            if (notifications) {
-//                grailsCacheManager.getCache('apniblockcache')?.clear()
-//                grailsCacheManager.getCache('apcblockcache')?.clear()
-//            }
             notifications.each { Notification note ->
                 switch (note.message) {
                     case 'name updated':

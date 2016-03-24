@@ -36,6 +36,7 @@ class UrlMappings {
         "/search"(controller: 'search', action: 'search')
         "/search/form"(controller: 'search', action: 'searchForm')
         "/auth/$action"(controller: 'auth')
+
         "/$product"(controller: 'search', action: 'search')
 
         "/$namespace/cgi-bin/apni"(controller: 'idMapper', action: 'apni')
