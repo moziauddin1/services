@@ -21,8 +21,6 @@
       <st:editorLink nameId="${name.id}"><i class="fa fa-edit" title="Edit"></i></st:editorLink>
     </editor>
 
-    <af:apniLink link="${preferredNameLink + '/api/apni-format'}"/>
-
     <span class="vertbar">
       <a href="${preferredNameLink}"><i title="Link to Name" class="fa fa-link"></i></a>
     </span>
