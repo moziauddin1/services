@@ -85,8 +85,9 @@ class TreeJsonEditController {
             checkout = o as Node
         }
 
+        Arrangement a;
         try {
-            Arrangement a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, title, param.description, checkout)
+            a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, title, param.description, checkout)
         }
         catch (ServiceException ex) {
             response.status = 400
@@ -103,13 +104,11 @@ class TreeJsonEditController {
             return render(result as JSON)
         }
 
-        def msg = [
-                [msg: 'Created Workspace', body: a.title, status: 'success'],
-        ];
-
         def result = [
                 success: true,
-                msg    : msg,
+                msg    : [
+                        [msg: 'Created Workspace', body: a.title, status: 'success'],
+                ],
                 uri    : null
         ];
 
