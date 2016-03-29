@@ -287,7 +287,7 @@ class SimpleNameService {
      */
     public File exportSimpleNameToCSV() {
         Date date = new Date()
-        String tempFileDir = grailsApplication.config.nslServices.temp.file.directory
+        String tempFileDir = grailsApplication.config.shard.temp.file.directory
         String fileName = "nslsimplename-${date.format('yyyy-MM-dd-mmss')}.csv"
         File outputFile = new File(tempFileDir, fileName)
         withSql { Sql sql ->
@@ -304,7 +304,7 @@ class SimpleNameService {
      */
     public File exportSimpleNameToText() {
         Date date = new Date()
-        String tempFileDir = grailsApplication.config.nslServices.temp.file.directory
+        String tempFileDir = grailsApplication.config.shard.temp.file.directory
         String fileName = "nslsimplename-${date.format('yyyy-MM-dd-mmss')}.txt"
         File outputFile = new File(tempFileDir, fileName)
         withSql { Sql sql ->

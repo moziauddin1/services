@@ -160,26 +160,26 @@
       <div class="form-group">
         <div class="checkbox">
           <label><g:checkBox name="inc.scientific"
-                             value="${query.inc?.scientific}"/>Scientific names (${stats?.scientific})</label>
+                             value="${query.inc?.scientific}"/>Scientific names</label>
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Cultigens (${stats?.cultigen})
+          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Cultigens
             <a title="definition on Wikipedia" href="https://en.wikipedia.org/wiki/Cultigen"><i
                 class="fa fa-external-link"></i></a>
           </label>
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="inc.hybrid" value="${query.inc?.hybrid}"/>Hybrids (${stats?.hybrid})</label>
+          <label><g:checkBox name="inc.hybrid" value="${query.inc?.hybrid}"/>Hybrids</label>
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="inc.formula" value="${query.inc?.formula}"/>Formula names (${stats?.formula})</label>
+          <label><g:checkBox name="inc.formula" value="${query.inc?.formula}"/>Formula names</label>
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="inc.autonym" value="${query.inc?.autonym}"/>Autonyms (${stats?.autonym})</label>
+          <label><g:checkBox name="inc.autonym" value="${query.inc?.autonym}"/>Autonyms</label>
         </div>
 
         <div class="checkbox">

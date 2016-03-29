@@ -36,7 +36,7 @@ class RulesEngineService {
 
     String getRulesEngineRestUri() {
         if(!rulesEngineUri) {
-            String uri = grailsApplication.config.nslServices.rulesEngine.uri
+            String uri = grailsApplication.config.shard.rulesEngine.uri
             if (!uri) {
                 throw new RulesEngineException("rulesEngine.uri must be defined in grails-app/conf/Config.groovy")
             }

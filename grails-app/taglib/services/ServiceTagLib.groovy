@@ -70,7 +70,7 @@ class ServiceTagLib {
     }
 
     def scheme = {attrs ->
-        def colourScheme = grailsApplication.config.nslServices.colourScheme
+        def colourScheme = grailsApplication.config.shard.colourScheme
         if (colourScheme) {
             out << colourScheme
         }

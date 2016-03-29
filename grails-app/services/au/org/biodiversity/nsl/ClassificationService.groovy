@@ -39,21 +39,21 @@ class ClassificationService {
 
     private Namespace getNameSpace() {
         if (!nameSpaceName) {
-            nameSpaceName = Namespace.findByName(grailsApplication.config.services.classification.namespace as String)
+            nameSpaceName = Namespace.findByName(grailsApplication.config.shard.classification.namespace as String)
         }
         return nameSpaceName
     }
 
     private String getNameTreeName() {
         if (!nameTreeName) {
-            nameTreeName = grailsApplication.config.services.classification.nameTree
+            nameTreeName = grailsApplication.config.shard.classification.nameTree
         }
         return nameTreeName
     }
 
     private String getClassificationTreeName() {
         if (!classificationTree) {
-            classificationTree = grailsApplication.config.services.classification.classificationTree
+            classificationTree = grailsApplication.config.shard.classification.classificationTree
         }
         return classificationTree
     }

@@ -42,7 +42,7 @@ class SearchController {
 
         if (params.product) {
             Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                     params.product.toUpperCase())
             if (tree) {
                 params.tree = [id: tree.id]
@@ -73,15 +73,6 @@ class SearchController {
         incCookie.maxAge = 3600 //1 hour
         response.addCookie(incCookie)
 
-        Map stats = [:]
-        stats.scientific = Name.executeQuery("select count(*) from Name where nameType.scientific = true and instances.size > 0")[0]
-        stats.cultigen = Name.executeQuery("select count(*) from Name where nameType.cultivar = true and instances.size > 0")[0]
-        stats.hybrid = Name.executeQuery("select count(*) from Name where nameType.hybrid = true and instances.size > 0")[0]
-        stats.formula = Name.executeQuery("select count(*) from Name where nameType.formula = true and instances.size > 0")[0]
-        stats.autonym = Name.executeQuery("select count(*) from Name where nameType.autonym = true and instances.size > 0")[0]
-        stats.other = Name.executeQuery("select count(*) from Name where instances.size > 0")[0] -
-                (stats.scientific + stats.cultigen + stats.hybrid + stats.formula + stats.autonym)
-
         List displayFormats = ['apni', 'apc']
         if (params.search == 'true' || params.advanced == 'true' || params.nameCheck == 'true') {
             log.debug "doing search"
@@ -92,7 +83,7 @@ class SearchController {
             }
             withFormat {
                 html {
-                    return render(view: 'search', model: [names: models, query: params, count: results.count, max: max, displayFormats: displayFormats, stats: stats])
+                    return render(view: 'search', model: [names: models, query: params, count: results.count, max: max, displayFormats: displayFormats])
                 }
                 json {
                     return render(contentType: 'application/json') { models }
@@ -147,7 +138,7 @@ class SearchController {
             return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: stats]
         }
 
-        return [query: params, max: max, displayFormats: displayFormats, stats: stats]
+        return [query: params, max: max, displayFormats: displayFormats]
 
     }
 
@@ -158,7 +149,7 @@ class SearchController {
 
         if (params.product) {
             Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                     params.product.toUpperCase())
             if (tree) {
                 params.tree = [id: tree.id]
@@ -173,5 +164,25 @@ class SearchController {
 
 
         render([template: 'advanced-search-form', model: [query: params, max: 100]])
+    }
+
+    def nameCheck(Integer max) {
+
+        max = max ?: 100;
+
+        if (!params.product) {
+            params.product = 'apc'
+        }
+        Arrangement tree = Arrangement.findByNamespaceAndLabel(
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                params.product.toUpperCase())
+        if (tree) {
+            params.tree = [id: tree.id]
+        } else {
+            flash.message = "Unknown product ${params.product}"
+            return redirect(url: '/')
+        }
+
+        searchService.nameCheck(params, max)
     }
 }

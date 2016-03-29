@@ -1,4 +1,8 @@
 <%@ page import="org.apache.shiro.SecurityUtils" %>
+<div class="container">
+  <h1>${grailsApplication.config.shard.product}</h1>
+</div>
+
 <div class="navbar navbar-inverse" role="navigation">
   <div class="">
     <div class="navbar-header">
@@ -9,21 +13,30 @@
         <span class="icon-bar"></span>
       </button>
       <a class="navbar-brand" href="${createLink(uri: '/')}">
-        <g:message code="application.name" default="NSL Application"/>
-        <g:if test="${params.product}"> - ${params.product.toUpperCase()}</g:if>
+        NSL
       </a>
     </div>
 
     <div class="collapse navbar-collapse">
       <ul class="nav navbar-nav">
-        <li class="active"><a class="home" href="${createLink(uri: '/')}">Home</a></li>
-        <g:each in="${links}" var="link">
-          <g:if test="${!link.loggedIn || SecurityUtils.subject?.principal}">
-            <li class="active">
-              <a class="${link.class}" href="${link.url}"><i class="fa ${link.icon}"></i> ${link.label}</a>
-            </li>
-          </g:if>
-        </g:each>
+        <li class="${params.controller == 'dashboard' ? 'active' : ''}">
+          <a class="dashboard" href="${createLink(controller: 'dashboard', action: 'index')}"><i
+              class="fa fa-bar-chart-o"></i> Dashboard</a>
+        </li>
+        <g:if test="${SecurityUtils.subject?.principal}">
+          <li class="${params.controller == 'search' ? 'active' : ''}">
+            <a class="search" href="${createLink(controller: 'search', action: 'search')}"><i
+                class="fa fa-search"></i> Search</a>
+          </li>
+        </g:if>
+        <li class="${params.product == 'apni' ? 'active' : ''}">
+          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: 'apni'])}"><i
+              class="fa fa-search"></i> Names (APNI)</a>
+        </li>
+        <li class="${params.product == 'apc' ? 'active' : ''}">
+          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: 'apc'])}"><i
+              class="fa fa-search"></i> APC Taxonomy</a>
+        </li>
       </ul>
 
       <ul class="nav navbar-nav navbar-right">

@@ -31,20 +31,7 @@ class RestCallService {
 
     def grailsApplication
 
-    private String serviceUri = null
     private RestBuilder rest = new RestBuilder(proxy: Proxy.NO_PROXY)
-
-    // todo make config for multiple services by name
-    String getServiceUri(String name) {
-        if (!serviceUri) {
-            String uri = grailsApplication.config.nslServices.uri
-            if (!uri) {
-                throw new RestCallException("nslService.uri must be defined in grails-app/conf/Config.groovy")
-            }
-            serviceUri = (uri.endsWith('/') ? uri : "$uri/")
-        }
-        return serviceUri
-    }
 
     def get(String uri) throws RestCallException {
         log.debug "get json ${uri}"
@@ -90,7 +77,7 @@ class RestCallService {
         }
         catch (ResourceAccessException e) {
             log.error e.message
-            throw new RestCallException("Unable to connect to the service at ${getServiceUri('mapper')}", e)
+            throw new RestCallException("Unable to connect to the service", e)
         }
     }
 

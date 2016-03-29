@@ -219,8 +219,11 @@ log4j.main = {
 }
 
 grails.cache.config = {
+    provider {
+        name "ehcache-${appName}-${appVersion}"
+    }
     cache {
-        name 'linkcache'
+        name "linkcache"
         maxElementsInMemory 10000
         eternal false
         timeToIdleSeconds 600
@@ -229,7 +232,8 @@ grails.cache.config = {
         maxElementsOnDisk 10000000
         diskPersistent false
         diskExpiryThreadIntervalSeconds 600
-        memoryStoreEvictionPolicy 'LRU'}
+        memoryStoreEvictionPolicy 'LRU'
+    }
 
     //currently not used while we work out eviction policy
 //    cache {
@@ -285,16 +289,26 @@ grails.assets.minifyJs = false
 
 //Note all these config options can be overridden in the ~/.nsl/services-config.groovy
 
-cors.url.pattern = '/*'
-cors.headers = ['Access-Control-Allow-Origin': '*']
+cors {
+    url.pattern = '/*'
+    headers = ['Access-Control-Allow-Origin': '*']
+}
 
-nslServices.system.message.file = "${userHome}/.nsl/broadcast.txt"
-nslServices.temp.file.directory = "/tmp"
+shard {
+    system.message.file = "${userHome}/.nsl/broadcast.txt"
+    temp.file.directory = "/tmp"
+}
 
-nslTreePlugin.nslInstanceNamespace = 'nsl-instance'
-nslTreePlugin.nslNameNamespace = 'nsl-name'
+nslTreePlugin {
+    nslInstanceNamespace = 'nsl-instance'
+    nslNameNamespace = 'nsl-name'
+}
 
-services.mapper.apikey = 'not set'
-services.link.mapperURL = 'http://localhost:7070/nsl-mapper'
-services.link.internalMapperURL = 'http://localhost:7070/nsl-mapper'
-services.link.editor = 'https://biodiversity.org.au/test-nsl-editor'
+services {
+    mapper.apikey = 'not set'
+    link {
+        mapperURL = 'http://localhost:7070/nsl-mapper'
+        internalMapperURL = 'http://localhost:7070/nsl-mapper'
+        editor = 'https://biodiversity.org.au/test-nsl-editor'
+    }
+}

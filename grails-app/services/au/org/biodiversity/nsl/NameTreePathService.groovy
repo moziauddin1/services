@@ -226,7 +226,7 @@ class NameTreePathService {
 
     Integer treePathReport(String treeLabel) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                 treeLabel)
         if (arrangement) {
             List results = Node.executeQuery('''
@@ -237,7 +237,7 @@ class NameTreePathService {
             and nd.next IS NULL
             and nd.nameUriIdPart IS NOT NULL
             and not exists (select 1 from NameTreePath ntp where ntp.id = nd.id)''', [tree: Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.services.classification.namespace),
+                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                     treeLabel)])
             results?.first() as Integer
         } else {
