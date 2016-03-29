@@ -64,14 +64,6 @@ class SearchService {
             and << "n.nameType.id = :nameTypeId"
         }
 
-        if (params.advanced && params.cultivars != 'on' && params.cultivarsOnly != 'on') {
-            and << "n.nameType.cultivar is false"
-        } else {
-            if (params.cultivarsOnly == 'on') {
-                and << "n.nameType.cultivar is true"
-            }
-        }
-
         if (params.protologue == 'on') {
             from.add('Instance i')
             and << "i.instanceType.protologue is true"
@@ -125,9 +117,9 @@ class SearchService {
         }
 
         if (params.advanced && params.nameTag) {
-            from.add('NameTagName tag')
+            from.add('NameTagName ntn')
             queryParams.nameTag = params.nameTag
-            and << "tag.tag.name = :nameTag and tag.name = n"
+            and << "ntn.tag.name = :nameTag and ntn.name = n"
         }
 
         Map fail = queryTreeParams(params, queryParams, from, and)
