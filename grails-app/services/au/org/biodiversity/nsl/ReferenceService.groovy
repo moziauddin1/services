@@ -49,7 +49,7 @@ class ReferenceService {
                     "${reference.author.name.trim()}${reference.refAuthorRole == editor ? ' (ed.)' : ''}" : '')
 
             String parentAuthorName = (
-                    (reference.parent && reference.parent.author != unknownAuthor && reference.author != reference.parent.author) ?
+                    (reference.parent && reference.parent.author != unknownAuthor) ?
                             "in ${reference.parent.author.name.trim()}" : '')
 
             String parentAuthorRole = ((reference.parent?.author != unknownAuthor && reference.parent?.refAuthorRole == editor) ? '(ed.)' : '')
