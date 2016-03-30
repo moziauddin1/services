@@ -226,22 +226,22 @@ class SearchService {
 
     private static String cleanUpName(String name) {
         name
-        .replaceAll('\u2013', '-')
-        .replaceAll('\u2014', '-')
-        .replaceAll('\u2015', '-')
-        .replaceAll('\u2017', '_')
-        .replaceAll('\u2018', '\'')
-        .replaceAll('\u2019', '\'')
-        .replaceAll('\u201a', ',')
-        .replaceAll('\u201b', '\'')
-        .replaceAll('\u201c', '\"')
-        .replaceAll('\u201d', '\"')
-        .replaceAll('\u201e', '\"')
-        .replaceAll("\u2026", "...")
-        .replaceAll('\u2032', '\'')
-        .replaceAll('\u2033', '\"')
-        .replaceAll('[\\s]+', ' ')
-        .trim()
+                .replaceAll('\u2013', '-')
+                .replaceAll('\u2014', '-')
+                .replaceAll('\u2015', '-')
+                .replaceAll('\u2017', '_')
+                .replaceAll('\u2018', '\'')
+                .replaceAll('\u2019', '\'')
+                .replaceAll('\u201a', ',')
+                .replaceAll('\u201b', '\'')
+                .replaceAll('\u201c', '\"')
+                .replaceAll('\u201d', '\"')
+                .replaceAll('\u201e', '\"')
+                .replaceAll("\u2026", "...")
+                .replaceAll('\u2032', '\'')
+                .replaceAll('\u2033', '\"')
+                .replaceAll('[\\s]+', ' ')
+                .trim()
     }
 
     public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
@@ -316,23 +316,25 @@ class SearchService {
      * against close matches.
      * @return
      */
-    public List<Map> nameCheck(Map params, Integer max){
-        if ((params.name as String)?.trim()) {
-            LinkedHashSet<String> strings = (params.name as String).trim().split('\n').collect { String nameString ->
-                String queryString = cleanUpName(nameString)
-                queryString ?: null
+    public List<Map> nameCheck(Map params, Integer max) {
+        use(SearchQueryCategory) {
+            if ((params.name as String)?.trim()) {
+                LinkedHashSet<String> strings = (params.name as String).trim().split('\n').collect { String nameString ->
+                    String queryString = cleanUpName(nameString).replaceAll('×', 'x')
+                    queryString ?: null
+                }
+                strings.remove(null)
+                List<Map> results = strings.collect { String nameString ->
+                    List<Name> names = Name.executeQuery(
+                            'select n from Name n where lower(simpleName) like :q and n.nameStatus.name in (\'legitimate\', \'nom. cons.\', \'[n/a]\', \'[default]\')', [q: nameString.toLowerCase()])
+                    Name name = (names != null && !names.empty) ? names.first() : null
+                    Node apc = name ? classificationService.isNameInAPC(name) : null
+                    [query: nameString, found: name, apc: apc]
+                }
+                return results
             }
-            strings.remove(null)
-            List<Map> results = strings.collect { String nameString ->
-                List<Name> names = Name.executeQuery(
-                        'select n from Name n where lower(simpleName) like :q and n.nameStatus.name in (\'legitimate\', \'nom. cons.\', \'[n/a]\', \'[default]\')', [q: nameString.toLowerCase()])
-                Name name = (names != null && !names.empty) ? names.first() : null
-                Node apc = name ? classificationService.isNameInAPC(name) : null
-                [query: nameString, found: name, apc: apc]
-            }
-            return results
+            return null
         }
-        return null
     }
 
     static Sql getNSL() {
@@ -416,7 +418,7 @@ order by n.simpleName asc, n.fullName asc''',
         }
 
         suggestService.addSuggestionHandler('apni-search') { String subject, String query, Map params ->
-            if(!query) {
+            if (!query) {
                 return []
             }
 
