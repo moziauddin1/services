@@ -31,7 +31,7 @@
       </ul>
       <h3>Example search</h3>
       <pre>
-        anksia spinulosa ‘Birthday Candles’
+        Banksia spinulosa ‘Ear Candles’
         Banksia spinulosa ‘Coastal Cushion’
         Banksia spinulosa var. collina
         Callistemon pachyphyllus ‘Smoked Salmon’

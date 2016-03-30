@@ -19,10 +19,10 @@
     <g:each in="${names}" var="name">
       <div>
         <g:if test="${name.found}">
-          <b>Found</b> &quot;${name.query}&quot; <a
-            href="${g.createLink(controller: (params.display + 'Format'), action: 'display', id: name.found.id, params: [product: params.product ?: ''])}">
-        %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-          ${raw(name.found.fullNameHtml)}</a><name-status
+          <b>Found</b> &quot;${name.query}&quot;
+
+          <st:preferedLink target="${name.found}" api="api/apniFormat">
+          ${raw(name.found.fullNameHtml)}</st:preferedLink><name-status
             class="${name.found.nameStatus.name}">, ${name.found.nameStatus.name}</name-status><name-type
             class="${name.found.nameType.name}">, ${name.found.nameType.name}</name-type>
           <g:if test="${(name.apc)}">
