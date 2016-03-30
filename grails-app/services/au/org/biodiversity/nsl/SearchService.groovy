@@ -225,7 +225,7 @@ class SearchService {
     }
 
     private static String cleanUpName(String name) {
-        name.trim()
+        name
         .replaceAll('\u2013', '-')
         .replaceAll('\u2014', '-')
         .replaceAll('\u2015', '-')
@@ -240,6 +240,8 @@ class SearchService {
         .replaceAll("\u2026", "...")
         .replaceAll('\u2032', '\'')
         .replaceAll('\u2033', '\"')
+        .replaceAll('[\\s]+', ' ')
+        .trim()
     }
 
     public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
@@ -316,9 +318,14 @@ class SearchService {
      */
     public List<Map> nameCheck(Map params, Integer max){
         if ((params.name as String)?.trim()) {
-            List<Map> results = (params.name as String).trim().split('\n').collect { String nameString ->
-                String queryString = cleanUpName(nameString).toLowerCase()
-                List<Name> names = Name.executeQuery('select n from Name n where lower(simpleName) like :q and n.nameStatus.name in (\'legitimate\', \'[n/a]\', \'[default]\')', [q: queryString])
+            LinkedHashSet<String> strings = (params.name as String).trim().split('\n').collect { String nameString ->
+                String queryString = cleanUpName(nameString)
+                queryString ?: null
+            }
+            strings.remove(null)
+            List<Map> results = strings.collect { String nameString ->
+                List<Name> names = Name.executeQuery(
+                        'select n from Name n where lower(simpleName) like :q and n.nameStatus.name in (\'legitimate\', \'nom. cons.\', \'[n/a]\', \'[default]\')', [q: nameString.toLowerCase()])
                 Name name = (names != null && !names.empty) ? names.first() : null
                 Node apc = name ? classificationService.isNameInAPC(name) : null
                 [query: nameString, found: name, apc: apc]
