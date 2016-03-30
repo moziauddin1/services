@@ -25,9 +25,9 @@
       <ul>
         <li>This search uses the simple name <b>without</b> author. It checks only for valid and legitimate names.</li>
         <li>The names must be an exact match, including an 'x' in hybrid names.</li>
-        <li>You can use a wild card but only the first match will be returned. Wildcards might help for abreviations like "subsp." e.g. s% </li>
-        <li>Duplicated names will be removed.</li>
-        <li>You can copy and paste from word and excel, including across excel columns.</li>
+        <li>You can use a wild card but it may not find the match you are looking for. Wildcards might help for abbreviations like "subsp." e.g. s% </li>
+        <li>Duplicated names and blanks will be removed from your input.</li>
+        <li>You can copy and paste from word and excel, including across multiple excel columns.</li>
       </ul>
       <h3>Example search</h3>
       <pre>
