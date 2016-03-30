@@ -325,11 +325,19 @@ class SearchService {
                 }
                 strings.remove(null)
                 List<Map> results = strings.collect { String nameString ->
-                    List<Name> names = Name.executeQuery(
-                            'select n from Name n where lower(simpleName) like :q and n.nameStatus.name in (\'legitimate\', \'nom. cons.\', \'[n/a]\', \'[default]\')', [q: nameString.toLowerCase()])
-                    Name name = (names != null && !names.empty) ? names.first() : null
-                    Node apc = name ? classificationService.isNameInAPC(name) : null
-                    [query: nameString, found: name, apc: apc]
+                    List<Name> names = Name.executeQuery('''
+select n
+from Name n
+where lower(simpleName) like :q
+and n.nameStatus.name in ('legitimate', 'nom. cons.', '[n/a]', '[default]')
+and n.instances.size > 0
+''', [q: nameString.toLowerCase()])
+                    Boolean found = (names != null && !names.empty)
+                    List<Map> r = names.collect { Name name ->
+                        Node apc = classificationService.isNameInAPC(name)
+                        [apc: apc, name: name]
+                    }
+                    [query: nameString, found: found, names: r, count: names.size()]
                 }
                 return results
             }

@@ -167,7 +167,7 @@ class SearchController {
     }
 
     def nameCheck(Integer max) {
-        List<Map> names = searchService.nameCheck(params, max)
-        render(view: 'name-check', model: [names: names])
+        List<Map> results = searchService.nameCheck(params, max)
+        render(view: 'name-check', model: [results: results])
     }
 }

@@ -23,7 +23,7 @@
     <div>
       <h2>Hints</h2>
       <ul>
-        <li>This search uses the simple name without author.</li>
+        <li>This search uses the simple name <b>without</b> author. It checks only for valid and legitimate names.</li>
         <li>The names must be an exact match, including an 'x' in hybrid names.</li>
         <li>You can use a wild card but only the first match will be returned. Wildcards might help for abreviations like "subsp." e.g. s% </li>
         <li>Duplicated names will be removed.</li>
