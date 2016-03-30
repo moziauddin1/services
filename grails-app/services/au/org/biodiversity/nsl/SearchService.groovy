@@ -25,6 +25,7 @@ class SearchService {
     def suggestService
     def nameTreePathService
     def linkService
+    def classificationService
 
     @Timed(name = "SearchTimer")
     Map searchForName(Map params, Integer max) {
@@ -225,6 +226,20 @@ class SearchService {
 
     private static String cleanUpName(String name) {
         name.trim()
+        .replaceAll('\u2013', '-')
+        .replaceAll('\u2014', '-')
+        .replaceAll('\u2015', '-')
+        .replaceAll('\u2017', '_')
+        .replaceAll('\u2018', '\'')
+        .replaceAll('\u2019', '\'')
+        .replaceAll('\u201a', ',')
+        .replaceAll('\u201b', '\'')
+        .replaceAll('\u201c', '\"')
+        .replaceAll('\u201d', '\"')
+        .replaceAll('\u201e', '\"')
+        .replaceAll("\u2026", "...")
+        .replaceAll('\u2032', '\'')
+        .replaceAll('\u2033', '\"')
     }
 
     public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
@@ -299,8 +314,18 @@ class SearchService {
      * against close matches.
      * @return
      */
-    public Map nameCheck(Map params, Integer max){
-
+    public List<Map> nameCheck(Map params, Integer max){
+        if ((params.name as String)?.trim()) {
+            List<Map> results = (params.name as String).trim().split('\n').collect { String nameString ->
+                String queryString = cleanUpName(nameString).toLowerCase()
+                List<Name> names = Name.executeQuery('select n from Name n where lower(simpleName) like :q and n.nameStatus.name in (\'legitimate\', \'[n/a]\', \'[default]\')', [q: queryString])
+                Name name = (names != null && !names.empty) ? names.first() : null
+                Node apc = name ? classificationService.isNameInAPC(name) : null
+                [query: nameString, found: name, apc: apc]
+            }
+            return results
+        }
+        return null
     }
 
     static Sql getNSL() {

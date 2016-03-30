@@ -1,5 +1,5 @@
 <%@ page import="au.org.biodiversity.nsl.Arrangement" %>
-<g:form name="search" role="form" controller="search" action="search" method="POST" class="closable">
+<g:form name="search" role="form" controller="search" action="nameCheck" method="POST" class="closable">
   <div class="form-group">
     <g:render template="/search/using-tree"/>
 
