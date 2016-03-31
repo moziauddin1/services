@@ -29,12 +29,12 @@
           <strong>Found ${count} names</strong>
           <span class="text-muted">Limited to ${max} result<g:if test="${max == 0 || max > 1}">s</g:if>.</span>
         </g:if>
-        <div class="btn-group hideSearch">
+        <div class="btn-group hideSearch hidden-print">
           <button id="expandAll" class="btn btn-success"><i class="fa fa-caret-down"></i> view detail</button>
           <button id="collapseAll" class="btn btn-primary"><i class="fa fa-caret-up"></i> hide detail</button>
         </div>
 
-        <div class="btn-group">
+        <div class="btn-group hidden-print">
           <button id="fontToggle" class="btn btn-default" title="change font"><i class="fa fa-font"></i></button>
         </div>
         <div class="text text-info">

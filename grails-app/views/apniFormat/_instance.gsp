@@ -13,7 +13,7 @@
         </protologue-pdf>
       </g:if>
 
-      <a href="${af.refAPNISearchLink(citation: reference?.citation, product: params.product)}"><i
+      <a href="${af.refAPNISearchLink(citation: reference?.citation, product: params.product)}" class="hidden-print"><i
           class="fa fa-search"></i></a>
     </g:if>
     <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.taxonUriIdPart == instance.id.toString()}">
