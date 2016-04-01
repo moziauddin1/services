@@ -32,7 +32,6 @@ class SecurityFilters {
 
         all(uri: "/**") {
             before = {
-
                 //need the .format to get a good response in case of errors
                 String requested = (WebUtils.getForwardURI(request) ?: request.getAttribute('javax.servlet.error.request_uri'))
                 requested = requested.decodeURL()
@@ -68,9 +67,6 @@ class SecurityFilters {
                 // with nsl-jwt being passed as a header
                 if(request.getHeader('nsl-jwt')) {
                     try {
-                        response.setHeader('Access-Control-Allow-Origin', '*')
-                        response.addHeader('Access-Control-Allow-Header', 'nsl-jwt')
-
                         String jwt = request.getHeader('nsl-jwt')
                         JsonToken jsonToken = JsonToken.buildUsingCredentials(jwt)
                         if(jsonToken) {
