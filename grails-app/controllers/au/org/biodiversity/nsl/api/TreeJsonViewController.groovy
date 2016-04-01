@@ -375,6 +375,12 @@ class TreeJsonViewController {
     }
 
     def searchNames() {
+
+        if(params['tree_uri]']) {
+            Arrangement tree = linkService.getObjectForLink(params['tree_uri]']) as Arrangement;
+            params.tree = tree.id;
+        }
+
         Map results = searchService.searchForName(params, 200)
         return render(results.names.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }

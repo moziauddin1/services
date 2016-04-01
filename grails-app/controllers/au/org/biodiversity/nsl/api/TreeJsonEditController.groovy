@@ -318,7 +318,7 @@ class CreateWorkspaceParam {
         namespace nullable: false
         title nullable: false
         description nullable: true
-        description checkout: true
+        checkout checkout: true
     }
 }
 
