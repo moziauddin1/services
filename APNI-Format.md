@@ -108,6 +108,10 @@ We sort the references into a reference instance map for use in the display. The
  4. Alphabetically by reference citation A -> Z
  5. Reference page order (String order sort, 1s first then 2s....)
 
+The effect of this sort is that if the reference has an earlier year (or null year) it will be displayed first even if it
+doesn't contain the Protologue/Primary instance, but if two references have the same year (e.g. null, null) the primary 
+instance reference will come first.
+
 ## Instance sort order
 
 Instances **within** references are sorted and grouped for display. Instances are sorted by:
