@@ -92,7 +92,8 @@ class JsonRendererService {
     Map getBriefReference(Reference reference) {
         brief(reference, [
                 citation    : reference?.citation,
-                citationHtml: reference?.citationHtml
+                citationHtml: reference?.citationHtml,
+                authYear: "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}"
         ])
     }
 
