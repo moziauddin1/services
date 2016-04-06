@@ -81,18 +81,18 @@ redisplayed within the list of instances if:
 
 ## Algorithm
 
-Get all instances for a name
-Group instances by reference
-Sort the references
-For each Reference
-  display the reference citation, page number, APC status
-  sort instances within the reference
-  for each Instance in this reference
-    if the page number or cited by changed display the reference citation, page number, APC status
-    display the relationship and other name
-    display type information or instance notes
-  end for instances
-end for reference
+    Get all instances for a name
+    Group instances by reference
+    Sort the references
+    For each Reference
+      display the reference citation, page number, APC status
+      sort instances within the reference
+      for each Instance in this reference
+        if the page number or cited by changed display the reference citation, page number, APC status
+        display the relationship and other name
+        display type information or instance notes
+      end for instances
+    end for reference
 
 ## Reference sort order
 
