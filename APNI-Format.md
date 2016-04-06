@@ -63,6 +63,9 @@ into two main parts:
 
  * References and,
  * Instances
+
+Instances for a name are grouped by reference.
+The references are sorted, then the instances are sorted within a reference.
  
 The two parts are interconnected by the type of name use in the reference, for example the reference containing the first
 correct publication of a name [tax. nov.] is ordered before alphabetical ordering, and we call it the "Protologue" or 
@@ -72,8 +75,24 @@ The sorts are nested, so if the first sort key is equal the two items are sorted
 
 In general the Reference is displayed followed by a sorted list of Instances (name usages). The reference is 
 redisplayed within the list of instances if:
+
  * the page number changes
  * the cited by instance changes
+
+## Algorithm
+
+Get all instances for a name
+Group instances by reference
+Sort the references
+For each Reference
+  display the reference citation, page number, APC status
+  sort instances within the reference
+  for each Instance in this reference
+    if the page number or cited by changed display the reference citation, page number, APC status
+    display the relationship and other name
+    display type information or instance notes
+  end for instances
+end for reference
 
 ## Reference sort order
 
@@ -95,18 +114,21 @@ Instances **within** references are sorted and grouped for display. Instances ar
 
 If cited by instances are different then sort using Cited By instances
 
-  1. Instances **without** a cited by instance are first
-  1. The cited by reference year (null, 1893, 1900, 1901, 1902...)
-  1. The cited by reference citation alphabetical order A -> Z
-  1. The cited by instance page number (null,1,2,3,4...)
-  1. The cited by instance id
+Instances **without** a cited by instance are first (stand alone instances)
 
-Otherwise stand alone and relationship instances, e.g. synonym of, missapplied to, are sorted by:
-   
+Stand alone instances are sorted by:
+
  1. Instance type sort order (database field)
  1. Cites -> reference -> year or the year of the cited reference
  1. Reference citation alphabetical order A -> Z
  1. Instance page number (null,1,2,3,4...)
+
+Then relationship instances are displayed e.g. synonym of, missapplied to, are sorted by:
+
+  1. The cited by reference year (null, 1893, 1900, 1901, 1902...)
+  1. The cited by reference citation alphabetical order A -> Z
+  1. The cited by instance page number (null,1,2,3,4...)
+  1. The cited by instance id
 
 ## Instance display
 
