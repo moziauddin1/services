@@ -29,6 +29,9 @@ class SearchService {
     @Timed(name = "SearchTimer")
     Map searchForName(Map params, Integer max) {
 
+        log.fatal "searchForName params ${params}"
+        log.fatal "searchForName params.tree ${params.tree}"
+
         Map queryParams = [:]
 
         Set<String> from = ['Name n']
@@ -130,18 +133,55 @@ class SearchService {
         String fromClause = "from ${from.join(',')}"
         String whereClause = "where ${and.join(' and ')}"
 
-        String countQuery = "select count(distinct n) $fromClause $whereClause"
-        String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
+        if(params.SELECT == 'Instances') {
+            String countQuery = "select count(distinct i) $fromClause $whereClause"
+            String query = "select distinct(i) $fromClause $whereClause"
 
-        log.debug query
-        log.debug queryParams
-        List counter = Name.executeQuery(countQuery, queryParams, [max: max])
-        Integer count = counter[0] as Integer
-        List<Name> names = Name.executeQuery(query, queryParams, [max: max])
-        return [count: count, names: names]
+            log.debug query
+            log.debug queryParams
+            List counter = Instance.executeQuery(countQuery, queryParams, [max: max])
+            Integer count = counter[0] as Integer
+            List<Instance> instances = Instance.executeQuery(query, queryParams, [max: max])
+            instances.sort { Instance a, Instance b -> a.name.fullName <=> b.name.fullName }
+            return [count: count, instances: instances]
+        }
+        else if(params.SELECT == 'Nodes') {
+            String countQuery = "select count(distinct node) $fromClause $whereClause"
+            String query = "select distinct(node) ${fromClause} ${whereClause}"
+
+            log.debug query
+            log.debug queryParams
+            List counter = Node.executeQuery(countQuery, queryParams, [max: max])
+            Integer count = counter[0] as Integer
+            List<Node> nodes = Node.executeQuery(query, queryParams, [max: max])
+            nodes.sort { Node a, Node b -> a.name.fullName <=> b.name.fullName }
+            return [count: count, nodes: nodes]
+        }
+        else {
+            // default is Name
+
+            String countQuery = "select count(distinct n) $fromClause $whereClause"
+            String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
+
+            log.debug query
+            log.debug queryParams
+            List counter = Name.executeQuery(countQuery, queryParams, [max: max])
+            Integer count = counter[0] as Integer
+            List<Name> names = Name.executeQuery(query, queryParams, [max: max])
+            return [count: count, names: names]
+        }
     }
 
     private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
+        log.fatal "queryTreeParams params ${params}"
+        log.fatal "queryTreeParams params.tree ${params.tree}"
+        log.fatal "queryTreeParams params.tree?.id ${params.tree?.id}"
+
+        log.fatal "queryTreeParams queryParams ${queryParams}"
+        log.fatal "queryTreeParams from ${from}"
+        log.fatal "queryTreeParams and ${and}"
+
+
         if (params.tree?.id) {
             Arrangement root = Arrangement.get(params.tree.id as Long)
             queryParams.root = root
@@ -188,6 +228,15 @@ class SearchService {
                 }
             }
         }
+
+
+        log.fatal "after tree param processing ......"
+        log.fatal "queryTreeParams queryParams ${queryParams}"
+        log.fatal "queryTreeParams from ${from}"
+        log.fatal "queryTreeParams and ${and}"
+
+
+
         return null
     }
 

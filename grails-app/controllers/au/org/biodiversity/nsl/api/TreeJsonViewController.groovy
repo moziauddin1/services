@@ -375,14 +375,25 @@ class TreeJsonViewController {
     }
 
     def searchNames() {
-
-        if(params['tree_uri]']) {
-            Arrangement tree = linkService.getObjectForLink(params['tree_uri]']) as Arrangement;
-            params.tree = tree.id;
-        }
-
         Map results = searchService.searchForName(params, 200)
         return render(results.names.collect { linkService.getPreferredLinkForObject(it) } as JSON)
+    }
+
+    def searchNamesInTree() {
+        log.fatal "searchNamesInTree params ${params}"
+        log.fatal "searchNamesInTree params tree_uri ${params.tree_uri}"
+
+        def pp = [:]
+        pp << params;
+
+        pp.tree = linkService.getObjectForLink(params.tree_uri) as Arrangement;
+
+        log.fatal "searchNamesInTree params tree ${pp.tree}"
+
+        pp.SELECT = 'Nodes'
+
+        Map results = searchService.searchForName(pp, 200)
+        return render(results.nodes.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }
 
 }
