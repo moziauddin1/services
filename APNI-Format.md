@@ -12,7 +12,7 @@ Example output in text format
 Doodia R.Br.
 Brown, R. (1810), Prodromus Florae Novae Hollandiae: 151 [tax. nov.]
 
-    Type: (not desigated).
+    Type: (not designated).
 
 Smith, J. (1875), Historia Filicum: 309
 
