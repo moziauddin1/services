@@ -3,7 +3,7 @@
     <div class="row">
         <div class="col-md-3">Node</div>
 
-        <div class="col-md-9">${node.id} in tree ${node.root?.label} type ${node.typeUriNsPart?.label}:${node.typeUriIdPart}</div>
+        <div class="col-md-9"><g:link mapping="restResource" params="${[action: 'node', shard: node.root.namespace.name, idNumber: node.id]}">${node.id}</g:link> in tree ${node.root?.label} type ${node.typeUriNsPart?.label}:${node.typeUriIdPart}</div>
     </div>
 
     <g:if test="${node.internalType==NodeInternalType.V}">
