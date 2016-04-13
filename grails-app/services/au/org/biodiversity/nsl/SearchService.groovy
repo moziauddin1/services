@@ -134,11 +134,23 @@ class SearchService {
         String countQuery = "select count(distinct n) $fromClause $whereClause"
         String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
 
+        if (from.contains('NameTreePath ntp_sort')) {
+            query = "select distinct(n), ntp_sort.namePath $fromClause $whereClause order by ntp_sort.namePath, n.fullName asc"
+        }
+
         log.debug query
         log.debug queryParams
         List counter = Name.executeQuery(countQuery, queryParams, [max: max])
         Integer count = counter[0] as Integer
-        List<Name> names = Name.executeQuery(query, queryParams, [max: max])
+        List names = Name.executeQuery(query, queryParams, [max: max])
+        //filter for just names. Note this works for both types of query
+        if (from.contains('NameTreePath ntp_sort')) {
+            names = names.collect { result ->
+                println result[1]
+                result[0]
+            }
+        }
+
         return [count: count, names: names]
     }
 
@@ -157,6 +169,9 @@ class SearchService {
                 from.add('Instance s')
                 and << "n = s.name and (s.citedBy = i or s = i) and cast(i.id as string) = node.taxonUriIdPart"
             }
+            //add the name tree path sort order.
+            from.add('NameTreePath ntp_sort')
+            and.add('ntp_sort.name = n and ntp_sort.tree = :root')
 
             if (params.inRank?.id) {
                 NameRank inRank = NameRank.get(params.inRank?.id as Long)

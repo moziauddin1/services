@@ -86,12 +86,15 @@ $(function () {
     });
 
     $("#expandAll").click(function () {
+        //window.setTimeout(lazyLoad, 200);
+        $('family').show();
         $('.instances').show();
         $('.fa-caret-down.toggleNext').hide();
         $('.fa-caret-up.toggleNext').show();
     });
 
     $("#collapseAll").click(function () {
+        $('family').hide();
         $('.instances').hide();
         $('.fa-caret-down.toggleNext').show();
         $('.fa-caret-up.toggleNext').hide();
@@ -99,7 +102,7 @@ $(function () {
 
     $(".loadFormat").click(function () {
         var url = $(this).attr('href');
-        var parent = $(this).parent('div');
+        var parent = $(this).parent('div').parent('div').parent('div');
         $.get(url, function (data, status, request) {
             window.console && console.log('status ' + status + ', request ' + request);
             if (data != undefined) {

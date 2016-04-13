@@ -33,7 +33,7 @@
       <br><span class="small text-muted">${name.parent?.simpleName}  x ${name.secondParent?.simpleName}</span>
     </g:if>
 
-    <div class="well instances">
+    <div class="instances">
       <g:if test="${!references}">No references.</g:if>
       <g:each in="${references}" var="reference">
         <g:render template="/apniFormat/instance"
@@ -51,6 +51,7 @@
           </span>
         </g:if>
       </div>
+      <hr>
     </div>
     </st:primaryInstance>
   </div>
