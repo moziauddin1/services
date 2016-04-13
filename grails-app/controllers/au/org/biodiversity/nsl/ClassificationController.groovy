@@ -197,6 +197,12 @@ class ClassificationController {
             case ClassificationManagerService.ValidationResult.NAME_APPEARS_TWICE:
                 result.link = [controller: 'TreeFixup', action: 'selectNameNode', params: result.params]
                 break;
+
+            case ClassificationManagerService.ValidationResult.CURRENT_NO_PARENT:
+            case ClassificationManagerService.ValidationResult.NODE_HAS_MULTIPLE_SUPERNODES:
+                result.link = [controller: 'TreeFixup', action: 'enddateAndMakeCurrent', params: result.params]
+                break;
+
             default:
                 break;
         }
