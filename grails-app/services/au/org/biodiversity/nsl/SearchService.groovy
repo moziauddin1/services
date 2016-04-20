@@ -343,7 +343,7 @@ class SearchService {
                     List<Name> names = Name.executeQuery('''
 select n
 from Name n
-where lower(simpleName) like :q
+where (lower(simpleName) like :q) or (lower(fullName) like :q)
 and n.nameStatus.name in ('legitimate', 'nom. cons.', '[n/a]', '[default]')
 and n.instances.size > 0
 ''', [q: nameString.toLowerCase()])
