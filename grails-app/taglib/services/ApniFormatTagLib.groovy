@@ -138,7 +138,7 @@ class ApniFormatTagLib {
             out << '<branch title="click to see branch.">'
             out << body()
 
-            List<Node> nodesInBranch = nameTreePath.nodesInBranch()
+            List<Node> nodesInBranch = nameTreePathService.getCurrentNodesInBranch(nameTreePath)
 
             out << '<ul>'
             nodesInBranch.each { Node n ->

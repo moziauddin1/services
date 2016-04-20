@@ -62,20 +62,16 @@ class NameService {
 
         log.info "name $name updated"
         if (name.nameType.scientific || name.nameType.cultivar) {
-            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) { //we don't need domains to have a parent
+            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) {
+                //we don't need domains to have a parent
                 Node currentNode = updateAPNITree(name)
                 name = Name.get(name.id) //reload or it'll die with no session
                 if (currentNode) {
-                    NameTreePath ntp = nameTreePathService.findCurrentNameTreePath(name, currentNode.root)
-                    if (ntp) {
-                        if (ntp.id != currentNode.id) {
-                            log.info "updating name tree path for $name"
-                            nameTreePathService.updateNameTreePath(ntp, currentNode)
+                    NameTreePath updatedNtp = nameTreePathService.updateNameTreePathFromNode(currentNode)
+                    if (updatedNtp) {
+                        nameTreePathService.getCurrentNodesInBranch(updatedNtp).each { Node n ->
+                            nameTreePathService.updateNameTreePathFromNode(n)
                         }
-                    } else {
-                        //this really shouldn't happen but self healing should be OK
-                        log.warn "Name $name didn't have a NameTreePath, and it probably should have, so I'll make one."
-                        addNameTreePath(name, currentNode)
                     }
                 } else {
                     log.error "No current tree node for updated name $name, which should have one."
@@ -109,10 +105,12 @@ class NameService {
                 Node node = updateAPNITree(name)
                 if (node) {
                     name = Name.get(name.id) //reload or it'll die with no session
-
-                    NameTreePath nameTreePath = addNameTreePath(name, node)
-                    nameTreePath.namesInBranch().each { Name n ->
-                        nameTreePathService.updateNameTreePath(n)
+                    NameTreePath ntp = nameTreePathService.updateNameTreePathFromNode(node)
+                    //check all upstream nodes that may have changed
+                    if (ntp) {
+                        nameTreePathService.getCurrentNodesInBranch(ntp).each { Node n ->
+                            nameTreePathService.updateNameTreePathFromNode(n)
+                        }
                     }
                 } else {
                     log.error "error updating APNI tree with name $name"
@@ -301,7 +299,7 @@ class NameService {
         Link parentLink = null
         if (name.parent) {
             Node parentNode = classificationService.isNameInAPNI(name.parent)
-            if(!parentNode) {
+            if (!parentNode) {
                 updateAPNITree(name.parent)
             }
             parentLink = node?.supLink?.find { Link link ->
@@ -319,7 +317,7 @@ class NameService {
                 }
                 node = classificationService.placeNameInAPNI(name.parent, name)
                 name = Name.get(name.id)
-//                node = classificationService.isNameInAPNI(name)
+                node = classificationService.isNameInAPNI(name)
             } catch (e) {
                 // a service exception means that the user asked for something that
                 // is inconsistent with the current state of the tree
