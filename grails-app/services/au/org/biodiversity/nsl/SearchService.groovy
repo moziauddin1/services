@@ -170,8 +170,8 @@ class SearchService {
                 and << "n = s.name and (s.citedBy = i or s = i) and cast(i.id as string) = node.taxonUriIdPart"
             }
             //add the name tree path sort order.
-            from.add('NameTreePath ntp_sort')
-            and.add('ntp_sort.name = n and ntp_sort.tree = :root')
+//            from.add('NameTreePath ntp_sort')
+//            and.add('ntp_sort.name = n and ntp_sort.tree = :root')
 
             if (params.inRank?.id) {
                 NameRank inRank = NameRank.get(params.inRank?.id as Long)
