@@ -23,7 +23,9 @@
     <div>
       <h2>Hints</h2>
       <ul>
-        <li>This search uses the simple name <b>without</b> author. It checks only for valid and legitimate names.</li>
+        <li>The Name Check checks a list of scientific names for correct spelling and currency i.e. whether the taxon is
+        accepted by the Australian Plant Census.</li>
+        <li>It checks only for valid and legitimate names with the correct orthography. You can use names with or without author.</li>
         <li>The names must be an exact match, including an 'x' in hybrid names.</li>
         <li>You can use a wild card but it may not find the match you are looking for. Wildcards might help for abbreviations like "subsp." e.g. s% </li>
         <li>Duplicated names and blanks will be removed from your input.</li>
@@ -31,7 +33,11 @@
       </ul>
       <h3>Example search</h3>
       <pre>
-        Banksia spinulosa ‘Ear Candles’
+        Eucalyptus citriodora , (a valid, legitimate scientific name but not accepted for APC),
+        Grevillea 'Canberra Gem' , (a rare case of a cultivar that is accepted for APC),
+        Eucalyptus coolibah
+        Eucalyptus coolabah , (shows that the orth. var. "coolabah" is not found)
+        Banksia spinulosa ‘Sixteen Candles’
         Banksia spinulosa ‘Coastal Cushion’
         Banksia spinulosa var. collina
         Callistemon pachyphyllus ‘Smoked Salmon’

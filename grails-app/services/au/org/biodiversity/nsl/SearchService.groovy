@@ -335,7 +335,7 @@ class SearchService {
         use(SearchQueryCategory) {
             if ((params.name as String)?.trim()) {
                 LinkedHashSet<String> strings = (params.name as String).trim().split('\n').collect { String nameString ->
-                    String queryString = cleanUpName(nameString).replaceAll('×', 'x')
+                    String queryString = cleanUpName(nameString).replaceAll('×', 'x').replaceAll('(.*) , .*', '$1')
                     queryString ?: null
                 }
                 strings.remove(null)
