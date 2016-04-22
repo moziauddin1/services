@@ -140,9 +140,11 @@ class SearchService {
 
         log.debug query
         log.debug queryParams
+        Long start = System.currentTimeMillis()
         List counter = Name.executeQuery(countQuery, queryParams, [max: max])
         Integer count = counter[0] as Integer
         List names = Name.executeQuery(query, queryParams, [max: max])
+        log.debug "query took ${System.currentTimeMillis() - start}ms"
         //filter for just names. Note this works for both types of query
         if (from.contains('NameTreePath ntp_sort')) {
             names = names.collect { result ->
@@ -164,14 +166,14 @@ class SearchService {
             //todo remove this as APNI specific
             if (root.label == 'APNI' || params.exclSynonym == 'on') {
                 and << "cast(n.id as string) = node.nameUriIdPart"
-                from.add('NameTreePath ntp_sort')
-                and.add('ntp_sort.name = n and ntp_sort.tree = :root')
+//                from.add('NameTreePath ntp_sort')
+//                and.add('ntp_sort.name = n and ntp_sort.tree = :root')
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
                 and << "n = s.name and (s.citedBy = i or s = i) and cast(i.id as string) = node.taxonUriIdPart"
-                from.add('NameTreePath ntp_sort')
-                and.add('ntp_sort.name = i.name and ntp_sort.tree = :root')
+//                from.add('NameTreePath ntp_sort')
+//                and.add('ntp_sort.name = i.name and ntp_sort.tree = :root')
             }
 
             if (params.inRank?.id) {
