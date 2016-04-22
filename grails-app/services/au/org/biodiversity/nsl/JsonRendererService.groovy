@@ -499,8 +499,7 @@ class JsonRendererService {
                 owner          : arrangement.owner,
                 synthetic      : arrangement.synthetic == 'Y' ? true : arrangement.synthetic == 'N' ? false : null,
                 node           : brief(arrangement.node, [:]),
-                workingRoot    : brief(arrangement.workingRoot, [:]),
-                currentRoot    : arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
+                currentRoot    : arrangement.arrangementType == ArrangementType.P &&  arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
         ];
         return data;

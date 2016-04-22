@@ -8,6 +8,7 @@ import au.org.biodiversity.nsl.LinkService
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.tree.DomainUtils
 import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
 import grails.converters.JSON
@@ -267,7 +268,8 @@ class TreeJsonEditController {
 
         Node newFocus
         try {
-            newFocus = userWorkspaceManagerService.addNamesToNode(root, focus, names);
+            newFocus = userWorkspaceManagerService.addNamesToNode(root.root, focus, names);
+            newFocus = DomainUtils.refetchNode(newFocus);
         }
         catch (ServiceException ex) {
             response.status = 400
