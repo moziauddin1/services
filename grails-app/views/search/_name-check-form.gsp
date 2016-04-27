@@ -33,10 +33,10 @@
       </ul>
       <h3>Example search</h3>
       <pre>
-        Eucalyptus citriodora , (a valid, legitimate scientific name but not accepted for APC),
-        Grevillea 'Canberra Gem' , (a rare case of a cultivar that is accepted for APC),
+        Eucalyptus citriodora
+        Grevillea 'Canberra Gem'
         Eucalyptus coolibah
-        Eucalyptus coolabah , (shows that the orth. var. "coolabah" is not found)
+        Eucalyptus coolabah
         Banksia spinulosa ‘Sixteen Candles’
         Banksia spinulosa ‘Coastal Cushion’
         Banksia spinulosa var. collina
