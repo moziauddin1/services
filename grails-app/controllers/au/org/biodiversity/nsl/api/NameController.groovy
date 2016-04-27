@@ -255,10 +255,9 @@ class NameController implements UnauthenticatedHandler, WithTarget {
      */
     @Timed()
     def acceptableName(String name) {
-        List<Name> names = []
         if (name) {
             List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
-            names = Name.executeQuery('''
+            List<Name> names = Name.executeQuery('''
 select n
 from Name n
 where (lower(n.fullName) like :query or lower(n.simpleName) like :query)
@@ -270,11 +269,20 @@ order by n.simpleName asc''',
             ResultObject result = new ResultObject([
                     action: params.action,
                     count : names.size(),
+                    query : name,
                     names : names.collect { jsonRendererService.getBriefNameWithHtml(it) },
             ])
+            //noinspection GroovyAssignabilityCheck
+            return respond(result, [view: '/common/serviceResult', model: [names: names,]])
+        } else {
+            ResultObject result = new ResultObject([
+                    action: params.action,
+                    error : "${name ?: '(Blank)'} not found."
+            ])
+            //noinspection GroovyAssignabilityCheck
+            respond(result, [view: '/common/serviceResult', model: [data: result], status: NOT_FOUND])
         }
-        //noinspection GroovyAssignabilityCheck
-        return respond(result, [view: '/common/serviceResult', model: [names: names,]])
+
     }
 
     @Timed()

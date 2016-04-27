@@ -97,7 +97,7 @@
 
       <div class="panel-body">
         <div class="results">
-          <h2>No results found<g:if test="${query.name}">for &quot;${query.name}&quot;</g:if>.</h2>
+          <h2>No results found <g:if test="${query.name}">for &quot;${query.name}&quot;</g:if>.</h2>
 
           <p>Try searching for a different name, e.g. "Doodia"</p>
         </div>
