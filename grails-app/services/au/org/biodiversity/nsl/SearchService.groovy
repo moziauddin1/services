@@ -406,7 +406,7 @@ and exists (
   and nd.nameUriNsPart.label = 'nsl-name'
   and nd.nameUriIdPart = cast(n.id as string)
 )
-order by n.simpleName asc, n.fullName asc''',
+order by n.sortName asc''',
                         [
                                 query          : query.toLowerCase() + '%',
                                 sortOrder      : rank.sortOrder,
@@ -427,7 +427,7 @@ and exists (
   and nd.nameUriNsPart.label = 'nsl-name'
   and nd.nameUriIdPart = cast(n.id as string)
 )
-order by n.simpleName asc, n.fullName asc''',
+order by n.sortName asc''',
                         [query: query.toLowerCase() + '%'], [max: 15])
                            .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
             }
@@ -457,14 +457,14 @@ where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
 and n.nameRank = :rank
-order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15]) as List<String>
+order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase()), rank: rank], [max: 15]) as List<String>
             } else {
                 names = Name.executeQuery('''select n.fullName
 from Name n
 where regex(lower(n.fullName), :query) = true
 and n.instances.size > 0
 and n.nameType.scientific = true
-order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
+order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
             }
 
             if (names.size() == 15) {
@@ -475,14 +475,14 @@ order by n.nameRank.sortOrder, lower(n.fullName)''', [query: regexTokenizeNameQu
         }
 
         suggestService.addSuggestionHandler('simpleName') { String query ->
-            return Name.executeQuery('''select n from Name n where regex(lower(n.simpleName), :query) = true and n.instances.size > 0''',
+            return Name.executeQuery('''select n from Name n where regex(lower(n.simpleName), :query) = true and n.instances.size > 0 order by n.sortName''',
                     [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15])
                        .collect { name -> name.simpleName }
         }
 
         suggestService.addSuggestionHandler('acceptableName') { String query ->
             List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
-            return Name.executeQuery('''select n from Name n where (regex(lower(n.fullName), :query) = true or regex(lower(n.simpleName), :query) = true) and n.instances.size > 0 and n.nameStatus.name in (:ns) order by n.simpleName asc''',
+            return Name.executeQuery('''select n from Name n where (regex(lower(n.fullName), :query) = true or regex(lower(n.simpleName), :query) = true) and n.instances.size > 0 and n.nameStatus.name in (:ns) order by n.sortName asc''',
                     [query: regexTokenizeNameQueryString(query.toLowerCase()), ns: status], [max: 15])
                        .collect { name -> [name: name.fullName, link: linkService.getPreferredLinkForObject(name)] }
         }
