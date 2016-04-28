@@ -297,6 +297,55 @@ class TreeJsonEditController {
 
     }
 
+    def dropUrisOntoNode(DropUrisOntoNodeParam param) {
+        response.status = 200
+        return render([
+                success       : false,
+                //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                msg           : [
+                        [msg: 'Further information needed', body: "More information must be specified to complete this operation", status: 'info']
+                ],
+                moreInfoNeeded: [
+                        [uri    : 'http:/a/foo1',
+                         msg    : [msg: 'Instance', body: "Adding name foo1 to node bar", status: 'info'],
+                         options: [
+                                 [
+                                         msg   : [msg: 'Move existing instance', body: "Move existing APC node to this point"],
+                                         params: [:] << param.properties << [
+                                                 action: "DO THING A"
+                                         ]
+                                 ],
+                                 [
+                                         msg   : [msg: 'Edit this node', body: "Change this node to instance foo"],
+                                         params: [:] << param.properties << [
+                                                 action: "DO THING B"
+                                         ]
+                                 ]
+                         ]
+                        ],
+                        [uri    : 'http:/a/foo2',
+                         msg    : [msg: 'Instance', body: "Adding name foo2 to node baz", status: 'info'],
+                         options: [
+                                 [
+                                         msg   : [msg: 'Move existing instance', body: "Move existing APC node to this point"],
+                                         params: [:] << param.properties << [
+                                                 action: "DO THING A"
+                                         ]
+                                 ],
+                                 [
+                                         msg   : [msg: 'Edit this node', body: "Change this node to instance foo"],
+                                         params: [:] << param.properties << [
+                                                 action: "DO THING B"
+                                         ]
+                                 ]
+                         ]
+                        ],
+                ]
+
+        ] as JSON)
+    }
+
+
     private renderValidationErrors(param) {
         def msg = [];
         msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -353,5 +402,22 @@ class AddNamesToNodeParam {
     static constraints = {
         root nullable: false
         focus nullable: false
+    }
+}
+
+
+@Validateable
+class DropUrisOntoNodeParam {
+    String root
+    String focus
+    String target
+    String action
+    List<String> uris
+    static constraints = {
+        root nullable: true
+        focus nullable: true
+        target nullable: true
+        uris nullable: true
+        action nullable: true
     }
 }
