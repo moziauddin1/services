@@ -167,22 +167,7 @@ class SearchController {
     }
 
     def nameCheck(Integer max) {
-
-        max = max ?: 100;
-
-        if (!params.product) {
-            params.product = 'apc'
-        }
-        Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
-                params.product.toUpperCase())
-        if (tree) {
-            params.tree = [id: tree.id]
-        } else {
-            flash.message = "Unknown product ${params.product}"
-            return redirect(url: '/')
-        }
-
-        searchService.nameCheck(params, max)
+        List<Map> results = searchService.nameCheck(params, max)
+        render(view: 'name-check', model: [results: results])
     }
 }

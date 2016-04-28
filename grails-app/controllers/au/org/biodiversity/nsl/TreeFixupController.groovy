@@ -57,4 +57,29 @@ class TreeFixupController {
         redirect action: 'selectNameNode', params: [classification: params['classification'], nameId: params['nameId']]
     }
 
+
+    @RequiresRoles('admin')
+    def enddateAndMakeCurrent() {
+        Arrangement c = Arrangement.findByNamespaceAndLabelAndArrangementType(
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
+                params['classification'], ArrangementType.P)
+
+        def p = [
+                classification: c
+        ]
+
+        p << classificationManagerService.fixClassificationEndDates(c, true)
+
+        return p;
+    }
+
+    @RequiresRoles('admin')
+    def doEnddateAndMakeCurrent() {
+        Arrangement c = Arrangement.get(params['classificationId'] as Long)
+        if(!c) throw new IllegalArgumentException(params as String)
+        classificationManagerService.fixClassificationEndDates(c, false)
+        flash.message = "Enddate performed."
+        redirect action: 'enddateAndMakeCurrent', params: [classification: c.label ]
+    }
+
 }

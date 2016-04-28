@@ -37,7 +37,7 @@ class ClassificationService {
     private String nameTreeName
     private String classificationTree
 
-    private Namespace getNameSpace() {
+    public Namespace getNameSpace() {
         if (!nameSpaceName) {
             nameSpaceName = Namespace.findByName(grailsApplication.config.shard.classification.namespace as String)
         }
@@ -70,6 +70,10 @@ class ClassificationService {
 
     List<Name> getPath(Name name, Namespace namespace, String classification) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(namespace, classification)
+        getPath(name, arrangement)
+    }
+
+    List<Name> getPath(Name name, Arrangement arrangement) {
 
         if (arrangement) {
             List<Node> nodes = queryService.findCurrentNslName(arrangement, name)

@@ -17,15 +17,15 @@
     <g:each in="${name.tags}" var="tag">
       <name-tag>${tag.tag.name}<i class="fa fa-tag"></i></name-tag>
     </g:each>
-    <editor>
+    <editor class="hidden-print">
       <st:editorLink nameId="${name.id}"><i class="fa fa-edit" title="Edit"></i></st:editorLink>
     </editor>
 
-    <span class="vertbar">
+    <span class="vertbar hidden-print">
       <a href="${preferredNameLink}"><i title="Link to Name" class="fa fa-link"></i></a>
     </span>
 
-    <span class="toggleNext vertbar">
+    <span class="toggleNext vertbar  hidden-print">
       <i class="fa fa-caret-up"></i><i class="fa fa-caret-down" style="display: none"></i>
     </span>
 
@@ -33,13 +33,13 @@
       <br><span class="small text-muted">${name.parent?.simpleName}  x ${name.secondParent?.simpleName}</span>
     </g:if>
 
-    <div class="well instances">
+    <div class="instances">
       <g:if test="${!references}">No references.</g:if>
       <g:each in="${references}" var="reference">
         <g:render template="/apniFormat/instance"
                   model="[reference: reference, instances: instancesByRef[reference], apc: apc]"/>
       </g:each>
-      <div class="btn-group">
+      <div class="btn-group hidden-print">
         <g:if test="${name.nameType.name != 'common'}">
           <span class="small" title="search for photos in APII">
             <a href="http://www.anbg.gov.au/cgi-bin/apiiName?name=${name.simpleName}">
@@ -51,6 +51,7 @@
           </span>
         </g:if>
       </div>
+      <hr>
     </div>
     </st:primaryInstance>
   </div>

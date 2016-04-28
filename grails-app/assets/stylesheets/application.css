@@ -14,6 +14,35 @@
 *= require_self
 */
 
+@media print {
+    a[href]:after {
+        content: none;
+    }
+    a {
+        color: blue;
+    }
+    .footer {
+        display: none;
+    }
+    branch {
+        display: inline;
+    }
+    branch ul {
+        position: relative;
+        display: inline;
+        border: none;
+    }
+
+    branch li {
+        display: inline;
+    }
+
+    branch li:after {
+        content: ' -> ';
+        padding-right: 10px;
+    }
+}
+
 body.test {
     background-color: rgba(123, 0, 255, 0.22);
 }

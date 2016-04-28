@@ -51,7 +51,17 @@ class NameTreePathServiceSpec extends Specification {
 
         def classificationServiceMock = mockFor(ClassificationService)
         classificationServiceMock.demand.isNameInClassification(0..2) { name, tree ->
-            return Node.findByNameUriIdPart(name.id.toString())
+            return Node.findByNameAndRoot(name, tree)
+        }
+
+        classificationServiceMock.demand.getPath(0..10) { name, tree ->
+            Name parent = name.parent
+            List<Name> path = [name]
+            while(parent){
+                path.add(parent)
+                parent = parent.parent
+            }
+            return path.reverse()
         }
         service.classificationService = classificationServiceMock.createMock()
 
@@ -87,7 +97,8 @@ class NameTreePathServiceSpec extends Specification {
                 tree: na.root,
                 name: a,
                 nameIdPath: "0.${a.id}",
-                nodeIdPath: '0',
+                namePath: a.nameElement,
+                rankPath: 'Familia:a',
                 inserted: System.currentTimeMillis()
         ).save()
 
@@ -98,6 +109,8 @@ class NameTreePathServiceSpec extends Specification {
         NameTreePath ntpf = service.addNameTreePath(f, nf)
         NameTreePath ntpg = service.addNameTreePath(g, ng)
 
+        List<NameTreePath> childSearch = NameTreePath.findAll()
+        println childSearch
         List<NameTreePath> children = service.currentChildren(rootTreePath)
 
         then:
@@ -114,32 +127,35 @@ class NameTreePathServiceSpec extends Specification {
         ntpc = service.findCurrentNameTreePath(c, tree)
 
         NameTreePath.list().each { ntp ->
-            println "${ntp.id} ${ntp.name}: path ${ntp.nameIdPath}, tpath ${ntp.nodeIdPath}"
+            println "${ntp.id} ${ntp.name}: path ${ntp.nameIdPath}, rank path: $ntp.rankPath, name path: $ntp.namePath"
         }
 
         then:
         ntpc
         ntpc.name == c
         ntpc.nameIdPath == '0.1.3'
-        ntpc.nodeIdPath == '0.1'
+        ntpc.rankPath == 'Familia:a>Genus:c'
+        ntpc.namePath == 'ac'
         ntpc.parent
         ntpc.parent.name == a
         ntpd.name == d
         ntpd.nameIdPath == '0.1.2.4'
-        ntpd.nodeIdPath == '0.1.2'
+        ntpd.rankPath == 'Familia:a>Genus:b>Species:d'
+        ntpd.namePath == 'abd'
         ntpe.name == e
         ntpe.nameIdPath == '0.1.2.5'
-        ntpe.nodeIdPath == '0.1.2'
+        ntpe.rankPath == 'Familia:a>Genus:b>Species:e'
+        ntpe.namePath =='abe'
 
-        when: "we move a name tree path"
+        when: "we move name b under c"   //this wouldn't happen since both are genus, but...
         b.parent = c
         Node nb2 = makeNode(b).save()
         nb.next = nb2 //don't really need this
-        service.updateNameTreePath(ntpb, nb2)
+        service.updateNameTreePathFromNode(nb2, ntpb)
 
         println '--'
         NameTreePath.list().each { ntp ->
-            println "${ntp.id} ${ntp.name}: path ${ntp.nameIdPath}, tpath ${ntp.nodeIdPath}"
+            println "${ntp.id} ${ntp.name}: path ${ntp.nameIdPath}, rank path: $ntp.rankPath, name path: $ntp.namePath"
         }
         println '--'
 
@@ -147,32 +163,40 @@ class NameTreePathServiceSpec extends Specification {
         ntpc.next == null
         ntpc.parent == rootTreePath
 
-        ntpb.next != null
+        //Name Tree Paths are now just updated
+        ntpb.next == null  //Note next is not currently updated or used
         ntpb.name == b
-        ntpb.next.name == b
-        ntpb.next.nameIdPath == '0.1.3.2'     // name ids
-        ntpb.next.nodeIdPath == '0.1.3'   //tree path ids
-        ntpb.next.parent == ntpc
+        ntpb.nameIdPath == '0.1.3.2'     // name ids
+        ntpb.parent == ntpc
+        ntpb.rankPath == 'Familia:a>Genus:c>Genus:b'
+        ntpb.namePath == 'ab' //this is correct because its for this name
 
-        ntpd.next != null
+        ntpd.next == null  //Note next is not currently updated or used
         ntpd.name == d
-        ntpd.next.name == d
-        ntpd.next.parent == ntpb.next
-        ntpd.next.nameIdPath == '0.1.3.2.4'   //name ids
-        ntpd.next.nodeIdPath == '0.1.3.2' //tree path ids
+        ntpd.parent == ntpb
+        ntpd.nameIdPath == '0.1.3.2.4'   //name ids
+        ntpd.rankPath == 'Familia:a>Genus:c>Genus:b>Species:d'
+        ntpd.namePath == 'acd' //this uses the first genus as expected, though this is not a good case.
 
-        ntpe.next != null
+        ntpe.next == null  //Note next is not currently updated or used
         ntpe.name == e
-        ntpe.next.name == e
-        ntpe.next.parent == ntpb.next
-        ntpe.next.nameIdPath == '0.1.3.2.5'   //name ids
-        ntpe.next.nodeIdPath == '0.1.3.2' //tree path ids
+        ntpe.parent == ntpb
+        ntpe.nameIdPath == '0.1.3.2.5'   //name ids
+        ntpe.rankPath == 'Familia:a>Genus:c>Genus:b>Species:e'
+        ntpe.namePath == 'ace'
 
         ntpf.next == null
+        ntpf.nameIdPath == '0.1.3.6'
+        ntpf.rankPath == 'Familia:a>Genus:c>Species:f'
+        ntpf.namePath == 'acf'
+
         ntpg.next == null
+        ntpg.nameIdPath == '0.1.3.7'
+        ntpg.rankPath == 'Familia:a>Genus:c>Species:g'
+        ntpg.namePath == 'acg'
 
 
-        service.findCurrentNameTreePath(d, tree) == ntpd.next
+        service.findCurrentNameTreePath(d, tree) == ntpd
     }
 
     private Node makeNode(Name name) {
@@ -182,7 +206,8 @@ class NameTreePathServiceSpec extends Specification {
                 checkedInAt: new Event(authUser: 'tester', timeStamp: new Timestamp(System.currentTimeMillis())),
                 nameUriIdPart: name.id.toString(),
                 nameUriNsPart: ns,
-                root: tree
+                root: tree,
+                name: name
         )
     }
 

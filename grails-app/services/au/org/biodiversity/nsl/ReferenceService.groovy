@@ -49,8 +49,13 @@ class ReferenceService {
                     "${reference.author.name.trim()}${reference.refAuthorRole == editor ? ' (ed.)' : ''}" : '')
 
             String parentAuthorName = (
-                    (reference.parent && reference.parent.author != unknownAuthor && reference.author != reference.parent.author) ?
-                            "in ${reference.parent.author.name.trim()}" : '')
+                    (reference.parent &&
+                            reference.parent.author != unknownAuthor &&
+                            (
+                                    reference.author != reference.parent.author ||
+                                            reference.parent?.refAuthorRole == editor
+                            )
+                    ) ? "in ${reference.parent.author.name.trim()}" : '')
 
             String parentAuthorRole = ((reference.parent?.author != unknownAuthor && reference.parent?.refAuthorRole == editor) ? '(ed.)' : '')
 
@@ -175,18 +180,18 @@ class ReferenceService {
  */
     @Transactional
     Map moveReference(Reference source, Reference target, String user) {
-        if(target.duplicateOf) {
+        if (target.duplicateOf) {
             throw new Exception("Target $target is a duplicate")
         }
         if (!user) {
             return [ok: false, errors: ['You must supply a user.']]
         }
-        if(!source) {
+        if (!source) {
             return [ok: false, errors: ['You must supply source.']]
         }
-            if (source.referencesForDuplicateOf.size() > 0) {
-                return [ok: false, errors: ['References say they are a duplicate of the source.']]
-            }
+        if (source.referencesForDuplicateOf.size() > 0) {
+            return [ok: false, errors: ['References say they are a duplicate of the source.']]
+        }
         InstanceNoteKey refNote = instanceService.getInstanceNoteKey('Reference Note', true)
         try {
             Reference.withTransaction { t ->

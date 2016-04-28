@@ -25,6 +25,7 @@ class SearchService {
     def suggestService
     def nameTreePathService
     def linkService
+    def classificationService
 
     @Timed(name = "SearchTimer")
     Map searchForName(Map params, Integer max) {
@@ -133,43 +134,29 @@ class SearchService {
         String fromClause = "from ${from.join(',')}"
         String whereClause = "where ${and.join(' and ')}"
 
-        if(params.SELECT == 'Instances') {
-            String countQuery = "select count(distinct i) $fromClause $whereClause"
-            String query = "select distinct(i) $fromClause $whereClause"
+        String countQuery = "select count(distinct n) $fromClause $whereClause"
+        String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
 
-            log.debug query
-            log.debug queryParams
-            List counter = Instance.executeQuery(countQuery, queryParams, [max: max])
-            Integer count = counter[0] as Integer
-            List<Instance> instances = Instance.executeQuery(query, queryParams, [max: max])
-            instances.sort { Instance a, Instance b -> a.name.fullName <=> b.name.fullName }
-            return [count: count, instances: instances]
+        if (from.contains('NameTreePath ntp_sort')) {
+            query = "select distinct(n), ntp_sort.namePath $fromClause $whereClause order by ntp_sort.namePath, n.fullName asc"
         }
-        else if(params.SELECT == 'Nodes') {
-            String countQuery = "select count(distinct node) $fromClause $whereClause"
-            String query = "select distinct(node) ${fromClause} ${whereClause}"
 
-            log.debug query
-            log.debug queryParams
-            List counter = Node.executeQuery(countQuery, queryParams, [max: max])
-            Integer count = counter[0] as Integer
-            List<Node> nodes = Node.executeQuery(query, queryParams, [max: max])
-            nodes.sort { Node a, Node b -> a.name.fullName <=> b.name.fullName }
-            return [count: count, nodes: nodes]
+        log.debug query
+        log.debug queryParams
+        Long start = System.currentTimeMillis()
+        List counter = Name.executeQuery(countQuery, queryParams, [max: max])
+        Integer count = counter[0] as Integer
+        List names = Name.executeQuery(query, queryParams, [max: max])
+        log.debug "query took ${System.currentTimeMillis() - start}ms"
+        //filter for just names. Note this works for both types of query
+        if (from.contains('NameTreePath ntp_sort')) {
+            names = names.collect { result ->
+                println result[1]
+                result[0]
+            }
         }
-        else {
-            // default is Name
 
-            String countQuery = "select count(distinct n) $fromClause $whereClause"
-            String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
-
-            log.debug query
-            log.debug queryParams
-            List counter = Name.executeQuery(countQuery, queryParams, [max: max])
-            Integer count = counter[0] as Integer
-            List<Name> names = Name.executeQuery(query, queryParams, [max: max])
-            return [count: count, names: names]
-        }
+        return [count: count, names: names]
     }
 
     private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
@@ -191,10 +178,14 @@ class SearchService {
             //todo remove this as APNI specific
             if (root.label == 'APNI' || params.exclSynonym == 'on') {
                 and << "cast(n.id as string) = node.nameUriIdPart"
+//                from.add('NameTreePath ntp_sort')
+//                and.add('ntp_sort.name = n and ntp_sort.tree = :root')
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
                 and << "n = s.name and (s.citedBy = i or s = i) and cast(i.id as string) = node.taxonUriIdPart"
+//                from.add('NameTreePath ntp_sort')
+//                and.add('ntp_sort.name = i.name and ntp_sort.tree = :root')
             }
 
             if (params.inRank?.id) {
@@ -273,7 +264,23 @@ class SearchService {
     }
 
     private static String cleanUpName(String name) {
-        name.trim()
+        name
+                .replaceAll('\u2013', '-')
+                .replaceAll('\u2014', '-')
+                .replaceAll('\u2015', '-')
+                .replaceAll('\u2017', '_')
+                .replaceAll('\u2018', '\'')
+                .replaceAll('\u2019', '\'')
+                .replaceAll('\u201a', ',')
+                .replaceAll('\u201b', '\'')
+                .replaceAll('\u201c', '\"')
+                .replaceAll('\u201d', '\"')
+                .replaceAll('\u201e', '\"')
+                .replaceAll("\u2026", "...")
+                .replaceAll('\u2032', '\'')
+                .replaceAll('\u2033', '\"')
+                .replaceAll('[\\s]+', ' ')
+                .trim()
     }
 
     public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
@@ -348,8 +355,33 @@ class SearchService {
      * against close matches.
      * @return
      */
-    public Map nameCheck(Map params, Integer max){
-
+    public List<Map> nameCheck(Map params, Integer max) {
+        use(SearchQueryCategory) {
+            if ((params.name as String)?.trim()) {
+                LinkedHashSet<String> strings = (params.name as String).trim().split('\n').collect { String nameString ->
+                    String queryString = cleanUpName(nameString).replaceAll('×', 'x').replaceAll('(.*) , .*', '$1')
+                    queryString ?: null
+                }
+                strings.remove(null)
+                List<Map> results = strings.collect { String nameString ->
+                    List<Name> names = Name.executeQuery('''
+select n
+from Name n
+where ((lower(simpleName) like :q) or (lower(fullName) like :q))
+and n.nameStatus.name in ('legitimate', 'nom. cons.', '[n/a]', '[default]')
+and n.instances.size > 0
+''', [q: nameString.toLowerCase()])
+                    Boolean found = (names != null && !names.empty)
+                    List<Map> r = names.collect { Name name ->
+                        Node apc = classificationService.isNameInAPC(name)
+                        [apc: apc, name: name]
+                    }
+                    [query: nameString, found: found, names: r, count: names.size()]
+                }
+                return results
+            }
+            return null
+        }
     }
 
     static Sql getNSL() {
@@ -433,7 +465,7 @@ order by n.simpleName asc, n.fullName asc''',
         }
 
         suggestService.addSuggestionHandler('apni-search') { String subject, String query, Map params ->
-            if(!query) {
+            if (!query) {
                 return []
             }
 

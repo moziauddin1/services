@@ -75,7 +75,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     def apniFormat(Name name) {
-        if(name) {
+        if (name) {
             if (params.embed) {
                 forward(controller: 'apniFormat', action: 'name', id: name.id)
             } else {
@@ -88,7 +88,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     def apniFormatEmbed(Name name) {
-        if(name) {
+        if (name) {
             forward(controller: 'apniFormat', action: 'name', id: name.id)
         } else {
             notFound('name')
@@ -97,7 +97,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     def apcFormat(Name name) {
-        if(name) {
+        if (name) {
             if (params.embed) {
                 forward(controller: 'apcFormat', action: 'name', id: name.id)
             } else {
@@ -110,7 +110,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     def apcFormatEmbed(Name name) {
-        if(name) {
+        if (name) {
             forward(controller: 'apcFormat', action: 'name', id: name.id)
         } else {
             notFound('name')
@@ -255,25 +255,34 @@ class NameController implements UnauthenticatedHandler, WithTarget {
      */
     @Timed()
     def acceptableName(String name) {
-
-        List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
-        List<Name> names = Name.executeQuery('''
+        if (name) {
+            List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
+            List<Name> names = Name.executeQuery('''
 select n
 from Name n
 where (lower(n.fullName) like :query or lower(n.simpleName) like :query)
 and n.instances.size > 0
 and n.nameStatus.name in (:ns)
 order by n.simpleName asc''',
-                [query: SearchService.tokenizeQueryString(name.toLowerCase()), ns: status], [max: 100])
+                    [query: SearchService.tokenizeQueryString(name.toLowerCase()), ns: status], [max: 100])
 
-        ResultObject result = new ResultObject([
-                action: params.action,
-                count : names.size(),
-                names : names.collect { jsonRendererService.getBriefNameWithHtml(it) },
-        ])
+            ResultObject result = new ResultObject([
+                    action: params.action,
+                    count : names.size(),
+                    query : name,
+                    names : names.collect { jsonRendererService.getBriefNameWithHtml(it) },
+            ])
+            //noinspection GroovyAssignabilityCheck
+            return respond(result, [view: '/common/serviceResult', model: [names: names,]])
+        } else {
+            ResultObject result = new ResultObject([
+                    action: params.action,
+                    error : "${name ?: '(Blank)'} not found."
+            ])
+            //noinspection GroovyAssignabilityCheck
+            respond(result, [view: '/common/serviceResult', model: [data: result], status: NOT_FOUND])
+        }
 
-        //noinspection GroovyAssignabilityCheck
-        return respond(result, [view: '/common/serviceResult', model: [names: names,]])
     }
 
     @Timed()

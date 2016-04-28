@@ -53,7 +53,7 @@ class ServiceTagLib {
     }
 
     def systemNotification = { attrs ->
-        String messageFileName = grailsApplication?.config?.nslServices?.system?.message?.file
+        String messageFileName = grailsApplication.config.shard.system.message.file //default config ensures this exists
         if (messageFileName) {
             File message = new File(messageFileName)
             if (message.exists()) {
