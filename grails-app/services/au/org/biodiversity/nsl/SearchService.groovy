@@ -132,11 +132,7 @@ class SearchService {
         String whereClause = "where ${and.join(' and ')}"
 
         String countQuery = "select count(distinct n) $fromClause $whereClause"
-        String query = "select distinct(n) $fromClause $whereClause order by n.fullName asc"
-
-        if (from.contains('NameTreePath ntp_sort')) {
-            query = "select distinct(n), ntp_sort.namePath $fromClause $whereClause order by ntp_sort.namePath, n.fullName asc"
-        }
+        String query = "select distinct(n), n.sortName $fromClause $whereClause order by n.sortName asc"
 
         log.debug query
         log.debug queryParams
@@ -145,12 +141,10 @@ class SearchService {
         Integer count = counter[0] as Integer
         List names = Name.executeQuery(query, queryParams, [max: max])
         log.debug "query took ${System.currentTimeMillis() - start}ms"
-        //filter for just names. Note this works for both types of query
-        if (from.contains('NameTreePath ntp_sort')) {
-            names = names.collect { result ->
-                println result[1]
-                result[0]
-            }
+        //filter for just names.
+        names = names.collect { result ->
+            println result[1]
+            result[0]
         }
 
         return [count: count, names: names]
@@ -166,14 +160,10 @@ class SearchService {
             //todo remove this as APNI specific
             if (root.label == 'APNI' || params.exclSynonym == 'on') {
                 and << "cast(n.id as string) = node.nameUriIdPart"
-//                from.add('NameTreePath ntp_sort')
-//                and.add('ntp_sort.name = n and ntp_sort.tree = :root')
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
                 and << "n = s.name and (s.citedBy = i or s = i) and cast(i.id as string) = node.taxonUriIdPart"
-//                from.add('NameTreePath ntp_sort')
-//                and.add('ntp_sort.name = i.name and ntp_sort.tree = :root')
             }
 
             if (params.inRank?.id) {

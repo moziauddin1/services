@@ -17,7 +17,6 @@
 package au.org.biodiversity.nsl.api
 
 import org.codehaus.groovy.grails.commons.GrailsApplication
-import org.hibernate.SessionFactory
 
 import grails.converters.JSON
 import grails.transaction.Transactional
@@ -30,17 +29,20 @@ import static au.org.biodiversity.nsl.tree.DomainUtils.*
 class TreeEditController {
     GrailsApplication grailsApplication
     AsRdfRenderableService asRdfRenderableService
-    SessionFactory sessionFactory_nsl
     TreeViewService treeViewService
     TreeOperationsService treeOperationsService
     QueryService queryService
+    ClassificationService classificationService
+    NameTreePathService nameTreePathService
 
     /** @deprecated */
 
+    @Deprecated
     def placeApniName(PlaceApniNameParam p) {
         // this should invoke the classification service
 
-        return render([success: false, validationErrors: TMP_RDF_TO_MAP.asMap(asRdfRenderableService.springErrorsAsRenderable(p.errors))]) as JSON
+        return render([success         : false,
+                       validationErrors: TMP_RDF_TO_MAP.asMap(asRdfRenderableService.springErrorsAsRenderable(p.errors))]) as JSON
     }
 
     def placeApcInstance(PlaceApcInstanceParam p) {
@@ -55,53 +57,27 @@ class TreeEditController {
         }
 
         Arrangement apc = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                Namespace.findByName((grailsApplication.config.shard.classification.namespace as String)),
                 grailsApplication.config.shard.classification.classificationTree as String)
-
-//		Uri nameUri = uri('nsl-name', p.instance.name.id)
-//		Uri supernameUri = p.supername ? uri('nsl-name', p.supername.id) : null
-//		Uri taxonUri = uri('nsl-instance', p.instance.id)
 
         Uri nodeTypeUri
         Uri linkTypeUri
 
         if (p.placementType == 'DeclaredBt') {
             nodeTypeUri = uri('apc-voc', 'DeclaredBt')
-            linkTypeUri = uri('apc-voc', 'btOf') // this always gets changed below in normal use
         } else if (p.placementType == 'ApcExcluded') {
             nodeTypeUri = uri('apc-voc', 'ApcExcluded')
-            linkTypeUri = uri('apc-voc', 'hasExcludedName')
         } else {
             nodeTypeUri = uri('apc-voc', 'ApcConcept')
-            linkTypeUri = uri('apc-voc', 'btOf')
         }
 
         if (p.supername == null) {
             linkTypeUri = uri('apc-voc', 'topNode')
         } else {
-            Link supernameLink = null
-            List<Link> supernameLinks = queryService.findCurrentNslNamePlacement(apc, p.instance.name)
-            // Should return a unique current node for the name. Should.
-            if (supernameLinks) {
-                supernameLink = supernameLinks.first()
-                if (supernameLink.supernode.typeUriIdPart == 'DeclaredBt') {
-                    linkTypeUri = uri('apc-voc', 'declaredBtOf')
-                }
-            }
+            linkTypeUri = extractLinkTypeUri(apc, p.instance.name)
         }
 
-        boolean nameExists = !!queryService.findCurrentNslNamePlacement(apc, p.instance.name)
-
-        if (p.supername) {
-            List<Link> supernameLinks = queryService.findCurrentNslNamePlacement(apc, p.supername)
-            // Should return a unique current node for the name. Should.
-            if (supernameLinks) {
-                Link supernameLink = supernameLinks.first()
-                if (supernameLink.supernode.typeUriIdPart == 'DeclaredBt') {
-                    linkTypeUri = uri('apc-voc', 'declaredBtOf')
-                }
-            }
-        }
+        Boolean nameExists = !queryService.findCurrentNslNamePlacement(apc, p.instance.name).isEmpty()
 
         try {
             log.debug "perform update/add"
@@ -109,64 +85,46 @@ class TreeEditController {
             def profileData = [:]
 
             if (nameExists)
-                treeOperationsService.updateNslName(apc, p.instance.name, p.supername, p.instance, nodeTypeUri: nodeTypeUri, linkTypeUri: linkTypeUri, profileData)
+                treeOperationsService.updateNslName(apc, p.instance.name, p.supername, p.instance,
+                        nodeTypeUri: nodeTypeUri, linkTypeUri: linkTypeUri, profileData)
             else
-                treeOperationsService.addNslName(apc, p.instance.name, p.supername, p.instance, nodeTypeUri: nodeTypeUri, linkTypeUri: linkTypeUri, profileData)
+                treeOperationsService.addNslName(apc, p.instance.name, p.supername, p.instance,
+                        nodeTypeUri: nodeTypeUri, linkTypeUri: linkTypeUri, profileData)
 
             apc = refetchArrangement(apc)
             refetch(p)
         }
         catch (ServiceException ex) {
-            RdfRenderable err = asRdfRenderableService.serviceExceptionAsRenderable(ex)//, message_param_detangler)
-            Map<?, ?> result = [success: false, serviceException: TMP_RDF_TO_MAP.asMap(err)]
+            RdfRenderable err = asRdfRenderableService.serviceExceptionAsRenderable(ex)
+            Map result = [success: false, serviceException: TMP_RDF_TO_MAP.asMap(err)]
             log.debug "ServiceException"
             log.warn ex
             return render(result as JSON)
         }
 
-        //		sessionFactory_nsl.getCurrentSession().clear()
-
         def result = [success: true]
         log.debug "treeViewService.getInstancePlacementInTree"
-        Map<?, ?> npt = treeViewService.getInstancePlacementInTree(apc, p.instance)
+        Node currentNode = classificationService.isNameInClassification(p.instance.name, apc)
+
+        nameTreePathService.updateNameTreePathFromNode(currentNode)
+
+        Map npt = treeViewService.getInstancePlacementInTree(apc, p.instance)
         result << npt
 
         log.debug "render(result as JSON)"
         return render(result as JSON)
     }
 
-    private Closure message_param_detangler = {
-        if (it instanceof Node) {
-            Node n = (Node) it;
-
-            // we prefer just using the name
-            if (DomainUtils.getNameUri(n)?.nsPart?.label == 'nsl-name') {
-                Name name = Name.get(DomainUtils.getNameUri(n).idPart as Integer)
-                name ? message_param_detangler(name) : DomainUtils.getNodeUri(n);
-            } else if (DomainUtils.getTaxonUri(n)?.nsPart?.label == 'nsl-instance') {
-                Instance inst = Instance.get(DomainUtils.getTaxonUri(n).idPart as Integer)
-                inst?.name ? message_param_detangler(inst.name) : DomainUtils.getNodeUri(n);
-            } else {
-                DomainUtils.getNodeUri(n);
+    private Uri extractLinkTypeUri(Arrangement apc, Name name) {
+        Uri linkTypeUri = null
+        List<Link> supernameLinks = queryService.findCurrentNslNamePlacement(apc, name)
+        if (supernameLinks.size() > 0) {
+            Link supernameLink = supernameLinks.first()
+            if (supernameLink.supernode.typeUriIdPart == 'DeclaredBt') {
+                linkTypeUri = uri('apc-voc', 'declaredBtOf')
             }
-        } else if (it instanceof Link) {
-            Link l = (Link) it;
-            "${message_param_detangler(l.supernode)}[${l.linkSeq}]->${message_param_detangler(l.subnode)}";
-        } else if (it instanceof Arrangement) {
-            ((Arrangement) it).label ?: DomainUtils.getArrangementUri(it)
-        } else if (it instanceof Name) {
-            Name name = (Name) it;
-            name.fullName;
-        } else if (it instanceof Instance) {
-            Instance inst = (Instance) it;
-            if (inst.reference?.citation) {
-                "${message_param_detangler(inst.name)} s. ${inst.reference.citation}"
-            } else {
-                message_param_detangler(inst.name)
-            }
-        } else {
-            it;
         }
+        return linkTypeUri
     }
 
     def removeApcInstance(RemoveApcInstanceParam p) {
@@ -176,23 +134,23 @@ class TreeEditController {
         if (!p.validate()) {
             log.debug "!p.validate()"
             RdfRenderable err = asRdfRenderableService.springErrorsAsRenderable(p.errors)
-            Map<?, ?> result = [success: false, validationErrors: TMP_RDF_TO_MAP.asMap(err)]
+            Map result = [success: false, validationErrors: TMP_RDF_TO_MAP.asMap(err)]
             return render(result as JSON)
         }
 
         Arrangement apc = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
                 grailsApplication.config.shard.classification.classificationTree as String)
 
         try {
             log.debug "perform remove"
-            treeOperationsService.deleteNslInstance(apc, p.instance, p.replacementName)
+            treeOperationsService.deleteNslInstance(apc, p.instance, p.replacementInstance)
             apc = refetchArrangement(apc)
             refetch(p)
         }
         catch (ServiceException ex) {
             RdfRenderable err = asRdfRenderableService.serviceExceptionAsRenderable(ex)
-            Map<?, ?> result = [success: false, serviceException: TMP_RDF_TO_MAP.asMap(err)]
+            Map result = [success: false, serviceException: TMP_RDF_TO_MAP.asMap(err)]
             log.debug "ServiceException"
             log.warn ex
             return render(result as JSON)
@@ -202,22 +160,23 @@ class TreeEditController {
 
         def result = [success: true]
         log.debug "treeViewService.getInstancePlacementInTree"
-        Map<?, ?> npt = treeViewService.getInstancePlacementInTree(apc, p.instance)
+        nameTreePathService.removeNameTreePath(p.instance.name, apc)
+        Map npt = treeViewService.getInstancePlacementInTree(apc, p.instance)
         result << npt
 
         log.debug "render(result as JSON)"
         return render(result as JSON)
     }
 
-    private void refetch(PlaceApcInstanceParam p) {
-        p.instance = DomainUtils.refetchInstance(p.instance);
-        p.supername = DomainUtils.refetchName(p.supername);
+    private static void refetch(PlaceApcInstanceParam p) {
+        p.instance = refetchInstance(p.instance);
+        p.supername = refetchName(p.supername);
     }
 
-    private void refetch(RemoveApcInstanceParam p) {
-        p.instance = DomainUtils.refetchInstance(p.instance);
-        p.replacementName = DomainUtils.refetchName(p.replacementName);
-        p.replacementInstance = DomainUtils.refetchInstance(p.replacementInstance);
+    private static void refetch(RemoveApcInstanceParam p) {
+        p.instance = refetchInstance(p.instance);
+        p.replacementName = refetchName(p.replacementName);
+        p.replacementInstance = refetchInstance(p.replacementInstance);
     }
 }
 
@@ -293,9 +252,7 @@ class PlaceApniNameParam {
     }
 
     static constraints = {
-        name nullable: false
         nameId nullable: false
-        supername nullable: true
         supernameId nullable: true
     }
 }

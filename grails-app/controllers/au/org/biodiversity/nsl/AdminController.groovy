@@ -96,7 +96,14 @@ class AdminController {
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
+    @RequiresRoles('admin')
+    def reconstructSortNames() {
+        nameService.reconstructSortNames()
+        flash.message = "reconstructing all sort names where changed."
+        redirect(action: 'index')
+    }
+
+    @RequiresRoles('admin')
     def reconstructCitations() {
         referenceService.reconstructAllCitations()
         flash.message = "reconstructing all reference citations."
