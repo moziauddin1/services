@@ -12,6 +12,11 @@
             data-id="https://biodiversity.org.au/images/pnrid-pdf/${instance.sourceId}.pdf">
         </protologue-pdf>
       </g:if>
+      <g:if test="${instance.bhlUrl}">
+        <bhl-link>
+          <a href="${instance.bhlUrl}" title="BHL link"><asset:image src="BHL.png" alt="BHL"/></a>
+        </bhl-link>
+      </g:if>
 
       <a href="${af.refAPNISearchLink(citation: reference?.citation, product: params.product)}" class="hidden-print"><i
           class="fa fa-search"></i></a>
