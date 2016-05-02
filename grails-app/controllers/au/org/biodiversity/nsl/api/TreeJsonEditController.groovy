@@ -299,50 +299,49 @@ class TreeJsonEditController {
 
     def dropUrisOntoNode(DropUrisOntoNodeParam param) {
         response.status = 200
-        return render([
-                success       : false,
-                //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg           : [
-                        [msg: 'Further information needed', body: "More information must be specified to complete this operation", status: 'info']
-                ],
-                moreInfoNeeded: [
-                        [uri    : 'http:/a/foo1',
-                         msg    : [msg: 'Instance', body: "Adding name foo1 to node bar", status: 'info'],
-                         options: [
-                                 [
-                                         msg   : [msg: 'Move existing instance', body: "Move existing APC node to this point"],
-                                         params: [:] << param.properties << [
-                                                 action: "DO THING A"
-                                         ]
-                                 ],
-                                 [
-                                         msg   : [msg: 'Edit this node', body: "Change this node to instance foo"],
-                                         params: [:] << param.properties << [
-                                                 action: "DO THING B"
-                                         ]
-                                 ]
-                         ]
-                        ],
-                        [uri    : 'http:/a/foo2',
-                         msg    : [msg: 'Instance', body: "Adding name foo2 to node baz", status: 'info'],
-                         options: [
-                                 [
-                                         msg   : [msg: 'Move existing instance', body: "Move existing APC node to this point"],
-                                         params: [:] << param.properties << [
-                                                 action: "DO THING A"
-                                         ]
-                                 ],
-                                 [
-                                         msg   : [msg: 'Edit this node', body: "Change this node to instance foo"],
-                                         params: [:] << param.properties << [
-                                                 action: "DO THING B"
-                                         ]
-                                 ]
-                         ]
-                        ],
-                ]
 
-        ] as JSON)
+        log.debug("DROPPING ${param.properties}");
+
+        long t = System.currentTimeMillis();
+        while (System.currentTimeMillis() - t < 2000);
+
+
+
+        if(param.dropAction == "DO THING A") {
+            return render([
+                    success     : true,
+                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                    msg         : [msg: 'Yay!', body: "Did the thing.", status: 'success']
+            ] as JSON)
+        }
+        else if(param.dropAction == "DO THING b") {
+            return render([
+                    success     : false,
+                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                    msg         : [msg: 'Oops', body: "Actually, I don't know how to do that", status: 'danger']
+            ] as JSON)
+        }
+        else {
+            return render([
+                    success     : false,
+                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                    msg         : [msg: 'Further information needed', body: "More information must be specified to complete this operation", status: 'warning'],
+                    chooseAction: [
+                            [
+                                    msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                    action: "DO THING A"
+                            ],
+                            [
+                                    msg   : [msg: 'Move existing instance', body: "Move existing APC node to this point"],
+                                    action: "DO THING b"
+                            ],
+                            [
+                                    msg   : [msg: 'Edit this node', body: "Change this node to instance foo"],
+                                    action: "DO THING C"
+                            ]
+                    ]
+            ] as JSON)
+        }
     }
 
 
@@ -411,13 +410,13 @@ class DropUrisOntoNodeParam {
     String root
     String focus
     String target
-    String action
+    String dropAction
     List<String> uris
     static constraints = {
         root nullable: true
         focus nullable: true
         target nullable: true
         uris nullable: true
-        action nullable: true
+        dropAction nullable: true
     }
 }
