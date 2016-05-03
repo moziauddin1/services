@@ -14,7 +14,7 @@
       </g:if>
       <g:if test="${instance.bhlUrl}">
         <bhl-link>
-          <a href="${instance.bhlUrl}" title="BHL link"><asset:image src="BHL.png" alt="BHL"/></a>
+          <a href="${instance.bhlUrl}" title="BHL link"><asset:image src="BHL.svg" alt="BHL" height="12"/></a>
         </bhl-link>
       </g:if>
 
