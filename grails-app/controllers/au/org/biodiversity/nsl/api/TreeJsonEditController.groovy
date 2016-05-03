@@ -4,10 +4,12 @@ import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.ArrangementType
 import au.org.biodiversity.nsl.Instance
 import au.org.biodiversity.nsl.JsonRendererService
+import au.org.biodiversity.nsl.Link
 import au.org.biodiversity.nsl.LinkService
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.Reference
 import au.org.biodiversity.nsl.tree.DomainUtils
 import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
@@ -249,10 +251,40 @@ class TreeJsonEditController {
     }
 
     def addNamesToNode(AddNamesToNodeParam param) {
+        response.status = 200 // default
+
         if (!param.validate()) return renderValidationErrors(param)
 
-        Node root = (Node) linkService.getObjectForLink(param.root as String)
+        Arrangement ws = (Arrangement) linkService.getObjectForLink(param.wsUri as String)
         Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+
+        def msgV = [];
+
+        if (ws.arrangementType != ArrangementType.U) {
+            msgV << [msg: "Illegal Argument", body: "${param.wsUri} is not a workspace", status: 'danger']
+        }
+
+        if (!msgV.isEmpty()) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : msgV
+            ]
+            return render(result as JSON)
+        }
+
+        if (ws.owner != SecurityUtils.subject.principal) {
+            def result = [
+                    success: false,
+                    msg    : [
+                            [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'warning'],
+                    ]
+            ]
+            response.status = 403
+            return render(result as JSON)
+        }
+
+
 
         def names = [];
 
@@ -268,7 +300,7 @@ class TreeJsonEditController {
 
         Node newFocus
         try {
-            newFocus = userWorkspaceManagerService.addNamesToNode(root.root, focus, names);
+            newFocus = userWorkspaceManagerService.addNamesToNode(ws, focus, names);
             newFocus = DomainUtils.refetchNode(newFocus);
         }
         catch (ServiceException ex) {
@@ -298,52 +330,257 @@ class TreeJsonEditController {
     }
 
     def dropUrisOntoNode(DropUrisOntoNodeParam param) {
-        response.status = 200
-
         log.debug("DROPPING ${param.properties}");
+        if (!param.validate()) return renderValidationErrors(param)
 
-        long t = System.currentTimeMillis();
-        while (System.currentTimeMillis() - t < 2000);
+        response.status = 200; // default
+
+        if (!param.validate()) return renderValidationErrors(param)
+
+        Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+        Arrangement ws = wsNode.root
+        Node target = (Node) linkService.getObjectForLink(param.target as String)
 
 
+        if (ws.arrangementType != ArrangementType.U) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+            ]
+            return render(result as JSON)
+        }
 
-        if(param.dropAction == "DO THING A") {
+        if (ws.owner != SecurityUtils.subject.principal) {
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+            ]
+            response.status = 403
+            return render(result as JSON)
+        }
+
+        // ok, at this point I need to work out what the hell to do
+        // I'll handle dropping one thing at time, I think.
+
+        if (!param.uris || param.uris.isEmpty()) {
             return render([
-                    success     : true,
+                    success: false,
                     //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                    msg         : [msg: 'Yay!', body: "Did the thing.", status: 'success']
+                    msg    : [msg: 'No Drop', body: "nothing appears to have been dropped", status: 'info']
             ] as JSON)
         }
-        else if(param.dropAction == "DO THING b") {
+
+        if (param.uris.size() > 1) {
             return render([
-                    success     : false,
+                    success: false,
                     //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                    msg         : [msg: 'Oops', body: "Actually, I don't know how to do that", status: 'danger']
+                    msg    : [msg: 'Multiple', body: "Multiple drops is not implemented yet", status: 'info']
             ] as JSON)
         }
-        else {
-            return render([
-                    success     : false,
-                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                    msg         : [msg: 'Further information needed', body: "More information must be specified to complete this operation", status: 'warning'],
-                    chooseAction: [
-                            [
-                                    msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                    action: "DO THING A"
-                            ],
-                            [
-                                    msg   : [msg: 'Move existing instance', body: "Move existing APC node to this point"],
-                                    action: "DO THING b"
-                            ],
-                            [
-                                    msg   : [msg: 'Edit this node', body: "Change this node to instance foo"],
-                                    action: "DO THING C"
-                            ]
-                    ]
-            ] as JSON)
+
+        Object o = linkService.getObjectForLink(param.uris.get(0) as String)
+
+        if(!o) {
+            def result = [
+                    success             : false,
+                    msg                 : [msg: 'Unrecognised URI', body: "${param.uris.get(0)} does not appear to be a uri from this NSL shard", status: 'danger'],
+            ];
+
+            return render(result as JSON)
+
+        }
+
+        try {
+            if(o instanceof Name) {
+                return dropNameOntoNode(ws, target, o as Name)
+            }
+            else if (o instanceof Instance) {
+                return dropInstanceOntoNode(ws, target, o as Instance)
+            }
+            else if (o instanceof Reference) {
+                return dropReferenceOntoNode(ws, target, o as Reference)
+            }
+            else if (o instanceof Node) {
+                return dropNodeOntoNode(ws, target, o as Node)
+            }
+            else if (o instanceof Link) {
+                return dropLinkOntoNode(ws, target, o as Link)
+            }
+            else {
+                def result = [
+                        success             : false,
+                        msg                 : [msg: 'Could not handle drop', body: ex.getLocalizedMessage(), status: 'warning'],
+                        treeServiceException: ex,
+                ];
+
+                return render(result as JSON)
+
+            }
+        }
+        catch (ServiceException ex) {
+            response.status = 400
+
+            def result = [
+                    success             : false,
+                    msg                 : [msg: 'Could not handle drop', body: ex.getLocalizedMessage(), status: 'warning'],
+                    treeServiceException: ex,
+            ];
+
+            return render(result as JSON)
         }
     }
 
+
+    private def dropNameOntoNode(Arrangement ws, Node target, Name name) {
+        return render([
+                success     : false,
+                //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                msg         : [msg: 'TODO!', body: "implement dropNameOntoNode", status: 'info'],
+                chooseAction: [
+                        [
+                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                action: "DO THING a"
+                        ],
+                        [
+                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                action: "DO THING b"
+                        ],
+                        [
+                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                action: "DO THING c"
+                        ],
+                        [
+                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                action: "DO THING d"
+                        ],
+                        [
+                                msg   : [msg: 'Default', body: "this is a default message"],
+                                action: "DO THING e"
+                        ]
+                ]
+        ] as JSON)
+    }
+
+    private def dropInstanceOntoNode(Arrangement ws, Node target, Instance nstance) {
+        return render([
+                success     : false,
+                //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                msg         : [msg: 'TODO!', body: "implement dropInstanceOntoNode", status: 'info'],
+                chooseAction: [
+                        [
+                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                action: "DO THING a"
+                        ],
+                        [
+                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                action: "DO THING b"
+                        ],
+                        [
+                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                action: "DO THING c"
+                        ],
+                        [
+                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                action: "DO THING d"
+                        ],
+                        [
+                                msg   : [msg: 'Default', body: "this is a default message"],
+                                action: "DO THING e"
+                        ]
+                ]
+        ] as JSON)
+    }
+
+    private def dropReferenceOntoNode(Arrangement ws, Node target, Reference reference) {
+        return render([
+                success     : false,
+                //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                msg         : [msg: 'TODO!', body: "implement dropReferenceOntoNode", status: 'info'],
+                chooseAction: [
+                        [
+                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                action: "DO THING a"
+                        ],
+                        [
+                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                action: "DO THING b"
+                        ],
+                        [
+                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                action: "DO THING c"
+                        ],
+                        [
+                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                action: "DO THING d"
+                        ],
+                        [
+                                msg   : [msg: 'Default', body: "this is a default message"],
+                                action: "DO THING e"
+                        ]
+                ]
+        ] as JSON)
+    }
+
+    private def dropNodeOntoNode(Arrangement ws, Node target, Node node) {
+        return render([
+                success     : false,
+                //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                msg         : [msg: 'TODO!', body: "implement dropNodeOntoNode", status: 'info'],
+                chooseAction: [
+                        [
+                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                action: "DO THING a"
+                        ],
+                        [
+                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                action: "DO THING b"
+                        ],
+                        [
+                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                action: "DO THING c"
+                        ],
+                        [
+                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                action: "DO THING d"
+                        ],
+                        [
+                                msg   : [msg: 'Default', body: "this is a default message"],
+                                action: "DO THING e"
+                        ]
+                ]
+        ] as JSON)
+    }
+
+    private def dropLinkOntoNode(Arrangement ws, Node target, Link link) {
+        return render([
+                success     : false,
+                //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                msg         : [msg: 'TODO!', body: "implement dropLinkOntoNode", status: 'info'],
+                chooseAction: [
+                        [
+                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                action: "DO THING a"
+                        ],
+                        [
+                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                action: "DO THING b"
+                        ],
+                        [
+                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                action: "DO THING c"
+                        ],
+                        [
+                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                action: "DO THING d"
+                        ],
+                        [
+                                msg   : [msg: 'Default', body: "this is a default message"],
+                                action: "DO THING e"
+                        ]
+                ]
+        ] as JSON)
+    }
 
     private renderValidationErrors(param) {
         def msg = [];
@@ -356,6 +593,10 @@ class TreeJsonEditController {
         ] as JSON)
     }
 }
+
+
+
+
 
 @Validateable
 class CreateWorkspaceParam {
@@ -395,11 +636,11 @@ class DeleteWorkspaceParam {
 
 @Validateable
 class AddNamesToNodeParam {
-    String root
+    String wsNode
     String focus
     List<String> names
     static constraints = {
-        root nullable: false
+        wsNode nullable: false
         focus nullable: false
     }
 }
@@ -407,15 +648,13 @@ class AddNamesToNodeParam {
 
 @Validateable
 class DropUrisOntoNodeParam {
-    String root
-    String focus
+    String wsNode
     String target
     String dropAction
     List<String> uris
     static constraints = {
-        root nullable: true
-        focus nullable: true
-        target nullable: true
+        wsNode nullable: false
+        target nullable: false
         uris nullable: true
         dropAction nullable: true
     }
