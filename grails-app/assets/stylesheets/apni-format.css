@@ -242,3 +242,7 @@ span#page-footer-inner-right {
 div#main-content{
   margin-bottom: 5em;
 }
+
+bhl-link img {
+    vertical-align: baseline;
+}
