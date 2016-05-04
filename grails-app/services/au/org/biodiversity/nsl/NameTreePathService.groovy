@@ -66,7 +66,7 @@ class NameTreePathService {
         Name currentParentName = getCurrentParentName(currentNode)
         if (currentParentName) {
             NameTreePath parentNtp = findCurrentNameTreePath(currentParentName, currentNode.root)
-            if (currentNtp.parent.id != parentNtp.id) {
+            if (currentNtp.parent.id != parentNtp?.id) {
                 String oldNameIdPath = currentNtp.nameIdPath
                 String oldRankPath = currentNtp.rankPath
                 currentNtp.nameIdPath = (parentNtp ? "${parentNtp.nameIdPath}." : '') + currentNode.name.id as String
