@@ -396,19 +396,16 @@ class TreeJsonEditController {
 
         try {
             if(o instanceof Name) {
-                return dropNameOntoNode(ws, target, o as Name)
+                return dropNameOntoNode(param, ws, target, o as Name)
             }
             else if (o instanceof Instance) {
-                return dropInstanceOntoNode(ws, target, o as Instance)
+                return dropInstanceOntoNode(param, ws, target, o as Instance)
             }
             else if (o instanceof Reference) {
-                return dropReferenceOntoNode(ws, target, o as Reference)
+                return dropReferenceOntoNode(param, ws, target, o as Reference)
             }
             else if (o instanceof Node) {
-                return dropNodeOntoNode(ws, target, o as Node)
-            }
-            else if (o instanceof Link) {
-                return dropLinkOntoNode(ws, target, o as Link)
+                return dropNodeOntoNode(param, ws, target, o as Node)
             }
             else {
                 def result = [
@@ -435,7 +432,7 @@ class TreeJsonEditController {
     }
 
 
-    private def dropNameOntoNode(Arrangement ws, Node target, Name name) {
+    private def dropNameOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Name name) {
         return render([
                 success     : false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
@@ -465,7 +462,7 @@ class TreeJsonEditController {
         ] as JSON)
     }
 
-    private def dropInstanceOntoNode(Arrangement ws, Node target, Instance nstance) {
+    private def dropInstanceOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Instance nstance) {
         return render([
                 success     : false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
@@ -495,7 +492,7 @@ class TreeJsonEditController {
         ] as JSON)
     }
 
-    private def dropReferenceOntoNode(Arrangement ws, Node target, Reference reference) {
+    private def dropReferenceOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Reference reference) {
         return render([
                 success     : false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
@@ -525,8 +522,7 @@ class TreeJsonEditController {
         ] as JSON)
     }
 
-    private def dropNodeOntoNode(Arrangement ws, Node target, Node node) {
-
+    private def dropNodeOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Node node) {
         if(node == target) {
             return render([
                     success     : false,
@@ -551,16 +547,19 @@ class TreeJsonEditController {
         if(pathToTarget && pathToNode) {
             userWorkspaceManagerService.moveWorkspaceNode(ws, target, node);
             return render([
-                    sucess: true
-            ])
+                    success: true,
+                    focusPath: getFocusPath(param, ws)
+                    // focus path
+                    // list of paths to be made open
+            ] as JSON)
         }
         else if(pathToTarget && DomainUtils.isCheckedIn(node)) {
             userWorkspaceManagerService.adoptNode(ws, target, node);
             return render([
-                    sucess: true
-            ])
+                    success: true,
+                    focusPath: getFocusPath(param, ws)
+            ] as JSON)
         }
-
 
         return render([
                 success     : false,
@@ -591,34 +590,19 @@ class TreeJsonEditController {
         ] as JSON)
     }
 
-    private def dropLinkOntoNode(Arrangement ws, Node target, Link link) {
-        return render([
-                success     : false,
-                //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg         : [msg: 'TODO!', body: "implement dropLinkOntoNode", status: 'info'],
-                chooseAction: [
-                        [
-                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                action: "DO THING a"
-                        ],
-                        [
-                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                action: "DO THING b"
-                        ],
-                        [
-                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                action: "DO THING c"
-                        ],
-                        [
-                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                action: "DO THING d"
-                        ],
-                        [
-                                msg   : [msg: 'Default', body: "this is a default message"],
-                                action: "DO THING e"
-                        ]
-                ]
-        ] as JSON)
+    private getFocusPath(DropUrisOntoNodeParam param, Arrangement ws) {
+        Node n = linkService.getObjectForLink(param.focus as String) as Node
+
+        if(n.id == ws.node.id) return null;
+
+        Link currentLink = queryService.findNodeCurrentOrCheckedout(ws.node, n)
+
+        if(currentLink.subnode.id == n.id) return null; // hasn't changed
+
+        List<Node> path = queryService.findPath(ws.node, currentLink.subnode);
+
+        return path.collect { linkService.getPreferredLinkForObject(it)}
+
     }
 
     private renderValidationErrors(param) {
@@ -688,12 +672,14 @@ class AddNamesToNodeParam {
 @Validateable
 class DropUrisOntoNodeParam {
     String wsNode
+    String focus
     String target
     String dropAction
     List<String> uris
     static constraints = {
         wsNode nullable: false
         target nullable: false
+        focus nullable: false
         uris nullable: true
         dropAction nullable: true
     }
