@@ -10,7 +10,9 @@ import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.Reference
+import au.org.biodiversity.nsl.tree.BasicOperationsService
 import au.org.biodiversity.nsl.tree.DomainUtils
+import au.org.biodiversity.nsl.tree.QueryService
 import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
 import grails.converters.JSON
@@ -35,6 +37,7 @@ class TreeJsonEditController {
     MessageSource messageSource
     LinkService linkService
     JsonRendererService jsonRendererService
+    QueryService queryService
 
     def test() {
         def msg = [msg: 'TreeJsonEditController']
@@ -410,7 +413,7 @@ class TreeJsonEditController {
             else {
                 def result = [
                         success             : false,
-                        msg                 : [msg: 'Could not handle drop', body: ex.getLocalizedMessage(), status: 'warning'],
+                        msg                 : [msg: 'Cannot handle drop', body: o as String, status: 'danger'],
                         treeServiceException: ex,
                 ];
 
@@ -523,6 +526,42 @@ class TreeJsonEditController {
     }
 
     private def dropNodeOntoNode(Arrangement ws, Node target, Node node) {
+
+        if(node == target) {
+            return render([
+                    success     : false,
+                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                    msg         : [msg: 'Cannot drop', body: "Cannot drop a node onto itself.", status: 'info']
+            ] as JSON)
+        }
+
+        def path = queryService.findPath(node, target)
+
+        if(path) {
+            return render([
+                    success     : false,
+                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
+                    msg         : [msg: 'Cannot drop', body: "Cannot drop a node onto a subnode of itself.", status: 'info']
+            ] as JSON)
+        }
+
+        def pathToNode =  queryService.findPath(ws.node, node);
+        def pathToTarget =  queryService.findPath(ws.node, target);
+
+        if(pathToTarget && pathToNode) {
+            userWorkspaceManagerService.moveWorkspaceNode(ws, target, node);
+            return render([
+                    sucess: true
+            ])
+        }
+        else if(pathToTarget && DomainUtils.isCheckedIn(node)) {
+            userWorkspaceManagerService.adoptNode(ws, target, node);
+            return render([
+                    sucess: true
+            ])
+        }
+
+
         return render([
                 success     : false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
