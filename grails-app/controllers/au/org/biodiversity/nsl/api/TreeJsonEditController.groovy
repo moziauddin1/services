@@ -548,7 +548,7 @@ class TreeJsonEditController {
         }
 
         if (result) {
-            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(focus).subnode;
+            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
 
             return [
                     success  : true,
