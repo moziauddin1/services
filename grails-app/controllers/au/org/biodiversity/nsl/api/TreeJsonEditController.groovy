@@ -303,7 +303,7 @@ class TreeJsonEditController {
 
         Node newFocus
         try {
-            newFocus = userWorkspaceManagerService.addNamesToNode(ws, focus, names);
+            newFocus = userWorkspaceManagerService.addNamesToNode(ws, focus, names).target;
             newFocus = DomainUtils.refetchNode(newFocus);
         }
         catch (ServiceException ex) {
@@ -343,6 +343,7 @@ class TreeJsonEditController {
         Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
         Arrangement ws = wsNode.root
         Node target = (Node) linkService.getObjectForLink(param.target as String)
+        Node focus = (Node) linkService.getObjectForLink(param.focus as String)
 
 
         if (ws.arrangementType != ArrangementType.U) {
@@ -384,10 +385,10 @@ class TreeJsonEditController {
 
         Object o = linkService.getObjectForLink(param.uris.get(0) as String)
 
-        if(!o) {
+        if (!o) {
             def result = [
-                    success             : false,
-                    msg                 : [msg: 'Unrecognised URI', body: "${param.uris.get(0)} does not appear to be a uri from this NSL shard", status: 'danger'],
+                    success: false,
+                    msg    : [msg: 'Unrecognised URI', body: "${param.uris.get(0)} does not appear to be a uri from this NSL shard", status: 'danger'],
             ];
 
             return render(result as JSON)
@@ -395,19 +396,15 @@ class TreeJsonEditController {
         }
 
         try {
-            if(o instanceof Name) {
-                return dropNameOntoNode(param, ws, target, o as Name)
-            }
-            else if (o instanceof Instance) {
-                return dropInstanceOntoNode(param, ws, target, o as Instance)
-            }
-            else if (o instanceof Reference) {
-                return dropReferenceOntoNode(param, ws, target, o as Reference)
-            }
-            else if (o instanceof Node) {
-                return dropNodeOntoNode(param, ws, target, o as Node)
-            }
-            else {
+            if (o instanceof Name) {
+                return render(dropNameOntoNode(ws, focus, target, o as Name) as JSON)
+            } else if (o instanceof Instance) {
+                return render(dropInstanceOntoNode(ws, focus, target, o as Instance) as JSON)
+            } else if (o instanceof Reference) {
+                return render(dropReferenceOntoNode(ws, focus, target, o as Reference) as JSON)
+            } else if (o instanceof Node) {
+                return render(dropNodeOntoNode(ws, focus, target, o as Node) as JSON)
+            } else {
                 def result = [
                         success             : false,
                         msg                 : [msg: 'Cannot handle drop', body: o as String, status: 'danger'],
@@ -432,8 +429,8 @@ class TreeJsonEditController {
     }
 
 
-    private def dropNameOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Name name) {
-        return render([
+    private def dropNameOntoNode(Arrangement ws, Node focus, Node target, Name name) {
+        return [
                 success     : false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
                 msg         : [msg: 'TODO!', body: "implement dropNameOntoNode", status: 'info'],
@@ -459,11 +456,11 @@ class TreeJsonEditController {
                                 action: "DO THING e"
                         ]
                 ]
-        ] as JSON)
+        ]
     }
 
-    private def dropInstanceOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Instance nstance) {
-        return render([
+    private def dropInstanceOntoNode(Arrangement ws, Node focus, Node target, Instance nstance) {
+        return [
                 success     : false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
                 msg         : [msg: 'TODO!', body: "implement dropInstanceOntoNode", status: 'info'],
@@ -489,11 +486,11 @@ class TreeJsonEditController {
                                 action: "DO THING e"
                         ]
                 ]
-        ] as JSON)
+        ]
     }
 
-    private def dropReferenceOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Reference reference) {
-        return render([
+    private def dropReferenceOntoNode(Arrangement ws, Node focus, Node target, Reference reference) {
+        return [
                 success     : false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
                 msg         : [msg: 'TODO!', body: "implement dropReferenceOntoNode", status: 'info'],
@@ -519,91 +516,77 @@ class TreeJsonEditController {
                                 action: "DO THING e"
                         ]
                 ]
-        ] as JSON)
+        ]
     }
 
-    private def dropNodeOntoNode(DropUrisOntoNodeParam param, Arrangement ws, Node target, Node node) {
-        if(node == target) {
+    private def dropNodeOntoNode(Arrangement ws, Node focus, Node target, Node node) {
+        if (node == target) {
             return render([
-                    success     : false,
-                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                    msg         : [msg: 'Cannot drop', body: "Cannot drop a node onto itself.", status: 'info']
+                    success: false,
+                    msg    : [msg: 'Cannot drop', body: "Cannot drop a node onto itself.", status: 'info']
             ] as JSON)
         }
 
         def path = queryService.findPath(node, target)
 
-        if(path) {
-            return render([
+        if (path) {
+            return [
+                    success: false,
+                    msg    : [msg: 'Cannot drop', body: "Cannot drop a node onto a subnode of itself.", status: 'info']
+            ]
+        }
+
+        def pathToNode = queryService.findPath(ws.node, node);
+        def pathToTarget = queryService.findPath(ws.node, target);
+
+        def result = null
+
+        if (pathToTarget && pathToNode) {
+            result = userWorkspaceManagerService.moveWorkspaceNode(ws, target, node);
+        } else if (pathToTarget && DomainUtils.isCheckedIn(node)) {
+            result = userWorkspaceManagerService.adoptNode(ws, target, node);
+        }
+
+        if (result) {
+            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(focus).subnode;
+
+            return [
+                    success  : true,
+                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                    refetch  : result.modified.collect { Node it ->
+                        queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                    }
+            ]
+        } else {
+            return [
                     success     : false,
-                    //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                    msg         : [msg: 'Cannot drop', body: "Cannot drop a node onto a subnode of itself.", status: 'info']
-            ] as JSON)
+                    msg         : [msg: 'TODO!', body: "implement dropNodeOntoNode", status: 'info'],
+                    chooseAction: [
+                            [
+                                    msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                    action: "DO THING a"
+                            ],
+                            [
+                                    msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                    action: "DO THING b"
+                            ],
+                            [
+                                    msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                    action: "DO THING c"
+                            ],
+                            [
+                                    msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                    action: "DO THING d"
+                            ],
+                            [
+                                    msg   : [msg: 'Default', body: "this is a default message"],
+                                    action: "DO THING e"
+                            ]
+                    ]
+            ]
         }
-
-        def pathToNode =  queryService.findPath(ws.node, node);
-        def pathToTarget =  queryService.findPath(ws.node, target);
-
-        if(pathToTarget && pathToNode) {
-            userWorkspaceManagerService.moveWorkspaceNode(ws, target, node);
-            return render([
-                    success: true,
-                    focusPath: getFocusPath(param, ws)
-                    // focus path
-                    // list of paths to be made open
-            ] as JSON)
-        }
-        else if(pathToTarget && DomainUtils.isCheckedIn(node)) {
-            userWorkspaceManagerService.adoptNode(ws, target, node);
-            return render([
-                    success: true,
-                    focusPath: getFocusPath(param, ws)
-            ] as JSON)
-        }
-
-        return render([
-                success     : false,
-                //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg         : [msg: 'TODO!', body: "implement dropNodeOntoNode", status: 'info'],
-                chooseAction: [
-                        [
-                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                action: "DO THING a"
-                        ],
-                        [
-                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                action: "DO THING b"
-                        ],
-                        [
-                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                action: "DO THING c"
-                        ],
-                        [
-                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                action: "DO THING d"
-                        ],
-                        [
-                                msg   : [msg: 'Default', body: "this is a default message"],
-                                action: "DO THING e"
-                        ]
-                ]
-        ] as JSON)
     }
 
-    private getFocusPath(DropUrisOntoNodeParam param, Arrangement ws) {
-        Node n = linkService.getObjectForLink(param.focus as String) as Node
-
-        if(n.id == ws.node.id) return null;
-
-        Link currentLink = queryService.findNodeCurrentOrCheckedout(ws.node, n)
-
-        if(currentLink.subnode.id == n.id) return null; // hasn't changed
-
-        List<Node> path = queryService.findPath(ws.node, currentLink.subnode);
-
-        return path.collect { linkService.getPreferredLinkForObject(it)}
-
-    }
 
     private renderValidationErrors(param) {
         def msg = [];
@@ -616,9 +599,6 @@ class TreeJsonEditController {
         ] as JSON)
     }
 }
-
-
-
 
 
 @Validateable
