@@ -333,7 +333,6 @@ class TreeJsonEditController {
     }
 
     def dropUrisOntoNode(DropUrisOntoNodeParam param) {
-        log.debug("DROPPING ${param.properties}");
         if (!param.validate()) return renderValidationErrors(param)
 
         response.status = 200; // default
@@ -547,44 +546,77 @@ class TreeJsonEditController {
             result = userWorkspaceManagerService.adoptNode(ws, target, node);
         }
 
-        if (result) {
-            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
 
-            return [
-                    success  : true,
-                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
-                    refetch  : result.modified.collect { Node it ->
-                        queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
-                    }
-            ]
-        } else {
-            return [
-                    success     : false,
-                    msg         : [msg: 'TODO!', body: "implement dropNodeOntoNode", status: 'info'],
-                    chooseAction: [
-                            [
-                                    msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                    action: "DO THING a"
-                            ],
-                            [
-                                    msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                    action: "DO THING b"
-                            ],
-                            [
-                                    msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                    action: "DO THING c"
-                            ],
-                            [
-                                    msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                    action: "DO THING d"
-                            ],
-                            [
-                                    msg   : [msg: 'Default', body: "this is a default message"],
-                                    action: "DO THING e"
-                            ]
-                    ]
-            ]
-        }
+        return [
+                success  : true,
+                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                refetch  : result.modified.collect { Node it ->
+                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                }
+        ]
+    }
+
+    def revertNode(RevertRemoveNodeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        return render([
+                success     : false,
+                msg         : [msg: 'TODO!', body: "implement revertNode", status: 'info'],
+                chooseAction: [
+                        [
+                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                action: "DO THING a"
+                        ],
+                        [
+                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                action: "DO THING b"
+                        ],
+                        [
+                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                action: "DO THING c"
+                        ],
+                        [
+                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                action: "DO THING d"
+                        ],
+                        [
+                                msg   : [msg: 'Default', body: "this is a default message"],
+                                action: "DO THING e"
+                        ]
+                ]
+        ] as JSON)
+
+    }
+
+    def removeNode(RevertRemoveNodeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+        return render([
+                success     : false,
+                msg         : [msg: 'TODO!', body: "implement removeNode", status: 'info'],
+                chooseAction: [
+                        [
+                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
+                                action: "DO THING a"
+                        ],
+                        [
+                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
+                                action: "DO THING b"
+                        ],
+                        [
+                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
+                                action: "DO THING c"
+                        ],
+                        [
+                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
+                                action: "DO THING d"
+                        ],
+                        [
+                                msg   : [msg: 'Default', body: "this is a default message"],
+                                action: "DO THING e"
+                        ]
+                ]
+        ] as JSON)
     }
 
 
@@ -654,13 +686,27 @@ class DropUrisOntoNodeParam {
     String wsNode
     String focus
     String target
-    String dropAction
+    String confirm
     List<String> uris
     static constraints = {
         wsNode nullable: false
         target nullable: false
         focus nullable: false
         uris nullable: true
-        dropAction nullable: true
+        confirm nullable: true
+    }
+}
+
+@Validateable
+class RevertRemoveNodeParam {
+    String wsNode
+    String focus
+    String target
+    String confirm
+    static constraints = {
+        wsNode nullable: false
+        target nullable: false
+        focus nullable: false
+        confirm nullable: true
     }
 }
