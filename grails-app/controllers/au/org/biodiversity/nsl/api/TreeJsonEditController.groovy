@@ -533,14 +533,14 @@ class TreeJsonEditController {
             ]
         }
 
-        if(queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
+        if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
             return [
                     success: false,
                     msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
             ]
         }
 
-        if(queryService.countPaths(ws.node, node) > 1) {
+        if (queryService.countPaths(ws.node, node) > 1) {
             return [
                     success: false,
                     msg    : [msg: 'Cannot drop', body: "Cannot move a node which appears more than once in the workspace", status: 'warning']
@@ -670,31 +670,62 @@ class TreeJsonEditController {
 
     def removeNode(RemoveNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
+
+
+        Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+        Arrangement ws = wsNode.root
+        Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+        Node linkSuper = linkService.getObjectForLink(param.linkSuper as String)
+        Link link = Link.findBySupernodeAndLinkSeq(linkSuper, param.linkSeq)
+
+        if (!wsNode) throw new IllegalArgumentException("null wsNode");
+        if (!ws) throw new IllegalArgumentException("null ws");
+        if (!linkSuper) throw new IllegalArgumentException("null super");
+        if (!link) throw new IllegalArgumentException("linkSeq not found");
+        if (!focus) throw new IllegalArgumentException("null focus");
+
+        if (ws.arrangementType != ArrangementType.U) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+            ]
+            return render(result as JSON)
+        }
+
+        if (ws.owner != SecurityUtils.subject.principal) {
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+            ]
+            response.status = 403
+            return render(result as JSON)
+        }
+
+        if (queryService.countPaths(ws.node, linkSuper) > 1 && DomainUtils.isCheckedIn(linkSuper)) {
+            response.status = 400
+            return render([
+                    success: false,
+                    msg    : [msg: 'Cannot delete', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+            ] as JSON)
+        }
+
+
+        Node newCheckout = userWorkspaceManagerService.removeLink(ws, link);
+
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+
+        def focusPath = queryService.findPath(ws.node, newFocus).collect { Node it ->
+            linkService.getPreferredLinkForObject(it)
+        }
+        def targetPath = queryService.findPath(newFocus, newCheckout).collect { Node it2 ->
+            linkService.getPreferredLinkForObject(it2)
+        }
+
         return render([
-                success     : false,
-                msg         : [msg: 'TODO!', body: "implement removeNode", status: 'info'],
-                chooseAction: [
-                        [
-                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                action: "DO THING a"
-                        ],
-                        [
-                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                action: "DO THING b"
-                        ],
-                        [
-                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                action: "DO THING c"
-                        ],
-                        [
-                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                action: "DO THING d"
-                        ],
-                        [
-                                msg   : [msg: 'Default', body: "this is a default message"],
-                                action: "DO THING e"
-                        ]
-                ]
+                success  : true,
+                focusPath: focusPath,
+                refetch  : [ targetPath ]
         ] as JSON)
     }
 
@@ -795,7 +826,7 @@ class RemoveNodeParam {
     String wsNode
     String focus
     String linkSuper
-    int linkSeq
+    Integer linkSeq
     String confirm
     static constraints = {
         wsNode nullable: false
