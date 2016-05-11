@@ -337,8 +337,6 @@ class TreeJsonEditController {
 
         response.status = 200; // default
 
-        if (!param.validate()) return renderValidationErrors(param)
-
         Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
         Arrangement ws = wsNode.root
         Node target = (Node) linkService.getObjectForLink(param.target as String)
@@ -560,30 +558,93 @@ class TreeJsonEditController {
     def revertNode(RevertRemoveNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
+        Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+        Arrangement ws = wsNode.root
+        Node target = (Node) linkService.getObjectForLink(param.target as String)
+        Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+
+        if (ws.arrangementType != ArrangementType.U) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+            ]
+            return render(result as JSON)
+        }
+
+        if (ws.owner != SecurityUtils.subject.principal) {
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+            ]
+            response.status = 403
+            return render(result as JSON)
+        }
+
+        if (DomainUtils.isCheckedIn(target)) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : [msg: "Not draft", body: "${param.wsNode} is not a draft node", status: 'danger']
+            ]
+            return render(result as JSON)
+        }
+
+        if (!target.prev) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : [msg: "Not an edited node", body: "${param.wsNode} is not an edited version of some persistent node", status: 'danger']
+            ]
+            return render(result as JSON)
+        }
+
+        Node curr;
+        for(curr = target.prev; curr && !DomainUtils.isCurrent(curr); curr = curr.next);
+
+        if (!DomainUtils.isCurrent(target.prev)) {
+            response.status = 400
+
+            if(curr && !DomainUtils.isEndNode(curr)) {
+                if(param.confirm == 'USE_CURRENT_VERSION') {
+                    // great!
+                }
+                else {
+                    def result = [
+                            success: false,
+                            msg    : [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current", status: 'warning'],
+                            chooseAction: [
+                                    [
+                                            msg   : [msg: 'Use new version', body: "Revert to the current version of this node", status: "success"],
+                                            action: 'USE_CURRENT_VERSION'
+                                    ],
+                            ]
+                    ]
+                    return render(result as JSON)
+                }
+            }
+            else {
+                def result = [
+                        success: false,
+                        msg    : [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current and has been deleted. This draft node can be removed, but it cannot be reverted.", status: 'info'],
+                ]
+                return render(result as JSON)
+            }
+
+        }
+
+        // ok. delete the draft node and insert the current replacement node into the tree
+
+        Link parentLink = userWorkspaceManagerService.replaceDraftNodeWith(target, curr);
+
+        // if the parent is the focus, then reset the focus path to point at the replacement (curr)
+        // refetch the parent node
+
         return render([
-                success     : false,
-                msg         : [msg: 'TODO!', body: "implement revertNode", status: 'info'],
-                chooseAction: [
-                        [
-                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                action: "DO THING a"
-                        ],
-                        [
-                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                action: "DO THING b"
-                        ],
-                        [
-                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                action: "DO THING c"
-                        ],
-                        [
-                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                action: "DO THING d"
-                        ],
-                        [
-                                msg   : [msg: 'Default', body: "this is a default message"],
-                                action: "DO THING e"
-                        ]
+                success     : true,
+                focusPath: target == focus ? queryService.findPath(ws.node, curr).collect { Node it -> linkService.getPreferredLinkForObject(it) } : null,
+                refetch: [
+                        [ linkService.getPreferredLinkForObject(parentLink.supernode) ]
                 ]
         ] as JSON)
 
