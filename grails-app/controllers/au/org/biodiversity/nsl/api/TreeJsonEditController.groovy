@@ -533,6 +533,21 @@ class TreeJsonEditController {
             ]
         }
 
+        if(queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
+            return [
+                    success: false,
+                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+            ]
+        }
+
+        if(queryService.countPaths(ws.node, node) > 1) {
+            return [
+                    success: false,
+                    msg    : [msg: 'Cannot drop', body: "Cannot move a node which appears more than once in the workspace", status: 'warning']
+            ]
+        }
+
+
         def pathToNode = queryService.findPath(ws.node, node);
         def pathToTarget = queryService.findPath(ws.node, target);
 
@@ -555,13 +570,18 @@ class TreeJsonEditController {
         ]
     }
 
-    def revertNode(RevertRemoveNodeParam param) {
+    def revertNode(RevertNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
         Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
         Arrangement ws = wsNode.root
         Node target = (Node) linkService.getObjectForLink(param.target as String)
         Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+
+        if (!wsNode) throw new IllegalArgumentException("null wsNode");
+        if (!ws) throw new IllegalArgumentException("null ws");
+        if (!target) throw new IllegalArgumentException("null target");
+        if (!focus) throw new IllegalArgumentException("null focus");
 
         if (ws.arrangementType != ArrangementType.U) {
             response.status = 400
@@ -600,19 +620,18 @@ class TreeJsonEditController {
         }
 
         Node curr;
-        for(curr = target.prev; curr && !DomainUtils.isCurrent(curr); curr = curr.next);
+        for (curr = target.prev; curr && !DomainUtils.isCurrent(curr); curr = curr.next);
 
         if (!DomainUtils.isCurrent(target.prev)) {
             response.status = 400
 
-            if(curr && !DomainUtils.isEndNode(curr)) {
-                if(param.confirm == 'USE_CURRENT_VERSION') {
+            if (curr && !DomainUtils.isEndNode(curr)) {
+                if (param.confirm == 'USE_CURRENT_VERSION') {
                     // great!
-                }
-                else {
+                } else {
                     def result = [
-                            success: false,
-                            msg    : [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current", status: 'warning'],
+                            success     : false,
+                            msg         : [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current", status: 'warning'],
                             chooseAction: [
                                     [
                                             msg   : [msg: 'Use new version', body: "Revert to the current version of this node", status: "success"],
@@ -622,8 +641,7 @@ class TreeJsonEditController {
                     ]
                     return render(result as JSON)
                 }
-            }
-            else {
+            } else {
                 def result = [
                         success: false,
                         msg    : [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current and has been deleted. This draft node can be removed, but it cannot be reverted.", status: 'info'],
@@ -641,16 +659,16 @@ class TreeJsonEditController {
         // refetch the parent node
 
         return render([
-                success     : true,
+                success  : true,
                 focusPath: target == focus ? queryService.findPath(ws.node, curr).collect { Node it -> linkService.getPreferredLinkForObject(it) } : null,
-                refetch: [
-                        [ linkService.getPreferredLinkForObject(parentLink.supernode) ]
+                refetch  : [
+                        [linkService.getPreferredLinkForObject(parentLink.supernode)]
                 ]
         ] as JSON)
 
     }
 
-    def removeNode(RevertRemoveNodeParam param) {
+    def removeNode(RemoveNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
         return render([
                 success     : false,
@@ -705,7 +723,7 @@ class CreateWorkspaceParam {
         namespace nullable: false
         title nullable: false
         description nullable: true
-        checkout checkout: true
+        checkout nullable: true
     }
 }
 
@@ -759,7 +777,7 @@ class DropUrisOntoNodeParam {
 }
 
 @Validateable
-class RevertRemoveNodeParam {
+class RevertNodeParam {
     String wsNode
     String focus
     String target
@@ -768,6 +786,22 @@ class RevertRemoveNodeParam {
         wsNode nullable: false
         target nullable: false
         focus nullable: false
+        confirm nullable: true
+    }
+}
+
+@Validateable
+class RemoveNodeParam {
+    String wsNode
+    String focus
+    String linkSuper
+    int linkSeq
+    String confirm
+    static constraints = {
+        wsNode nullable: false
+        focus nullable: false
+        linkSuper nullable: false
+        linkSeq nullable: false
         confirm nullable: true
     }
 }
