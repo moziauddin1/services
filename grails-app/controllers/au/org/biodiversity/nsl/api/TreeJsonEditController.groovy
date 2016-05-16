@@ -394,13 +394,13 @@ class TreeJsonEditController {
 
         try {
             if (o instanceof Name) {
-                return render(dropNameOntoNode(ws, focus, target, o as Name) as JSON)
+                return render(dropNameOntoNode(ws, focus, target, o as Name, param) as JSON)
             } else if (o instanceof Instance) {
-                return render(dropInstanceOntoNode(ws, focus, target, o as Instance) as JSON)
+                return render(dropInstanceOntoNode(ws, focus, target, o as Instance, param) as JSON)
             } else if (o instanceof Reference) {
-                return render(dropReferenceOntoNode(ws, focus, target, o as Reference) as JSON)
+                return render(dropReferenceOntoNode(ws, focus, target, o as Reference, param) as JSON)
             } else if (o instanceof Node) {
-                return render(dropNodeOntoNode(ws, focus, target, o as Node) as JSON)
+                return render(dropNodeOntoNode(ws, focus, target, o as Node, param) as JSON)
             } else {
                 def result = [
                         success             : false,
@@ -426,23 +426,117 @@ class TreeJsonEditController {
     }
 
 
-    private def dropNameOntoNode(Arrangement ws, Node focus, Node target, Name name) {
+    private def dropNameOntoNode(Arrangement ws, Node focus, Node target, Name name, DropUrisOntoNodeParam param) {
+        if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
+            return [
+                    success: false,
+                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+            ]
+        }
+
+        def result
+
+        if (param.dropAction == 'CHANGE-NODE-NAME') {
+            result = userWorkspaceManagerService.changeNodeName(ws, target, name);
+        } else if (param.dropAction == 'ADD-NEW-SUBNODE') {
+            result = userWorkspaceManagerService.addNodeSubname(ws, target, name);
+        } else {
+            return [
+                    success       : false,
+                    moreInfoNeeded: [
+                            [
+                                    name    : 'dropAction',
+                                    msg     : [
+                                            msg   : 'Multiple options',
+                                            body  : "Do you want to change this placement, or do you want to add a name here? ",
+                                    ],
+                                    options : [
+                                            [msg         : 'Change',
+                                             body        : "Change the name at this placement to ${name.fullName}",
+                                             status      : 'success',
+                                             whenSelected: 'CHANGE-NODE-NAME'
+                                            ],
+                                            [msg         : 'Add',
+                                             body        : "Place ${name.fullName} under ${target.name.fullName}",
+                                             status      : 'success',
+                                             whenSelected: 'ADD-NEW-SUBNODE'
+                                            ]
+
+                                    ],
+                                    selected: null
+                            ]
+                    ]
+            ]
+
+        }
+
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+
         return [
-                success: false,
-                //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg    : [msg: 'TODO!', body: "implement dropNameOntoNode", status: 'info']
+                success  : true,
+                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                refetch  : result.modified.collect { Node it ->
+                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                }
         ]
     }
 
-    private def dropInstanceOntoNode(Arrangement ws, Node focus, Node target, Instance nstance) {
+    private def dropInstanceOntoNode(Arrangement ws, Node focus, Node target, Instance instance, DropUrisOntoNodeParam param) {
+        if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
+            return [
+                    success: false,
+                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+            ]
+        }
+
+        def result
+
+        if (param.dropAction == 'CHANGE-NODE-INSTANCE') {
+            result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
+        } else if (param.dropAction == 'ADD-NEW-SUBNODE') {
+            result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
+        } else {
+            return [
+                    success       : false,
+                    moreInfoNeeded: [
+                            [
+                                    name    : 'dropAction',
+                                    msg     : [
+                                            msg   : 'Multiple options',
+                                            body  : "Do you want to change this placement, or do you want to add an instance here? ",
+                                    ],
+                                    options : [
+                                            [msg         : 'Change',
+                                             body        : instance.name == target.name ? "Change the reference at this placement to ${instance.reference.citation}" :  "Change the instance at this placement to ${instance.name.simpleName} s. ${instance.reference.citation}",
+                                             status      : 'success',
+                                             whenSelected: 'CHANGE-NODE-INSTANCE'
+                                            ],
+                                            [msg         : 'Add',
+                                             body        : "Place ${instance.name.simpleName} s. ${instance.reference.citation} under ${target.name.fullName}",
+                                             status      : 'success',
+                                             whenSelected: 'ADD-NEW-SUBNODE'
+                                            ]
+
+                                    ],
+                                    selected: null
+                            ]
+                    ]
+            ]
+
+        }
+
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+
         return [
-                success: false,
-                //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg    : [msg: 'TODO!', body: "implement dropInstanceOntoNode", status: 'info']
+                success  : true,
+                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                refetch  : result.modified.collect { Node it ->
+                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                }
         ]
     }
 
-    private def dropReferenceOntoNode(Arrangement ws, Node focus, Node target, Reference reference) {
+    private def dropReferenceOntoNode(Arrangement ws, Node focus, Node target, Reference reference, DropUrisOntoNodeParam param) {
         return [
                 success: false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
@@ -450,7 +544,7 @@ class TreeJsonEditController {
         ]
     }
 
-    private def dropNodeOntoNode(Arrangement ws, Node focus, Node target, Node node) {
+    private def dropNodeOntoNode(Arrangement ws, Node focus, Node target, Node node, DropUrisOntoNodeParam param) {
         if (node == target) {
             return render([
                     success: false,
@@ -794,12 +888,14 @@ class DropUrisOntoNodeParam {
     String target
     String confirm
     List<String> uris
+    String dropAction
     static constraints = {
         wsNode nullable: false
         target nullable: false
         focus nullable: false
         uris nullable: true
         confirm nullable: true
+        dropAction nullable: true
     }
 }
 
