@@ -428,91 +428,25 @@ class TreeJsonEditController {
 
     private def dropNameOntoNode(Arrangement ws, Node focus, Node target, Name name) {
         return [
-                success     : false,
+                success: false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg         : [msg: 'TODO!', body: "implement dropNameOntoNode", status: 'info'],
-                chooseAction: [
-                        [
-                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                action: "DO THING a"
-                        ],
-                        [
-                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                action: "DO THING b"
-                        ],
-                        [
-                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                action: "DO THING c"
-                        ],
-                        [
-                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                action: "DO THING d"
-                        ],
-                        [
-                                msg   : [msg: 'Default', body: "this is a default message"],
-                                action: "DO THING e"
-                        ]
-                ]
+                msg    : [msg: 'TODO!', body: "implement dropNameOntoNode", status: 'info']
         ]
     }
 
     private def dropInstanceOntoNode(Arrangement ws, Node focus, Node target, Instance nstance) {
         return [
-                success     : false,
+                success: false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg         : [msg: 'TODO!', body: "implement dropInstanceOntoNode", status: 'info'],
-                chooseAction: [
-                        [
-                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                action: "DO THING a"
-                        ],
-                        [
-                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                action: "DO THING b"
-                        ],
-                        [
-                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                action: "DO THING c"
-                        ],
-                        [
-                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                action: "DO THING d"
-                        ],
-                        [
-                                msg   : [msg: 'Default', body: "this is a default message"],
-                                action: "DO THING e"
-                        ]
-                ]
+                msg    : [msg: 'TODO!', body: "implement dropInstanceOntoNode", status: 'info']
         ]
     }
 
     private def dropReferenceOntoNode(Arrangement ws, Node focus, Node target, Reference reference) {
         return [
-                success     : false,
+                success: false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg         : [msg: 'TODO!', body: "implement dropReferenceOntoNode", status: 'info'],
-                chooseAction: [
-                        [
-                                msg   : [msg: 'Danger', body: "this is a danger message", status: "danger"],
-                                action: "DO THING a"
-                        ],
-                        [
-                                msg   : [msg: 'Warning', body: "this is a warning message", status: "warning"],
-                                action: "DO THING b"
-                        ],
-                        [
-                                msg   : [msg: 'Info', body: "this is an info message", status: "info"],
-                                action: "DO THING c"
-                        ],
-                        [
-                                msg   : [msg: 'Success', body: "this is a success message", status: "success"],
-                                action: "DO THING d"
-                        ],
-                        [
-                                msg   : [msg: 'Default', body: "this is a default message"],
-                                action: "DO THING e"
-                        ]
-                ]
+                msg    : [msg: 'TODO!', body: "implement dropReferenceOntoNode", status: 'info'],
         ]
     }
 
@@ -619,6 +553,29 @@ class TreeJsonEditController {
             return render(result as JSON)
         }
 
+        int draftNodeCount = queryService.countDraftNodes(target)
+
+        if (draftNodeCount > 1 && param.confirm != 'CONFIRM-REVERT-NODE') {
+            return render([
+                    success       : false,
+                    moreInfoNeeded: [
+                            [
+                                    name    : 'confirm',
+                                    options : [
+                                            [msg         : 'Confirm',
+                                             body        : "Are you sure you want to revert edits to ${draftNodeCount} draft placement${draftNodeCount > 1 ? 's' : ''}? This operation cannot be undone",
+                                             status      : 'danger',
+                                             whenSelected: 'CONFIRM-REVERT-NODE'
+                                            ]
+
+                                    ],
+                                    selected: null
+                            ]
+                    ]
+            ] as JSON)
+        }
+
+
         Node curr;
         for (curr = target.prev; curr && !DomainUtils.isCurrent(curr); curr = curr.next);
 
@@ -626,17 +583,34 @@ class TreeJsonEditController {
             response.status = 400
 
             if (curr && !DomainUtils.isEndNode(curr)) {
-                if (param.confirm == 'USE_CURRENT_VERSION') {
+                if (param.useCurrentVersion == 'USE_CURRENT_VERSION') {
                     // great!
                 } else {
                     def result = [
-                            success     : false,
-                            msg         : [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current", status: 'warning'],
-                            chooseAction: [
+                            success       : false,
+                            msg           : [
+                                    msg   : "Previous node is not current",
+                                    body  : "${param.wsNode} is an edited version of a node that is no longer current",
+                                    status: 'warning'],
+                            moreInfoNeeded: [
+                                    [name: 'confirm', selected: param.confirm['confirm']],
                                     [
-                                            msg   : [msg: 'Use new version', body: "Revert to the current version of this node", status: "success"],
-                                            action: 'USE_CURRENT_VERSION'
-                                    ],
+                                            name    : 'useCurrentVersion',
+                                            msg     : [
+                                                    msg   : 'Previous node is not current',
+                                                    body  : "${param.wsNode} is an edited version of a node that is no longer current",
+                                                    status: 'warning'],
+                                            options : [
+                                                    [
+                                                            msg         : 'Use new version',
+                                                            body        : 'Revert to the current version of this node',
+                                                            status      : 'success',
+                                                            whenSelected: 'USE-CURRENT-VERSION'
+                                                    ]
+
+                                            ],
+                                            selected: null
+                                    ]
                             ]
                     ]
                     return render(result as JSON)
@@ -670,6 +644,7 @@ class TreeJsonEditController {
 
     def removeNode(RemoveNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
+
 
 
         Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
@@ -710,6 +685,27 @@ class TreeJsonEditController {
             ] as JSON)
         }
 
+        int draftNodeCount = queryService.countDraftNodes(link.subnode)
+
+        if (draftNodeCount > 0 && param.confirm != 'CONFIRM-REMOVE-NODE') {
+            return render([
+                    success       : false,
+                    moreInfoNeeded: [
+                            [
+                                    name    : 'confirm',
+                                    options : [
+                                            [msg         : 'Confirm',
+                                             body        : "Are you sure you want to delete ${draftNodeCount} draft placement${draftNodeCount > 1 ? 's' : ''}? This operation cannot be undone",
+                                             status      : 'danger',
+                                             whenSelected: 'CONFIRM-REMOVE-NODE'
+                                            ]
+
+                                    ],
+                                    selected: null
+                            ]
+                    ]
+            ] as JSON)
+        }
 
         Node newCheckout = userWorkspaceManagerService.removeLink(ws, link);
 
@@ -725,7 +721,7 @@ class TreeJsonEditController {
         return render([
                 success  : true,
                 focusPath: focusPath,
-                refetch  : [ targetPath ]
+                refetch  : [targetPath]
         ] as JSON)
     }
 
@@ -812,11 +808,13 @@ class RevertNodeParam {
     String wsNode
     String focus
     String target
+    String useCurrentVersion
     String confirm
     static constraints = {
         wsNode nullable: false
         target nullable: false
         focus nullable: false
+        useCurrentVersion nullable: true
         confirm nullable: true
     }
 }
