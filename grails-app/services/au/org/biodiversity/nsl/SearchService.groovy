@@ -30,9 +30,6 @@ class SearchService {
     @Timed(name = "SearchTimer")
     Map searchForName(Map params, Integer max) {
 
-        log.fatal "searchForName params ${params}"
-        log.fatal "searchForName params.tree ${params.tree}"
-
         Map queryParams = [:]
 
         Set<String> from = ['Name n']
@@ -154,14 +151,6 @@ class SearchService {
     }
 
     private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
-        log.fatal "queryTreeParams params ${params}"
-        log.fatal "queryTreeParams params.tree ${params.tree}"
-        log.fatal "queryTreeParams params.tree?.id ${params.tree?.id}"
-
-        log.fatal "queryTreeParams queryParams ${queryParams}"
-        log.fatal "queryTreeParams from ${from}"
-        log.fatal "queryTreeParams and ${and}"
-
 
         if (params.tree?.id) {
             Arrangement root = Arrangement.get(params.tree.id as Long)

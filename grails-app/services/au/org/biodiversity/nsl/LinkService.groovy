@@ -173,11 +173,7 @@ class LinkService {
                 return Arrangement.findByIdAndNamespace(idNumber, ns)
                 break
             case 'node':
-                Node n = Node.findById(idNumber)
-                if(n && n.root.namespace != ns) {
-                    n = null;
-                }
-                return n;
+                return Node.findByIdAndNamespace(idNumber, ns)
                 break
             default:
                 return null

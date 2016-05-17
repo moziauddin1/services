@@ -62,9 +62,7 @@ class SecurityFilters {
                     }
                 }
 
-                // if a JSON token is set then log in with that, also
-                // add CORS stamp to the response to indicate that we are ok
-                // with nsl-jwt being passed as a header
+                // if a JSON token is set then log in with that
                 if(request.getHeader('nsl-jwt')) {
                     try {
                         String jwt = request.getHeader('nsl-jwt')
