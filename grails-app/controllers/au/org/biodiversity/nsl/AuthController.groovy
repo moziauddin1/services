@@ -92,8 +92,7 @@ class AuthController {
         try {
             SecurityUtils.subject.login(authToken)
 
-            // todo: it may be that this actually needs to call a JSonTokenRealm builder
-            JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject)
+            JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, grailsApplication.config.nslServices.jwt.secret)
 
             def result = [
                     success    : true,
@@ -126,7 +125,7 @@ class AuthController {
                 // actually, it's a bit tricky. If the request comes from a user logged in with JSON,
                 // we don't want to build a whole new request. I suspect that this getInfo method does nothing
                 // and is not needed. Either that, or it should not be returning a jwt.
-                jwt: SecurityUtils.subject.principal ? JsonToken.buildUsingSubject(SecurityUtils.subject).getCredentials() : null
+                jwt: SecurityUtils.subject.principal ? JsonToken.buildUsingSubject(SecurityUtils.subject, grailsApplication.config.nslServices.jwt.secret).getCredentials() : null
         ] as JSON
         render result
     }

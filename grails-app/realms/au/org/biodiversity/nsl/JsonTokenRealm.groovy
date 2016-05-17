@@ -1,22 +1,26 @@
 package au.org.biodiversity.nsl
 
+import org.apache.shiro.authc.AuthenticationException
+import org.codehaus.groovy.grails.commons.GrailsApplication
+
 /**
  * Created by ibis on 28/01/2016.
  */
 class JsonTokenRealm {
     static authTokenClass = JsonToken
 
-    /*
-    todo: certificates and whatnot
-    This method may be the correct place to do timeouts, certificate stamping and whatnot.
-     */
+    GrailsApplication grailsApplication;
+
+    /* todo: implement the 'real' JWT algorithm */
 
     String authenticate(JsonToken authToken) {
-        // no checking whatsoever
-        return authToken.principal
-    }
+        byte[] check = JsonToken.buildSignature(authToken.principal, grailsApplication.config.nslServices.jwt.secret);
 
-    void foo() {
-
+        if(Arrays.equals(authToken.getSignature(), check)) {
+            return authToken.principal
+        }
+        else {
+            throw new AuthenticationException("JWT not recognised");
+        }
     }
 }

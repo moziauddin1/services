@@ -11,6 +11,8 @@ import org.codehaus.groovy.grails.web.json.JSONObject;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * At present, a JsonToken is nothing but the principal - no password, no nothing, not even any actual JSON.
@@ -65,7 +67,7 @@ public class JsonToken implements AuthenticationToken {
      * @todo implement the rest of JWT
      */
 
-    public static JsonToken buildUsingSubject(Subject subject) {
+    public static JsonToken buildUsingSubject(Subject subject, String secret) {
         String principal;
 
         if(subject == null) {
@@ -82,22 +84,39 @@ public class JsonToken implements AuthenticationToken {
         JSONObject payload = new JSONObject() ;
 
         header.put("type", "JWT");
-        header.put("alg", "none");
+        // the algorithm indicates to other systems that they cannot be expected to understand this
+        header.put("alg", "nsl-simple-check");
 
         payload.put("sub", principal);
 
         String header64 = Base64.encodeToString(header.toString().getBytes());
         String payload64 = Base64.encodeToString(payload.toString().getBytes());
-        String signature64 = Base64.encodeToString("".getBytes()); // signature is an empty string
+        String signature64 = Base64.encodeToString(buildSignature(principal, secret)); // signature is an empty string
 
         return new JsonToken(header64 + "." + payload64 + "." + signature64, principal);
-
     }
 
 
     private JsonToken(String credentials, String principal) {
         this.credentials = credentials;
         this.principal = principal;
+    }
+
+    public static byte[] buildSignature(String principal, String secret)  {
+        String foo = principal + '/' + secret;
+
+        MessageDigest sha ;
+        try {
+            sha = MessageDigest.getInstance("SHA-1");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("THIS NEVER HAPPENS", e);
+        }
+
+        return  sha.digest(foo.getBytes());
+    }
+
+    public byte[] getSignature() {
+        return Base64.decode(credentials.substring(credentials.lastIndexOf('.')+1));
     }
 
     @Override
