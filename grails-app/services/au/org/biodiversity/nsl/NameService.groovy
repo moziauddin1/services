@@ -409,14 +409,46 @@ class NameService {
                     names.each { Name name ->
                         Map constructedNames = constructedNameService.constructName(name)
 
-                        if (!(name.fullNameHtml && name.simpleNameHtml && name.fullName && name.simpleName) ||
+                        if (!(name.fullNameHtml && name.simpleNameHtml && name.fullName && name.simpleName && name.sortName) ||
                                 name.fullNameHtml != constructedNames.fullMarkedUpName) {
                             name.fullNameHtml = constructedNames.fullMarkedUpName
                             name.fullName = constructedNameService.stripMarkUp(constructedNames.fullMarkedUpName)
                             name.simpleNameHtml = constructedNames.simpleMarkedUpName
                             name.simpleName = constructedNameService.stripMarkUp(constructedNames.simpleMarkedUpName)
+                            name.sortName = constructedNameService.makeSortName(name.simpleName)
                             name.save()
-                            log.debug "saved $name.fullName"
+//                            log.debug "saved $name.fullName"
+                        } else {
+                            name.discard()
+                        }
+                    }
+                    session.flush()
+                }
+                log.info "$top done. 1000 took ${System.currentTimeMillis() - start} ms"
+            }
+            if (updaterWas == 'running') {
+                resumeUpdates()
+            }
+        }
+    }
+
+    def reconstructSortNames() {
+        runAsync {
+            String updaterWas = pollingStatus()
+            pauseUpdates()
+            Closure query = { Map params ->
+                Name.listOrderById(params)
+            }
+
+            SimpleNameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
+                long start = System.currentTimeMillis()
+                Name.withSession { session ->
+                    names.each { Name name ->
+                        String sortName = constructedNameService.makeSortName(name.simpleName)
+                        if (!(name.sortName) || name.sortName != sortName) {
+                            name.sortName = sortName
+                            name.save()
+//                            log.debug "saved $name.sortName"
                         } else {
                             name.discard()
                         }

@@ -66,7 +66,7 @@ class NameTreePathService {
         Name currentParentName = getCurrentParentName(currentNode)
         if (currentParentName) {
             NameTreePath parentNtp = findCurrentNameTreePath(currentParentName, currentNode.root)
-            if (currentNtp.parent.id != parentNtp.id) {
+            if (currentNtp.parent.id != parentNtp?.id) {
                 String oldNameIdPath = currentNtp.nameIdPath
                 String oldRankPath = currentNtp.rankPath
                 currentNtp.nameIdPath = (parentNtp ? "${parentNtp.nameIdPath}." : '') + currentNode.name.id as String
@@ -132,8 +132,6 @@ class NameTreePathService {
 
     //this could take a while todo make an sql update
     private void updateChildren(String oldNameIdPath, String oldRankPath, NameTreePath newParent) {
-//        oldNameIdPath += '.'
-//        oldRankPath += '>'
         List<NameTreePath> children = currentChildren(newParent) //in order from top of the tree (!important)
         NameTreePath.withSession { session ->
             children.each { NameTreePath child ->
@@ -171,6 +169,17 @@ class NameTreePathService {
         NameTreePath.findAllByNameIdPathLikeAndTreeAndNextIsNull("%${parentTreePath.name.id}.%", parentTreePath.tree)
                     .sort { a, b ->
             a.namePathIds().size() <=> b.namePathIds().size()
+        }
+    }
+
+
+    void removeNameTreePath(Name name, Arrangement arrangement) {
+        NameTreePath ntp =findCurrentNameTreePath(name, arrangement)
+        if(ntp){
+            if(!currentChildren(ntp).isEmpty()) {
+                throw new Exception("Can't delete Name Tree Path with children. $ntp")
+            }
+            ntp.delete()
         }
     }
 

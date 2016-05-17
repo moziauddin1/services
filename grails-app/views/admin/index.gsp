@@ -86,6 +86,12 @@
               </li>
               <li>
                 <a class=""
+                   href="${g.createLink(controller: "admin", action: "reconstructSortNames")}">
+                  Reconstruct sort name strings
+                </a>
+              </li>
+              <li>
+                <a class=""
                    href="${g.createLink(controller: "admin", action: "constructMissingNames")}">
                   Construct missing name strings (${stats.namesNeedingConstruction})
                 </a>

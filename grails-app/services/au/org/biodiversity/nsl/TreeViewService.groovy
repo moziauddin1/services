@@ -29,8 +29,8 @@ import grails.transaction.Transactional
  */
 @Transactional
 class TreeViewService {
-	JsonRendererService jsonRendererService
-	QueryService queryService
+    JsonRendererService jsonRendererService
+    QueryService queryService
 
 	def getBranchForName(Arrangement tree, Name name) {
 		if(name) {
@@ -71,26 +71,26 @@ class TreeViewService {
 		return getPathForTree(tree)
 	}
 
-	def getPathForNode(Arrangement tree, Node node) {
-		if(node) {
-			List<Link> links = queryService.getPathForNode(tree, node).findAll { Link it -> it.subnode.internalType != NodeInternalType.V }
-			if(links) {
-				return [
-					path: links.drop(1).collect { populateSubnodeFromLink(it, false) } ,
-					tree: populateSubnodeFromLink(links.last(), true )
-				]
-			}
-		}
+    def getPathForNode(Arrangement tree, Node node) {
+        if (node) {
+            List<Link> links = queryService.getPathForNode(tree, node).findAll { Link it -> it.subnode.internalType != NodeInternalType.V }
+            if (links) {
+                return [
+                        path: links.drop(1).collect { populateSubnodeFromLink(it, false) },
+                        tree: populateSubnodeFromLink(links.last(), true)
+                ]
+            }
+        }
 
-		return getPathForTree(tree)
-	}
+        return getPathForTree(tree)
+    }
 
-	def getPathForTree(Arrangement tree) {
-		return [
-			path: [ ],
-			tree: populateSubnodeFromLink(DomainUtils.getSingleSublink(tree.node), true )
-		]
-	}
+    Map getPathForTree(Arrangement tree) {
+        return [
+                path: [],
+                tree: populateSubnodeFromLink(DomainUtils.getSingleSublink(tree.node), true)
+        ]
+    }
 
 	def getNameInTree(Arrangement tree, Name name) {
 		if(name) {
@@ -343,6 +343,4 @@ class TreeViewService {
 		if(!bn) return 1;
 		return (an.simpleName ?: '') .compareTo(bn.simpleName ?: '')
 	}
-
-
 }

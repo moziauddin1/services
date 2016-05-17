@@ -21,8 +21,32 @@ class ConstructedNameService {
     def classificationService
     static transactional = false
 
+    private List<List> nameRankList
+
+    private List<List> getNameRankList() {
+        if(!nameRankList) {
+            Integer count = 65
+            nameRankList = NameRank.list(sort: 'sortOrder', order: "asc").collect { NameRank nameRank ->
+                [nameRank.abbrev, count++ as char]
+            }
+        }
+        return nameRankList
+    }
+
     public static String stripMarkUp(String string) {
         string?.replaceAll(/<[^>]*>/, '')?.replaceAll(/(&lsquo;|&rsquo;)/, "'")?.trim()
+    }
+
+    public String makeSortName(String simpleName) {
+        String sortName = simpleName.toLowerCase()
+                                    .replaceAll(/ x /, ' ') //remove hybrid marks
+                                    .replaceAll(/^x /, '')
+        getNameRankList().each { List rankOrdering ->
+            String abbrev = rankOrdering[0]
+            String rep = rankOrdering[1]
+            sortName = sortName.replaceAll(" $abbrev ", " $rep ")
+        }
+        return sortName
     }
 
     Map constructName(Name name) {
@@ -63,7 +87,6 @@ class ConstructedNameService {
     private static String join(List<String> bits) {
         bits.findAll { it }.join(' ')
     }
-
 
     private Map constructInformalName(Name name, Name parent) {
         List<String> bits = []
@@ -111,7 +134,7 @@ class ConstructedNameService {
 
         if (!nextRankOrder && name.nameRank) {
             if (name.nameRank.sortOrder == 500 && name.parent) {
-                if(RankUtils.nameAtRankOrLower(name.parent, 'Genus')) {
+                if (RankUtils.nameAtRankOrLower(name.parent, 'Genus')) {
                     nextRankOrder = RankUtils.getRankOrder('Genus')
                 } else {
                     nextRankOrder = name.parent.nameRank.sortOrder

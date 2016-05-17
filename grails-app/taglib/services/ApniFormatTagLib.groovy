@@ -157,13 +157,13 @@ class ApniFormatTagLib {
     def page = { attrs ->
         Instance instance = attrs.instance
         if (instance.page) {
-            out << instance.page.encodeAsHTML()
+            out << ApniFormatService.transformXics(instance.page)
         } else {
             if (instance.instanceType.citing && instance.citedBy.page) {
                 if (instance.instanceType.name.contains('common')) {
-                    out << "~ ${instance.citedBy.page}"
+                    out << "~ ${ApniFormatService.transformXics(instance.citedBy.page)}"
                 } else {
-                    out << "${instance.citedBy.page}"
+                    out << "${ApniFormatService.transformXics(instance.citedBy.page)}"
                 }
             } else {
                 out << '-'
