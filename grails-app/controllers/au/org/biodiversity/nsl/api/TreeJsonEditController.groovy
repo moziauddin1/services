@@ -425,6 +425,15 @@ class TreeJsonEditController {
         }
     }
 
+    static enum DropNameOntoNodeEnum {
+        AddNewSubnode, ChangeNodeName(true);
+
+        final boolean needsWarning;
+
+        DropNameOntoNodeEnum() { needsWarning = false; }
+
+        DropNameOntoNodeEnum(boolean w) { needsWarning = w; }
+    }
 
     private def dropNameOntoNode(Arrangement ws, Node focus, Node target, Name name, DropUrisOntoNodeParam param) {
         if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
@@ -434,54 +443,112 @@ class TreeJsonEditController {
             ]
         }
 
-        def result
+        // WORK OUT WHAT THINGS MIGHT BE BEING DONE
 
-        if (param.dropAction == 'CHANGE-NODE-NAME') {
-            result = userWorkspaceManagerService.changeNodeName(ws, target, name);
-        } else if (param.dropAction == 'ADD-NEW-SUBNODE') {
-            result = userWorkspaceManagerService.addNodeSubname(ws, target, name);
+        Set<DropNameOntoNodeEnum> possibleActions = new HashSet<DropNameOntoNodeEnum>(EnumSet.allOf(DropNameOntoNodeEnum));
+
+        if (target.root.node == target) {
+            possibleActions.remove(DropNameOntoNodeEnum.ChangeNodeName);
+        }
+
+        if (possibleActions.isEmpty()) {
+            return [
+                    success: false,
+                    msg    : [msg: "Cannot drop", body: "${name.fullName} cannot be placed here", status: 'danger']
+            ]
+        }
+
+        // HANDLE what the user has requested be done
+
+        final DropNameOntoNodeEnum paramAction = null;
+
+        if (param.dropAction) {
+            try {
+                paramAction = DropNameOntoNodeEnum.valueOf(param.dropAction);
+            }
+            catch (IllegalArgumentException ex) {
+                // what a pain! You can ask an enum if it knows about a value, you have to catch the illegal argument exception.
+                return [
+                        success: false,
+                        msg    : [msg: "Unrecognised action", body: "${param.dropAction} not recognised. Recognised actions are ${EnumSet.allOf(DropNameOntoNodeEnum)}.", status: 'danger']
+                ]
+
+            }
+        } else paramAction = null;
+
+        if (paramAction && !possibleActions.contains(paramAction)) {
+            return [
+                    success: false,
+                    msg    : [msg: paramAction, body: "cannot perform this action", status: 'danger']
+            ]
+        }
+
+        // if what the user wants is ok, or there is only one thing that can be done and it doesn't need a warning,
+        // do that.
+
+        if (paramAction || (possibleActions.size() == 1 && !possibleActions.first().needsWarning)) {
+            DropNameOntoNodeEnum action = paramAction ?: possibleActions.first();
+
+            def result
+            switch (action) {
+                case DropNameOntoNodeEnum.ChangeNodeName:
+                    result = userWorkspaceManagerService.changeNodeName(ws, target, name);
+                    break;
+                case DropNameOntoNodeEnum.AddNewSubnode:
+                    result = userWorkspaceManagerService.addNodeSubname(ws, target, name);
+                    break;
+                default:
+                    throw new IllegalStateException("No operation for ${action}")
+            }
+
+            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+
+            return [
+                    success  : true,
+                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                    refetch  : result.modified.collect { Node it ->
+                        queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                    }
+            ]
         } else {
+
+            // an array, so that they are displayed in the order that I specify them here.
+            def options = [];
+
+            if (possibleActions.contains(DropNameOntoNodeEnum.ChangeNodeName)) {
+                options << [msg         : 'Change',
+                            body        : "Change the name at this placement to ${name.fullName}",
+                            whenSelected: DropNameOntoNodeEnum.ChangeNodeName.name()
+                ]
+            }
+
+            if (possibleActions.contains(DropNameOntoNodeEnum.AddNewSubnode)) {
+                options << [msg         : 'Place',
+                            body        : "Place ${name.fullName} under ${target.name?.fullName}",
+                            whenSelected: DropNameOntoNodeEnum.AddNewSubnode.name()
+                ]
+            }
+
+            log.debug(options as JSON)
+
             return [
                     success       : false,
                     moreInfoNeeded: [
                             [
                                     name    : 'dropAction',
                                     msg     : [
-                                            msg   : 'Multiple options',
-                                            body  : "Do you want to change this placement, or do you want to add a name here? ",
+                                            msg: possibleActions.size() == 1 ? 'Confirm' : 'Multiple options'
                                     ],
-                                    options : [
-                                            [msg         : 'Change',
-                                             body        : "Change the name at this placement to ${name.fullName}",
-                                             status      : 'success',
-                                             whenSelected: 'CHANGE-NODE-NAME'
-                                            ],
-                                            [msg         : 'Add',
-                                             body        : "Place ${name.fullName} under ${target.name.fullName}",
-                                             status      : 'success',
-                                             whenSelected: 'ADD-NEW-SUBNODE'
-                                            ]
-
-                                    ],
+                                    options : options,
                                     selected: null
                             ]
                     ]
             ]
-
         }
-
-        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
-
-        return [
-                success  : true,
-                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
-                refetch  : result.modified.collect { Node it ->
-                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
-                }
-        ]
     }
 
-    private def dropInstanceOntoNode(Arrangement ws, Node focus, Node target, Instance instance, DropUrisOntoNodeParam param) {
+    private
+    def dropInstanceOntoNode(Arrangement ws, Node focus, Node target, Instance instance, DropUrisOntoNodeParam param) {
         if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
             return [
                     success: false,
@@ -493,7 +560,7 @@ class TreeJsonEditController {
 
         if (param.dropAction == 'CHANGE-NODE-INSTANCE') {
             result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
-        } else if (param.dropAction == 'ADD-NEW-SUBNODE') {
+        } else if (param.dropAction == 'ADD-NEW-SUBNODE' || target.root.node == target) {
             result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
         } else {
             return [
@@ -502,17 +569,19 @@ class TreeJsonEditController {
                             [
                                     name    : 'dropAction',
                                     msg     : [
-                                            msg   : 'Multiple options',
-                                            body  : "Do you want to change this placement, or do you want to add an instance here? ",
+                                            msg : 'Multiple options',
+                                            body: "Do you want to change this placement, or do you want to add an instance here? ",
                                     ],
                                     options : [
                                             [msg         : 'Change',
-                                             body        : instance.name == target.name ? "Change the reference at this placement to ${instance.reference.citation}" :  "Change the instance at this placement to ${instance.name.simpleName} s. ${instance.reference.citation}",
+                                             body        : instance.name == target.name ?
+                                                     "Change the reference at this placement to ${instance.reference.citation}" :
+                                                     "Change the instance at this placement to ${instance.name.simpleName} s. ${instance.reference.citation}",
                                              status      : 'success',
                                              whenSelected: 'CHANGE-NODE-INSTANCE'
                                             ],
                                             [msg         : 'Add',
-                                             body        : "Place ${instance.name.simpleName} s. ${instance.reference.citation} under ${target.name.fullName}",
+                                             body        : "Place ${instance.name.simpleName} s. ${instance.reference.citation} under ${target.name?.fullName}",
                                              status      : 'success',
                                              whenSelected: 'ADD-NEW-SUBNODE'
                                             ]
@@ -536,7 +605,8 @@ class TreeJsonEditController {
         ]
     }
 
-    private def dropReferenceOntoNode(Arrangement ws, Node focus, Node target, Reference reference, DropUrisOntoNodeParam param) {
+    private
+    def dropReferenceOntoNode(Arrangement ws, Node focus, Node target, Reference reference, DropUrisOntoNodeParam param) {
         return [
                 success: false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
