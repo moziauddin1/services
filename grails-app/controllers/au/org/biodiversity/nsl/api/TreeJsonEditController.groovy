@@ -547,6 +547,17 @@ class TreeJsonEditController {
         }
     }
 
+    static enum DropInstanceOntoNodeEnum {
+        AddNewSubnode, ChangeNodeInstance(true);
+
+        final boolean needsWarning;
+
+        DropInstanceOntoNodeEnum() { needsWarning = false; }
+
+        DropInstanceOntoNodeEnum(boolean w) { needsWarning = w; }
+    }
+
+
     private
     def dropInstanceOntoNode(Arrangement ws, Node focus, Node target, Instance instance, DropUrisOntoNodeParam param) {
         if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
@@ -556,53 +567,107 @@ class TreeJsonEditController {
             ]
         }
 
-        def result
+        // WORK OUT WHAT THINGS MIGHT BE BEING DONE
 
-        if (param.dropAction == 'CHANGE-NODE-INSTANCE') {
-            result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
-        } else if (param.dropAction == 'ADD-NEW-SUBNODE' || target.root.node == target) {
-            result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
+        Set<DropInstanceOntoNodeEnum> possibleActions = new HashSet<DropInstanceOntoNodeEnum>(EnumSet.allOf(DropInstanceOntoNodeEnum));
+
+        if (target.root.node == target) {
+            possibleActions.remove(DropInstanceOntoNodeEnum.ChangeNodeInstance);
+        }
+
+        if (possibleActions.isEmpty()) {
+            return [
+                    success: false,
+                    msg    : [msg: "Cannot drop", body: "${instance.name.fullName} cannot be placed here", status: 'danger']
+            ]
+        }
+
+        // HANDLE what the user has requested be done
+
+        final DropInstanceOntoNodeEnum paramAction = null;
+
+        if (param.dropAction) {
+            try {
+                paramAction = DropInstanceOntoNodeEnum.valueOf(param.dropAction);
+            }
+            catch (IllegalArgumentException ex) {
+                // what a pain! You can ask an enum if it knows about a value, you have to catch the illegal argument exception.
+                return [
+                        success: false,
+                        msg    : [msg: "Unrecognised action", body: "${param.dropAction} not recognised. Recognised actions are ${EnumSet.allOf(DropInstanceOntoNodeEnum)}.", status: 'danger']
+                ]
+
+            }
+        } else paramAction = null;
+
+        if (paramAction && !possibleActions.contains(paramAction)) {
+            return [
+                    success: false,
+                    msg    : [msg: paramAction, body: "cannot perform this action", status: 'danger']
+            ]
+        }
+
+        // if what the user wants is ok, or there is only one thing that can be done and it doesn't need a warning,
+        // do that.
+
+        if (paramAction || (possibleActions.size() == 1 && !possibleActions.first().needsWarning)) {
+            DropInstanceOntoNodeEnum action = paramAction ?: possibleActions.first();
+
+            def result
+            switch (action) {
+                case DropInstanceOntoNodeEnum.ChangeNodeInstance:
+                    result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
+                    break;
+                case DropInstanceOntoNodeEnum.AddNewSubnode:
+                    result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
+                    break;
+                default:
+                    throw new IllegalStateException("No operation for ${action}")
+            }
+
+            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+
+            return [
+                    success  : true,
+                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                    refetch  : result.modified.collect { Node it ->
+                        queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                    }
+            ]
         } else {
+            // an array, so that they are displayed in the order that I specify them here.
+            def options = [];
+
+            if (possibleActions.contains(DropInstanceOntoNodeEnum.ChangeNodeInstance)) {
+                options << [msg         : 'Change',
+                            body        : instance.name == target.name ?
+                                    "Change the reference at this placement to ${instance.reference.citation}" :
+                                    "Change the instance at this placement to ${instance.name.simpleName} s. ${instance.reference.citation}",
+                            whenSelected: DropInstanceOntoNodeEnum.ChangeNodeInstance.name()
+                ]
+            }
+
+            if (possibleActions.contains(DropInstanceOntoNodeEnum.AddNewSubnode)) {
+                options << [msg         : 'Place',
+                            body        : "Place ${instance.name.simpleName} s. ${instance.reference.citation} under ${target.name?.fullName}",
+                            whenSelected: DropInstanceOntoNodeEnum.AddNewSubnode.name()
+                ]
+            }
+
             return [
                     success       : false,
                     moreInfoNeeded: [
                             [
                                     name    : 'dropAction',
                                     msg     : [
-                                            msg : 'Multiple options',
-                                            body: "Do you want to change this placement, or do you want to add an instance here? ",
+                                            msg: possibleActions.size() == 1 ? 'Confirm' : 'Multiple options'
                                     ],
-                                    options : [
-                                            [msg         : 'Change',
-                                             body        : instance.name == target.name ?
-                                                     "Change the reference at this placement to ${instance.reference.citation}" :
-                                                     "Change the instance at this placement to ${instance.name.simpleName} s. ${instance.reference.citation}",
-                                             status      : 'success',
-                                             whenSelected: 'CHANGE-NODE-INSTANCE'
-                                            ],
-                                            [msg         : 'Add',
-                                             body        : "Place ${instance.name.simpleName} s. ${instance.reference.citation} under ${target.name?.fullName}",
-                                             status      : 'success',
-                                             whenSelected: 'ADD-NEW-SUBNODE'
-                                            ]
-
-                                    ],
+                                    options : options,
                                     selected: null
                             ]
                     ]
             ]
-
         }
-
-        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
-
-        return [
-                success  : true,
-                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
-                refetch  : result.modified.collect { Node it ->
-                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
-                }
-        ]
     }
 
     private
