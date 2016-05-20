@@ -291,7 +291,9 @@ grails.assets.minifyJs = false
 
 cors {
     url.pattern = '/*'
-    headers = ['Access-Control-Allow-Origin': '*']
+    headers = ['Access-Control-Allow-Origin': '*',
+               'Access-Control-Allow-Headers': 'authorization, content-type'
+    ]
 }
 
 shard {

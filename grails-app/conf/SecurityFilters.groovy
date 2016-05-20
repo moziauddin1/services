@@ -20,6 +20,7 @@
  */
 
 import au.org.biodiversity.nsl.ApiKeyToken
+import au.org.biodiversity.nsl.JsonToken
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
 import org.codehaus.groovy.grails.web.util.WebUtils
@@ -62,6 +63,21 @@ class SecurityFilters {
                         return false
                     }
                 }
+
+                // if a JSON token is set then log in with that
+                if(request.getHeader('Authorization') && request.getHeader('Authorization').startsWith("JWT ")) {
+                    try {
+                        String jwt = request.getHeader('Authorization').substring(4)
+                        JsonToken jsonToken = JsonToken.buildUsingCredentials(jwt)
+                        SecurityUtils.subject.login(jsonToken)
+                        return true
+                    } catch (AuthenticationException e) {
+                        log.info e.message
+                        redirect(controller: 'auth', action: 'unauthorized', params: [format: params.format])
+                        return false
+                    }
+                }
+
             }
         }
 

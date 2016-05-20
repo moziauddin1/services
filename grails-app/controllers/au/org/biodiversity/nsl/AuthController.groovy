@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl
 
+import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
@@ -23,6 +24,8 @@ import org.apache.shiro.authc.UsernamePasswordToken
 import org.apache.shiro.web.util.SavedRequest
 import org.apache.shiro.web.util.WebUtils
 import org.springframework.http.HttpStatus
+
+import javax.crypto.spec.SecretKeySpec
 
 class AuthController {
     def shiroSecurityManager
@@ -84,6 +87,53 @@ class AuthController {
             // Now redirect back to the login page.
             redirect(action: "login", params: m)
         }
+    }
+
+    def signInJson = {
+        def authToken = new UsernamePasswordToken(params.username, params.password as String)
+        try {
+            SecurityUtils.subject.login(authToken)
+            SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
+            JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, signingKey)
+
+            def result = [
+                    success    : true,
+                    principal  : SecurityUtils.subject?.principal,
+                    jwt        : jsonToken.getCredentials()
+            ]
+            render result as JSON
+        }
+        catch (AuthenticationException ex) {
+            response.setStatus(401)
+            def result = [ success: false, principal: null ]
+            render result as JSON
+        }
+    }
+
+    def signOutJson = {
+        SecurityUtils.subject?.logout()
+        def result = [
+                success: true,
+                principal: null
+        ] as JSON
+        render result
+    }
+
+    def getInfoJson = {
+        // todo: it may be that this actually needs to call a JsonTokenRealm builder
+        // actually, it's a bit tricky. If the request comes from a user logged in with JSON,
+        // we don't want to build a whole new request. I suspect that this getInfo method does nothing
+        // and is not needed. Either that, or it should not be returning a jwt.
+
+        SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
+        JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, signingKey)
+
+        def result = [
+                success: true,
+                principal: SecurityUtils.subject?.principal,
+                jwt: jsonToken
+        ] as JSON
+        render result
     }
 
     def signOut = {
