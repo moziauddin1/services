@@ -25,6 +25,8 @@ import org.apache.shiro.web.util.SavedRequest
 import org.apache.shiro.web.util.WebUtils
 import org.springframework.http.HttpStatus
 
+import javax.crypto.spec.SecretKeySpec
+
 class AuthController {
     def shiroSecurityManager
     def grailsApplication
@@ -91,8 +93,8 @@ class AuthController {
         def authToken = new UsernamePasswordToken(params.username, params.password as String)
         try {
             SecurityUtils.subject.login(authToken)
-
-            JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, grailsApplication.config.nslServices.jwt.secret)
+            SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
+            JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, signingKey)
 
             def result = [
                     success    : true,
@@ -118,14 +120,18 @@ class AuthController {
     }
 
     def getInfoJson = {
+        // todo: it may be that this actually needs to call a JsonTokenRealm builder
+        // actually, it's a bit tricky. If the request comes from a user logged in with JSON,
+        // we don't want to build a whole new request. I suspect that this getInfo method does nothing
+        // and is not needed. Either that, or it should not be returning a jwt.
+
+        SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
+        JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, signingKey)
+
         def result = [
                 success: true,
                 principal: SecurityUtils.subject?.principal,
-                // todo: it may be that this actually needs to call a JsonTokenRealm builder
-                // actually, it's a bit tricky. If the request comes from a user logged in with JSON,
-                // we don't want to build a whole new request. I suspect that this getInfo method does nothing
-                // and is not needed. Either that, or it should not be returning a jwt.
-                jwt: SecurityUtils.subject.principal ? JsonToken.buildUsingSubject(SecurityUtils.subject, grailsApplication.config.nslServices.jwt.secret).getCredentials() : null
+                jwt: jsonToken
         ] as JSON
         render result
     }

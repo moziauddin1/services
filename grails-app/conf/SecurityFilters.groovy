@@ -63,15 +63,11 @@ class SecurityFilters {
                 }
 
                 // if a JSON token is set then log in with that
-                if(request.getHeader('nsl-jwt')) {
+                if(request.getHeader('Authorization') && request.getHeader('Authorization').startsWith("JWT ")) {
                     try {
-                        String jwt = request.getHeader('nsl-jwt')
+                        String jwt = request.getHeader('Authorization').substring(4)
                         JsonToken jsonToken = JsonToken.buildUsingCredentials(jwt)
-                        if(jsonToken) {
-                            Long start = System.currentTimeMillis()
-                            SecurityUtils.subject.login(jsonToken)
-                            log.debug "json token processing took ${System.currentTimeMillis() - start}ms"
-                        }
+                        SecurityUtils.subject.login(jsonToken)
                         return true
                     } catch (AuthenticationException e) {
                         log.info e.message
