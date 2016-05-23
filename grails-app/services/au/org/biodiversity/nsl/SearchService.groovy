@@ -151,7 +151,6 @@ class SearchService {
     }
 
     private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
-
         if (params.tree?.id) {
             Arrangement root = Arrangement.get(params.tree.id as Long)
             queryParams.root = root
@@ -198,15 +197,6 @@ class SearchService {
                 }
             }
         }
-
-
-        log.fatal "after tree param processing ......"
-        log.fatal "queryTreeParams queryParams ${queryParams}"
-        log.fatal "queryTreeParams from ${from}"
-        log.fatal "queryTreeParams and ${and}"
-
-
-
         return null
     }
 
