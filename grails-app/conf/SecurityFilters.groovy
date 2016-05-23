@@ -28,10 +28,12 @@ import org.codehaus.groovy.grails.web.util.WebUtils
 import static org.springframework.http.HttpStatus.*
 
 class SecurityFilters {
+
     def filters = {
 
         all(uri: "/**") {
             before = {
+
                 //need the .format to get a good response in case of errors
                 String requested = (WebUtils.getForwardURI(request) ?: request.getAttribute('javax.servlet.error.request_uri'))
                 requested = requested.decodeURL()
