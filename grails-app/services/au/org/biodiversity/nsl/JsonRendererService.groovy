@@ -17,12 +17,16 @@
 package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.tree.DomainUtils
+import au.org.biodiversity.nsl.tree.Message
+import au.org.biodiversity.nsl.tree.Msg
+import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.Uri
 import grails.converters.JSON
 import grails.converters.XML
 import grails.transaction.Transactional
 import org.hibernate.Hibernate
 import org.hibernate.proxy.HibernateProxy
+import org.springframework.context.MessageSource
 
 @Transactional
 class JsonRendererService {
@@ -30,6 +34,7 @@ class JsonRendererService {
     def grailsApplication
     def linkService
     def instanceService
+    MessageSource messageSource
 
     def registerObjectMashallers() {
         JSON.registerObjectMarshaller(Namespace) { Namespace namespace -> getBriefNamespace(namespace) }
@@ -43,6 +48,8 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Link) { Link link -> marshallLink(link) }
         JSON.registerObjectMarshaller(Arrangement) { Arrangement arrangement -> marshallArrangement(arrangement) }
         JSON.registerObjectMarshaller(Event) { Event event -> marshallEvent(event) }
+        JSON.registerObjectMarshaller(ServiceException) { ServiceException serviceException -> marshallTreeServiceException(serviceException) }
+        JSON.registerObjectMarshaller(Message) { Message message -> marshallTreeServiceMessage(message) }
 
         XML.registerObjectMarshaller(new XmlMapMarshaller())
         XML.registerObjectMarshaller(Namespace) { Namespace namespace, XML xml -> xml.convertAnother(getBriefNamespace(namespace)) }
@@ -63,6 +70,8 @@ class JsonRendererService {
         XML.registerObjectMarshaller(Link) { Link link, XML xml -> xml.convertAnother(marshallLink(link)) }
         XML.registerObjectMarshaller(Arrangement) { Arrangement arrangement, XML xml -> xml.convertAnother(marshallArrangement(arrangement)) }
         XML.registerObjectMarshaller(Event) { Event event, XML xml -> xml.convertAnother(marshallEvent(event)) }
+        XML.registerObjectMarshaller(ServiceException) { ServiceException serviceException, XML xml -> xml.convertAnother(marshallTreeServiceException(serviceException)) }
+        XML.registerObjectMarshaller(Message) { Message message, XML xml -> xml.convertAnother(marshallTreeServiceMessgage(message)) }
     }
 
     Map getBriefNamespace(Namespace namespace) {
@@ -83,7 +92,8 @@ class JsonRendererService {
     Map getBriefReference(Reference reference) {
         brief(reference, [
                 citation    : reference?.citation,
-                citationHtml: reference?.citationHtml
+                citationHtml: reference?.citationHtml,
+                authYear: "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}"
         ])
     }
 
@@ -364,15 +374,53 @@ class JsonRendererService {
     }
 
     Map marshallLink(Link link) {
-        Map data = brief(link, [
+        // links do not have mapper ids in and of themselves.
+        // so rather than use brief(), this gets done by hand
+
+        def data
+        link = initializeAndUnproxy(link)
+
+        if(link.subnode.internalType == NodeInternalType.V) {
+            data = getBriefLiteralLinkNoSupernode(link)
+        }
+        else {
+            data = getBriefLinkNoSupernode(link)
+        }
+
+        data << [
+            superNode       : brief(link.supernode, [id: link.supernodeId]),
+            namespace       : getBriefNamespace(link.supernode.root.namespace),
+        ]
+
+        return data;
+    }
+
+    Map getBriefLinkNoSupernode(Link link) {
+        // links do not have mapper ids in and of themselves.
+        // so rather than use brief(), this gets done by hand
+        Map data = [
+                class           : link.class.name,
                 typeUri         : getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
-                superNode       : brief(link.supernode, [id: link.supernodeId]),
                 subNode         : brief(link.subnode, [id: link.subnodeId]),
                 linkSeq         : link.linkSeq,
                 versioningMethod: link.versioningMethod,
                 isSynthetic     : link.synthetic,
-                namespace       : getBriefNamespace(link.supernode.root.namespace),
-        ]);
+        ];
+
+        return data;
+    }
+
+    Map getBriefLiteralLinkNoSupernode(Link link) {
+        // links do not have mapper ids in and of themselves.
+        // so rather than use brief(), this gets done by hand
+        Map data = [
+                class           : link.class.name,
+                linkTypeUri     : getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
+                linkSeq         : link.linkSeq,
+                valueType       : getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
+                valueUri        : DomainUtils.hasResource(link.subnode) ? getBriefTreeUri(DomainUtils.getResourceUri(link.subnode)) : null,
+                value           : DomainUtils.hasResource(link.subnode) ? null : link.subnode.literal
+        ]
 
         return data;
     }
@@ -393,6 +441,24 @@ class JsonRendererService {
                 isReplaced : (node.replacedAt != null),
                 isSynthetic: node.synthetic,
                 namespace  : getBriefNamespace(node.root.namespace),
+
+                // a node's sublinks are part-of the node itself, so the JSON should provide them
+                // a node's supernodes are not part-of the node. we provide separate 'get placements of node' services
+
+                subnodes   : node.subLink.sort { Link a, Link b ->
+                    if(a.subnode.internalType != b.subnode.internalType) {
+                        return a.subnode.internalType <=> b.subnode.internalType;
+                    }
+                    else if(a.subnode.internalType == NodeInternalType.T) {
+                        return (a.subnode.name?.fullName ?: '') <=> (b.subnode.name?.fullName ?: '');
+                    }
+                    else {
+                        return a <=> b;
+                    }
+                }.findAll { it.subnode.internalType != NodeInternalType.V } .collect { getBriefLinkNoSupernode(it) },
+
+                // a node's literal values are also part-of the node itself
+                values     : node.subLink.sort().findAll { it.subnode.internalType == NodeInternalType.V } .collect { getBriefLiteralLinkNoSupernode(it) },
         ]
 
         switch (node.internalType) {
@@ -403,13 +469,15 @@ class JsonRendererService {
             case NodeInternalType.T:
                 if (DomainUtils.hasName(node)) data.nameUri = getBriefTreeUri(DomainUtils.getNameUri(node));
                 if (DomainUtils.hasTaxon(node)) data.taxonUri = getBriefTreeUri(DomainUtils.getTaxonUri(node));
-                if (node.instance) data.instance = node.instance;
-                if (node.name) data.name = node.name;
-        // fall through
+                if (node.instance) data.instance = getBriefInstance(node.instance);
+                if (node.name) data.name = getBriefName(node.name);
+            // fall through
             case NodeInternalType.D:
                 if (DomainUtils.hasResource(node)) data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node));
                 break;
 
+            // this should never happen. Value nodes are not directly used by anything, they appear as values on the
+            // supernode. However, we will handle the case here.
             case NodeInternalType.V:
                 if (DomainUtils.hasResource(node)) {
                     data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node))
@@ -428,8 +496,10 @@ class JsonRendererService {
                 label          : arrangement.label,
                 title          : arrangement.title,
                 description    : arrangement.description,
+                owner          : arrangement.owner,
                 synthetic      : arrangement.synthetic == 'Y' ? true : arrangement.synthetic == 'N' ? false : null,
                 node           : brief(arrangement.node, [:]),
+                currentRoot    : arrangement.arrangementType == ArrangementType.P &&  arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
         ];
         return data;
@@ -509,6 +579,36 @@ class JsonRendererService {
                 apcExcluded        : nslSimpleName.apcExcluded
         ]
         return data
+    }
+
+    Map marshallTreeServiceException(ServiceException exception) {
+        return [
+                treeServiceException : [
+                        plainText: exception.getLocalizedMessage(),
+                        message: exception.msg,
+                ]
+        ]
+    }
+
+    Map marshallTreeServiceMessage(Message msg) {
+        return [
+            msg: msg.msg.name(),
+            plainText: msg.getLocalisedString(),
+            message: messageSource.getMessage(msg, (Locale) null),
+            rawMessage: messageSource.getMessage(msg.msg.getKey(), (Object[])null, (Locale)null),
+            args: msg.args.collect { it ->
+                if(it in Node || it in Arrangement || it in Name || it in Instance || it in Reference) {
+                    brief(it)
+                }
+                else if(it in Link) {
+                    marshallLink(it as Link)
+                }
+                else {
+                    it
+                }
+            },
+            nested: msg.nested
+        ]
     }
 
     @SuppressWarnings("GroovyAssignabilityCheck")
