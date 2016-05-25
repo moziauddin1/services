@@ -59,8 +59,7 @@ class ReferenceService {
 
             String parentAuthorRole = ((reference.parent?.author != unknownAuthor && reference.parent?.refAuthorRole == editor) ? '(ed.)' : '')
 
-            String pubDate = (reference.year ?
-                    "(${reference.year})" : (reference.publicationDate ? "(${reference.publicationDate.clean()})" : ''))
+            String pubDate = pubDate(reference)
 
             String referenceTitle = (reference.title && reference.title != 'Not set') ?
                     reference.title.removeFullStop() : ''
@@ -103,6 +102,21 @@ class ReferenceService {
             String result = bits.findAll { it }.join(' ').removeFullStop()
             assert result != 'true'
             return result;
+        }
+    }
+
+    private String pubDate(Reference reference) {
+        use(ReferenceStringCategory) {
+            if(reference.year) {
+                return "(${reference.year})"
+            }
+            if(reference.publicationDate) {
+                "(${reference.publicationDate.clean()})"
+            }
+            if(reference.parent) {
+                return pubDate(reference.parent)
+            }
+            return ''
         }
     }
 

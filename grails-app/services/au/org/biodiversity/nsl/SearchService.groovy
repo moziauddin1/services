@@ -205,30 +205,13 @@ class SearchService {
             List<String> nameStrings = (params.name as String).trim().split('\n').collect {
                 cleanUpName(it).toLowerCase()
             }
-
-            if (nameStrings.size() > 100) {
-                queryParams.names = nameStrings
-                if (params.nameCheck) {
-                    and << "lower(n.simpleName) in (:names)"
-                } else {
-                    and << "lower(n.fullName) in (:names)"
-                }
-            } else {
-                List<String> ors = []
-                if (params.nameCheck) {
-                    nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = tokenizeQueryString(n)
-                        ors << "lower(n.simpleName) like :name${i}"
-                    }
-                    and << "(${ors.join(' or ')})"
-                } else {
-                    nameStrings.findAll { it }.eachWithIndex { n, i ->
-                        queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                        ors << "regex(lower(n.fullName), :name${i}) = true"
-                    }
-                    and << "(${ors.join(' or ')})"
-                }
+            List<String> ors = []
+            nameStrings.findAll { it }.eachWithIndex { n, i ->
+                queryParams["name${i}"] = regexTokenizeNameQueryString(n)
+                ors << "regex(lower(n.simpleName), :name${i}) = true"
+                ors << "regex(lower(n.fullName), :name${i}) = true"
             }
+            and << "(${ors.join(' or ')})"
         }
     }
 
@@ -453,7 +436,7 @@ order by n.sortName asc''',
             if (rank) {
                 names = Name.executeQuery('''select n.fullName
 from Name n
-where regex(lower(n.fullName), :query) = true
+where (regex(lower(n.simpleName), :query) = true or regex(lower(n.fullName), :query) = true)
 and n.instances.size > 0
 and n.nameType.scientific = true
 and n.nameRank = :rank
@@ -461,7 +444,7 @@ order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase()
             } else {
                 names = Name.executeQuery('''select n.fullName
 from Name n
-where regex(lower(n.fullName), :query) = true
+where (regex(lower(n.simpleName), :query) = true or regex(lower(n.fullName), :query) = true)
 and n.instances.size > 0
 and n.nameType.scientific = true
 order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
