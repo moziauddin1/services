@@ -2,6 +2,7 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.*
 import au.org.biodiversity.nsl.tree.DomainUtils
+import au.org.biodiversity.nsl.tree.QueryService
 import grails.converters.JSON
 import grails.validation.Validateable
 import org.apache.shiro.SecurityUtils
@@ -29,6 +30,7 @@ class TreeJsonViewController {
     JsonRendererService jsonRendererService
     LinkService linkService
     SearchService searchService
+    QueryService queryService
 
     def test() {
         def result = 'TreeJsonEditController'
@@ -228,7 +230,7 @@ class TreeJsonViewController {
             return render(status: 404) { result as JSON }
         }
 
-        List<Node> pathNodes = treeViewService.findPath(root, focus);
+        List<Node> pathNodes = queryService.findPath(root, focus);
 
         def result = pathNodes.collect { linkService.getPreferredLinkForObject(it) }
         return render(result as JSON)
