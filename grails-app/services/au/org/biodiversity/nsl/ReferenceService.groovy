@@ -18,7 +18,6 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import org.apache.shiro.grails.annotations.RoleRequired
-import org.hibernate.engine.spi.Status
 import org.springframework.transaction.TransactionStatus
 
 import java.sql.Timestamp
@@ -45,6 +44,8 @@ class ReferenceService {
     String generateReferenceCitation(Reference reference, Author unknownAuthor, RefAuthorRole editor) {
         use(ReferenceStringCategory) {
 
+            List<Reference> parents = parents(reference)
+
             String authorName = (reference.author != unknownAuthor ?
                     "${reference.author.name.trim()}${reference.refAuthorRole == editor ? ' (ed.)' : ''}" : '')
 
@@ -61,14 +62,15 @@ class ReferenceService {
 
             String pubDate = pubDate(reference)
 
-            String referenceTitle = (reference.title && reference.title != 'Not set') ?
-                    reference.title.removeFullStop() : ''
+            String referenceTitle = getReferenceTitle(reference)
 
-            String parentTitle = (reference.parent ? reference.parent.title.trim().removeFullStop() : '')
+            String superReferenceTitle = ((parents.size() > 1) ? getReferenceTitle(reference.parent) : '')
 
-            String volume = (reference.volume ? reference.volume.trim() : '')
+            String parentTitle = ultimateParentTitle(reference.parent)
 
-            String edition = (reference.edition ? "Edn. ${reference.edition.trim()}${volume ? ',' : ''}" : '')
+            String volume = volume(reference)
+
+            String edition = edition(reference, volume)
 
             List<String> bits = []
             //prefix
@@ -81,7 +83,14 @@ class ReferenceService {
                     bits << parentAuthorName
                     bits << parentAuthorRole
                     bits << pubDate.comma()
-                    bits << referenceTitle.fullStop()
+                    if (superReferenceTitle) {
+                        bits << referenceTitle.comma()
+                        bits << "in"
+                        bits << superReferenceTitle.fullStop()
+
+                    } else {
+                        bits << referenceTitle.fullStop()
+                    }
             }
 
             //middle
@@ -105,15 +114,70 @@ class ReferenceService {
         }
     }
 
+    private static List<Reference> parents(Reference reference) {
+        List<Reference> parents = []
+        Reference parent = reference.parent
+        while (parent) {
+            parents << parent
+            parent = parent.parent
+        }
+        return parents
+    }
+
+    private static String getReferenceTitle(Reference reference) {
+        use(ReferenceStringCategory) {
+            if (reference.title && reference.title != 'Not set') {
+                return reference.title.removeFullStop()
+            }
+            return ''
+        }
+    }
+
+    private String edition(Reference reference, String volume) {
+        if (reference.edition) {
+            return "Edn. ${reference.edition.trim()}${volume ? ',' : ''}"
+        }
+        if (reference.parent) {
+            return edition(reference.parent, volume)
+        }
+        return ''
+    }
+
+    private String ultimateParentTitle(Reference reference) {
+        if (!reference) {
+            return ''
+        }
+
+        use(ReferenceStringCategory) {
+            if (reference.parent) {
+                return ultimateParentTitle(reference.parent)
+            }
+            if (reference.title && reference.title != 'Not set') {
+                return reference.title.removeFullStop()
+            }
+            return ''
+        }
+    }
+
+    private String volume(Reference reference) {
+        if (reference.volume) {
+            return reference.volume.trim()
+        }
+        if (reference.parent) {
+            return volume(reference.parent)
+        }
+        return ''
+    }
+
     private String pubDate(Reference reference) {
         use(ReferenceStringCategory) {
-            if(reference.year) {
+            if (reference.year) {
                 return "(${reference.year})"
             }
-            if(reference.publicationDate) {
-                "(${reference.publicationDate.clean()})"
+            if (reference.publicationDate) {
+                return "(${reference.publicationDate.clean()})"
             }
-            if(reference.parent) {
+            if (reference.parent) {
                 return pubDate(reference.parent)
             }
             return ''
@@ -154,7 +218,6 @@ class ReferenceService {
     }
 
     Map deduplicateMarked(String user) {
-        Map results = [action: "deduplicate marked references", count: Reference.countByDuplicateOfIsNotNull()]
         List<Map> refs = []
         //remove nested duplicates first
         Reference.findAllByDuplicateOfIsNotNull().each { Reference reference ->
@@ -171,8 +234,7 @@ class ReferenceService {
             result << moveReference(reference, reference.duplicateOf, user)
             refs << result
         }
-        results.references = refs
-        return results
+        return [action: "deduplicate marked references", count: Reference.countByDuplicateOfIsNotNull(), references: refs]
     }
 
 /**

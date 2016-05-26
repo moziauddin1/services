@@ -93,7 +93,7 @@ class JsonRendererService {
         brief(reference, [
                 citation    : reference?.citation,
                 citationHtml: reference?.citationHtml,
-                authYear    : "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}"
+                authYear    : "${reference?.author?.abbrev ?: reference?.author?.name ?: reference?.author?.fullName}, ${reference?.year}"
         ])
     }
 
