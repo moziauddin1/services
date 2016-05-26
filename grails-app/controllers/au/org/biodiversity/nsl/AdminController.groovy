@@ -29,8 +29,6 @@ class AdminController {
 
     GrailsApplication grailsApplication
     def constructedNameService
-    def simpleNameService
-    def searchService
     def nameService
     def nameTreePathService
     def apcTreeService
@@ -60,7 +58,7 @@ class AdminController {
 
         File tempFile = File.createTempFile('name-check', 'txt')
 
-        SimpleNameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
+        NameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
             long start = System.currentTimeMillis()
             names.each { Name name ->
                 Map constructedNames = constructedNameService.constructName(name)
@@ -118,14 +116,7 @@ class AdminController {
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
-    def allSimpleNames() {
-        log.debug "making all simple names"
-        flash.message = simpleNameService.backgroundMakeSimpleNames()
-        redirect(action: 'index')
-    }
-
-    @RequiresRoles('admin') 
+    @RequiresRoles('admin')
     def makeTreePaths() {
         log.debug "make all tree paths. ${request.getRemoteAddr()}"
         nameTreePathService.makeAllTreePathsSql()

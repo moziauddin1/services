@@ -18,7 +18,6 @@ package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.tree.DomainUtils
 import au.org.biodiversity.nsl.tree.Message
-import au.org.biodiversity.nsl.tree.Msg
 import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.Uri
 import grails.converters.JSON
@@ -43,7 +42,6 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Reference) { Reference reference -> marshallReference(reference) }
         JSON.registerObjectMarshaller(Author) { Author author -> marshallAuthor(author) }
         JSON.registerObjectMarshaller(InstanceNote) { InstanceNote instanceNote -> marshallInstanceNote(instanceNote) }
-        JSON.registerObjectMarshaller(NslSimpleName) { NslSimpleName nslSimpleName -> marshallNslSimpleName(nslSimpleName) }
         JSON.registerObjectMarshaller(Node) { Node node -> marshallNode(node) }
         JSON.registerObjectMarshaller(Link) { Link link -> marshallLink(link) }
         JSON.registerObjectMarshaller(Arrangement) { Arrangement arrangement -> marshallArrangement(arrangement) }
@@ -58,7 +56,6 @@ class JsonRendererService {
         XML.registerObjectMarshaller(Reference) { Reference reference, XML xml -> xml.convertAnother(marshallReference(reference)) }
         XML.registerObjectMarshaller(Author) { Author author, XML xml -> xml.convertAnother(marshallAuthor(author)) }
         XML.registerObjectMarshaller(InstanceNote) { InstanceNote instanceNote, XML xml -> xml.convertAnother(marshallInstanceNote(instanceNote)) }
-        XML.registerObjectMarshaller(NslSimpleName) { NslSimpleName nslSimpleName, XML xml -> xml.convertAnother(marshallNslSimpleName(nslSimpleName)) }
         XML.registerObjectMarshaller(ResourceLink) { ResourceLink resourceLink, XML xml ->
             xml.startNode('link')
                .attribute('resources', resourceLink.resources.toString())
@@ -511,73 +508,6 @@ class JsonRendererService {
                 namespace: getBriefNamespace(event.namespace),
         ];
         return data;
-    }
-
-    Map marshallNslSimpleName(NslSimpleName nslSimpleName) {
-        nslSimpleName = initializeAndUnproxy(nslSimpleName)
-        Name name = Name.get(nslSimpleName.id)
-        Map data = [nslSimpleName: [:]]
-        data.nslSimpleName << [
-                id                 : getPreferredLink(name),
-                name               : nslSimpleName.name,
-                taxonName          : nslSimpleName.taxonName,
-                nameElement        : nslSimpleName.nameElement,
-                cultivarName       : nslSimpleName.cultivarName,
-                simpleNameHtml     : nslSimpleName.simpleNameHtml,
-                fullNameHtml       : nslSimpleName.fullNameHtml,
-                nameType           : nslSimpleName.nameTypeName,
-                homonym            : nslSimpleName.homonym,
-                autonym            : nslSimpleName.autonym,
-                basionym           : nslSimpleName.basionym,
-                hybrid             : nslSimpleName.hybrid,
-                cultivar           : nslSimpleName.cultivar,
-                formula            : nslSimpleName.formula,
-                scientific         : nslSimpleName.scientific,
-                authority          : nslSimpleName.authority,
-                baseNameAuthor     : nslSimpleName.baseNameAuthor,
-                exBaseNameAuthor   : nslSimpleName.exBaseNameAuthor,
-                author             : nslSimpleName.author,
-                exAuthor           : nslSimpleName.exAuthor,
-                sanctioningAuthor  : nslSimpleName.sanctioningAuthor,
-                rank               : nslSimpleName.rank,
-                rankSortOrder      : nslSimpleName.rankSortOrder,
-                rankAbbrev         : nslSimpleName.rankAbbrev,
-                classifications    : nslSimpleName.classifications,
-                apni               : nslSimpleName.apni,
-                protoCitation      : nslSimpleName.protoCitation,
-                protoInstance      : getBriefInstance(nslSimpleName.protoInstance),
-                protoYear          : nslSimpleName.protoYear,
-                nomStat            : nslSimpleName.nomStat,
-                nomIlleg           : nslSimpleName.nomIlleg,
-                nomInval           : nslSimpleName.nomInval,
-                updatedBy          : nslSimpleName.updatedBy,
-                updatedAt          : nslSimpleName.updatedAt,
-                createdBy          : nslSimpleName.createdBy,
-                createdAt          : nslSimpleName.createdAt,
-
-                parentNsl          : getBriefName(nslSimpleName.parentNsl),
-                secondParentNsl    : getBriefName(nslSimpleName.secondParentNsl),
-                familyNsl          : getBriefName(nslSimpleName.familyNsl),
-                genusNsl           : getBriefName(nslSimpleName.genusNsl),
-                speciesNsl         : getBriefName(nslSimpleName.speciesNsl),
-
-                classis            : nslSimpleName.classis,
-                subclassis         : nslSimpleName.subclassis,
-                apcFamilia         : nslSimpleName.apcFamilia,
-                family             : nslSimpleName.familia,
-                genus              : nslSimpleName.genus,
-                species            : nslSimpleName.species,
-                infraspecies       : nslSimpleName.infraspecies,
-
-                apcInstance        : getBriefInstance(nslSimpleName.apcInstance),
-                apcName            : nslSimpleName.apcName,
-                apcRelationshipType: nslSimpleName.apcRelationshipType,
-                apcProparte        : nslSimpleName.apcProparte,
-                apcComment         : nslSimpleName.apcComment,
-                apcDistribution    : nslSimpleName.apcDistribution,
-                apcExcluded        : nslSimpleName.apcExcluded
-        ]
-        return data
     }
 
     Map marshallTreeServiceException(ServiceException exception) {

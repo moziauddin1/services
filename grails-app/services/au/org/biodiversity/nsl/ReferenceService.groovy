@@ -194,7 +194,7 @@ class ReferenceService {
             Author unknownAuthor = Author.findByName('-')
             RefAuthorRole editor = RefAuthorRole.findByName('Editor')
 
-            SimpleNameService.chunkThis(1000, query) { List<Reference> references, bottom, top ->
+            NameService.chunkThis(1000, query) { List<Reference> references, bottom, top ->
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     references.each { Reference reference ->

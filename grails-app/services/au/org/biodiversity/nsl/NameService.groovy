@@ -80,7 +80,6 @@ class NameService {
                 log.error "No parent for name $name, which should have one."
             }
         }
-        updateSimpleNameRecord(name)
         notifyNameEvent(name, UPDATED_EVENT)
         name.discard() // make sure we don't update name in this TX
     }
@@ -119,7 +118,6 @@ class NameService {
                 log.error "No parent for name $name, which should have one."
             }
         }
-        updateSimpleNameRecord(name)
         notifyNameEvent(name, CREATED_EVENT)
     }
 
@@ -264,35 +262,6 @@ class NameService {
 
     }
 
-    private void updateSimpleNameRecord(Name name) {
-
-        NslSimpleName simpleName = NslSimpleName.get(name.id)
-        Map simpleNameParams = simpleNameService.makeSimpleNameMap(name, false)
-
-        if (simpleNameParams) {
-            if (simpleName) {
-                simpleName.properties = simpleNameParams
-            } else {
-                simpleName = new NslSimpleName(simpleNameParams)
-                simpleName.id = name.id
-            }
-            simpleName.nameType = name.nameType
-            simpleName.nameRank = name.nameRank
-            simpleName.nameStatus = name.nameStatus
-            simpleName.parentNsl = name.parent
-            simpleName.secondParentNsl = name.secondParent
-            simpleName.familyNsl = Name.get(simpleNameParams.familyNslId as Long)
-            simpleName.genusNsl = Name.get(simpleNameParams.genusNslId as Long)
-            simpleName.speciesNsl = Name.get(simpleNameParams.speciesNslId as Long)
-            simpleName.apcInstance = Instance.get(simpleNameParams.apcInstanceId as Long)
-            simpleName.protoInstance = Instance.get(simpleNameParams.protoInstanceId as Long)
-            simpleName.save()
-            log.debug "Saved simpleName with $simpleNameParams"
-        } else {
-            log.debug "simple name mapping failed for $name"
-        }
-    }
-
     private Node updateAPNITree(Name name) {
         Node node = classificationService.isNameInAPNI(name)
 
@@ -403,7 +372,7 @@ class NameService {
                 Name.listOrderById(params)
             }
 
-            SimpleNameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
+            chunkThis(1000, query) { List<Name> names, bottom, top ->
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     names.each { Name name ->
@@ -440,7 +409,7 @@ class NameService {
                 Name.listOrderById(params)
             }
 
-            SimpleNameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
+            chunkThis(1000, query) { List<Name> names, bottom, top ->
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     names.each { Name name ->
@@ -475,7 +444,7 @@ or n.fullName is null
 or n.fullNameHtml is null""", params)
             }
 
-            SimpleNameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
+            chunkThis(1000, query) { List<Name> names, bottom, top ->
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     names.each { Name name ->
@@ -522,6 +491,20 @@ or n.fullNameHtml is null""")?.first() as Integer
 where n.parent is not null
 and n.nameType.name <> 'common'
 and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = 'APNI')""")?.first() as Integer
+    }
+
+    public static chunkThis(Integer chunkSize, Closure query, Closure work) {
+
+        Integer i = 0
+        Integer size = chunkSize
+        while (size == chunkSize) {
+            Integer top = i + chunkSize
+            //needs to be ordered or we might repeat items
+            List items = query([offset: i, max: chunkSize])
+            work(items, i, top)
+            i = top
+            size = items.size()
+        }
     }
 
 }
