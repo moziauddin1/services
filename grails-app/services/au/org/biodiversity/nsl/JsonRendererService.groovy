@@ -76,15 +76,15 @@ class JsonRendererService {
 
     Map getBriefNamespace(Namespace namespace) {
         [
-                class : namespace?.class?.name,
-                name: namespace?.name,
+                class          : namespace?.class?.name,
+                name           : namespace?.name,
                 descriptionHtml: namespace?.descriptionHtml
         ]
     }
 
     Map getBriefName(Name name) {
         brief(name, [
-                nameElement: name?.nameElement,
+                nameElement : name?.nameElement,
                 fullNameHtml: name?.fullNameHtml
         ])
     }
@@ -93,7 +93,7 @@ class JsonRendererService {
         brief(reference, [
                 citation    : reference?.citation,
                 citationHtml: reference?.citationHtml,
-                authYear: "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}"
+                authYear    : "${reference?.author?.abbrev ?: reference?.author?.name ?: reference?.author?.fullName}, ${reference?.year}"
         ])
     }
 
@@ -104,7 +104,7 @@ class JsonRendererService {
                 name        : instance?.name?.fullNameHtml,
                 protologue  : instance?.instanceType?.protologue,
                 citation    : instance?.reference?.citation,
-                citationHtml: instance?.reference?.citationHtml,
+                citationHtml: instance?.reference?.citationHtml
         ])
     }
 
@@ -380,16 +380,15 @@ class JsonRendererService {
         def data
         link = initializeAndUnproxy(link)
 
-        if(link.subnode.internalType == NodeInternalType.V) {
+        if (link.subnode.internalType == NodeInternalType.V) {
             data = getBriefLiteralLinkNoSupernode(link)
-        }
-        else {
+        } else {
             data = getBriefLinkNoSupernode(link)
         }
 
         data << [
-            superNode       : brief(link.supernode, [id: link.supernodeId]),
-            namespace       : getBriefNamespace(link.supernode.root.namespace),
+                superNode: brief(link.supernode, [id: link.supernodeId]),
+                namespace: getBriefNamespace(link.supernode.root.namespace),
         ]
 
         return data;
@@ -414,12 +413,12 @@ class JsonRendererService {
         // links do not have mapper ids in and of themselves.
         // so rather than use brief(), this gets done by hand
         Map data = [
-                class           : link.class.name,
-                linkTypeUri     : getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
-                linkSeq         : link.linkSeq,
-                valueType       : getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
-                valueUri        : DomainUtils.hasResource(link.subnode) ? getBriefTreeUri(DomainUtils.getResourceUri(link.subnode)) : null,
-                value           : DomainUtils.hasResource(link.subnode) ? null : link.subnode.literal
+                class      : link.class.name,
+                linkTypeUri: getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
+                linkSeq    : link.linkSeq,
+                valueType  : getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
+                valueUri   : DomainUtils.hasResource(link.subnode) ? getBriefTreeUri(DomainUtils.getResourceUri(link.subnode)) : null,
+                value      : DomainUtils.hasResource(link.subnode) ? null : link.subnode.literal
         ]
 
         return data;
@@ -446,19 +445,19 @@ class JsonRendererService {
                 // a node's supernodes are not part-of the node. we provide separate 'get placements of node' services
 
                 subnodes   : node.subLink.sort { Link a, Link b ->
-                    if(a.subnode.internalType != b.subnode.internalType) {
+                    if (a.subnode.internalType != b.subnode.internalType) {
                         return a.subnode.internalType <=> b.subnode.internalType;
-                    }
-                    else if(a.subnode.internalType == NodeInternalType.T) {
+                    } else if (a.subnode.internalType == NodeInternalType.T) {
                         return (a.subnode.name?.fullName ?: '') <=> (b.subnode.name?.fullName ?: '');
-                    }
-                    else {
+                    } else {
                         return a <=> b;
                     }
-                }.findAll { it.subnode.internalType != NodeInternalType.V } .collect { getBriefLinkNoSupernode(it) },
+                }.findAll { it.subnode.internalType != NodeInternalType.V }.collect { getBriefLinkNoSupernode(it) },
 
                 // a node's literal values are also part-of the node itself
-                values     : node.subLink.sort().findAll { it.subnode.internalType == NodeInternalType.V } .collect { getBriefLiteralLinkNoSupernode(it) },
+                values     : node.subLink.sort().findAll { it.subnode.internalType == NodeInternalType.V }.collect {
+                    getBriefLiteralLinkNoSupernode(it)
+                },
         ]
 
         switch (node.internalType) {
@@ -471,13 +470,13 @@ class JsonRendererService {
                 if (DomainUtils.hasTaxon(node)) data.taxonUri = getBriefTreeUri(DomainUtils.getTaxonUri(node));
                 if (node.instance) data.instance = getBriefInstance(node.instance);
                 if (node.name) data.name = getBriefName(node.name);
-            // fall through
+        // fall through
             case NodeInternalType.D:
                 if (DomainUtils.hasResource(node)) data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node));
                 break;
 
-            // this should never happen. Value nodes are not directly used by anything, they appear as values on the
-            // supernode. However, we will handle the case here.
+        // this should never happen. Value nodes are not directly used by anything, they appear as values on the
+        // supernode. However, we will handle the case here.
             case NodeInternalType.V:
                 if (DomainUtils.hasResource(node)) {
                     data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node))
@@ -499,7 +498,7 @@ class JsonRendererService {
                 owner          : arrangement.owner,
                 synthetic      : arrangement.synthetic == 'Y' ? true : arrangement.synthetic == 'N' ? false : null,
                 node           : brief(arrangement.node, [:]),
-                currentRoot    : arrangement.arrangementType == ArrangementType.P &&  arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
+                currentRoot    : arrangement.arrangementType == ArrangementType.P && arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
         ];
         return data;
@@ -507,9 +506,9 @@ class JsonRendererService {
 
     Map marshallEvent(Event event) {
         Map data = brief event, [
-                timeStamp : event.timeStamp,
-                note      : event.note,
-                namespace : getBriefNamespace(event.namespace),
+                timeStamp: event.timeStamp,
+                note     : event.note,
+                namespace: getBriefNamespace(event.namespace),
         ];
         return data;
     }
@@ -583,31 +582,29 @@ class JsonRendererService {
 
     Map marshallTreeServiceException(ServiceException exception) {
         return [
-                treeServiceException : [
+                treeServiceException: [
                         plainText: exception.getLocalizedMessage(),
-                        message: exception.msg,
+                        message  : exception.msg,
                 ]
         ]
     }
 
     Map marshallTreeServiceMessage(Message msg) {
         return [
-            msg: msg.msg.name(),
-            plainText: msg.getLocalisedString(),
-            message: messageSource.getMessage(msg, (Locale) null),
-            rawMessage: messageSource.getMessage(msg.msg.getKey(), (Object[])null, (Locale)null),
-            args: msg.args.collect { it ->
-                if(it in Node || it in Arrangement || it in Name || it in Instance || it in Reference) {
-                    brief(it)
-                }
-                else if(it in Link) {
-                    marshallLink(it as Link)
-                }
-                else {
-                    it
-                }
-            },
-            nested: msg.nested
+                msg       : msg.msg.name(),
+                plainText : msg.getLocalisedString(),
+                message   : messageSource.getMessage(msg, (Locale) null),
+                rawMessage: messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null),
+                args      : msg.args.collect { it ->
+                    if (it in Node || it in Arrangement || it in Name || it in Instance || it in Reference) {
+                        brief(it)
+                    } else if (it in Link) {
+                        marshallLink(it as Link)
+                    } else {
+                        it
+                    }
+                },
+                nested    : msg.nested
         ]
     }
 

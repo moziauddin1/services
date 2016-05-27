@@ -10,7 +10,7 @@ import spock.lang.Specification
  * See the API for {@link grails.test.mixin.support.GrailsUnitTestMixin} for usage instructions
  */
 @TestMixin(GrailsUnitTestMixin)
-@Mock([NameGroup, NameRank])
+@Mock([NameGroup, NameRank, Name])
 @TestFor(ConstructedNameService)
 class ConstructedNameServiceSpec extends Specification {
 
@@ -59,6 +59,7 @@ class ConstructedNameServiceSpec extends Specification {
             r.nameGroup = group
             r.save()
         }
+
     }
 
     def cleanup() {
@@ -66,40 +67,41 @@ class ConstructedNameServiceSpec extends Specification {
 
     void "test makeSortName returns expected results"() {
         when: "we convert a simple name string"
-        String output = service.makeSortName(test)
+        Name name = new Name(simpleName: test, nameRank: NameRank.findByName(rank))
+        String output = service.makeSortName(name)
 
         then:
         output == result
 
         where:
-        test                                          | result
-        "Ptilotus"                                    | "ptilotus"
-        "Ptilotus sect. Ptilotus"                     | "ptilotus O ptilotus"
-        "Ptilotus ser. Ptilotus"                      | "ptilotus Q ptilotus"
-        "Ptilotus aervoides"                          | "ptilotus aervoides"
-        "Ptilotus albidus"                            | "ptilotus albidus"
-        "Ptilotus alexandri"                          | "ptilotus alexandri"
-        "Ptilotus alopecuroides"                      | "ptilotus alopecuroides"
-        "Ptilotus alopecuroideus"                     | "ptilotus alopecuroideus"
-        "Ptilotus alopecuroideus f. alopecuroideus"   | "ptilotus alopecuroideus Y alopecuroideus"
-        "Ptilotus alopecuroideus var. alopecuroideus" | "ptilotus alopecuroideus W alopecuroideus"
-        "Ptilotus alopecuroideus f. rubriflorus"      | "ptilotus alopecuroideus Y rubriflorus"
-        "Ptilotus alopecuroideus var. longistachyus"  | "ptilotus alopecuroideus W longistachyus"
-        "Ptilotus alopecuroideus var. rubriflorum"    | "ptilotus alopecuroideus W rubriflorum"
-        "Ptilotus alopecuroideus var. rubriflorus"    | "ptilotus alopecuroideus W rubriflorus"
-        "Ptilotus amabilis"                           | "ptilotus amabilis"
-        "Ptilotus andersonii"                         | "ptilotus andersonii"
-        "Ptilotus aphyllus"                           | "ptilotus aphyllus"
-        "Ptilotus appendiculatus"                     | "ptilotus appendiculatus"
-        "Ptilotus appendiculatus var. appendiculatus" | "ptilotus appendiculatus W appendiculatus"
-        "Ptilotus appendiculatus var. minor"          | "ptilotus appendiculatus W minor"
-        "Ptilotus aristatus"                          | "ptilotus aristatus"
-        "Ptilotus aristatus subsp. aristatus"         | "ptilotus aristatus U aristatus"
-        "Ptilotus aristatus var. aristatus"           | "ptilotus aristatus W aristatus"
-        "Ptilotus aristatus subsp. micranthus"        | "ptilotus aristatus U micranthus"
-        "Ptilotus aristatus var. eichlerianus"        | "ptilotus aristatus W eichlerianus"
-        "Ptilotus aristatus var. exilis"              | "ptilotus aristatus W exilis"
-        "Ptilotus aristatus var. stenophyllus"        | "ptilotus aristatus W stenophyllus"
+        test                                          | rank         | result
+        "Ptilotus"                                    | 'Genus'      | "ptilotus"
+        "Ptilotus sect. Ptilotus"                     | 'Sectio'     | "ptilotus ptilotus"
+        "Ptilotus ser. Ptilotus"                      | 'Series'     | "ptilotus ptilotus"
+        "Ptilotus aervoides"                          | 'Species'    | "ptilotus aervoides"
+        "Ptilotus albidus"                            | 'Species'    | "ptilotus albidus"
+        "Ptilotus alexandri"                          | 'Species'    | "ptilotus alexandri"
+        "Ptilotus alopecuroides"                      | 'Species'    | "ptilotus alopecuroides"
+        "Ptilotus alopecuroideus"                     | 'Species'    | "ptilotus alopecuroideus"
+        "Ptilotus alopecuroideus f. alopecuroideus"   | 'Forma'      | "ptilotus alopecuroideus alopecuroideus"
+        "Ptilotus alopecuroideus var. alopecuroideus" | 'Varietas'   | "ptilotus alopecuroideus alopecuroideus"
+        "Ptilotus alopecuroideus f. rubriflorus"      | 'Forma'      | "ptilotus alopecuroideus rubriflorus"
+        "Ptilotus alopecuroideus var. longistachyus"  | 'Varietas'   | "ptilotus alopecuroideus longistachyus"
+        "Ptilotus alopecuroideus var. rubriflorum"    | 'Varietas'   | "ptilotus alopecuroideus rubriflorum"
+        "Ptilotus alopecuroideus var. rubriflorus"    | 'Varietas'   | "ptilotus alopecuroideus rubriflorus"
+        "Ptilotus amabilis"                           | 'Species'    | "ptilotus amabilis"
+        "Ptilotus andersonii"                         | 'Species'    | "ptilotus andersonii"
+        "Ptilotus aphyllus"                           | 'Species'    | "ptilotus aphyllus"
+        "Ptilotus appendiculatus"                     | 'Species'    | "ptilotus appendiculatus"
+        "Ptilotus appendiculatus var. appendiculatus" | 'Varietas'   | "ptilotus appendiculatus appendiculatus"
+        "Ptilotus appendiculatus var. minor"          | 'Varietas'   | "ptilotus appendiculatus minor"
+        "Ptilotus aristatus"                          | 'Species'    | "ptilotus aristatus"
+        "Ptilotus aristatus subsp. aristatus"         | 'Subspecies' | "ptilotus aristatus aristatus"
+        "Ptilotus aristatus var. aristatus"           | 'Varietas'   | "ptilotus aristatus aristatus"
+        "Ptilotus aristatus subsp. micranthus"        | 'Subspecies' | "ptilotus aristatus micranthus"
+        "Ptilotus aristatus var. eichlerianus"        | 'Varietas'   | "ptilotus aristatus eichlerianus"
+        "Ptilotus aristatus var. exilis"              | 'Varietas'   | "ptilotus aristatus exilis"
+        "Ptilotus aristatus var. stenophyllus"        | 'Varietas'   | "ptilotus aristatus stenophyllus"
 
 
     }

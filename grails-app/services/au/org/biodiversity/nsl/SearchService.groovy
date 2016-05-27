@@ -132,7 +132,7 @@ class SearchService {
         String whereClause = "where ${and.join(' and ')}"
 
         String countQuery = "select count(distinct n) $fromClause $whereClause"
-        String query = "select distinct(n), n.sortName $fromClause $whereClause order by n.sortName asc"
+        String query = "select distinct(n), n.sortName, n.nameRank.sortOrder $fromClause $whereClause order by n.sortName, n.nameRank.sortOrder asc"
 
         log.debug query
         log.debug queryParams

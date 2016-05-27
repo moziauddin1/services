@@ -130,7 +130,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             result.result = constructedNameService.constructName(name)
             result.result.fullName = constructedNameService.stripMarkUp(result.result.fullMarkedUpName as String)
             result.result.simpleName = constructedNameService.stripMarkUp(result.result.simpleMarkedUpName as String)
-            result.result.sortName = constructedNameService.makeSortName(result.result.simpleName)
+            result.result.sortName = constructedNameService.makeSortName(name)
             if (request.method == 'PUT') {
                 SecurityUtils.subject.checkRole('admin')
                 name.fullNameHtml = result.result.fullMarkedUpName

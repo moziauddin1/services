@@ -21,31 +21,19 @@ class ConstructedNameService {
     def classificationService
     static transactional = false
 
-    private List<List> nameRankList
-
-    private List<List> getNameRankList() {
-        if(!nameRankList) {
-            Integer count = 65
-            nameRankList = NameRank.list(sort: 'sortOrder', order: "asc").collect { NameRank nameRank ->
-                [nameRank.abbrev, count++ as char]
-            }
-        }
-        return nameRankList
-    }
-
     public static String stripMarkUp(String string) {
         string?.replaceAll(/<[^>]*>/, '')?.replaceAll(/(&lsquo;|&rsquo;)/, "'")?.trim()
     }
 
-    public String makeSortName(String simpleName) {
-        String sortName = simpleName.toLowerCase()
-                                    .replaceAll(/ x /, ' ') //remove hybrid marks
-                                    .replaceAll(/^x /, '')
-        getNameRankList().each { List rankOrdering ->
-            String abbrev = rankOrdering[0]
-            String rep = rankOrdering[1]
-            sortName = sortName.replaceAll(" $abbrev ", " $rep ")
-        }
+    public String makeSortName(Name name) {
+
+        String abbrev = name.nameRank.abbrev
+        String sortName = name.simpleName.toLowerCase()
+                              .replaceAll(/^x /, '') //remove hybrid marks
+                              .replaceAll(/ (x|\+|-) /, ' ') //remove hybrid marks
+                              .replaceAll(" $abbrev ", ' ') //remove rank abreviations
+                              .replaceAll(/ MS$/, '') //remove manuscript
+
         return sortName
     }
 
@@ -83,7 +71,7 @@ class ConstructedNameService {
         return [fullMarkedUpName: (name.nameElement ?: '?'), simpleMarkedUpName: (name.nameElement ?: '?')]
     }
 
-    //join only non null bits with spaces
+    //join only non null bits with spaces note findAll finds all non null bits.
     private static String join(List<String> bits) {
         bits.findAll { it }.join(' ')
     }
@@ -133,19 +121,7 @@ class ConstructedNameService {
     private Map constructScientificName(Name name, Name parent, Integer nextRankOrder, Integer count) {
 
         if (!nextRankOrder && name.nameRank) {
-            if (name.nameRank.sortOrder == 500 && name.parent) {
-                if (RankUtils.nameAtRankOrLower(name.parent, 'Genus')) {
-                    nextRankOrder = RankUtils.getRankOrder('Genus')
-                } else {
-                    nextRankOrder = name.parent.nameRank.sortOrder
-                }
-            } else if (RankUtils.nameAtRankOrLower(name, 'Genus')) {
-                nextRankOrder = RankUtils.getRankOrder('Genus')
-            } else if (RankUtils.nameAtRankOrLower(name, 'Familia')) {
-                nextRankOrder = RankUtils.getRankOrder('Familia')
-            } else {
-                nextRankOrder = name.nameRank.sortOrder
-            }
+            nextRankOrder = determineNextRankOrder(name)
         }
 
         Map precedingName = [:]
@@ -181,7 +157,34 @@ class ConstructedNameService {
 
         String fullMarkedUpName = "<scientific><name id='$name.id'>${join(fullNameParts)}</name></scientific>"
         String simpleMarkedUpName = "<scientific><name id='$name.id'>${join(simpleNameParts)}</name></scientific>"
+
         return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
+    }
+
+    /**
+     * Determine the next rank up that participates in the construction of this name. This is used to determine the
+     * parent name to use.
+     *
+     * In practice this will return Family, Genus, the direct parents rank or this names rank depending on what rank
+     * this name is.
+     *
+     * @param name
+     * @return int rank sort order of the next rank up to look for.
+     */
+    private static int determineNextRankOrder(Name name) {
+        if (name.nameRank.sortOrder == 500 && name.parent) {
+            if (RankUtils.nameAtRankOrLower(name.parent, 'Genus')) {
+                return RankUtils.getRankOrder('Genus')
+            } else {
+                return name.parent.nameRank.sortOrder
+            }
+        } else if (RankUtils.nameAtRankOrLower(name, 'Genus')) {
+            return RankUtils.getRankOrder('Genus')
+        } else if (RankUtils.nameAtRankOrLower(name, 'Familia')) {
+            return RankUtils.getRankOrder('Familia')
+        } else {
+            return name.nameRank.sortOrder
+        }
     }
 
     public String makeConnectorString(Name name, Map precedingName, String rank) {
