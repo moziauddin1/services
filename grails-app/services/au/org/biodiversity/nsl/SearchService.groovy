@@ -148,7 +148,7 @@ class SearchService {
         log.debug "query took ${System.currentTimeMillis() - start}ms"
         //filter for just names.
         names = names.collect { result ->
-            println result[1]
+            println result
             result[0]
         }
 

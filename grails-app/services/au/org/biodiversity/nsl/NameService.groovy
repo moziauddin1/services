@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 class NameService {
 
     GrailsApplication grailsApplication
-    def simpleNameService
     def restCallService
     def classificationService
     def constructedNameService

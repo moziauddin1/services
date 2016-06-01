@@ -27,9 +27,9 @@
     <div class="panel-heading">
       <g:if test="${names}">
         <strong>Found ${total} names
-        <g:each in="${count}" var="rankCount">
-          ${rankCount.value} ${rankCount.key},
-        </g:each>
+        %{--<g:each in="${count}" var="rankCount">--}%
+          %{--${rankCount.value} ${rankCount.key},--}%
+        %{--</g:each>--}%
         </strong>
         <span class="text-muted">Limited to ${max} result<g:if test="${max == 0 || max > 1}">s</g:if>.</span>
       </g:if>
