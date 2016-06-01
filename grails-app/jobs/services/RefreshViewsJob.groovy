@@ -1,8 +1,6 @@
 package services
 
 import au.org.biodiversity.nsl.Name
-import au.org.biodiversity.nsl.SimpleNameService
-
 
 class RefreshViewsJob {
 
