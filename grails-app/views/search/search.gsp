@@ -26,7 +26,11 @@
     <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
     <div class="panel-heading">
       <g:if test="${names}">
-        <strong>Found ${count} names</strong>
+        <strong>Found ${total} names
+        <g:each in="${count}" var="rankCount">
+          ${rankCount.value} ${rankCount.key},
+        </g:each>
+        </strong>
         <span class="text-muted">Limited to ${max} result<g:if test="${max == 0 || max > 1}">s</g:if>.</span>
       </g:if>
       <div class="btn-group hideSearch hidden-print">
