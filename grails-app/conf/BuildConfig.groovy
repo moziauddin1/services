@@ -89,6 +89,7 @@ grails.project.dependency.resolution = {
         compile ':rest-client-builder:2.0.3'
         compile ":simple-suggestions:0.3"
 		compile ":twitter-bootstrap:3.3.0"
+        //noinspection GroovyAssignabilityCheck
         compile ":shiro:1.2.1", {
             excludes([name: 'quartz', group: 'org.opensymphony.quartz'])
         }

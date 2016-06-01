@@ -31,7 +31,6 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     def classificationService
     def jsonRendererService
     def nameService
-    def simpleNameService
     def apniFormatService
     def instanceService
 
@@ -114,13 +113,6 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             forward(controller: 'apcFormat', action: 'name', id: name.id)
         } else {
             notFound('name')
-        }
-    }
-
-    @Timed()
-    def simpleName(Name name) {
-        withTarget(name) {
-            forward(controller: 'restResource', action: 'nslSimpleName', params: [idNumber: name.id])
         }
     }
 
@@ -224,30 +216,6 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             nameService.nameEventUnregister(uri)
             respond(new ResultObject(text: "unregistered $uri"))
         }
-    }
-    /**
-     * export simplename - this is going to be removed as the data is out of date
-     * @param exportFormat
-     * @return
-     */
-    @Timed()
-    @Deprecated
-    def exportNslSimple(String exportFormat) {
-        File exportFile
-        if (exportFormat == 'csv') {
-            exportFile = simpleNameService.exportSimpleNameToCSV()
-        } else if (exportFormat == 'text') {
-            exportFile = simpleNameService.exportSimpleNameToText()
-        } else {
-            ResultObject result = new ResultObject([
-                    action: params.action,
-                    error : "Export format not supported"
-            ])
-            result.status = BAD_REQUEST
-            //noinspection GroovyAssignabilityCheck
-            return respond(result, [view: 'serviceResult', model: [data: result], status: result.status])
-        }
-        render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
     }
 
     /**

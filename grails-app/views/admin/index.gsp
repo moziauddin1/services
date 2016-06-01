@@ -68,12 +68,6 @@
             <ul>
               <li>
                 <a class=""
-                   href="${g.createLink(controller: "admin", action: "allSimpleNames")}">
-                  Remake simple names
-                </a>
-              </li>
-              <li>
-                <a class=""
                    href="${g.createLink(controller: "admin", action: "checkNames")}">
                   Check name strings
                 </a>
