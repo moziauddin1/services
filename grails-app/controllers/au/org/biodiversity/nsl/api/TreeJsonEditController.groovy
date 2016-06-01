@@ -9,7 +9,9 @@ import au.org.biodiversity.nsl.LinkService
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.NodeInternalType
 import au.org.biodiversity.nsl.Reference
+import au.org.biodiversity.nsl.UriNs
 import au.org.biodiversity.nsl.tree.BasicOperationsService
 import au.org.biodiversity.nsl.tree.DomainUtils
 import au.org.biodiversity.nsl.tree.QueryService
@@ -874,8 +876,6 @@ class TreeJsonEditController {
     def removeNode(RemoveNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-
-
         Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
         Arrangement ws = wsNode.root
         Node focus = (Node) linkService.getObjectForLink(param.focus as String)
@@ -952,6 +952,69 @@ class TreeJsonEditController {
                 focusPath: focusPath,
                 refetch  : [targetPath]
         ] as JSON)
+    }
+
+    def setNodeType(SetNodeTypeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+        Arrangement ws = wsNode.root
+        Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+        Node target = (Node) linkService.getObjectForLink(param.target as String)
+        UriNs ns = UriNs.findByLabel(param.nsPart)
+
+        if (!wsNode) throw new IllegalArgumentException("null wsNode");
+        if (!ws) throw new IllegalArgumentException("null ws");
+        if (!focus) throw new IllegalArgumentException("null focus");
+        if (!target) throw new IllegalArgumentException("null target");
+
+        if (ws.arrangementType != ArrangementType.U) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+            ]
+            return render(result as JSON)
+        }
+
+        if (ws.owner != SecurityUtils.subject.principal) {
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+            ]
+            response.status = 403
+            return render(result as JSON)
+        }
+
+        if(target.internalType != NodeInternalType.T) {
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Target', body: "${param.target} is not a taxonomic node", status: 'danger']
+            ]
+            response.status = 400
+            return render(result as JSON)
+        }
+
+        if(!ns) {
+            response.status = 400
+            return render([
+                    success: false,
+                    msg    : [msg: 'No match', body: "Unrecognised uri namespace {{param.nsPart}}", status: 'info']
+            ] as JSON)
+        }
+
+        def result = userWorkspaceManagerService.setNodeType(ws, target, new au.org.biodiversity.nsl.tree.Uri(ns, param.idPart));
+
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+
+        return render([
+                success  : true,
+                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                refetch  : result.modified.collect { Node it ->
+                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                }
+        ] as JSON)
+
     }
 
 
@@ -1063,5 +1126,21 @@ class RemoveNodeParam {
         linkSuper nullable: false
         linkSeq nullable: false
         confirm nullable: true
+    }
+}
+
+@Validateable
+class SetNodeTypeParam {
+    String wsNode
+    String focus
+    String target
+    String nsPart
+    String idPart
+    static constraints = {
+        wsNode nullable: false
+        focus nullable: false
+        target nullable: false
+        nsPart nullable: false
+        idPart nullable: false
     }
 }
