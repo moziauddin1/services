@@ -46,6 +46,7 @@ class NameTreePathService {
      * @return
      */
     NameTreePath updateNameTreePathFromNode(Node currentNode) {
+        log.debug "update name tree path for $currentNode"
         NameTreePath currentNtp = findCurrentNameTreePath(currentNode.name, currentNode.root)
         updateNameTreePathFromNode(currentNode, currentNtp)
     }
@@ -59,23 +60,25 @@ class NameTreePathService {
      */
     NameTreePath updateNameTreePathFromNode(Node currentNode, NameTreePath currentNtp) {
         //there may be a current name tree path we need to get it and all it's children to update
+        log.debug "update name tree path for $currentNode, $currentNtp"
         Name name = currentNode.name
         if (!currentNtp) {
             return addNameTreePath(name, currentNode)
         }
         Name currentParentName = getCurrentParentName(currentNode)
+        NameTreePath parentNtp = null
         if (currentParentName) {
-            NameTreePath parentNtp = findCurrentNameTreePath(currentParentName, currentNode.root)
-            if (currentNtp.parent.id != parentNtp?.id) {
-                String oldNameIdPath = currentNtp.nameIdPath
-                String oldRankPath = currentNtp.rankPath
-                currentNtp.nameIdPath = (parentNtp ? "${parentNtp.nameIdPath}." : '') + currentNode.name.id as String
-                currentNtp.rankPath = (parentNtp ? "${parentNtp.rankPath}>" : '') + "${name.nameRank.name}:${name.nameElement}"
-                currentNtp.parent = parentNtp
-                currentNtp.inserted = System.currentTimeMillis()
-                currentNtp.save(flush: true)
-                updateChildren(oldNameIdPath, oldRankPath, currentNtp)
-            }
+            parentNtp = findCurrentNameTreePath(currentParentName, currentNode.root)
+        }
+        if (currentNtp.parent?.id != parentNtp?.id) {
+            String oldNameIdPath = currentNtp.nameIdPath
+            String oldRankPath = currentNtp.rankPath
+            currentNtp.nameIdPath = (parentNtp ? "${parentNtp.nameIdPath}." : '') + currentNode.name.id as String
+            currentNtp.rankPath = (parentNtp ? "${parentNtp.rankPath}>" : '') + "${name.nameRank.name}:${name.nameElement}"
+            currentNtp.parent = parentNtp
+            currentNtp.inserted = System.currentTimeMillis()
+            currentNtp.save(flush: true)
+            updateChildren(oldNameIdPath, oldRankPath, currentNtp)
         }
         return currentNtp
     }
@@ -126,9 +129,8 @@ class NameTreePathService {
     }
 
     private static String findRankElementOrZ(String rankName, String rankPath) {
-        (rankPath.find(/${rankName}:([^>]*)/){match, element -> return element } ?: 'z')
+        (rankPath.find(/${rankName}:([^>]*)/) { match, element -> return element } ?: 'z')
     }
-
 
     //this could take a while todo make an sql update
     private void updateChildren(String oldNameIdPath, String oldRankPath, NameTreePath newParent) {
@@ -174,9 +176,11 @@ class NameTreePathService {
 
 
     void removeNameTreePath(Name name, Arrangement arrangement) {
-        NameTreePath ntp =findCurrentNameTreePath(name, arrangement)
-        if(ntp){
-            if(!currentChildren(ntp).isEmpty()) {
+        NameTreePath ntp = findCurrentNameTreePath(name, arrangement)
+        log.debug "remove name tree path for $name, $ntp for tree $arrangement.label"
+
+        if (ntp) {
+            if (!currentChildren(ntp).isEmpty()) {
                 throw new Exception("Can't delete Name Tree Path with children. $ntp")
             }
             ntp.delete()
@@ -401,7 +405,7 @@ SET parent_id = (SELECT ntp.id
                    JOIN name n ON node.name_id = n.id
                    , name_tree_path ntp
                  WHERE node.id = target.parent_id AND ntp.name_id = n.id AND ntp.tree_id = target.tree_id)
-where target.parent_id is not null;''') //not null tests for DeclaredBT that don't exists see NSL-1017
+WHERE target.parent_id IS NOT NULL;''') //not null tests for DeclaredBT that don't exists see NSL-1017
             sql.commit()
         } catch (e) {
             sql.rollback()
