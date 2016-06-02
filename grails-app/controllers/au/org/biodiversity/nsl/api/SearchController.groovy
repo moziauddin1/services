@@ -17,7 +17,6 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Arrangement
-import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.UriNs
 import grails.converters.JSON

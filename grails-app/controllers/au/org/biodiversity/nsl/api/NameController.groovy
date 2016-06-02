@@ -33,6 +33,8 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     def nameService
     def apniFormatService
     def instanceService
+    def searchService
+    def flatViewService
 
     @SuppressWarnings("GroovyUnusedDeclaration")
     static responseFormats = [
@@ -48,7 +50,8 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             nameUpdateEventUri: ['json', 'xml', 'html'],
             exportNslSimple   : ['json', 'xml', 'html'],
             apni              : ['json', 'xml', 'html'],
-            apc               : ['json', 'xml', 'html']
+            apc               : ['json', 'xml', 'html'],
+            taxonSearch       : ['json', 'xml', 'html']
     ]
 
     static allowedMethods = [
@@ -63,7 +66,8 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             nameUpdateEventUri: ["PUT", "DELETE"],
             exportNslSimple   : ["GET"],
             apni              : ["GET"],
-            apc               : ["GET"]
+            apc               : ["GET"],
+            taxonSearch       : ["GET", "POST"]
     ]
     static namespace = "api"
 
@@ -397,6 +401,24 @@ order by n.simpleName asc''',
                 return refMap
             }
         }
+    }
+
+
+    @Timed
+    def taxonSearch() {
+        def json = request.JSON
+        Map searchParams = params
+        if (json) {
+            searchParams = new LinkedHashMap(json as Map)
+        }
+        searchParams.incMap = searchService.checked(searchParams, 'inc')
+        searchParams.max = (searchParams.max ?: 100) as Integer
+        Map results = searchService.searchForName(searchParams, searchParams.max)
+        List<Map> taxonRecords = flatViewService.getTaxonRecordFromNames(results.names)
+
+        ResultObject result = new ResultObject([total: results.total, count: results.count, records: taxonRecords])
+        //noinspection GroovyAssignabilityCheck
+        respond(result, [view: '/common/serviceResult', model: [data: result], status: OK])
     }
 
     private static String instancePage(Instance instance) {
