@@ -24,6 +24,7 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
+import groovy.sql.GroovyResultSet
 import groovy.sql.Sql
 
 
@@ -175,7 +176,7 @@ CREATE MATERIALIZED VIEW name_view AS
     JOIN REFERENCE apc_ref ON apc_ref.id = apc_inst.reference_id
     JOIN tree_node apcn
     JOIN tree_arrangement tree ON tree.id = apcn.tree_arrangement_id AND tree.label = 'APC'
-    JOIN name_tree_path ntp ON ntp.id = apcn.id
+    JOIN name_tree_path ntp ON ntp.name_id = apcn.name_id and ntp.tree_id = tree.id
       ON (apcn.instance_id = apc_inst.id OR apcn.instance_id = apc_inst.cited_by_id)
          AND apcn.checked_in_at_id IS NOT NULL
          AND apcn.next_node_id IS NULL
@@ -387,7 +388,7 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
 
     LEFT OUTER JOIN REFERENCE apcr ON apc_cited_inst.reference_id = apcr.id
 
-    LEFT OUTER JOIN name_tree_path ntp ON ntp.id = apcn.id
+    LEFT OUTER JOIN name_tree_path ntp ON ntp.name_id = apcn.name_id and ntp.tree_id = tree.id
     LEFT OUTER JOIN NAME accepted_name ON accepted_name.id = apcn.name_id
 
     JOIN NAME n ON n.id = apc_inst.name_id
@@ -460,6 +461,27 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
         return outputFile
     }
 
+    public List<Map> getTaxonRecordFromNames(List<Name> names) {
+        String nameIds = names.collect {Name name ->
+            "'http://id.biodiversity.org.au/name/apni/$name.id'"
+        }.join(',')
+        List results = []
+        withSql { Sql sql ->
+
+            String query = "select * from $TAXON_VIEW where \"scientificNameID\" in ($nameIds)"
+            println query
+            sql.eachRow(query) { GroovyResultSet row ->
+                def res = row.toRowResult()
+                Map d = new LinkedHashMap()
+                res.keySet().each { key ->
+                    d[key] = res[key] as String
+                }
+                results.add(d)
+            }
+        }
+        return results
+    }
+
     private static Boolean viewExists(Sql sql, String tableName) {
         String query = """
 SELECT EXISTS
@@ -473,7 +495,7 @@ AS exists"""
         return rowResult.exists
     }
 
-    private withSql(Closure work) {
+    private def withSql(Closure work) {
         Sql sql = searchService.getNSL()
         try {
             work(sql)
