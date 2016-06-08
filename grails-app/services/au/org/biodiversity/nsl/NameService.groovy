@@ -383,7 +383,7 @@ class NameService {
                             name.fullName = constructedNameService.stripMarkUp(constructedNames.fullMarkedUpName)
                             name.simpleNameHtml = constructedNames.simpleMarkedUpName
                             name.simpleName = constructedNameService.stripMarkUp(constructedNames.simpleMarkedUpName)
-                            name.sortName = constructedNameService.makeSortName(name)
+                            name.sortName = constructedNameService.makeSortName(name, name.simpleName)
                             name.save()
 //                            log.debug "saved $name.fullName"
                         } else {
@@ -412,11 +412,10 @@ class NameService {
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     names.each { Name name ->
-                        String sortName = constructedNameService.makeSortName(name)
+                        String sortName = constructedNameService.makeSortName(name, name.simpleName)
                         if (!(name.sortName) || name.sortName != sortName) {
                             name.sortName = sortName
                             name.save()
-//                            log.debug "saved $name.sortName"
                         } else {
                             name.discard()
                         }

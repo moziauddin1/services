@@ -25,10 +25,19 @@ class ConstructedNameService {
         string?.replaceAll(/<[^>]*>/, '')?.replaceAll(/(&lsquo;|&rsquo;)/, "'")?.trim()
     }
 
-    public String makeSortName(Name name) {
+    /**
+     * Make the sortName from the passed in simple name and name object.
+     * We pass in simple name because it may not have been set on the name yet for new names.
+     * NSL-1837
+     *
+     * @param name
+     * @param simpleName
+     * @return sort name string
+     */
+    public String makeSortName(Name name, String simpleName) {
 
         String abbrev = name.nameRank.abbrev
-        String sortName = name.simpleName.toLowerCase()
+        String sortName = simpleName.toLowerCase()
                               .replaceAll(/^x /, '') //remove hybrid marks
                               .replaceAll(/ (x|\+|-) /, ' ') //remove hybrid marks
                               .replaceAll(" $abbrev ", ' ') //remove rank abreviations

@@ -495,7 +495,7 @@ AS exists"""
         return rowResult.exists
     }
 
-    private void withSql(Closure work) {
+    private def withSql(Closure work) {
         Sql sql = searchService.getNSL()
         try {
             work(sql)
