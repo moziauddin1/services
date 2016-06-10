@@ -1017,6 +1017,57 @@ class TreeJsonEditController {
 
     }
 
+    def verifyCheckin(CheckinNodeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        Node node = (Node) linkService.getObjectForLink(param.uri as String)
+
+        /*
+        We get passed a uri.
+
+        The uri must be a taxonomic node
+        It must be a draft node
+        the draft node must belong to a workspace
+        the workspace must be one the user owns
+        the node must have a prev
+        the prev must belong to a classification tree (?)
+        the classification tree must be one the user can edit
+
+        we then pass this down to the tree service for more validation checks
+
+         */
+
+
+        return render([
+                success  : true,
+                msg: [ [ msg: 'TODO', body: 'actually verify the checkin', status: 'info'] ],
+                verificationResults: [
+                        goodToGo: true
+                ]
+        ] as JSON)
+
+    }
+
+    def performCheckin(CheckinNodeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        Node node = (Node) linkService.getObjectForLink(param.uri as String)
+
+        // doing no validation at all
+        // TODO: security, etc
+
+        def result = userWorkspaceManagerService.performCheckin(node);
+
+        return render([
+                success  : true,
+                msg: [ [ msg: 'Ok', body: 'Checkin performed. Please refresh your browser.', status: 'success'] ],
+                refetch  : result.modified.collect { Node it2 -> linkService.getPreferredLinkForObject(it2)  },
+                checkinResults: [
+                ]
+        ] as JSON)
+
+    }
+
 
     private renderValidationErrors(param) {
         def msg = [];
@@ -1061,6 +1112,14 @@ class UpdateWorkspaceParam {
 
 @Validateable
 class DeleteWorkspaceParam {
+    String uri
+    static constraints = {
+        uri nullable: false
+    }
+}
+
+@Validateable
+class CheckinNodeParam {
     String uri
     static constraints = {
         uri nullable: false
