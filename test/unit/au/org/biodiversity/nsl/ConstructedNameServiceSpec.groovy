@@ -68,7 +68,7 @@ class ConstructedNameServiceSpec extends Specification {
     void "test makeSortName returns expected results"() {
         when: "we convert a simple name string"
         Name name = new Name(simpleName: test, nameRank: NameRank.findByName(rank))
-        String output = service.makeSortName(name)
+        String output = service.makeSortName(name, name.simpleName)
 
         then:
         output == result

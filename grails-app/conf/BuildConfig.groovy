@@ -63,7 +63,7 @@ grails.project.dependency.resolution = {
 
         mavenLocal()
         mavenRepo("http://155.187.10.62:8081/nexus/content/groups/public/")
-        mavenRepo("http://155.187.10.62:8081/nexus/content/repositories/grails-plugins")
+//        mavenRepo("http://155.187.10.62:8081/nexus/content/repositories/grails-plugins/")
         grailsHome()
         mavenLocal()
         grailsCentral()

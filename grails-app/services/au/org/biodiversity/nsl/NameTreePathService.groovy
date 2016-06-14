@@ -330,40 +330,7 @@ AS (
     parentnode.id                                                                               AS parent_id,
     (parent.name_id_path || '.' || subnode.name_uri_id_part :: TEXT)                            AS name_id_path,
 
-    CASE
-    WHEN r.sort_order < 80
-      THEN
-        nm.simple_name
-    WHEN r.sort_order = 80
-      THEN nm.name_element
-    ELSE
-      CASE
-      WHEN r.sort_order < 120
-        THEN
-          lower(COALESCE(SUBSTRING(parent.rank_path FROM 'Familia:([^>]*)'), 'z'))
-      WHEN r.sort_order = 120
-        THEN
-          lower(COALESCE(SUBSTRING(parent.rank_path FROM 'Familia:([^>]*)'), 'z') || nm.name_element)
-      WHEN r.sort_order < 190
-        THEN
-          lower(COALESCE(SUBSTRING(parent.rank_path FROM 'Familia:([^>]*)'), 'z') ||
-                COALESCE(SUBSTRING(parent.rank_path FROM 'Genus:([^>]*)'), 'z'))
-      WHEN r.sort_order = 190
-        THEN
-          lower(COALESCE(SUBSTRING(parent.rank_path FROM 'Familia:([^>]*)'), 'z') ||
-                COALESCE(SUBSTRING(parent.rank_path FROM 'Genus:([^>]*)'), 'z') || nm.name_element)
-      WHEN r.sort_order = 200
-        THEN
-          lower(COALESCE(SUBSTRING(parent.rank_path FROM 'Familia:([^>]*)'), 'z') ||
-                COALESCE(SUBSTRING(parent.rank_path FROM 'Genus:([^>]*)'), 'z') ||
-                COALESCE(SUBSTRING(parent.rank_path FROM 'Species:([^>]*)'), 'z') || nm.name_element)
-      ELSE
-        lower(COALESCE(SUBSTRING(parent.rank_path FROM 'Familia:([^>]*)'), 'z') ||
-              COALESCE(SUBSTRING(parent.rank_path FROM 'Genus:([^>]*)'), 'z') ||
-              COALESCE(SUBSTRING(parent.rank_path FROM 'Species:([^>]*)'), 'z') ||
-              COALESCE(SUBSTRING(parent.rank_path FROM 'Subspecies:([^>]*)'), 'z') || nm.name_element)
-      END
-    END                                                                                         AS name_path,
+    (parent.name_path || '.' || coalesce(nm.name_element, '') :: TEXT)                          AS name_path,
     (parent.rank_path || '>' || r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT) AS rank_path,
     subnode.name_id                                                                             AS name_id
   FROM level parent, tree_node parentnode, tree_node subnode, tree_link l, name nm, name_rank r

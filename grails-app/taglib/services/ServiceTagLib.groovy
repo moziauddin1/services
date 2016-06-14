@@ -38,18 +38,32 @@ class ServiceTagLib {
         map.each { k, v ->
             out << "<li>"
             out << "<b>${k.encodeAsHTML()}:</b>&nbsp;"
-            if (v instanceof Map) {
-                out << displayMap(map: v)
-            } else {
-                if (v.toString().startsWith('http://')) {
-                    out << "<a href='$v'>${v.encodeAsHTML()}</a>"
-                } else {
-                    out << v.encodeAsHTML()
-                }
-            }
+            out << displayValue(v: v)
             out << '</li>'
         }
         out << '</ul>'
+    }
+
+    def displayValue = { attrs ->
+        def v = attrs.v
+        if (v instanceof Map) {
+            out << displayMap(map: v)
+        } else if (v instanceof List) {
+
+            out << '<ul>'
+            v.each { sv ->
+                out << "<li>"
+                out << displayValue(v: sv)
+                out << "</li>"
+            }
+            out << '</ul>'
+        } else {
+            if (v.toString().startsWith('http://')) {
+                out << "<a href='$v'>${v.encodeAsHTML()}</a>"
+            } else {
+                out << v.encodeAsHTML()
+            }
+        }
     }
 
     def systemNotification = { attrs ->
@@ -69,7 +83,7 @@ class ServiceTagLib {
         }
     }
 
-    def scheme = {attrs ->
+    def scheme = { attrs ->
         def colourScheme = grailsApplication.config.shard.colourScheme
         if (colourScheme) {
             out << colourScheme
@@ -101,7 +115,7 @@ class ServiceTagLib {
         }
     }
 
-    def editorLink = {attrs, body ->
+    def editorLink = { attrs, body ->
         def nameId = attrs.nameId
         if (nameId) {
             try {
@@ -136,7 +150,7 @@ class ServiceTagLib {
 
     def googleAnalytics = { attrs ->
         String script = grailsApplication?.config?.services?.googleAnalytics
-        if(script) {
+        if (script) {
             out << script
         }
     }
@@ -187,7 +201,7 @@ class ServiceTagLib {
                         }
                     }
                 }
-                if(top < data.size()) {
+                if (top < data.size()) {
                     out << '<li>...</li>'
                 }
                 out << '</ol>'
@@ -233,9 +247,9 @@ class ServiceTagLib {
     def primaryInstance = { attrs, body ->
         Name name = attrs.name
         String var = attrs.var ?: 'primaryInstance'
-        if(name) {
+        if (name) {
             List<Instance> primaryInstances = instanceService.findPrimaryInstance(name)
-            if(primaryInstances && primaryInstances.size() > 0) {
+            if (primaryInstances && primaryInstances.size() > 0) {
                 out << body((var): primaryInstances.first())
             } else {
                 out << body((var): null)
@@ -245,7 +259,7 @@ class ServiceTagLib {
 
     def documentationLink = { attrs ->
         String serverURL = grailsApplication?.config?.grails?.serverURL
-        if(serverURL) {
+        if (serverURL) {
             serverURL -= '/services'
             out << "<a class=\"doco\" href=\"$serverURL/docs/main.html\">"
             out << '<i class="fa fa-book"></i> docs </a>'

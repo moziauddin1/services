@@ -521,7 +521,6 @@ where lower(n.nameElement) like :query and n.instances.size > 0 and n.nameType.c
         return checked
     }
 
-
 }
 
 class SearchQueryCategory {
