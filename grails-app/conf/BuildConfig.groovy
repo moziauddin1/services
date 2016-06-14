@@ -29,25 +29,20 @@ grails.project.war.file = "target/${appName}##${appVersion}.war"
 //grails.reload.enabled = true
 
 grails.project.fork = [
-        // configure settings for compilation JVM, note that if you alter the Groovy version forked compilation is required
-        //  compile: [maxMemory: 256, minMemory: 64, debug: false, maxPerm: 256, daemon:true],
+    // configure settings for compilation JVM, note that if you alter the Groovy version forked compilation is required
+    //  compile: [maxMemory: 256, minMemory: 64, debug: false, maxPerm: 256, daemon:true],
 
-        // configure settings for the test-app JVM, uses the daemon by default
-        test: false, //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256, daemon:true],
-        // configure settings for the run-app JVM
-        run: false, //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256, forkReserve:false],
-        // configure settings for the run-war JVM
-        war: false, //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256, forkReserve:false],
-        // configure settings for the Console UI JVM
-        console: false //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256]
+    // configure settings for the test-app JVM, uses the daemon by default
+    test: false, //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256, daemon:true],
+    // configure settings for the run-app JVM
+    run: false, //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256, forkReserve:false],
+    // configure settings for the run-war JVM
+    war: false, //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256, forkReserve:false],
+    // configure settings for the Console UI JVM
+    console: false //[maxMemory: 768, minMemory: 64, debug: false, maxPerm: 256]
 ]
 
 grails.project.dependency.resolver = "maven" // or ivy
-
-grails.plugin.location."nslDomainPlugin" = "../nsl-domain-plugin"
-grails.plugin.location."treeServicesPlugin" = "../tree-services-plugin"
-
-
 grails.project.dependency.resolution = {
     // inherit Grails' default dependencies
     inherits("global") {
@@ -61,7 +56,6 @@ grails.project.dependency.resolution = {
     repositories {
         inherits true // Whether to inherit repository definitions from plugins
 
-        mavenLocal()
         mavenRepo("http://155.187.10.62:8081/nexus/content/groups/public/")
 //        mavenRepo("http://155.187.10.62:8081/nexus/content/repositories/grails-plugins/")
         grailsHome()
@@ -90,11 +84,12 @@ grails.project.dependency.resolution = {
         compile ':cache:1.1.8'
         compile "org.grails.plugins:cache-ehcache:1.0.5"
         compile ":asset-pipeline:2.1.0"
-//        compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.1-SNAPSHOT"
-//        compile "au.org.biodiversity.grails.plugins:tree-services-plugin:1.1-SNAPSHOT"
+        compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.1-SNAPSHOT"
+        compile "au.org.biodiversity.grails.plugins:tree-services-plugin:1.1-SNAPSHOT"
         compile ':rest-client-builder:2.0.3'
         compile ":simple-suggestions:0.3"
-        compile ":twitter-bootstrap:3.3.0"
+		compile ":twitter-bootstrap:3.3.0"
+        //noinspection GroovyAssignabilityCheck
         compile ":shiro:1.2.1", {
             excludes([name: 'quartz', group: 'org.opensymphony.quartz'])
         }
