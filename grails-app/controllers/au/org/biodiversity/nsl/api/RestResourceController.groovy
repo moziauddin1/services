@@ -118,18 +118,6 @@ class RestResourceController {
         respond event, [model: [event: event, links: links], status: OK]
     }
     
-    @Timed()
-    def nslSimpleName(String shard, Long idNumber) {
-        NslSimpleName simpleName = NslSimpleName.get(idNumber)
-        if (simpleName == null) {
-            return notFound("No name in $shard with id $idNumber found")
-        }
-        def links = []
-        Map model = [name: simpleName, links: links]
-        respond simpleName, [model: model, status: OK]
-    }
-
-
     private notFound(String errorText) {
         response.status = NOT_FOUND.value()
         Map errorResponse = [error: errorText]

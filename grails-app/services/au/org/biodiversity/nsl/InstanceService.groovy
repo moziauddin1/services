@@ -50,25 +50,6 @@ class InstanceService {
                         return [ok: false, errors: errors]
                     }
 
-                    NslSimpleName.findAllByProtoInstance(instance).each { NslSimpleName simpleName ->
-                        simpleName.protoInstance = null
-                        simpleName.protoCitation = null
-                        simpleName.protoYear = null
-                        simpleName.save()
-                    }
-
-                    NslSimpleName.findAllByApcInstance(instance).each { NslSimpleName simpleName ->
-                        simpleName.apcInstance = null
-                        simpleName.apcComment = null
-                        simpleName.apcDistribution = null
-                        simpleName.apcFamilia = null
-                        simpleName.apcName = null
-                        simpleName.apcExcluded = false
-                        simpleName.apcProparte = false
-                        simpleName.classifications = '[apni]'
-                        simpleName.save()
-                    }
-
                     removeInstanceFromTrees(instance)
                     instance.refresh()
                     instance.delete()
