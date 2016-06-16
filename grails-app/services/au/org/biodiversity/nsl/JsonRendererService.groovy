@@ -279,6 +279,9 @@ class JsonRendererService {
         return data
     }
 
+
+
+
     Map marshallInstance(Instance instance) {
         Map data = getBaseInfo(instance)
         data.instance << [
@@ -294,10 +297,28 @@ class JsonRendererService {
                 cites              : getBriefInstance(instance.cites),
                 citedBy            : getBriefInstance(instance.citedBy),
                 externalRefs       : instance.externalRefs.collect { externalRef(it) },
-                instancesForCitedBy: instance.instancesForCitedBy.collect { getBriefInstance(it) },
-                instancesForCites  : instance.instancesForCites.collect { getBriefInstance(it) },
-                instancesForParent : instance.instancesForParent.collect { getBriefInstance(it) },
-                instanceNotes      : instance.instanceNotes
+                instancesForCitedBy: instance.instancesForCitedBy.sort {
+                    Instance a, Instance b ->
+                        a.instanceType.sortOrder != b.instanceType.sortOrder ?
+                            a.instanceType.sortOrder <=> b.instanceType.sortOrder :
+                            a.name.simpleName <=> b.name.simpleName
+                }.collect { getBriefInstance(it) },
+                instancesForCites  : instance.instancesForCites.sort {
+                    Instance a, Instance b ->
+                        a.instanceType.sortOrder != b.instanceType.sortOrder ?
+                                a.instanceType.sortOrder <=> b.instanceType.sortOrder :
+                                a.name.simpleName <=> b.name.simpleName
+                }.collect { getBriefInstance(it) },
+                instancesForParent : instance.instancesForParent.sort {
+                    Instance a, Instance b ->
+                        a.instanceType.sortOrder != b.instanceType.sortOrder ?
+                                a.instanceType.sortOrder <=> b.instanceType.sortOrder :
+                                a.name.simpleName <=> b.name.simpleName
+                }.collect { getBriefInstance(it) },
+                instanceNotes      : instance.instanceNotes,
+
+
+
 
         ]
         return data
