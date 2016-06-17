@@ -149,7 +149,6 @@ class NameService {
                     removeNameFromApni(name)
                     name.refresh()
                     NameTreePath.findAllByName(name)*.delete()
-                    NslSimpleName.get(name.id)?.delete()
                     Comment.findAllByName(name)*.delete()
                     notifyNameEvent(name, 'deleted')
                     NamePart.findAllByName(name)*.delete()
