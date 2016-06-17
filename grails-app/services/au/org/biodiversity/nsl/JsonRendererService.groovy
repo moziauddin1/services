@@ -279,9 +279,6 @@ class JsonRendererService {
         return data
     }
 
-
-
-
     Map marshallInstance(Instance instance) {
         Map data = getBaseInfo(instance)
         data.instance << [
@@ -315,10 +312,7 @@ class JsonRendererService {
                                 a.instanceType.sortOrder <=> b.instanceType.sortOrder :
                                 a.name.simpleName <=> b.name.simpleName
                 }.collect { getBriefInstance(it) },
-                instanceNotes      : instance.instanceNotes,
-
-
-
+                instanceNotes      : instance.instanceNotes
 
         ]
         return data
