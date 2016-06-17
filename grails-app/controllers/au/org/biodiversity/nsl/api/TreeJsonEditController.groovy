@@ -398,6 +398,30 @@ class TreeJsonEditController {
             if (o instanceof Name) {
                 return render(dropNameOntoNode(ws, focus, target, o as Name, param) as JSON)
             } else if (o instanceof Instance) {
+
+                if(param.relationshipType == 'citing') {
+                    o = (o as Instance).cites
+                    if (!o) {
+                        def result = [
+                                success: false,
+                                msg    : [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger'],
+                        ];
+
+                        return render(result as JSON)
+                    }
+                }
+                if(param.relationshipType == 'cited') {
+                    o = (o as Instance).citedBy
+                    if (!o) {
+                        def result = [
+                                success: false,
+                                msg    : [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger'],
+                        ];
+
+                        return render(result as JSON)
+                    }
+                }
+
                 return render(dropInstanceOntoNode(ws, focus, target, o as Instance, param) as JSON)
             } else if (o instanceof Reference) {
                 return render(dropReferenceOntoNode(ws, focus, target, o as Reference, param) as JSON)
@@ -1145,12 +1169,14 @@ class DropUrisOntoNodeParam {
     String target
     String confirm
     List<String> uris
+    String relationshipType
     String dropAction
     static constraints = {
         wsNode nullable: false
         target nullable: false
         focus nullable: false
         uris nullable: true
+        relationshipType nullable: true
         confirm nullable: true
         dropAction nullable: true
     }
