@@ -461,25 +461,32 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
         return outputFile
     }
 
-    public List<Map> getTaxonRecordFromNames(List<Name> names) {
-        String nameIds = names.collect {Name name ->
-            "'http://id.biodiversity.org.au/name/apni/$name.id'"
-        }.join(',')
-        List results = []
-        withSql { Sql sql ->
-
-            String query = "select * from $TAXON_VIEW where \"scientificNameID\" in ($nameIds)"
-            println query
-            sql.eachRow(query) { GroovyResultSet row ->
-                def res = row.toRowResult()
-                Map d = new LinkedHashMap()
-                res.keySet().each { key ->
-                    d[key] = res[key] as String
-                }
-                results.add(d)
-            }
+    /**
+     * Search the Taxon view for an accepted name tree (currently just APC) giving an APC format data output
+     * as a list of taxon records.
+     * See NSL-1805
+     * @param canonicalName - the query name
+     * @return a Map of synonyms and accepted names that match the query
+     */
+    public Map taxonSearch(String canonicalName) {
+        Map results = [:]
+        String query = "select * from $TAXON_VIEW where \"canonicalName\" like ? limit 100"
+        List<Map> allResults = executeQuery(query,[canonicalName])
+        List<Map> acceptedResults = allResults.findAll { Map result ->
+            result.acceptedNameUsage == null
+        }
+        allResults.removeAll(acceptedResults)
+        if(!allResults.empty) {
+            results.synonyms = allResults
+        }
+        results.acceptedNames = [:]
+        acceptedResults.each { Map result ->
+            results.acceptedNames[result.scientificNameID] = result
+            List<Map> synonyms = executeQuery("select * from $TAXON_VIEW where \"acceptedNameUsage\" = ? limit 100", [result.scientificName])
+            results.acceptedNames[result.scientificNameID].synonyms = synonyms
         }
         return results
+
     }
 
     private static Boolean viewExists(Sql sql, String tableName) {
@@ -503,6 +510,22 @@ AS exists"""
             sql.close()
         }
 
+    }
+
+    private List<Map> executeQuery(String query, List params){
+        log.debug "executing query: $query, $params"
+        List results = []
+        withSql { Sql sql ->
+            sql.eachRow(query, params) { GroovyResultSet row ->
+                def res = row.toRowResult()
+                Map d = new LinkedHashMap()
+                res.keySet().each { key ->
+                    d[key] = res[key] as String
+                }
+                results.add(d)
+            }
+        }
+        return results
     }
 
 }
