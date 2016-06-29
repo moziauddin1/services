@@ -84,7 +84,7 @@ class ApniFormatTagLib {
         try {
             instances = instanceService.sortInstances(instances)
             instances.eachWithIndex { Instance instance, Integer i ->
-                Boolean showRef = page != instance.page || instance.citedBy != citedBy
+                Boolean showRef = page != instance.page// || instance.citedBy != citedBy
                 out << body((var): instance, i: i, newPage: showRef)
                 page = instance.page
                 citedBy = instance.citedBy
