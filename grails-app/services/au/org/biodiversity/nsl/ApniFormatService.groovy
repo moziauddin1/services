@@ -56,7 +56,10 @@ class ApniFormatService {
             //NSL-1119 primary references must come next
             Integer aPrimary = refGroups[a].find { Instance i -> i.instanceType.primaryInstance } ? 1 : 0
             Integer bPrimary = refGroups[b].find { Instance i -> i.instanceType.primaryInstance } ? 1 : 0
-            if (a.year == b.year) {
+            //NSL-1827 use parent details for sorting
+            Integer aYear = ReferenceService.findReferenceYear(a)
+            Integer bYear = ReferenceService.findReferenceYear(b)
+            if ( aYear == bYear) {
                 if (aProto == bProto) {
                     if (aPrimary == bPrimary) {
                         if (a == b) {
@@ -71,7 +74,7 @@ class ApniFormatService {
                 }
                 return bProto <=> aProto // proto reference first (1)
             }
-            return (a.year) <=> (b.year) //lowest year first
+            return (aYear) <=> (bYear) //lowest year first
         }
         return [references: references, instancesByRef: refGroups]
     }
