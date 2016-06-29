@@ -80,14 +80,12 @@ class ApniFormatTagLib {
         List<Instance> instances = new ArrayList<>(attrs.instances as Set)
         String var = attrs.var ?: "instance"
         String page = 'Not a page'
-        Instance citedBy = null
         try {
             instances = instanceService.sortInstances(instances)
             instances.eachWithIndex { Instance instance, Integer i ->
-                Boolean showRef = page != instance.page// || instance.citedBy != citedBy
+                Boolean showRef = page != instance.page //NSL-650 removed citedBy test
                 out << body((var): instance, i: i, newPage: showRef)
                 page = instance.page
-                citedBy = instance.citedBy
             }
         } catch (e) {
             println e.message

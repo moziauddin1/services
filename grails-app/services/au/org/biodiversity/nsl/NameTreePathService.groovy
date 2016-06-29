@@ -73,12 +73,13 @@ class NameTreePathService {
         if (currentNtp.parent?.id != parentNtp?.id) {
             String oldNameIdPath = currentNtp.nameIdPath
             String oldRankPath = currentNtp.rankPath
+            String oldNamePath = currentNtp.namePath
             currentNtp.nameIdPath = (parentNtp ? "${parentNtp.nameIdPath}." : '') + currentNode.name.id as String
             currentNtp.rankPath = (parentNtp ? "${parentNtp.rankPath}>" : '') + "${name.nameRank.name}:${name.nameElement}"
             currentNtp.parent = parentNtp
             currentNtp.inserted = System.currentTimeMillis()
             currentNtp.save(flush: true)
-            updateChildren(oldNameIdPath, oldRankPath, currentNtp)
+            updateChildren(oldNameIdPath, oldRankPath, oldNamePath, currentNtp)
         }
         return currentNtp
     }
@@ -91,56 +92,14 @@ class NameTreePathService {
         return null
     }
 
-    String makeSortPath(NameTreePath nameTreePath) {
-        NameRank rank = nameTreePath.name.nameRank
-        if (RankUtils.rankHigherThan(rank, 'Familia')) {
-            return nameTreePath.name.simpleName
-        }
-        if (rank.name == 'Familia') {
-            return nameTreePath.name.nameElement
-        }
-        if (RankUtils.rankHigherThan(rank, 'Genus')) {
-            return findRankElementOrZ('Familia', nameTreePath.rankPath)
-        }
-        if (rank.name == 'Genus') {
-            return findRankElementOrZ('Familia', nameTreePath.rankPath) +
-                    nameTreePath.name.nameElement
-        }
-        if (RankUtils.rankHigherThan(rank, 'Species')) {
-            return findRankElementOrZ('Familia', nameTreePath.rankPath) +
-                    findRankElementOrZ('Genus', nameTreePath.rankPath)
-        }
-        if (rank.name == 'Species') {
-            return findRankElementOrZ('Familia', nameTreePath.rankPath) +
-                    findRankElementOrZ('Genus', nameTreePath.rankPath) +
-                    nameTreePath.name.nameElement
-        }
-        if (rank.name == 'Subspecies') {
-            return findRankElementOrZ('Familia', nameTreePath.rankPath) +
-                    findRankElementOrZ('Genus', nameTreePath.rankPath) +
-                    findRankElementOrZ('Species', nameTreePath.rankPath) +
-                    nameTreePath.name.nameElement
-        }
-        return findRankElementOrZ('Familia', nameTreePath.rankPath) +
-                findRankElementOrZ('Genus', nameTreePath.rankPath) +
-                findRankElementOrZ('Species', nameTreePath.rankPath) +
-                findRankElementOrZ('Subspecies', nameTreePath.rankPath) +
-                nameTreePath.name.nameElement
-    }
-
-    private static String findRankElementOrZ(String rankName, String rankPath) {
-        (rankPath.find(/${rankName}:([^>]*)/) { match, element -> return element } ?: 'z')
-    }
-
-    //this could take a while todo make an sql update
-    private void updateChildren(String oldNameIdPath, String oldRankPath, NameTreePath newParent) {
+    private void updateChildren(String oldNameIdPath, String oldRankPath, String oldNamePath, NameTreePath newParent) {
         List<NameTreePath> children = currentChildren(newParent) //in order from top of the tree (!important)
         NameTreePath.withSession { session ->
             children.each { NameTreePath child ->
                 log.debug "updating $child.name child name tree path."
                 child.nameIdPath = newParent.nameIdPath + (child.nameIdPath - oldNameIdPath)
                 child.rankPath = newParent.rankPath + (child.rankPath - oldRankPath)
-                child.namePath = makeSortPath(child)
+                child.namePath = newParent.namePath + (child.namePath - oldNamePath)
             }
             session.flush()
         }
@@ -230,11 +189,12 @@ class NameTreePathService {
                 nameTreePath.parent = parentNameTreePath
                 nameTreePath.nameIdPath = "${parentNameTreePath.nameIdPath}.${name.id}" as String
                 nameTreePath.rankPath = "${parentNameTreePath.rankPath}>${name.nameRank.name}:${name.nameElement}"
+                nameTreePath.namePath = "${parentNameTreePath.namePath}.${name.nameElement}"
             } else {
                 nameTreePath.nameIdPath = "${name.id}" as String
                 nameTreePath.rankPath = "${name.nameRank.name}:${name.nameElement}"
+                nameTreePath.namePath = name.nameElement
             }
-            nameTreePath.namePath = makeSortPath(nameTreePath)
             return nameTreePath
         }
         log.error "making NameTreePath for ${name} but node was null."
@@ -258,7 +218,6 @@ class NameTreePathService {
         (NameTreePath.executeQuery("select distinct ntp.tree.label from NameTreePath ntp where ntp.name = :name", [name: name]) as List<String>)
     }
 
-    //todo fix this, it uses the old check of node.id = ntp.id
     Integer treePathReport(String treeLabel) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
                 Namespace.findByName(grailsApplication.config.shard.classification.namespace),
@@ -271,8 +230,8 @@ class NameTreePathService {
             and nd.checkedInAt IS NOT NULL
             and nd.next IS NULL
             and nd.nameUriIdPart IS NOT NULL
-            and not exists (select 1 from NameTreePath ntp where ntp.id = nd.id)''', [tree: Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+            and not exists (select 1 from NameTreePath ntp where ntp.name = nd.name and ntp.tree = nd.root)''',
+                    [tree: Arrangement.findByNamespaceAndLabel(Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                     treeLabel)])
             results?.first() as Integer
         } else {
