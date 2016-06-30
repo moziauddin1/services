@@ -89,6 +89,20 @@ class RankUtils {
         return null
     }
 
+    public static Name getFamily(Name name, String treeName) {
+        NameTreePath nameTreePath = NameTreePathService.findCurrentNameTreePath(name, treeName)
+        return nameTreePath.family
+    }
+
+    public static Map<String, Name> getFamilyByTrees(Name name) {
+        List<NameTreePath> paths = NameTreePath.findAllByName(name)
+        Map familyTreeMap = [:]
+        paths.each {NameTreePath nameTreePath ->
+            familyTreeMap.put(nameTreePath.tree.label,  nameTreePath.family)
+        }
+        return familyTreeMap
+    }
+
     public static previousRank(NameRank rank) {
         return NameRank.findBySortOrderLessThan(rank.sortOrder, [sort: 'sortOrder', order: 'desc'])
     }

@@ -29,34 +29,9 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
 @Transactional
 class ClassificationService {
 
-    GrailsApplication grailsApplication
+    def configService
     def treeOperationsService
     def queryService
-
-    private Namespace nameSpaceName
-    private String nameTreeName
-    private String classificationTree
-
-    public Namespace getNameSpace() {
-        if (!nameSpaceName) {
-            nameSpaceName = Namespace.findByName(grailsApplication.config.shard.classification.namespace as String)
-        }
-        return nameSpaceName
-    }
-
-    private String getNameTreeName() {
-        if (!nameTreeName) {
-            nameTreeName = grailsApplication.config.shard.classification.nameTree
-        }
-        return nameTreeName
-    }
-
-    private String getClassificationTreeName() {
-        if (!classificationTree) {
-            classificationTree = grailsApplication.config.shard.classification.classificationTree
-        }
-        return classificationTree
-    }
 
     /**
      * Get the list of names in the path
@@ -65,7 +40,7 @@ class ClassificationService {
      */
     @Deprecated
     List<Name> getPath(Name name) {
-        getPath(name, getNameSpace(), getNameTreeName())
+        getPath(name, configService.getNameSpace(), configService.getNameTreeName())
     }
 
     List<Name> getPath(Name name, Namespace namespace, String classification) {
@@ -91,17 +66,25 @@ class ClassificationService {
 
     @Deprecated
     Node isNameInAPC(Name name) {
-        isNameInClassification(name, getNameSpace(), getClassificationTreeName())
+        isNameInClassification(name, configService.getNameSpace(), configService.getClassificationTreeName())
+    }
+
+    Node isNameInAcceptedTree(Name name) {
+        isNameInClassification(name, configService.getNameSpace(), configService.getClassificationTreeName())
     }
 
     @Deprecated
     Node isNameInAPNI(Name name) {
-        isNameInClassification(name, getNameSpace(), getNameTreeName())
+        isNameInClassification(name, configService.getNameSpace(), configService.getNameTreeName())
+    }
+
+    Node isNameInNameTree(Name name) {
+        isNameInClassification(name, configService.getNameSpace(), configService.getNameTreeName())
     }
 
     @Deprecated
     Node isInstanceInAPC(Instance instance) {
-        isInstanceInClassification(instance, getNameSpace(), getClassificationTreeName())
+        isInstanceInClassification(instance, configService.getNameSpace(), configService.getClassificationTreeName())
     }
 
     Node isNameInClassification(Name name, Namespace namespace, String classification) {
@@ -134,7 +117,7 @@ class ClassificationService {
 
     @Deprecated
     Name getAPNIFamilyName(Name name) {
-        getFamilyName(name, getNameSpace(), getNameTreeName())
+        getFamilyName(name, configService.getNameSpace(), configService.getNameTreeName())
     }
 
     Name getFamilyName(Name name, Namespace namespace, String tree) {
@@ -147,7 +130,7 @@ class ClassificationService {
 
     @Deprecated
     Instance getAcceptedInstance(Name name, String tree, String nodeTypeId = 'ApcConcept') {
-        return getAcceptedInstance(name, getNameSpace(), tree, nodeTypeId)
+        return getAcceptedInstance(name, configService.getNameSpace(), tree, nodeTypeId)
     }
 
     Instance getAcceptedInstance(Name name, Namespace namespace, String tree, String nodeTypeId) {
@@ -171,7 +154,11 @@ from Instance i,
 
     @Deprecated
     Node placeNameInAPNI(Name supername, Name name) {
-        return placeNameInAPNI(getNameSpace(), getNameTreeName(), supername, name)
+        return placeNameInAPNI(configService.getNameSpace(), configService.getNameTreeName(), supername, name)
+    }
+
+    Node placeNameInNameTree(Name supername, Name name) {
+        return placeNameInAPNI(configService.getNameSpace(), configService.getNameTreeName(), supername, name)
     }
 
     Node placeNameInAPNI(Namespace namespace, String nameTreeLabel, Name supername, Name name) {

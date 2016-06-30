@@ -27,7 +27,7 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
 import javax.servlet.http.Cookie
 
 class SearchController {
-    GrailsApplication grailsApplication
+    def configService
     def searchService
 
     def search(Integer max) {
@@ -40,9 +40,7 @@ class SearchController {
         }
 
         if (params.product) {
-            Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
-                    params.product.toUpperCase())
+            Arrangement tree = Arrangement.findByNamespaceAndLabel(configService.nameSpace, params.product.toUpperCase() as String)
             if (tree) {
                 params.tree = [id: tree.id]
                 params.display = params.product
@@ -153,9 +151,7 @@ class SearchController {
         }
 
         if (params.product) {
-            Arrangement tree = Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.shard.classification.namespace),
-                    params.product.toUpperCase())
+            Arrangement tree = Arrangement.findByNamespaceAndLabel(configService.nameSpace, params.product.toUpperCase() as String)
             if (tree) {
                 params.tree = [id: tree.id]
                 params.display = params.product

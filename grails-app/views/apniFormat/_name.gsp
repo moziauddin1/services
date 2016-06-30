@@ -1,7 +1,7 @@
 <div class="name" id="${name.id}">
   <family>
     <g:if test="${familyName}">
-      ${raw(familyName.fullNameHtml)} <af:branch name="${name}" tree="APC"><i class="fa fa-code-fork"></i></af:branch>
+      ${raw(familyName.fullNameHtml)} <af:branch name="${name}"><i class="fa fa-code-fork"></i></af:branch>
     </g:if>
   </family>
 

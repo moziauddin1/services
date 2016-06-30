@@ -33,6 +33,7 @@ class FlatViewService {
 
     def grailsApplication
     def searchService
+    def configService
 
     private static String TAXON_VIEW = 'apc_taxon_view'
     private static String NAME_VIEW = 'name_view'
@@ -437,7 +438,7 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
         withSql { Sql sql ->
             if (!viewExists(sql, TAXON_VIEW)) {
                 log.debug "creating $TAXON_VIEW view for export."
-                createTaxonView(grailsApplication.config.shard.classification.namespace.toLowerCase(), sql)
+                createTaxonView(configService.nameSpace.name.toLowerCase(), sql)
             }
             String query = "COPY (SELECT * FROM $TAXON_VIEW) TO '${outputFile.absolutePath}' WITH CSV HEADER"
             sql.execute(query)
@@ -453,7 +454,7 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
         withSql { Sql sql ->
             if (!viewExists(sql, NAME_VIEW)) {
                 log.debug "creating $NAME_VIEW view for export."
-                createNameView(grailsApplication.config.shard.classification.namespace.toLowerCase(), sql)
+                createNameView(configService.nameSpace.name.toLowerCase(), sql)
             }
             String query = "COPY (SELECT * FROM $NAME_VIEW) TO '${outputFile.absolutePath}' WITH CSV HEADER"
             sql.execute(query)

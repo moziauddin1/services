@@ -34,27 +34,27 @@ class ConfigService {
 
     GrailsApplication grailsApplication
 
-    private Namespace nameSpaceName
+    private Namespace nameSpace
     private String nameTreeName
     private String classificationTree
 
     public Namespace getNameSpace() {
-        if (!nameSpaceName) {
-            nameSpaceName = Namespace.findByName(grailsApplication.config.shard.classification.namespace as String)
+        if (!nameSpace) {
+            nameSpace = Namespace.findByName(grailsApplication.config.shard.classification.namespace as String)
         }
-        return nameSpaceName
+        return nameSpace
     }
 
     public String getNameTreeName() {
         if (!nameTreeName) {
-            nameTreeName = grailsApplication.config.shard.classification.nameTree
+            nameTreeName = ShardConfig.findByName('name tree label')?.value
         }
         return nameTreeName
     }
 
     public String getClassificationTreeName() {
         if (!classificationTree) {
-            classificationTree = grailsApplication.config.shard.classification.classificationTree
+            classificationTree = ShardConfig.findByName('classification tree label')?.value
         }
         return classificationTree
     }

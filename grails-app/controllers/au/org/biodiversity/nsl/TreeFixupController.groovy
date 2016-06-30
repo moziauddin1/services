@@ -3,7 +3,6 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.tree.ClassificationManagerService
 import au.org.biodiversity.nsl.tree.ServiceException
 import org.apache.shiro.authz.annotation.RequiresRoles
-import org.codehaus.groovy.grails.commons.GrailsApplication
 
 /**
  * This controller allows the user to manually perform versioning on nodes.
@@ -15,10 +14,11 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
  *
  */
 class TreeFixupController {
-    private static String SELECTED_NODES_KEY = TreeFixupController.class.getName() + '#selectedNodes';
-    GrailsApplication grailsApplication
+
+    def configService
     ClassificationManagerService classificationManagerService;
 
+    private static String SELECTED_NODES_KEY = TreeFixupController.class.getName() + '#selectedNodes';
 
     @RequiresRoles('admin')
     def selectNameNode() {
@@ -26,9 +26,9 @@ class TreeFixupController {
         session[SELECTED_NODES_KEY] = state;
 
         Arrangement c = Arrangement.findByNamespaceAndLabelAndArrangementType(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
-                params['classification'], ArrangementType.P)
-        Name n = Name.get(params['nameId'])
+                configService.nameSpace,
+                params['classification'] as String, ArrangementType.P)
+        Name n = Name.get(params['nameId'] as Long)
 
        [
                classification: c,
@@ -43,10 +43,10 @@ class TreeFixupController {
         log.debug 'about to call fixClassificationUseNodeForName'
         try {
             classificationManagerService.fixClassificationUseNodeForName(Arrangement.findByNamespaceAndLabel(
-                    Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
-                    params['classification']),
-                    Name.get(params['nameId']),
-                    Node.get(params['nodeId']));
+                    configService.nameSpace,
+                    params['classification'] as String),
+                    Name.get(params['nameId'] as Long),
+                    Node.get(params['nodeId'] as Long));
             log.debug 'done call fixClassificationUseNodeForName'
             flash.message = "All placements of name ${params['nameId']} in ${params['classification']} merged into node  ${params['nodeId']}"
         }
@@ -61,8 +61,8 @@ class TreeFixupController {
     @RequiresRoles('admin')
     def enddateAndMakeCurrent() {
         Arrangement c = Arrangement.findByNamespaceAndLabelAndArrangementType(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
-                params['classification'], ArrangementType.P)
+                configService.nameSpace,
+                params['classification'] as String, ArrangementType.P)
 
         def p = [
                 classification: c

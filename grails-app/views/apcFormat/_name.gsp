@@ -13,7 +13,7 @@
             <apc title="excluded from APC"><i class="fa fa-ban"></i>APC</apc></excluded-name>
         </g:else>
         <name-status class="${name.nameStatus.name}">${name.nameStatus.name}</name-status>
-        <af:branch name="${name}" tree="APC"><i class="fa fa-code-fork"></i></af:branch>
+        <af:branch name="${name}"><i class="fa fa-code-fork"></i></af:branch>
         | sensu
         <st:preferedLink
             target="${apcInstance?.reference}">${raw(apcInstance?.reference?.citationHtml)}</st:preferedLink>

@@ -19,21 +19,15 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Instance
-import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.TreeViewService
 import grails.converters.JSON
 import grails.transaction.Transactional
 import grails.validation.Validateable
-import org.codehaus.groovy.grails.commons.GrailsApplication
 
 @Transactional
 class TreeViewController {
-	GrailsApplication grailsApplication
+	def configService
 	TreeViewService treeViewService
-
-	def index(TreeViewParam p) {
-		return [tree: p.getTree(grailsApplication), name: p.name]
-	}
 
 	def namePlacementPath(TreeViewParam p) {
 		render treeViewService.getPathForName(getTree(p), p.name) as JSON
@@ -65,13 +59,13 @@ class TreeViewController {
 
     private Arrangement getTree(TreeViewParam p) {
         return Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                configService.nameSpace,
                 p.treeLabel)
     }
 
     private Arrangement getTree(TreeViewInstanceParam p) {
         return Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                configService.nameSpace,
                 p.treeLabel)
     }
 }

@@ -27,7 +27,6 @@ import static org.springframework.http.HttpStatus.OK
 @Transactional
 class AdminController {
 
-    GrailsApplication grailsApplication
     def constructedNameService
     def nameService
     def nameTreePathService
@@ -35,6 +34,7 @@ class AdminController {
     def referenceService
     def instanceService
     def authorService
+    def configService
 
     @RequiresRoles('admin') 
     def index() {
@@ -43,8 +43,8 @@ class AdminController {
 
         stats.namesNeedingConstruction = nameService.countIncompleteNameStrings()
         stats.namesNotInApni = nameService.countNamesNotInApni()
-        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(grailsApplication.config.shard.classification.nameTree as String)
-        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(grailsApplication.config.shard.classification.classificationTree as String)
+        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(configService.nameTreeName)
+        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(configService.classificationTreeName)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         //todo iterate trees add back stats if they don't interrupt ops.
         [pollingNames: nameService.pollingStatus(), stats: stats]
@@ -168,8 +168,8 @@ class AdminController {
     def transferApcProfileData() {
         log.debug "applying instance APC comments and distribution text to the APC tree"
         flash.message = apcTreeService.transferApcProfileData(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
-                grailsApplication.config.shard.classification.classificationTree as String
+                configService.nameSpace,
+                configService.classificationTreeName
         )
         redirect(action: 'index')
     }

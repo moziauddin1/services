@@ -19,12 +19,11 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.tree.ClassificationManagerService
 import au.org.biodiversity.nsl.tree.ServiceException
 import org.apache.shiro.authz.annotation.RequiresRoles
-import org.codehaus.groovy.grails.commons.GrailsApplication
 
 class ClassificationController {
 
-    GrailsApplication grailsApplication
     ClassificationManagerService classificationManagerService;
+    def configService
 
     private static String VALIDATION_RESULTS_KEY = ClassificationController.class.getName() + '#validationREsults';
 
@@ -48,8 +47,7 @@ class ClassificationController {
 
     @RequiresRoles('admin')
     def editForm() {
-        Arrangement classification = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+        Arrangement classification = Arrangement.findByNamespaceAndLabel(configService.nameSpace,
                 params['classification'] as String
         );
         [classification: classification, inputLabel: classification.label, inputDescription: classification.description]
@@ -66,11 +64,11 @@ class ClassificationController {
                 } else {
                     if (params['copyNameChk']) {
                         Arrangement copyNameIn = Arrangement.findByNamespaceAndLabel(
-                                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                                configService.nameSpace,
                                 params['inputCopyNameIn'] as String)
-                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace), label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
+                        classificationManagerService.createClassification(configService.nameSpace, label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
                     } else {
-                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace), label: params.inputLabel, description: params.inputDescription);
+                        classificationManagerService.createClassification(configService.nameSpace, label: params.inputLabel, description: params.inputDescription);
                     }
 
                     flash.success = "Classification \"${params['inputLabel']}\" created."
@@ -105,7 +103,7 @@ class ClassificationController {
         // and remove the match is the classification is deleted
 
         Arrangement classification = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                configService.nameSpace,
                 params['classification'] as String)
 
         if (!classification) {

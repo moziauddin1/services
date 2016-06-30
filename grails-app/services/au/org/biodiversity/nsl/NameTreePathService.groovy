@@ -36,7 +36,7 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
 @Transactional
 class NameTreePathService {
 
-    GrailsApplication grailsApplication
+    def configService
     def classificationService
 
     /**
@@ -100,6 +100,9 @@ class NameTreePathService {
                 child.nameIdPath = newParent.nameIdPath + (child.nameIdPath - oldNameIdPath)
                 child.rankPath = newParent.rankPath + (child.rankPath - oldRankPath)
                 child.namePath = newParent.namePath + (child.namePath - oldNamePath)
+                if(newParent.family) {
+                    child.family = newParent.family
+                }
             }
             session.flush()
         }
@@ -190,10 +193,14 @@ class NameTreePathService {
                 nameTreePath.nameIdPath = "${parentNameTreePath.nameIdPath}.${name.id}" as String
                 nameTreePath.rankPath = "${parentNameTreePath.rankPath}>${name.nameRank.name}:${name.nameElement}"
                 nameTreePath.namePath = "${parentNameTreePath.namePath}.${name.nameElement}"
+                nameTreePath.family = parentNameTreePath.family
             } else {
                 nameTreePath.nameIdPath = "${name.id}" as String
                 nameTreePath.rankPath = "${name.nameRank.name}:${name.nameElement}"
                 nameTreePath.namePath = name.nameElement
+                if(name.nameRank.name == 'Familia') {
+                    nameTreePath.family = name
+                }
             }
             return nameTreePath
         }
@@ -220,7 +227,7 @@ class NameTreePathService {
 
     Integer treePathReport(String treeLabel) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                configService.nameSpace,
                 treeLabel)
         if (arrangement) {
             List results = Node.executeQuery('''
@@ -231,7 +238,7 @@ class NameTreePathService {
             and nd.next IS NULL
             and nd.nameUriIdPart IS NOT NULL
             and not exists (select 1 from NameTreePath ntp where ntp.name = nd.name and ntp.tree = nd.root)''',
-                    [tree: Arrangement.findByNamespaceAndLabel(Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                    [tree: Arrangement.findByNamespaceAndLabel(configService.nameSpace,
                     treeLabel)])
             results?.first() as Integer
         } else {
@@ -264,7 +271,7 @@ class NameTreePathService {
 
         try {
             sql.execute('''
-WITH RECURSIVE level(node_id, tree_id, parent_id, name_id_path, name_path, rank_path, name_id)
+WITH RECURSIVE level(node_id, tree_id, parent_id, name_id_path, name_path, rank_path, name_id, family_id)
 AS (
   SELECT
     l2.subnode_id                                                  AS node_id,
@@ -273,7 +280,13 @@ AS (
     n.name_uri_id_part :: TEXT                                     AS name_id_path,
     nm.simple_name :: TEXT                                         AS name_path,
     r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT AS rank_path,
-    n.name_id                                                      AS name_id
+    n.name_id                                                      AS name_id,
+    CASE
+    WHEN r.name = 'Familia\'
+      THEN nm.id
+    ELSE NULL
+    END                                                            AS family_id
+
   FROM tree_arrangement a, tree_link l, tree_link l2, tree_node n, name nm, name_rank r
   WHERE
     l.supernode_id = a.node_id
@@ -291,7 +304,15 @@ AS (
 
     (parent.name_path || '.' || coalesce(nm.name_element, '') :: TEXT)                          AS name_path,
     (parent.rank_path || '>' || r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT) AS rank_path,
-    subnode.name_id                                                                             AS name_id
+    subnode.name_id                                                                             AS name_id,
+    CASE
+    WHEN r.name = 'Familia\'
+      THEN nm.id
+    WHEN parent.family_id is not null
+      then parent.family_id
+    ELSE NULL
+    END                                                                                         AS family_id
+
   FROM level parent, tree_node parentnode, tree_node subnode, tree_link l, name nm, name_rank r
   WHERE parentnode.id = parent.node_id -- this node is now parent
         AND l.supernode_id = parentnode.id
@@ -309,6 +330,7 @@ INSERT INTO name_tree_path (tree_id,
                             name_path,
                             rank_path,
                             name_id,
+                            family_id,
                             version,
                             inserted,
                             next_id)
@@ -319,7 +341,8 @@ INSERT INTO name_tree_path (tree_id,
      l.name_path,
      l.rank_path,
      l.name_id,
-     0    AS verison,
+     l.family_id,
+     0    AS version,
      0    AS inserted,
      NULL AS next_id
    FROM level l
