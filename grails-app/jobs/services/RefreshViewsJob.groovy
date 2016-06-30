@@ -9,7 +9,7 @@ class RefreshViewsJob {
 
     static triggers = {
         //update at 7AM every day
-        cron name: 'update views', cronExpression: '0 0 7 * * ?'
+        cron name: 'updateViews', startDelay: 10000, cronExpression: '0 0 7 * * ?'
     }
 
     def execute() {
