@@ -508,6 +508,7 @@ class JsonRendererService {
                 title          : arrangement.title,
                 description    : arrangement.description,
                 owner          : arrangement.owner,
+                shared         : arrangement.shared,
                 synthetic      : arrangement.synthetic == 'Y' ? true : arrangement.synthetic == 'N' ? false : null,
                 node           : brief(arrangement.node, [:]),
                 currentRoot    : arrangement.arrangementType == ArrangementType.P && arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,

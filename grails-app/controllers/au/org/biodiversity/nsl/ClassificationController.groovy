@@ -52,7 +52,7 @@ class ClassificationController {
                 Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                 params['classification'] as String
         );
-        [classification: classification, inputLabel: classification.label, inputDescription: classification.description]
+        [classification: classification, inputLabel: classification.label, inputDescription: classification.description, sharedChk: classification.shared]
     }
 
     @RequiresRoles('admin')
@@ -68,9 +68,12 @@ class ClassificationController {
                         Arrangement copyNameIn = Arrangement.findByNamespaceAndLabel(
                                 Namespace.findByName(grailsApplication.config.shard.classification.namespace),
                                 params['inputCopyNameIn'] as String)
-                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace), label: params.inputLabel, description: params.inputDescription, copyName: params['inputCopyName'], copyNameIn: copyNameIn);
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                                label: params.inputLabel, description: params.inputDescription, shared: params.sharedChk,
+                                copyName: params['inputCopyName'], copyNameIn: copyNameIn);
                     } else {
-                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace), label: params.inputLabel, description: params.inputDescription);
+                        classificationManagerService.createClassification(Namespace.findByName(grailsApplication.config.shard.classification.namespace),
+                                label: params.inputLabel, description: params.inputDescription, shared: params.sharedChk ? true : false);
                     }
 
                     flash.success = "Classification \"${params['inputLabel']}\" created."
@@ -94,12 +97,15 @@ class ClassificationController {
                 copyNameChk     : params['copyNameChk'],
                 inputCopyName   : params['inputCopyName'],
                 inputCopyNameIn : params['inputCopyNameIn'],
+                sharedChk       : params['sharedChk'],
                 list            : Arrangement.findAll(sort: 'label') { arrangementType == ArrangementType.P }
         ])
     }
 
     @RequiresRoles('admin')
     def doEdit() {
+         log.debug params
+
         // TODO: tell the link service that we have updated a classification. It should store
         // [shard]/classification/[label] as a match for the node if the label has changed
         // and remove the match is the classification is deleted
@@ -150,7 +156,7 @@ class ClassificationController {
                 if (!params['inputLabel'] || !params['inputDescription']) {
                     flash.validation = 'Label and Description required'
                 } else {
-                    classificationManagerService.updateClassification(classification, label: params.inputLabel, description: params.inputDescription);
+                    classificationManagerService.updateClassification(classification, label: params.inputLabel, description: params.inputDescription, shared: params.sharedChk ? true : false);
                     if (params.inputLabel == classification.label) {
                         flash.success = "Classification \"${classification.label}\" updated."
                     } else {

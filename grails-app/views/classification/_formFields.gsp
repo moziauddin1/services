@@ -11,6 +11,11 @@
         <div class="col-sm-10">
             <g:textField name="inputDescription" class="form-control" value="${inputDescription}"/>
         </div>
+
+        <label for="sharedCheck" class="col-sm-2 control-label text-right">Shared (public)?</label>
+        <div class="col-sm-10">
+            <g:checkBox id="sharedCheck" name="sharedChk" value="true" checked="${sharedChk}"/>
+        </div>
     </div>
 </div>
 

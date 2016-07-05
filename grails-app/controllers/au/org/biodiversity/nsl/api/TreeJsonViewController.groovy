@@ -76,8 +76,11 @@ class TreeJsonViewController {
             return render(status: 400) { result as JSON }
         }
 
-        def result = Arrangement.findAll { arrangementType == ArrangementType.U && namespace.name == param.namespace }
+        def result = Arrangement.findAll {
+            arrangementType == ArrangementType.U &&
+             namespace.name == param.namespace  }
                 .sort { Arrangement a, Arrangement b -> a.title <=> b.title }
+                .findAll { Arrangement it -> it.shared || it.owner == SecurityUtils.subject.principal }
                 .collect { linkService.getPreferredLinkForObject(it) }
         render result as JSON
     }

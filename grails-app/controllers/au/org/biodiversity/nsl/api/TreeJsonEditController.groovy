@@ -95,7 +95,7 @@ class TreeJsonEditController {
 
         Arrangement a;
         try {
-            a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, title, param.description, checkout)
+            a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, param.shared==null ? false : param.shared, title, param.description, checkout)
         }
         catch (ServiceException ex) {
             response.status = 400
@@ -228,7 +228,7 @@ class TreeJsonEditController {
         }
 
         try {
-            userWorkspaceManagerService.updateWorkspace(a, param.title, param.description);
+            userWorkspaceManagerService.updateWorkspace(a, param.shared==null ? false : param.shared, param.title, param.description);
         }
         catch (ServiceException ex) {
             response.status = 400
@@ -340,6 +340,16 @@ class TreeJsonEditController {
         response.status = 200; // default
 
         Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+
+        if(!wsNode) {
+            response.status = 400
+            def result = [
+                    success: false,
+                    msg    : [msg: "Illegal Argument", body: "${param.wsNode} not found", status: 'danger']
+            ]
+            return render(result as JSON)
+        }
+
         Arrangement ws = wsNode.root
         Node target = (Node) linkService.getObjectForLink(param.target as String)
         Node focus = (Node) linkService.getObjectForLink(param.focus as String)
@@ -706,6 +716,11 @@ class TreeJsonEditController {
     }
 
     private def dropNodeOntoNode(Arrangement ws, Node focus, Node target, Node node, DropUrisOntoNodeParam param) {
+
+        // TODO: if a node is dropped onto a node at the same rank, then offer to move all the child nodes of
+        // A onto B
+        // unless its generic or subgeneric, in which case it won't be valid to do that.
+
         if (node == target) {
             return render([
                     success: false,
@@ -1112,12 +1127,14 @@ class CreateWorkspaceParam {
     String title
     String description
     String checkout
+    Boolean shared
 
     static constraints = {
         namespace nullable: false
         title nullable: false
         description nullable: true
         checkout nullable: true
+        shared nullable: true
     }
 }
 
@@ -1126,11 +1143,13 @@ class UpdateWorkspaceParam {
     String uri
     String title
     String description
+    Boolean shared
 
     static constraints = {
         uri nullable: false
         title nullable: false
         description nullable: true
+        shared nullable: true
     }
 }
 
