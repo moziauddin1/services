@@ -203,7 +203,7 @@ class SearchController {
                 }
             }
         }
-        return CsvRenderer.renderAsCsv(['Found?', 'Search term', 'Census', 'Matched name(s)', 'Tags'], csvResults)
+        return CsvRenderer.renderAsCsv(['Found?', 'Search term', 'Census', 'Matched name(s)', 'Name status','Name type','Tags'], csvResults)
     }
 
     private static String apcStatus(Node node) {
