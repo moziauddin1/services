@@ -17,12 +17,13 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Arrangement
-import au.org.biodiversity.nsl.Namespace
+import au.org.biodiversity.nsl.CsvRenderer
+import au.org.biodiversity.nsl.NameTagName
+import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.UriNs
 import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
-import org.codehaus.groovy.grails.commons.GrailsApplication
 
 import javax.servlet.http.Cookie
 
@@ -169,6 +170,40 @@ class SearchController {
 
     def nameCheck(Integer max) {
         List<Map> results = searchService.nameCheck(params, max)
-        render(view: 'name-check', model: [results: results])
+        params.product = 'apni'
+        if(params.csv) {
+            render(file: renderCsvResults(results).bytes, contentType: 'text/csv', fileName: 'name-check.csv')
+        } else {
+            render(view: 'search', model: [results: results, query: params, max: max])
+        }
     }
+
+    private static String renderCsvResults(List<Map> results){
+        List<List> csvResults = []
+        results.each { Map result ->
+            result.names.each { Map nameData ->
+                csvResults.add([result.found,
+                                result.query,
+                                apcStatus(nameData.apc),
+                                nameData.name.fullName,
+                                nameData.name.nameStatus.name,
+                                nameData.name.nameType.name,
+                                (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString()
+                ])
+            }
+        }
+        return CsvRenderer.renderAsCsv(['Found?', 'Search term', 'Census', 'Matched name(s)', 'Tags'], csvResults)
+    }
+
+    private static String apcStatus(Node node) {
+        if (node) {
+            if (node.typeUriIdPart == 'ApcConcept') {
+                return 'APC'
+            } else {
+                return 'APC Excluded'
+            }
+        }
+        return '-'
+    }
+
 }
