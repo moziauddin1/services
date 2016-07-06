@@ -171,25 +171,36 @@ class SearchController {
     def nameCheck(Integer max) {
         List<Map> results = searchService.nameCheck(params, max)
         params.product = 'apni'
-        if(params.csv) {
+        if (params.csv) {
             render(file: renderCsvResults(results).bytes, contentType: 'text/csv', fileName: 'name-check.csv')
         } else {
             render(view: 'search', model: [results: results, query: params, max: max])
         }
     }
 
-    private static String renderCsvResults(List<Map> results){
+    private static String renderCsvResults(List<Map> results) {
         List<List> csvResults = []
         results.each { Map result ->
-            result.names.each { Map nameData ->
+            if (result.names.empty) {
                 csvResults.add([result.found,
                                 result.query,
-                                apcStatus(nameData.apc),
-                                nameData.name.fullName,
-                                nameData.name.nameStatus.name,
-                                nameData.name.nameType.name,
-                                (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString()
+                                '',
+                                'not found',
+                                '',
+                                '',
+                                ''
                 ])
+            } else {
+                result.names.each { Map nameData ->
+                    csvResults.add([result.found,
+                                    result.query,
+                                    apcStatus(nameData.apc),
+                                    nameData.name.fullName,
+                                    nameData.name.nameStatus.name,
+                                    nameData.name.nameType.name,
+                                    (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString()
+                    ])
+                }
             }
         }
         return CsvRenderer.renderAsCsv(['Found?', 'Search term', 'Census', 'Matched name(s)', 'Tags'], csvResults)

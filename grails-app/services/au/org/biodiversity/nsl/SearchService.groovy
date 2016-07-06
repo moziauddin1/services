@@ -326,6 +326,7 @@ select n
 from Name n
 where ((lower(simpleName) like :q) or (lower(fullName) like :q))
 and n.nameStatus.name in ('legitimate', 'nom. cons.', '[n/a]', '[default]')
+and n.nameType.name <> 'common'
 and n.instances.size > 0
 ''', [q: nameString.toLowerCase()])
                     Boolean found = (names != null && !names.empty)
