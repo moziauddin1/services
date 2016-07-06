@@ -466,13 +466,14 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
      * Search the Taxon view for an accepted name tree (currently just APC) giving an APC format data output
      * as a list of taxon records.
      * See NSL-1805
-     * @param canonicalName - the query name
+     * @param nameQuery - the query name
      * @return a Map of synonyms and accepted names that match the query
      */
-    public Map taxonSearch(String canonicalName) {
+    public Map taxonSearch(String name) {
+        String nameQuery = name.toLowerCase()
         Map results = [:]
-        String query = "select * from $TAXON_VIEW where \"canonicalName\" like ? limit 100"
-        List<Map> allResults = executeQuery(query,[canonicalName])
+        String query = "select * from $TAXON_VIEW where lower(\"canonicalName\") like ? or lower(\"scientificName\") like ? limit 100"
+        List<Map> allResults = executeQuery(query,[nameQuery, nameQuery])
         List<Map> acceptedResults = allResults.findAll { Map result ->
             result.acceptedNameUsage == null
         }
