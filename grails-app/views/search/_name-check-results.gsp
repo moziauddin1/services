@@ -12,6 +12,7 @@
         <g:form name="search" role="form" controller="search" action="nameCheck" method="POST" class="closable">
           <input type="hidden" name="name" value="${query.name}">
           <input type="hidden" name="csv" value="csv">
+          <input type="hidden" name="max" value="${max}">
           <button type="submit" name="nameCheck" value="true" class="btn btn-primary">Download CSV</button>
         </g:form>
       </div>
