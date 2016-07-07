@@ -33,21 +33,23 @@
               <g:set var="first" value="${true}"/>
               <g:each in="${result.names}" var="nameData">
                 <tr>
-                  <td>
-                    <g:if test="${first}">
+                  <g:if test="${first}">
+                    <td>
                       <b>Found</b>
                       <g:if test="${result.names.size() > 1}">
                         <span class="text-muted">${result.names.size()}</span>
                       </g:if>
-                    </g:if>
-                  </td>
-                  <td>
-                    <g:if test="${first}">
+                    </td>
+                    <td>
                       &quot;${result.query}&quot;
                       <g:if test="${result.names.size() == max}"><span
-                          class="text-info">Limited to ${max} results</span></g:if>
-                    </g:if>
-                  </td>
+                          class="text-info">Limited to ${max} results</span>
+                      </g:if>
+                    </td>
+                  </g:if>
+                  <g:else>
+                    <td colspan="2"></td>
+                  </g:else>
                   <td>
                     <g:if test="${(nameData.apc)}">
                       <a href="${g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: nameData.name.id)}">
