@@ -29,6 +29,8 @@ import static org.springframework.http.HttpStatus.*
 
 class SecurityFilters {
 
+def adminService
+
     def filters = {
 
         all(uri: "/**") {
@@ -83,6 +85,11 @@ class SecurityFilters {
 
         notApi(uri: "/**") {
             before = {
+                if (adminService.serviceMode()) {
+                    accessControl(auth: true) {
+                        return true
+                    }
+                }
                 if (controllerName && controllerName =~ /(admin)/) {
                     accessControl(auth: true) {
                         //stop access to edit and delete in the base actions for now.
