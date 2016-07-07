@@ -28,14 +28,26 @@
           <th>Matched name(s)</th>
           <th>Tags</th>
           <g:each in="${results}" var="result">
-            <tr>
-              <g:if test="${result.found}">
-                <td>
-                  <b>Found</b>
-                </td>
-                <td>&quot;${result.query}&quot;</td>
-                <td>
-                  <g:each in="${result.names}" var="nameData">
+            <g:if test="${result.found}">
+              <g:set var="first" value="${true}"/>
+              <g:each in="${result.names}" var="nameData">
+                <tr>
+                  <td>
+                    <g:if test="${first}">
+                      <b>Found</b>
+                      <g:if test="${result.names.size() > 1}">
+                        <span class="text-muted">${result.names.size()}</span>
+                      </g:if>
+                    </g:if>
+                  </td>
+                  <td>
+                    <g:if test="${first}">
+                      &quot;${result.query}&quot;
+                      <g:if test="${result.names.size() == max}"><span
+                          class="text-info">Limited to ${max} results</span></g:if>
+                    </g:if>
+                  </td>
+                  <td>
                     <g:if test="${(nameData.apc)}">
                       <a href="${g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: nameData.name.id)}">
                         <g:if test="${(nameData.apc as au.org.biodiversity.nsl.Node)?.typeUriIdPart == 'ApcConcept'}">
@@ -47,28 +59,25 @@
                       </a>
                     </g:if>
                     <g:else>&nbsp;</g:else>
-                    <br>
-                  </g:each>
-                </td>
-                <td>
-                  <g:each in="${result.names}" var="nameData">
+                  </td>
+                  <td>
                     <st:preferedLink target="${nameData.name}" api="api/apniFormat">
                       ${raw(nameData.name.fullNameHtml)}</st:preferedLink><name-status
                       class="${nameData.name.nameStatus.name}">, ${nameData.name.nameStatus.name}</name-status><name-type
                       class="${nameData.name.nameType.name}">, ${nameData.name.nameType.name}</name-type>
-                    <br>
-                  </g:each>
-                </td>
-                <td>
-                  <g:each in="${result.names}" var="nameData">
+                  </td>
+                  <td>
                     <g:each in="${nameData.name.tags}" var="tag">
                       <name-tag>${tag.tag.name}<i class="fa fa-tag"></i></name-tag>
                     </g:each>
                     <br>
-                  </g:each>
-                </td>
-              </g:if>
-              <g:else>
+                  </td>
+                </tr>
+                <g:set var="first" value="${false}"/>
+              </g:each>
+            </g:if>
+            <g:else>
+              <tr>
                 <td>
                   <b>Not Found</b>
                 </td>
@@ -76,8 +85,8 @@
                 <td>&nbsp;</td>
                 <td>not found</td>
                 <td>&nbsp;</td>
-              </g:else>
-            </tr>
+              </tr>
+            </g:else>
           </g:each>
         </table>
         <tip><i

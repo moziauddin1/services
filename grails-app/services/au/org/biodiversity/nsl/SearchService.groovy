@@ -328,7 +328,8 @@ where ((lower(simpleName) like :q) or (lower(fullName) like :q))
 and n.nameStatus.name in ('legitimate', 'nom. cons.', '[n/a]', '[default]')
 and n.nameType.name <> 'common'
 and n.instances.size > 0
-''', [q: nameString.toLowerCase()])
+order by sortName
+''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
                         Node apc = classificationService.isNameInAPC(name)
