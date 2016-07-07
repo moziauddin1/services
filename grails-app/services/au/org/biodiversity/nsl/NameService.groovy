@@ -18,7 +18,6 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import org.apache.shiro.grails.annotations.RoleRequired
-import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.quartz.Scheduler
 import org.springframework.transaction.TransactionStatus
 
@@ -27,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Transactional
 class NameService {
 
-    GrailsApplication grailsApplication
+    def configService
     def restCallService
     def classificationService
     def constructedNameService
@@ -186,7 +185,7 @@ class NameService {
         if (!reason) {
             errors << 'You need to supply a reason for deleting this name.'
         }
-        if (classificationService.isNameInAPC(name)) {
+        if (classificationService.isNameInAcceptedTree(name)) {
             errors << "This name is in APC."
         }
         if (name.instances.size() > 0) {
@@ -217,8 +216,8 @@ class NameService {
     void removeNameFromApni(Name name) {
         //replace the name with an end Node.
         Arrangement apni = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace),
-                grailsApplication.config.shard.classification.nameTree as String)
+                configService.nameSpace,
+                configService.nameTreeName)
         if (Node.countByNameAndRoot(name, apni)) { //only remove if it's in there, e.g. not a common name
             treeOperationsService.deleteNslName(apni, name, null)
             name.refresh() //reload the name because ... tree services
@@ -261,11 +260,11 @@ class NameService {
     }
 
     private Node updateAPNITree(Name name) {
-        Node node = classificationService.isNameInAPNI(name)
+        Node node = classificationService.isNameInNameTree(name)
 
         Link parentLink = null
         if (name.parent) {
-            Node parentNode = classificationService.isNameInAPNI(name.parent)
+            Node parentNode = classificationService.isNameInNameTree(name.parent)
             if (!parentNode) {
                 updateAPNITree(name.parent)
             }
@@ -282,9 +281,9 @@ class NameService {
                     s.flush()
                     s.clear()
                 }
-                node = classificationService.placeNameInAPNI(name.parent, name)
+                node = classificationService.placeNameInNameTree(name.parent, name)
                 name = Name.get(name.id)
-                node = classificationService.isNameInAPNI(name)
+                node = classificationService.isNameInNameTree(name)
             } catch (e) {
                 // a service exception means that the user asked for something that
                 // is inconsistent with the current state of the tree
@@ -301,18 +300,6 @@ class NameService {
         name.simpleName = constructedNameService.stripMarkUp(fullNameMap.simpleMarkedUpName)
         name.fullName = constructedNameService.stripMarkUp(fullNameMap.fullMarkedUpName)
         name.save()
-    }
-
-    /**
-     * Add a new nameTreePath if one doesn't exist. The tree used is the nodes tree
-     * @param name
-     */
-    private NameTreePath addNameTreePath(Name name, Node node) {
-        NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, node.root)
-        if (!nameTreePath) {
-            nameTreePath = nameTreePathService.addNameTreePath(name, node)
-        }
-        return nameTreePath
     }
 
     private AtomicBoolean paused = new AtomicBoolean(false)

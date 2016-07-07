@@ -25,7 +25,8 @@
       <ul>
         <li>The Name Check checks a list of scientific names for correct spelling and currency i.e. whether the taxon is
         accepted by the Australian Plant Census.</li>
-        <li>It checks only for valid and legitimate names with the correct orthography. You can use names with or without author.</li>
+        <li>It checks only for valid and legitimate scientific, phrase and cultivar names with the correct orthography.
+        You can use names with or without author.</li>
         <li>The names must be an exact match, including an 'x' in hybrid names.</li>
         <li>You can use a wild card but it may not find the match you are looking for. Wildcards might help for abbreviations like "subsp." e.g. s% </li>
         <li>Duplicated names and blanks will be removed from your input.</li>

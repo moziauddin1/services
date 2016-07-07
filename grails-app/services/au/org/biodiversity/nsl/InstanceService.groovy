@@ -142,9 +142,12 @@ class InstanceService {
 
     public List<Instance> sortInstances(List<Instance> instances) {
         instances.sort { a, b ->
+            //NSL-1827 use parent details on references where appropriate
+            Integer aRefYear = ReferenceService.findReferenceYear(a.cites?.reference)
+            Integer bRefYear = ReferenceService.findReferenceYear(b.cites?.reference)
             if (a.citedBy == b.citedBy) {
                 if (a.instanceType.sortOrder == b.instanceType.sortOrder) {
-                    if (a.cites?.reference?.year == b.cites?.reference?.year) {
+                    if (aRefYear == bRefYear) {
                         if (a.reference == b.reference) {
                             if (a.page == b.page) {
                                 return b.id <=> a.id
@@ -153,7 +156,7 @@ class InstanceService {
                         }
                         return a.reference.citation <=> b.reference.citation
                     }
-                    return (a.cites?.reference?.year) <=> (b.cites?.reference?.year)
+                    return (aRefYear) <=> (bRefYear)
                 }
                 return a.instanceType.sortOrder <=> b.instanceType.sortOrder
             }

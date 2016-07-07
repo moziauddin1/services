@@ -4,19 +4,19 @@ import au.org.biodiversity.nsl.Name
 
 class RefreshViewsJob {
 
+    def configService
     def flatViewService
-    def grailsApplication
 
     static triggers = {
         //update at 7AM every day
-        cron name: 'update views', cronExpression: '0 0 7 * * ?'
+        cron name: 'updateViews', startDelay: 10000, cronExpression: '0 0 7 * * ?'
     }
 
     def execute() {
         Name.withTransaction {
-            String namespace = grailsApplication.config.shard.classification.namespace.toLowerCase()
-            flatViewService.refreshNameView(namespace)
-            flatViewService.refreshTaxonView(namespace)
+            String namespaceName = configService.nameSpace.name.toLowerCase()
+            flatViewService.refreshNameView(namespaceName)
+            flatViewService.refreshTaxonView(namespaceName)
         }
     }
 }

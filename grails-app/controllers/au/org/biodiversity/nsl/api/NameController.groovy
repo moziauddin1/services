@@ -404,6 +404,7 @@ order by n.simpleName asc''',
     }
 
 
+    //see NSL-1805
     @Timed
     def taxonSearch() {
         def json = request.JSON
@@ -411,12 +412,10 @@ order by n.simpleName asc''',
         if (json) {
             searchParams = new LinkedHashMap(json as Map)
         }
-        searchParams.incMap = searchService.checked(searchParams, 'inc')
-        searchParams.max = (searchParams.max ?: 100) as Integer
-        Map results = searchService.searchForName(searchParams, searchParams.max)
-        List<Map> taxonRecords = flatViewService.getTaxonRecordFromNames(results.names)
 
-        ResultObject result = new ResultObject([total: results.total, count: results.count, records: taxonRecords])
+        Map taxonRecords = flatViewService.taxonSearch(searchParams.q)
+
+        ResultObject result = new ResultObject([records: taxonRecords])
         //noinspection GroovyAssignabilityCheck
         respond(result, [view: '/common/serviceResult', model: [data: result], status: OK])
     }

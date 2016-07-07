@@ -201,7 +201,7 @@ class LinkService {
     Map getMapperIdentityForLink(String uri) {
         try {
 
-            String url = "${mapper(false)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
+            String url = "${mapper(true)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
             log.debug(url)
             JSONArray data = restCallService.get(url) as JSONArray
             if (data.size() != 1) {

@@ -76,15 +76,17 @@ class NameTreePathServiceSpec extends Specification {
         Event event = new Event(authUser: 'tester', timeStamp: new Timestamp(System.currentTimeMillis()))
         event.save()
 
-        Name a = makeName('a', 'Familia', null).save()
-        Name b = makeName('b', 'Genus', a).save()
-        Name c = makeName('c', 'Genus', a).save()
+        Name famA = makeName('famA', 'Familia', null).save()
+        Name famB = makeName('famB', 'Familia', null).save()
+        Name b = makeName('b', 'Genus', famA).save()
+        Name c = makeName('c', 'Genus', famA).save()
         Name d = makeName('d', 'Species', b).save()
         Name e = makeName('e', 'Species', b).save()
         Name f = makeName('f', 'Species', c).save()
         Name g = makeName('g', 'Species', c).save()
 
-        Node na = makeNode(a).save()
+        Node nfamA = makeNode(famA).save()
+        Node nfamB = makeNode(famB).save()
         Node nb = makeNode(b).save()
         Node nc = makeNode(c).save()
         Node nd = makeNode(d).save()
@@ -92,15 +94,26 @@ class NameTreePathServiceSpec extends Specification {
         Node nf = makeNode(f).save()
         Node ng = makeNode(g).save()
 
-        NameTreePath rootTreePath = new NameTreePath(
-                id: na.id,
-                tree: na.root,
-                name: a,
-                nameIdPath: "0.${a.id}",
-                namePath: a.nameElement,
-                rankPath: 'Familia:a',
+        NameTreePath famATreePath = new NameTreePath(
+                id: nfamA.id,
+                tree: nfamA.root,
+                name: famA,
+                nameIdPath: "0.${famA.id}",
+                namePath: famA.nameElement,
+                rankPath: 'Familia:famA',
                 inserted: System.currentTimeMillis()
         ).save()
+
+        NameTreePath famBTreePath = new NameTreePath(
+                id: nfamB.id,
+                tree: nfamB.root,
+                name: famB,
+                nameIdPath: "0.${famB.id}",
+                namePath: famB.nameElement,
+                rankPath: 'Familia:famB',
+                inserted: System.currentTimeMillis()
+        ).save()
+
 
         NameTreePath ntpb = service.addNameTreePath(b, nb)
         NameTreePath ntpc = service.addNameTreePath(c, nc)
@@ -111,12 +124,12 @@ class NameTreePathServiceSpec extends Specification {
 
         List<NameTreePath> childSearch = NameTreePath.findAll()
         println childSearch
-        List<NameTreePath> children = service.currentChildren(rootTreePath)
+        List<NameTreePath> children = service.currentChildren(famATreePath)
 
         then:
-        Name.count() == 7
-        Node.count() == 7
-        NameTreePath.count() == 7
+        Name.count() == 8
+        Node.count() == 8
+        NameTreePath.count() == 8
         children.size() == 6 // all except root
         //ordered by number of path elements
         (children[0] in [ntpb, ntpc])
@@ -133,22 +146,22 @@ class NameTreePathServiceSpec extends Specification {
         then:
         ntpc
         ntpc.name == c
-        ntpc.nameIdPath == '0.1.3'
-        ntpc.rankPath == 'Familia:a>Genus:c'
-        ntpc.namePath == 'ac'
+        ntpc.nameIdPath == '0.1.4'
+        ntpc.rankPath == 'Familia:famA>Genus:c'
+        ntpc.namePath == 'famA.c'
         ntpc.parent
-        ntpc.parent.name == a
+        ntpc.parent.name == famA
         ntpd.name == d
-        ntpd.nameIdPath == '0.1.2.4'
-        ntpd.rankPath == 'Familia:a>Genus:b>Species:d'
-        ntpd.namePath == 'abd'
+        ntpd.nameIdPath == '0.1.3.5'
+        ntpd.rankPath == 'Familia:famA>Genus:b>Species:d'
+        ntpd.namePath == 'famA.b.d'
         ntpe.name == e
-        ntpe.nameIdPath == '0.1.2.5'
-        ntpe.rankPath == 'Familia:a>Genus:b>Species:e'
-        ntpe.namePath =='abe'
+        ntpe.nameIdPath == '0.1.3.6'
+        ntpe.rankPath == 'Familia:famA>Genus:b>Species:e'
+        ntpe.namePath =='famA.b.e'
 
-        when: "we move name b under c"   //this wouldn't happen since both are genus, but...
-        b.parent = c
+        when: "we move name b under famB"
+        b.parent = famB
         Node nb2 = makeNode(b).save()
         nb.next = nb2 //don't really need this
         service.updateNameTreePathFromNode(nb2, ntpb)
@@ -161,39 +174,39 @@ class NameTreePathServiceSpec extends Specification {
 
         then:
         ntpc.next == null
-        ntpc.parent == rootTreePath
+        ntpc.parent == famATreePath
 
         //Name Tree Paths are now just updated
         ntpb.next == null  //Note next is not currently updated or used
         ntpb.name == b
-        ntpb.nameIdPath == '0.1.3.2'     // name ids
-        ntpb.parent == ntpc
-        ntpb.rankPath == 'Familia:a>Genus:c>Genus:b'
-        ntpb.namePath == 'ab' //this is correct because its for this name
+        ntpb.nameIdPath == '0.2.3'     // name ids
+        ntpb.parent == famBTreePath
+        ntpb.rankPath == 'Familia:famB>Genus:b'
+        ntpb.namePath == 'famA.b' //this is correct because its for this name
 
         ntpd.next == null  //Note next is not currently updated or used
         ntpd.name == d
         ntpd.parent == ntpb
-        ntpd.nameIdPath == '0.1.3.2.4'   //name ids
-        ntpd.rankPath == 'Familia:a>Genus:c>Genus:b>Species:d'
-        ntpd.namePath == 'acd' //this uses the first genus as expected, though this is not a good case.
+        ntpd.nameIdPath == '0.2.3.5'   //name ids
+        ntpd.rankPath == 'Familia:famB>Genus:b>Species:d'
+        ntpd.namePath == 'famA.b.d' //this uses the first genus as expected, though this is not a good case.
 
         ntpe.next == null  //Note next is not currently updated or used
         ntpe.name == e
         ntpe.parent == ntpb
-        ntpe.nameIdPath == '0.1.3.2.5'   //name ids
-        ntpe.rankPath == 'Familia:a>Genus:c>Genus:b>Species:e'
-        ntpe.namePath == 'ace'
+        ntpe.nameIdPath == '0.2.3.6'   //name ids
+        ntpe.rankPath == 'Familia:famB>Genus:b>Species:e'
+        ntpe.namePath == 'famA.b.e'
 
         ntpf.next == null
-        ntpf.nameIdPath == '0.1.3.6'
-        ntpf.rankPath == 'Familia:a>Genus:c>Species:f'
-        ntpf.namePath == 'acf'
+        ntpf.nameIdPath == '0.1.4.7'
+        ntpf.rankPath == 'Familia:famA>Genus:c>Species:f'
+        ntpf.namePath == 'famA.c.f'
 
         ntpg.next == null
-        ntpg.nameIdPath == '0.1.3.7'
-        ntpg.rankPath == 'Familia:a>Genus:c>Species:g'
-        ntpg.namePath == 'acg'
+        ntpg.nameIdPath == '0.1.4.8'
+        ntpg.rankPath == 'Familia:famA>Genus:c>Species:g'
+        ntpg.namePath == 'famA.c.g'
 
 
         service.findCurrentNameTreePath(d, tree) == ntpd

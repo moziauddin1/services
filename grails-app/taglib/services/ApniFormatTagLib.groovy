@@ -27,6 +27,7 @@ class ApniFormatTagLib {
     def nameTreePathService
     def instanceService
     LinkService linkService
+    def configService
 
 //    static defaultEncodeAs = 'html'
     static encodeAsForTags = [tagName: 'raw']
@@ -133,7 +134,8 @@ class ApniFormatTagLib {
 
     def branch = { attrs, body ->
         Name name = attrs.name
-        NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, attrs.tree as String)
+        String treeName = attrs.tree ?: configService.classificationTreeName
+        NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, treeName as String)
         if (nameTreePath) {
             out << '<branch title="click to see branch.">'
             out << body()
@@ -143,7 +145,6 @@ class ApniFormatTagLib {
             out << '<ul>'
             nodesInBranch.each { Node n ->
                 String link = linkService.getPreferredLinkForObject(n)
-                //todo put the above back in when issues with links and display are solved, see NSL-1413
                 if (link) {
                     out << "<li><a href='${link}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
                 } else {

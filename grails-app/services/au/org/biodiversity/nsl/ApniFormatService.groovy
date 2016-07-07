@@ -21,29 +21,21 @@ import grails.transaction.Transactional
 @Transactional
 class ApniFormatService {
 
+    def configService
     def classificationService
     def linkService
 
     Map getNameModel(Name name) {
-        Name familyName = RankUtils.getParentOfRank(name, 'Familia')
-        Node apc = classificationService.isNameInAPC(name)
+        String acceptedTree = configService.getClassificationTreeName()
+        String nameTree = configService.getNameTreeName()
+
+        Map<String, Name> familyByTree = RankUtils.getFamilyByTrees(name)
+        Name familyName = familyByTree[nameTree]
+        Node apc = classificationService.isNameInClassification(name, configService.getNameSpace(), acceptedTree)
         String link = linkService.getPreferredLinkForObject(name)
-        Map model = [name: name, apc: apc, familyName: familyName, preferredNameLink: link]
+        Map model = [name: name, apc: apc, familyName: familyName, preferredNameLink: link, familyByTree: familyByTree]
         model.putAll(nameReferenceInstanceMap(name) as Map)
         return model
-    }
-
-    List<Instance> sortInstances(Name name) {
-        name?.instances?.sort { a, b ->
-            Integer yearA = a.reference.year ?: 4000
-            Integer yearB = b.reference.year ?: 4000
-            if (yearA == yearB) {
-                a.reference.citation <=> b.reference.citation
-            } else {
-                yearA <=> yearB
-            }
-        }
-
     }
 
     Map nameReferenceInstanceMap(Name name) {
@@ -56,7 +48,10 @@ class ApniFormatService {
             //NSL-1119 primary references must come next
             Integer aPrimary = refGroups[a].find { Instance i -> i.instanceType.primaryInstance } ? 1 : 0
             Integer bPrimary = refGroups[b].find { Instance i -> i.instanceType.primaryInstance } ? 1 : 0
-            if (a.year == b.year) {
+            //NSL-1827 use parent details for sorting
+            Integer aYear = ReferenceService.findReferenceYear(a)
+            Integer bYear = ReferenceService.findReferenceYear(b)
+            if ( aYear == bYear) {
                 if (aProto == bProto) {
                     if (aPrimary == bPrimary) {
                         if (a == b) {
@@ -71,7 +66,7 @@ class ApniFormatService {
                 }
                 return bProto <=> aProto // proto reference first (1)
             }
-            return (a.year) <=> (b.year) //lowest year first
+            return (aYear) <=> (bYear) //lowest year first
         }
         return [references: references, instancesByRef: refGroups]
     }

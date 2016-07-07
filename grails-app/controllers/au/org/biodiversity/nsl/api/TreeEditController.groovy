@@ -27,7 +27,7 @@ import static au.org.biodiversity.nsl.tree.DomainUtils.*
 
 @Transactional
 class TreeEditController {
-    GrailsApplication grailsApplication
+    def configService
     AsRdfRenderableService asRdfRenderableService
     TreeViewService treeViewService
     TreeOperationsService treeOperationsService
@@ -57,8 +57,8 @@ class TreeEditController {
         }
 
         Arrangement apc = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName((grailsApplication.config.shard.classification.namespace as String)),
-                grailsApplication.config.shard.classification.classificationTree as String)
+                configService.nameSpace,
+                configService.classificationTreeName)
 
         Uri nodeTypeUri
         Uri linkTypeUri
@@ -139,8 +139,8 @@ class TreeEditController {
         }
 
         Arrangement apc = Arrangement.findByNamespaceAndLabel(
-                Namespace.findByName(grailsApplication.config.shard.classification.namespace as String),
-                grailsApplication.config.shard.classification.classificationTree as String)
+                configService.nameSpace,
+                configService.classificationTreeName)
 
         try {
             log.debug "perform remove"
