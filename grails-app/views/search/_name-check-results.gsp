@@ -92,9 +92,6 @@
             </g:else>
           </g:each>
         </table>
-        <tip><i
-            class="fa fa-info"></i> You can copy and paste the above table into a Spreadsheet like Libreoffice Calc or MS Office Excel.
-        </tip>
       </g:if>
     </div>
   </div>
