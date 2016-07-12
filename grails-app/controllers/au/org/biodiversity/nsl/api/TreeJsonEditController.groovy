@@ -50,7 +50,7 @@ class TreeJsonEditController {
     def createWorkspace(CreateWorkspaceParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             String title = param.title ?: "${SecurityUtils.subject.principal} ${new Date()}"
             Namespace ns = Namespace.findByName(param.namespace)
@@ -113,7 +113,7 @@ class TreeJsonEditController {
     def deleteWorkspace(DeleteWorkspaceParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             Object o = linkService.getObjectForLink(param.uri)
             if (o == null) {
@@ -165,7 +165,7 @@ class TreeJsonEditController {
     def updateWorkspace(UpdateWorkspaceParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             Object o = linkService.getObjectForLink(param.uri)
             if (o == null) {
@@ -219,7 +219,7 @@ class TreeJsonEditController {
 
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             Arrangement ws = (Arrangement) linkService.getObjectForLink(param.wsUri as String)
             Node focus = (Node) linkService.getObjectForLink(param.focus as String)
@@ -281,7 +281,7 @@ class TreeJsonEditController {
     def dropUrisOntoNode(DropUrisOntoNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             response.status = 200; // default
 
@@ -376,6 +376,16 @@ class TreeJsonEditController {
                         return render(result as JSON)
                     }
                 }
+                if((o as Instance).citedBy) {
+                    if (!o) {
+                        def result = [
+                                success: false,
+                                msg    : [msg: 'Not standalone', body: "${param.uris.get(0)} does not appear to be a standalone instance", status: 'danger'],
+                        ];
+
+                        return render(result as JSON)
+                    }
+                }
 
                 return render(dropInstanceOntoNode(ws, focus, target, o as Instance, param) as JSON)
             } else if (o instanceof Reference) {
@@ -395,126 +405,11 @@ class TreeJsonEditController {
         }
     }
 
-    static enum DropNameOntoNodeEnum {
-        AddNewSubnode, ChangeNodeName(true);
-
-        final boolean needsWarning;
-
-        DropNameOntoNodeEnum() { needsWarning = false; }
-
-        DropNameOntoNodeEnum(boolean w) { needsWarning = w; }
-    }
-
     private def dropNameOntoNode(Arrangement ws, Node focus, Node target, Name name, DropUrisOntoNodeParam param) {
-        if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
-            return [
-                    success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
-            ]
-        }
-
-        // WORK OUT WHAT THINGS MIGHT BE BEING DONE
-
-        Set<DropNameOntoNodeEnum> possibleActions = new HashSet<DropNameOntoNodeEnum>(EnumSet.allOf(DropNameOntoNodeEnum));
-
-        if (target.root.node == target) {
-            possibleActions.remove(DropNameOntoNodeEnum.ChangeNodeName);
-        }
-
-        if (possibleActions.isEmpty()) {
-            return [
-                    success: false,
-                    msg    : [msg: "Cannot drop", body: "${name.fullName} cannot be placed here", status: 'danger']
-            ]
-        }
-
-        // HANDLE what the user has requested be done
-
-        final DropNameOntoNodeEnum paramAction = null;
-
-        if (param.dropAction) {
-            try {
-                paramAction = DropNameOntoNodeEnum.valueOf(param.dropAction);
-            }
-            catch (IllegalArgumentException ex) {
-                // what a pain! You can ask an enum if it knows about a value, you have to catch the illegal argument exception.
-                return [
-                        success: false,
-                        msg    : [msg: "Unrecognised action", body: "${param.dropAction} not recognised. Recognised actions are ${EnumSet.allOf(DropNameOntoNodeEnum)}.", status: 'danger']
-                ]
-
-            }
-        } else paramAction = null;
-
-        if (paramAction && !possibleActions.contains(paramAction)) {
-            return [
-                    success: false,
-                    msg    : [msg: paramAction, body: "cannot perform this action", status: 'danger']
-            ]
-        }
-
-        // if what the user wants is ok, or there is only one thing that can be done and it doesn't need a warning,
-        // do that.
-
-        if (paramAction || (possibleActions.size() == 1 && !possibleActions.first().needsWarning)) {
-            DropNameOntoNodeEnum action = paramAction ?: possibleActions.first();
-
-            def result
-            switch (action) {
-                case DropNameOntoNodeEnum.ChangeNodeName:
-                    result = userWorkspaceManagerService.changeNodeName(ws, target, name);
-                    break;
-                case DropNameOntoNodeEnum.AddNewSubnode:
-                    result = userWorkspaceManagerService.addNodeSubname(ws, target, name);
-                    break;
-                default:
-                    throw new IllegalStateException("No operation for ${action}")
-            }
-
-            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
-
-            return [
-                    success  : true,
-                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
-                    refetch  : result.modified.collect { Node it ->
-                        queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
-                    }
-            ]
-        } else {
-
-            // an array, so that they are displayed in the order that I specify them here.
-            def options = [];
-
-            if (possibleActions.contains(DropNameOntoNodeEnum.ChangeNodeName)) {
-                options << [msg         : 'Change',
-                            body        : "Change the name at this placement to ${name.fullName}",
-                            whenSelected: DropNameOntoNodeEnum.ChangeNodeName.name()
-                ]
-            }
-
-            if (possibleActions.contains(DropNameOntoNodeEnum.AddNewSubnode)) {
-                options << [msg         : 'Place',
-                            body        : "Place ${name.fullName} under ${target.name?.fullName}",
-                            whenSelected: DropNameOntoNodeEnum.AddNewSubnode.name()
-                ]
-            }
-
-            log.debug(options as JSON)
-
-            return [
-                    success       : false,
-                    moreInfoNeeded: [
-                            [
-                                    name    : 'dropAction',
-                                    msg     : [
-                                            msg: possibleActions.size() == 1 ? 'Confirm' : 'Multiple options'
-                                    ],
-                                    options : options,
-                                    selected: null
-                            ]
-                    ]
-            ]
-        }
+        return [
+                success: false,
+                msg    : [msg: 'Not supported', body: "Names cannot be dropped onto trees - an instance must be specified", status: 'warning']
+        ]
     }
 
     static enum DropInstanceOntoNodeEnum {
@@ -554,7 +449,7 @@ class TreeJsonEditController {
 
         // HANDLE what the user has requested be done
 
-        final DropInstanceOntoNodeEnum paramAction = null;
+        final DropInstanceOntoNodeEnum paramAction;
 
         if (param.dropAction) {
             try {
@@ -645,7 +540,7 @@ class TreeJsonEditController {
         return [
                 success: false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg    : [msg: 'TODO!', body: "implement dropReferenceOntoNode", status: 'info'],
+                msg    : [msg: 'Not supported!', body: "References cannot be dropped onto trees", status: 'warning'],
         ]
     }
 
@@ -711,7 +606,7 @@ class TreeJsonEditController {
     def revertNode(RevertNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
             Arrangement ws = wsNode.root
@@ -840,7 +735,7 @@ class TreeJsonEditController {
 
             return render([
                     success  : true,
-                    focusPath: target == focus ? queryService.findPath(ws.node, curr).collect { Node it -> linkService.getPreferredLinkForObject(it) } : null,
+                    focusPath: target == focus ? queryService.findPath(ws.node, curr).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) } : null,
                     refetch  : [
                             [linkService.getPreferredLinkForObject(parentLink.supernode)]
                     ]
@@ -851,7 +746,7 @@ class TreeJsonEditController {
     def removeNode(RemoveNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
             Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
             Arrangement ws = wsNode.root
             Node focus = (Node) linkService.getObjectForLink(param.focus as String)
@@ -916,8 +811,8 @@ class TreeJsonEditController {
 
             Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
 
-            def focusPath = queryService.findPath(ws.node, newFocus).collect { Node it ->
-                linkService.getPreferredLinkForObject(it)
+            def focusPath = queryService.findPath(ws.node, newFocus).collect { Node it2 ->
+                linkService.getPreferredLinkForObject(it2)
             }
             def targetPath = queryService.findPath(newFocus, newCheckout).collect { Node it2 ->
                 linkService.getPreferredLinkForObject(it2)
@@ -934,7 +829,7 @@ class TreeJsonEditController {
     def setNodeType(SetNodeTypeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
             Arrangement ws = wsNode.root
@@ -988,9 +883,9 @@ class TreeJsonEditController {
 
             return render([
                     success  : true,
-                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
-                    refetch  : result.modified.collect { Node it ->
-                        queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it1 -> linkService.getPreferredLinkForObject(it1) },
+                    refetch  : result.modified.collect { Node it1 ->
+                        queryService.findPath(newFocus, it1).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
                     }
             ] as JSON)
         }
@@ -999,7 +894,7 @@ class TreeJsonEditController {
     def verifyCheckin(CheckinNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             Node node = (Node) linkService.getObjectForLink(param.uri as String)
 
@@ -1032,7 +927,7 @@ class TreeJsonEditController {
     def performCheckin(CheckinNodeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
-        handleException {
+        handleException { handleExceptionIgnore ->
 
             Node node = (Node) linkService.getObjectForLink(param.uri as String)
 
@@ -1054,8 +949,8 @@ class TreeJsonEditController {
 
     private renderValidationErrors(param) {
         def msg = [];
-        msg += param.errors.globalErrors.collect { Error it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
-        msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+        msg += param.errors.globalErrors.collect { it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (Locale)null)] }
+        msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, (Locale)null)] }
         response.status = 400
         return render([
                 success: false,
@@ -1063,9 +958,9 @@ class TreeJsonEditController {
         ] as JSON)
     }
 
-    private JSON handleException(Closure doIt) {
+    private handleException(Closure doIt) {
         try {
-            return doIt() as JSON;
+            return doIt();
         }
         catch (ServiceException ex) {
             doIt.delegate.response.status = 400
