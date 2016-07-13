@@ -432,106 +432,57 @@ class TreeJsonEditController {
             ]
         }
 
-        // WORK OUT WHAT THINGS MIGHT BE BEING DONE
+        def result
 
-        Set<DropInstanceOntoNodeEnum> possibleActions = new HashSet<DropInstanceOntoNodeEnum>(EnumSet.allOf(DropInstanceOntoNodeEnum));
-
-        if (target.root.node == target) {
-            possibleActions.remove(DropInstanceOntoNodeEnum.ChangeNodeInstance);
+        if(target == target.root.node) {
+            result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
         }
-
-        if (possibleActions.isEmpty()) {
-            return [
-                    success: false,
-                    msg    : [msg: "Cannot drop", body: "${instance.name.fullName} cannot be placed here", status: 'danger']
-            ]
-        }
-
-        // HANDLE what the user has requested be done
-
-        final DropInstanceOntoNodeEnum paramAction;
-
-        if (param.dropAction) {
-            try {
-                paramAction = DropInstanceOntoNodeEnum.valueOf(param.dropAction);
+        else {
+            if(target.name == instance.name) {
+                result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
             }
-            catch (IllegalArgumentException ex) {
-                // what a pain! You can ask an enum if it knows about a value, you have to catch the illegal argument exception.
-                return [
-                        success: false,
-                        msg    : [msg: "Unrecognised action", body: "${param.dropAction} not recognised. Recognised actions are ${EnumSet.allOf(DropInstanceOntoNodeEnum)}.", status: 'danger']
-                ]
-
-            }
-        } else paramAction = null;
-
-        if (paramAction && !possibleActions.contains(paramAction)) {
-            return [
-                    success: false,
-                    msg    : [msg: paramAction, body: "cannot perform this action", status: 'danger']
-            ]
-        }
-
-        // if what the user wants is ok, or there is only one thing that can be done and it doesn't need a warning,
-        // do that.
-
-        if (paramAction || (possibleActions.size() == 1 && !possibleActions.first().needsWarning)) {
-            DropInstanceOntoNodeEnum action = paramAction ?: possibleActions.first();
-
-            def result
-            switch (action) {
-                case DropInstanceOntoNodeEnum.ChangeNodeInstance:
-                    result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
-                    break;
-                case DropInstanceOntoNodeEnum.AddNewSubnode:
-                    result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
-                    break;
-                default:
-                    throw new IllegalStateException("No operation for ${action}")
-            }
-
-            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
-
-            return [
-                    success  : true,
-                    focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
-                    refetch  : result.modified.collect { Node it ->
-                        queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
-                    }
-            ]
-        } else {
-            // an array, so that they are displayed in the order that I specify them here.
-            def options = [];
-
-            if (possibleActions.contains(DropInstanceOntoNodeEnum.ChangeNodeInstance)) {
-                options << [msg         : 'Change',
-                            body        : instance.name == target.name ?
-                                    "Change the reference at this placement to ${instance.reference.citation}" :
-                                    "Change the instance at this placement to ${instance.name.simpleName} s. ${instance.reference.citation}",
-                            whenSelected: DropInstanceOntoNodeEnum.ChangeNodeInstance.name()
-                ]
-            }
-
-            if (possibleActions.contains(DropInstanceOntoNodeEnum.AddNewSubnode)) {
-                options << [msg         : 'Place',
-                            body        : "Place ${instance.name.simpleName} s. ${instance.reference.citation} under ${target.name?.fullName}",
-                            whenSelected: DropInstanceOntoNodeEnum.AddNewSubnode.name()
-                ]
-            }
-
-            return [
-                    success       : false,
-                    moreInfoNeeded: [
-                            [
-                                    name    : 'dropAction',
-                                    msg     : [
-                                            msg: possibleActions.size() == 1 ? 'Confirm' : 'Multiple options'
-                                    ],
-                                    options : options,
-                                    selected: null
-                            ]
+            else {
+                if(target.name.nameRank.sortOrder >= instance.name.nameRank.sortOrder) {
+                    return [
+                            success: false,
+                            msg    : [msg: 'Higher name rank', body: "A name of rank ${instance.name.nameRank.name} cannot be placed under a name of rank ${target.name.nameRank.name}", status: 'warning']
                     ]
-            ]
+                }
+
+
+                // the name rank of genus is 120
+                if(incompatibleNames(target.name, instance.name)) {
+                    return [
+                            success: false,
+                            msg    : [msg: 'incompatible names', body: "${instance.name.simpleName} cannot be placed under ${target.name.simpleName}", status: 'warning']
+                    ]
+                }
+
+                instance.name.parent
+
+                result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
+            }
+        }
+
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+
+        return [
+                success  : true,
+                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
+                refetch  : result.modified.collect { Node it ->
+                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
+                }
+        ]
+
+    }
+
+    private boolean incompatibleNames(Name a, Name b) {
+        for(;;) {
+            // genus has a sort order of 120
+            if(!a || !b ||  a.nameRank.sortOrder < 120|| b.nameRank.sortOrder < 120) return false;
+            if(a.nameRank.sortOrder == b.nameRank.sortOrder) return a != b;
+            if(a.nameRank.sortOrder > b.nameRank.sortOrder) a = a.parent;
+            else b = b.parent;
         }
     }
 
