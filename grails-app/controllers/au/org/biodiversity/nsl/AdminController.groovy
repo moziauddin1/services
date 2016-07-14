@@ -20,7 +20,6 @@ import au.org.biodiversity.nsl.api.ResultObject
 import grails.transaction.Transactional
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
-import org.codehaus.groovy.grails.commons.GrailsApplication
 
 import static org.springframework.http.HttpStatus.OK
 
@@ -35,6 +34,7 @@ class AdminController {
     def instanceService
     def authorService
     def configService
+    def adminService
 
     @RequiresRoles('admin') 
     def index() {
@@ -46,8 +46,9 @@ class AdminController {
         stats.namesNotInApniTreePath = nameTreePathService.treePathReport(configService.nameTreeName)
         stats.namesNotInApcTreePath = nameTreePathService.treePathReport(configService.classificationTreeName)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
+        Boolean servicing = adminService.serviceMode()
         //todo iterate trees add back stats if they don't interrupt ops.
-        [pollingNames: nameService.pollingStatus(), stats: stats]
+        [pollingNames: nameService.pollingStatus(), stats: stats, servicing: servicing]
     }
 
     @RequiresRoles('admin') 
@@ -180,6 +181,18 @@ class AdminController {
         ResultObject results = new ResultObject(referenceService.deduplicateMarked(user))
         //noinspection GroovyAssignabilityCheck
         respond(results, [status: OK, view: '/common/serviceResult', model: [data: results,]])
+    }
+
+    @RequiresRoles('admin')
+    def setAdminModeOn() {
+        adminService.enableServiceMode(true)
+        redirect(action: 'index')
+    }
+
+    @RequiresRoles('admin')
+    def setAdminModeOff() {
+        adminService.enableServiceMode(false)
+        redirect(action: 'index')
     }
 
     private static List<String> logSummary(Integer lineLength) {

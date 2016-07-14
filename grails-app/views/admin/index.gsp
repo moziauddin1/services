@@ -20,6 +20,26 @@
 
   <h1>Admin dashboard</h1>
 
+  <g:if test="${servicing}">
+    <h2>Servicing Mode On.</h2>
+  </g:if>
+
+  <ul>
+    <li>
+      <a class=""
+         href="${g.createLink(controller: "admin", action: "setAdminModeOn")}">
+        Turn on servicing
+      </a>
+    </li>
+    <li>
+      <a class=""
+         href="${g.createLink(controller: "admin", action: "setAdminModeOff")}">
+        Turn off servicing
+      </a>
+    </li>
+  </ul>
+
+
   <div role="tabpanel">
     <ul class="nav nav-tabs" role="tablist">
       <li role="presentation" class="active">
@@ -93,10 +113,10 @@
               <li>
                 Deleted names:
                 <ul>
-                <g:each in="${stats.deletedNames}" var="name">
-                  <li>${name}</li>
-                </g:each>
-              </ul>
+                  <g:each in="${stats.deletedNames}" var="name">
+                    <li>${name}</li>
+                  </g:each>
+                </ul>
               </li>
             </ul>
           </div>

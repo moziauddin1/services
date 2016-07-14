@@ -23,7 +23,7 @@
     <div>
       <h2>Hints</h2>
       <ul>
-        <li>The Name Check checks a list of scientific names for correct spelling and currency i.e. whether the taxon is
+        <li>The Name Check facility checks a list of names for correct spelling and currency i.e. whether the taxon is
         accepted by the Australian Plant Census.</li>
         <li>It checks only for valid and legitimate scientific, phrase and cultivar names with the correct orthography.
         You can use names with or without author.</li>
