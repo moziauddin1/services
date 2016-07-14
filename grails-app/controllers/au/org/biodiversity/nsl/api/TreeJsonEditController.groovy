@@ -41,6 +41,14 @@ class TreeJsonEditController {
     JsonRendererService jsonRendererService
     QueryService queryService
 
+    def getObjectForLink(String uri) {
+        if(uri.contains('/api/')) {
+            uri = uri.substring(0, uri.indexOf('/api/'))
+        }
+
+        return linkService.getObjectForLink(uri)
+    }
+
     def test() {
         def msg = [msg: 'TreeJsonEditController']
         render msg as JSON
@@ -71,7 +79,7 @@ class TreeJsonEditController {
             Node checkout = null;
 
             if (param.checkout) {
-                Object o = linkService.getObjectForLink(param.checkout)
+                Object o = getObjectForLink(param.checkout)
                 if (o == null) {
                     def result = [
                             success: false,
@@ -115,7 +123,7 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            Object o = linkService.getObjectForLink(param.uri)
+            Object o = getObjectForLink(param.uri)
             if (o == null) {
                 def result = [
                         success: false,
@@ -167,7 +175,7 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            Object o = linkService.getObjectForLink(param.uri)
+            Object o = getObjectForLink(param.uri)
             if (o == null) {
                 def result = [
                         success: false,
@@ -221,8 +229,8 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            Arrangement ws = (Arrangement) linkService.getObjectForLink(param.wsUri as String)
-            Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+            Arrangement ws = (Arrangement) getObjectForLink(param.wsUri as String)
+            Node focus = (Node) getObjectForLink(param.focus as String)
 
             def msgV = [];
 
@@ -257,7 +265,7 @@ class TreeJsonEditController {
             // TODO better error handling here.
 
             for (uri in param.names) {
-                def o = linkService.getObjectForLink(uri);
+                def o = getObjectForLink(uri);
                 if (!(o instanceof Name) && !(o instanceof Instance)) {
                     throw new IllegalArgumentException(uri);
                 }
@@ -285,7 +293,7 @@ class TreeJsonEditController {
 
             response.status = 200; // default
 
-            Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+            Node wsNode = (Node) getObjectForLink(param.wsNode as String)
 
             if (!wsNode) {
                 response.status = 400
@@ -297,8 +305,8 @@ class TreeJsonEditController {
             }
 
             Arrangement ws = wsNode.root
-            Node target = (Node) linkService.getObjectForLink(param.target as String)
-            Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+            Node target = (Node) getObjectForLink(param.target as String)
+            Node focus = (Node) getObjectForLink(param.focus as String)
 
 
             if (ws.arrangementType != ArrangementType.U) {
@@ -338,7 +346,7 @@ class TreeJsonEditController {
                 ] as JSON)
             }
 
-            Object o = linkService.getObjectForLink(param.uris.get(0) as String)
+            Object o = getObjectForLink(param.uris.get(0) as String)
 
             if (!o) {
                 def result = [
@@ -496,11 +504,6 @@ class TreeJsonEditController {
     }
 
     private def dropNodeOntoNode(Arrangement ws, Node focus, Node target, Node node, DropUrisOntoNodeParam param) {
-
-        // TODO: if a node is dropped onto a node at the same rank, then offer to move all the child nodes of
-        // A onto B
-        // unless its generic or subgeneric, in which case it won't be valid to do that.
-
         if (node == target) {
             return render([
                     success: false,
@@ -517,31 +520,64 @@ class TreeJsonEditController {
             ]
         }
 
-        if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
+        if(node.subLink.findAll {it.subnode.internalType==NodeInternalType.T}.empty) {
+            return render([
+                    success: false,
+                    msg    : [msg: 'No subnodes', body: "Node has no subnodes to move.", status: 'info']
+            ] as JSON)
+        }
+
+        int pathsToTarget = queryService.countPaths(ws.node, target);
+        int pathsToNode = queryService.countPaths(ws.node, node);
+
+        if(pathsToTarget == 0) {
+            return [
+                    success: false,
+                    msg    : [msg: 'Not in workspace', body: "Target node is not in the nominated workspace", status: 'warning']
+            ]
+        }
+
+        if(pathsToNode == 0) {
+            return [
+                    success: false,
+                    msg    : [msg: 'Not in workspace', body: "Node being cropped is not in the nominated workspace", status: 'warning']
+            ]
+        }
+
+        if (pathsToTarget > 1 && DomainUtils.isCheckedIn(target)) {
             return [
                     success: false,
                     msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
             ]
         }
 
-        if (queryService.countPaths(ws.node, node) > 1) {
+        if (pathsToNode > 1 && DomainUtils.isCheckedIn(node)) {
             return [
                     success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot move a node which appears more than once in the workspace", status: 'warning']
+                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
             ]
         }
 
+        def errors = [];
 
-        def pathToNode = queryService.findPath(ws.node, node);
-        def pathToTarget = queryService.findPath(ws.node, target);
+        for(Link l: node.subLink) {
+            if(l.subnode.internalType == NodeInternalType.T && incompatibleNames(target.name, l.subnode.name)) {
+                errors.add( [msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning']);
+            }
 
-        def result = null
-
-        if (pathToTarget && pathToNode) {
-            result = userWorkspaceManagerService.moveWorkspaceNode(ws, target, node);
-        } else if (pathToTarget && DomainUtils.isCheckedIn(node)) {
-            result = userWorkspaceManagerService.adoptNode(ws, target, node);
+            if(target.name && target.name.nameRank.sortOrder >= l.subnode.name.nameRank.sortOrder) {
+                errors.add( [msg: 'Name rank mismatch', body: "Cannot place ${l.subnode.name.nameRank.name} ${l.subnode.name.simpleName} under ${target.name.nameRank.name} ${target.name.simpleName}", status: 'warning']);
+            }
         }
+
+        if(!errors.empty) {
+            return [
+                    success: false,
+                    msg    : errors
+            ]
+       }
+
+        def result = userWorkspaceManagerService.moveWorkspaceSubnodes(ws, target, node)
 
         Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
 
@@ -559,10 +595,10 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+            Node wsNode = (Node) getObjectForLink(param.wsNode as String)
             Arrangement ws = wsNode.root
-            Node target = (Node) linkService.getObjectForLink(param.target as String)
-            Node focus = (Node) linkService.getObjectForLink(param.focus as String)
+            Node target = (Node) getObjectForLink(param.target as String)
+            Node focus = (Node) getObjectForLink(param.focus as String)
 
             if (!wsNode) throw new IllegalArgumentException("null wsNode");
             if (!ws) throw new IllegalArgumentException("null ws");
@@ -698,10 +734,10 @@ class TreeJsonEditController {
         if (!param.validate()) return renderValidationErrors(param)
 
         handleException { handleExceptionIgnore ->
-            Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+            Node wsNode = (Node) getObjectForLink(param.wsNode as String)
             Arrangement ws = wsNode.root
-            Node focus = (Node) linkService.getObjectForLink(param.focus as String)
-            Node linkSuper = linkService.getObjectForLink(param.linkSuper as String)
+            Node focus = (Node) getObjectForLink(param.focus as String)
+            Node linkSuper = getObjectForLink(param.linkSuper as String)
             Link link = Link.findBySupernodeAndLinkSeq(linkSuper, param.linkSeq)
 
             if (!wsNode) throw new IllegalArgumentException("null wsNode");
@@ -782,10 +818,10 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            Node wsNode = (Node) linkService.getObjectForLink(param.wsNode as String)
+            Node wsNode = (Node) getObjectForLink(param.wsNode as String)
             Arrangement ws = wsNode.root
-            Node focus = (Node) linkService.getObjectForLink(param.focus as String)
-            Node target = (Node) linkService.getObjectForLink(param.target as String)
+            Node focus = (Node) getObjectForLink(param.focus as String)
+            Node target = (Node) getObjectForLink(param.target as String)
             UriNs ns = UriNs.findByLabel(param.nsPart)
 
             if (!wsNode) throw new IllegalArgumentException("null wsNode");
@@ -847,7 +883,7 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            Node node = (Node) linkService.getObjectForLink(param.uri as String)
+            Node node = (Node) getObjectForLink(param.uri as String)
 
             /*
         We get passed a uri.
@@ -880,7 +916,7 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            Node node = (Node) linkService.getObjectForLink(param.uri as String)
+            Node node = (Node) getObjectForLink(param.uri as String)
 
             // doing no validation at all
             // TODO: security, etc

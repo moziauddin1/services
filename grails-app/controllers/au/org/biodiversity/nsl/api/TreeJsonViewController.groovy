@@ -32,6 +32,14 @@ class TreeJsonViewController {
     SearchService searchService
     QueryService queryService
 
+    def getObjectForLink(String uri) {
+        if(uri.contains('/api/')) {
+            uri = uri.substring(0, uri.indexOf('/api/'))
+        }
+
+        return linkService.getObjectForLink(uri)
+    }
+
     def test() {
         def result = 'TreeJsonEditController'
 
@@ -100,7 +108,7 @@ class TreeJsonViewController {
         if (!uri) {
             uriPermissions.uriType = null;
         } else {
-            def o = linkService.getObjectForLink(uri)
+            def o = getObjectForLink(uri)
 
             if (!o) {
                 return render([
@@ -169,7 +177,7 @@ class TreeJsonViewController {
             return render(status: 400) { result as JSON }
         }
 
-        def o = linkService.getObjectForLink(param.uri)
+        def o = getObjectForLink(param.uri)
 
         if (!o || !(o instanceof Arrangement)) {
             def msg = [];
@@ -214,8 +222,8 @@ class TreeJsonViewController {
             return render(status: 400) { result as JSON }
         }
 
-        def root = linkService.getObjectForLink(param.root)
-        def focus = linkService.getObjectForLink(param.focus)
+        def root = getObjectForLink(param.root)
+        def focus = getObjectForLink(param.focus)
 
         if (!root || !(root instanceof Node) || !focus || !(focus instanceof Node)) {
             def msg = [];
@@ -391,7 +399,7 @@ class TreeJsonViewController {
         def pp = [:]
         pp << params;
 
-        pp.tree = linkService.getObjectForLink(params.tree_uri) as Arrangement;
+        pp.tree = getObjectForLink(params.tree_uri) as Arrangement;
 
         log.fatal "searchNamesInTree params tree ${pp.tree}"
 
