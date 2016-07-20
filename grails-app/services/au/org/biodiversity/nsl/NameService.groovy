@@ -199,6 +199,10 @@ class NameService {
         if (stepChildren > 0) {
             errors << "This name is a second parent of $stepChildren names"
         }
+        Integer duplicates = Name.countByDuplicateOf(name)
+        if (duplicates > 0) {
+            errors << "This name $duplicates duplicates names. Delete them first?"
+        }
 
         if (errors.size() > 0) {
             return [ok: false, errors: errors]
