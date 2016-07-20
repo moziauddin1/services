@@ -560,8 +560,8 @@ class TreeJsonEditController {
 
         def errors = [];
 
-        for(Link l: node.subLink) {
-            if(l.subnode.internalType == NodeInternalType.T && incompatibleNames(target.name, l.subnode.name)) {
+        for(Link l: node.subLink.findAll { it.subnode.internalType == NodeInternalType.T } ) {
+            if(incompatibleNames(target.name, l.subnode.name)) {
                 errors.add( [msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning']);
             }
 
