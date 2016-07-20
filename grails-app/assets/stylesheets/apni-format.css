@@ -64,10 +64,11 @@ synonym-type.\[unknown\] {
     display: block;
 }
 
-synonym-of element,
-has-synonym element,
-missapplied-to element,
-misapplication element {
+/*synonym-of element,*/
+/*has-synonym element,*/
+/*missapplied-to element,*/
+/*misapplication element {*/
+element {
     font-style: italic;
 }
 
@@ -174,8 +175,8 @@ accepted-name {
     font-weight: bold;
 }
 
-accepted-name element i,
-family element i {
+accepted-name element,
+family element{
     font-style: normal;
 }
 
