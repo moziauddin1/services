@@ -33,7 +33,7 @@ class TreeJsonViewController {
     QueryService queryService
 
     def getObjectForLink(String uri) {
-        if(uri.contains('/api/')) {
+        if (uri.contains('/api/')) {
             uri = uri.substring(0, uri.indexOf('/api/'))
         }
 
@@ -86,8 +86,9 @@ class TreeJsonViewController {
 
         def result = Arrangement.findAll {
             arrangementType == ArrangementType.U &&
-             namespace.name == param.namespace  }
-                .sort { Arrangement a, Arrangement b -> a.title <=> b.title }
+                    namespace.name == param.namespace
+        }
+        .sort { Arrangement a, Arrangement b -> a.title <=> b.title }
                 .findAll { Arrangement it -> it.shared || it.owner == SecurityUtils.subject.principal }
                 .collect { linkService.getPreferredLinkForObject(it) }
         render result as JSON
@@ -150,11 +151,11 @@ class TreeJsonViewController {
 
 
         def result = [
-                success    : true,
-                uri        : uri,
-                principal  : principal,
+                success        : true,
+                uri            : uri,
+                principal      : principal,
                 userPermissions: userPermissions,
-                uriPermissions: uriPermissions
+                uriPermissions : uriPermissions
         ]
 
         return render(result as JSON);
@@ -242,6 +243,10 @@ class TreeJsonViewController {
         }
 
         List<Node> pathNodes = queryService.findPath(root, focus);
+
+        if (pathNodes.size() > 0 && DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(pathNodes.get(0)))) {
+            pathNodes.remove(0);
+        }
 
         def result = pathNodes.collect { linkService.getPreferredLinkForObject(it) }
         return render(result as JSON)
@@ -409,6 +414,46 @@ class TreeJsonViewController {
         return render(results.nodes.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }
 
+    def searchNamesInSubtree(NamesInSubtreeParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return render(status: 400) { result as JSON }
+        }
+
+        def searchSubtree = getObjectForLink(param.searchSubtree)
+
+        if (!searchSubtree || !(searchSubtree instanceof Node)) {
+            def result = [
+                    success: false,
+                    msg    : [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"],
+            ];
+
+            return render(status: 404) { result as JSON }
+        }
+
+        List results = queryService.findNamesInSubtree(searchSubtree, param.searchText)
+
+        return render([
+                success: true,
+                msg    : results ? [msg: "Found", status: "success", body: "Found ${results.size()} matchng placements"] : [msg: "Not found", status: "success", body: "Name not found in selected subtree."],
+                results: results.sort { r1, r2 ->
+                    // I use a tilde because it is the last printable in ascii.
+                    "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
+                } .collect { result -> [ node: linkService.getPreferredLinkForObject(result.node), matched: linkService.getPreferredLinkForObject(result.matchedInstance)] }
+        ] as JSON)
+
+    }
+
 }
 
 @Validateable
@@ -458,4 +503,17 @@ class SearchNamesRefsParam {
         name nullable: false
         reference nullable: true
     }
+}
+
+
+@Validateable
+class NamesInSubtreeParam {
+    String searchSubtree
+    String searchText
+
+    static constraints = {
+        searchSubtree nullable: true
+        searchText nullable: true
+    }
+
 }
