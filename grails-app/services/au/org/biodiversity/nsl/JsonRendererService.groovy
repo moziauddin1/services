@@ -58,9 +58,9 @@ class JsonRendererService {
         XML.registerObjectMarshaller(InstanceNote) { InstanceNote instanceNote, XML xml -> xml.convertAnother(marshallInstanceNote(instanceNote)) }
         XML.registerObjectMarshaller(ResourceLink) { ResourceLink resourceLink, XML xml ->
             xml.startNode('link')
-               .attribute('resources', resourceLink.resources.toString())
-               .chars(resourceLink.link)
-               .end()
+                    .attribute('resources', resourceLink.resources.toString())
+                    .chars(resourceLink.link)
+                    .end()
         }
 
         XML.registerObjectMarshaller(Node) { Node node, XML xml -> xml.convertAnother(marshallNode(node)) }
@@ -69,6 +69,15 @@ class JsonRendererService {
         XML.registerObjectMarshaller(Event) { Event event, XML xml -> xml.convertAnother(marshallEvent(event)) }
         XML.registerObjectMarshaller(ServiceException) { ServiceException serviceException, XML xml -> xml.convertAnother(marshallTreeServiceException(serviceException)) }
         XML.registerObjectMarshaller(Message) { Message message, XML xml -> xml.convertAnother(marshallTreeServiceMessgage(message)) }
+    }
+
+    // we need this anywhere that citation and citationHtml appear as fields
+    private static String citationAuthYear(Reference reference) {
+        if (reference) {
+            return "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}";
+        } else {
+            return null;
+        }
     }
 
     Map getBriefNamespace(Namespace namespace) {
@@ -88,20 +97,21 @@ class JsonRendererService {
 
     Map getBriefReference(Reference reference) {
         brief(reference, [
-                citation    : reference?.citation,
-                citationHtml: reference?.citationHtml,
-                authYear    : "${reference?.author?.abbrev ?: reference?.author?.name ?: reference?.author?.fullName}, ${reference?.year}"
+                citation        : reference?.citation,
+                citationHtml    : reference?.citationHtml,
+                citationAuthYear: citationAuthYear(reference)
         ])
     }
 
     Map getBriefInstance(Instance instance) {
         brief(instance, [
-                instanceType: instance?.instanceType?.name,
-                page        : instance?.page,
-                name        : instance?.name?.fullNameHtml,
-                protologue  : instance?.instanceType?.protologue,
-                citation    : instance?.reference?.citation,
-                citationHtml: instance?.reference?.citationHtml
+                instanceType    : instance?.instanceType?.name,
+                page            : instance?.page,
+                name            : instance?.name?.fullNameHtml,
+                protologue      : instance?.instanceType?.protologue,
+                citation        : instance?.reference?.citation,
+                citationHtml    : instance?.reference?.citationHtml,
+                citationAuthYear: citationAuthYear(instance?.reference)
         ])
     }
 
@@ -122,13 +132,14 @@ class JsonRendererService {
 
     Map getBriefInstanceForNameWithHtml(Instance instance) {
         brief(instance, [
-                instanceType: instance?.instanceType?.name,
-                page        : instance?.page,
-                citation    : instance?.reference?.citation,
-                citationHtml: instance?.reference?.citationHtml,
-                parent      : instance?.parent?.id,
-                cites       : instance?.cites?.id,
-                citedBy     : instance?.citedBy?.id
+                instanceType    : instance?.instanceType?.name,
+                page            : instance?.page,
+                citation        : instance?.reference?.citation,
+                citationHtml    : instance?.reference?.citationHtml,
+                citationAuthYear: citationAuthYear(instance?.reference),
+                parent          : instance?.parent?.id,
+                cites           : instance?.cites?.id,
+                citedBy         : instance?.citedBy?.id
         ])
     }
 
@@ -297,8 +308,8 @@ class JsonRendererService {
                 instancesForCitedBy: instance.instancesForCitedBy.sort {
                     Instance a, Instance b ->
                         a.instanceType.sortOrder != b.instanceType.sortOrder ?
-                            a.instanceType.sortOrder <=> b.instanceType.sortOrder :
-                            a.name.simpleName <=> b.name.simpleName
+                                a.instanceType.sortOrder <=> b.instanceType.sortOrder :
+                                a.name.simpleName <=> b.name.simpleName
                 }.collect { getBriefInstance(it) },
                 instancesForCites  : instance.instancesForCites.sort {
                     Instance a, Instance b ->
@@ -334,6 +345,7 @@ class JsonRendererService {
                 verbatimAuthor   : reference.verbatimAuthor,
                 citation         : reference.citation,
                 citationHtml     : reference.citationHtml,
+                citationAuthYear : citationAuthYear(reference),
                 notes            : reference.notes,
                 published        : reference.published,
                 publisher        : reference.publisher,
@@ -563,7 +575,7 @@ class JsonRendererService {
         Hibernate.initialize(entity);
         if (entity instanceof HibernateProxy) {
             entity = (T) ((HibernateProxy) entity).getHibernateLazyInitializer()
-                                                  .getImplementation();
+                    .getImplementation();
         }
         return entity;
     }
