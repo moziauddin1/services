@@ -235,7 +235,34 @@ grails.cache.config = {
         memoryStoreEvictionPolicy 'LRU'
     }
 
-    //currently not used while we work out eviction policy
+
+    cache {
+        name "identitycache"
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 600
+        timeToLiveSeconds 3600
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 600
+        memoryStoreEvictionPolicy 'LRU'
+    }
+
+    cache {
+        name "linkscache"
+        maxElementsInMemory 10000
+        eternal false
+        timeToIdleSeconds 600
+        timeToLiveSeconds 3600
+        overflowToDisk true
+        maxElementsOnDisk 10000000
+        diskPersistent false
+        diskExpiryThreadIntervalSeconds 600
+        memoryStoreEvictionPolicy 'LRU'
+    }
+
+//currently not used while we work out eviction policy
 //    cache {
 //        name 'apniblockcache'
 //        maxElementsInMemory 10000

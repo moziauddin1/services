@@ -133,7 +133,7 @@ class RestResourceController {
             bare array or primitive as JSON. But everybody does, regardless.
          */
 
-        return render (request.JSON.collect { uri -> linkService.getObjectForLink(uri) } as JSON)
+        return render (request.JSON.collect { uri -> linkService.getObjectForLink(uri as String) } as JSON)
     }
 
     private notFound(String errorText) {
