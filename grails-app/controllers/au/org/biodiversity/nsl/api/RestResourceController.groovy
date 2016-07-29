@@ -17,6 +17,7 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.*
+import grails.converters.JSON
 import grails.converters.XML
 import grails.transaction.Transactional
 import org.codehaus.groovy.grails.commons.GrailsApplication
@@ -34,7 +35,7 @@ class RestResourceController {
 //    @SuppressWarnings("GroovyUnusedDeclaration")
 //    static responseFormats = ['json', 'xml', 'html']
 
-    static allowedMethods = ['*': "GET"]
+    static allowedMethods = ['*': "GET", 'bulkFetch': 'POST']
 
     @Timed()
     def name(String shard, Long idNumber) {
@@ -117,7 +118,24 @@ class RestResourceController {
         def links = linkService.getLinksForObject(event)
         respond event, [model: [event: event, links: links], status: OK]
     }
-    
+
+    @Timed()
+    def bulkFetch() {
+        /*
+            TODO:
+            it would be nice if this call accepted content type url-list and text/plain, understood
+            as just a simple list of uris.
+            It might also be nice for this service to not assume JSON, or at least to rase a 406
+            if the caller won't accept it.
+            But for now, this works ok.
+
+            Note that JSON is not implemented correctly (by anyone). Technically, you can't send a
+            bare array or primitive as JSON. But everybody does, regardless.
+         */
+
+        return render (request.JSON.collect { uri -> linkService.getObjectForLink(uri) } as JSON)
+    }
+
     private notFound(String errorText) {
         response.status = NOT_FOUND.value()
         Map errorResponse = [error: errorText]

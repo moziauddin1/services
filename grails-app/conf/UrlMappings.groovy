@@ -33,6 +33,8 @@ class UrlMappings {
         "/api/tree/remove-apni-name"(controller: 'treeEdit', action: 'removeApniName')
         "/api/tree/remove-apc-instance"(controller: 'treeEdit', action: 'removeApcInstance')
 
+        "/api/bulk-fetch"(controller: 'restResource', action: 'bulkFetch')
+
         "/search"(controller: 'search', action: 'search')
         "/search/form"(controller: 'search', action: 'searchForm')
         "/auth/$action"(controller: 'auth')
@@ -43,7 +45,6 @@ class UrlMappings {
 
         name restResource:
         "/$action/$shard/$idNumber(.$format)?"(controller: 'restResource')
-
 
         "/$controller/$shard/$id/$namespace/$action(.$format)?" { }
 
