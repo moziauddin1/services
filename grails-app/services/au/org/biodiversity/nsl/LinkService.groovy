@@ -16,6 +16,8 @@
 
 package au.org.biodiversity.nsl
 
+import grails.plugin.cache.CacheEvict
+import grails.plugin.cache.CachePut
 import grails.plugin.cache.Cacheable
 import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
@@ -28,6 +30,7 @@ class LinkService {
     def grailsApplication
 
     @Timed()
+    @Cacheable(value='linkscache', key='#target.id')
     ArrayList getLinksForObject(target) {
         try {
             String url = getLinkServiceUrl(target, 'links', true)
@@ -50,6 +53,12 @@ class LinkService {
             log.error(e.message)
         }
         return []
+    }
+
+    @CacheEvict(value = 'linkscache', key = '#target.id')
+    void evictLinksCache(target) {
+        log.debug("evicting ${target?.id} from links cache")
+        // this method does nothing, but Spring catches calls to it
     }
 
     @Timed()
@@ -106,6 +115,13 @@ class LinkService {
         }
         return null
     }
+
+    @CacheEvict(value = 'linkcache', key = '#target.id')
+    void evictLinkCache(target) {
+        log.debug("evicting ${target?.id} from link cache")
+        // this method does nothing, but Spring catches calls to it
+    }
+
 
     /**
      * Get the domain object matching a URI based identifier. This method asks
@@ -192,12 +208,8 @@ class LinkService {
      * @return The Mapper Identity as a Map including nameSpace, objectType, and idNumber.
      */
 
-    /* todo: add @Cacheable annotation.
-     * In order to make this work properly, other methods here that ask the mapper to create and delete ids need to
-     * update the cache
-     */
-
     @Timed()
+    @Cacheable(value='identitycache', key='#uri')
     Map getMapperIdentityForLink(String uri) {
         try {
 
@@ -208,6 +220,7 @@ class LinkService {
                 log.error "expected only 1 identity for $uri"
                 return null
             }
+
             return data[0] as Map
         } catch (RestCallException e) {
             log.error "Error $e.message getting mapper id for $uri"
@@ -216,6 +229,17 @@ class LinkService {
             log.error "Error $e.message getting mapper id for $uri"
             return null
         }
+    }
+
+    void evictIdentityCache(target) {
+        getLinksForObject(target).each { mapperIdentityCacheEvict(it) };
+    }
+
+    @CacheEvict(value='identitycache', key="#uri")
+    void mapperIdentityCacheEvict(String uri) {
+        log.debug("evicting ${uri} from identity cache")
+        // this method does nothing - it is a hook to allow us to manage the
+        // mapper identity cache
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {
@@ -313,6 +337,11 @@ class LinkService {
         String params = targetParams(target) + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         String mapper = mapper(true)
         try {
+            // the sequence here is important, as the identity cache uses getLinks
+            evictIdentityCache(target);
+            evictLinksCache(target);
+            evictLinkCache(target);
+
             RestResponse response = restCallService.nakedGet("$mapper/admin/deleteIdentifier?$params")
             if (response.status != 200) {
                 List<String> errors = getResopnseErrorMessages(response)
@@ -347,6 +376,14 @@ class LinkService {
 
             String mapper = mapper(true)
             try {
+                // the sequence here is important, as the identity cache uses getLinks
+                evictIdentityCache(from);
+                evictIdentityCache(to);
+                evictLinksCache(from);
+                evictLinksCache(to);
+                evictLinkCache(from);
+                evictLinkCache(to);
+
                 RestResponse response = restCallService.nakedGet("$mapper/admin/moveIdentity?$params")
                 if (response.status != 200) {
                     List<String> errors = getResopnseErrorMessages(response)
