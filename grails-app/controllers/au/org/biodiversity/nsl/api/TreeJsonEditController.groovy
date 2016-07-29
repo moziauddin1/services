@@ -440,37 +440,36 @@ class TreeJsonEditController {
             ]
         }
 
+        if(target.name) {
+            if (target.name.nameRank.sortOrder >= instance.name.nameRank.sortOrder) {
+                return [
+                        success: false,
+                        msg    : [msg: 'Higher name rank', body: "A name of rank ${instance.name.nameRank.name} cannot be placed under a name of rank ${target.name.nameRank.name}", status: 'warning']
+                ]
+            }
+
+            // the name rank of genus is 120
+            if (incompatibleNames(target.name, instance.name)) {
+                return [
+                        success: false,
+                        msg    : [msg: 'incompatible names', body: "${instance.name.simpleName} cannot be placed under ${target.name.simpleName}", status: 'warning']
+                ]
+            }
+        }
+
+
         def result
 
-        if(target == target.root.node) {
-            result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
+        log.debug('this instance is parent of')
+        log.debug(instance.instancesForParent)
+
+        if(target.name == instance.name) {
+            result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
         }
         else {
-            if(target.name == instance.name) {
-                result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
-            }
-            else {
-                if(target.name.nameRank.sortOrder >= instance.name.nameRank.sortOrder) {
-                    return [
-                            success: false,
-                            msg    : [msg: 'Higher name rank', body: "A name of rank ${instance.name.nameRank.name} cannot be placed under a name of rank ${target.name.nameRank.name}", status: 'warning']
-                    ]
-                }
-
-
-                // the name rank of genus is 120
-                if(incompatibleNames(target.name, instance.name)) {
-                    return [
-                            success: false,
-                            msg    : [msg: 'incompatible names', body: "${instance.name.simpleName} cannot be placed under ${target.name.simpleName}", status: 'warning']
-                    ]
-                }
-
-                instance.name.parent
-
-                result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
-            }
+            result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
         }
+
 
         Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
 
@@ -504,6 +503,9 @@ class TreeJsonEditController {
     }
 
     private def dropNodeOntoNode(Arrangement ws, Node focus, Node target, Node node, DropUrisOntoNodeParam param) {
+
+        // if the node is a top-level node, then we may be attempting to drop the node or it's child nodes. We don't know.
+
         if (node == target) {
             return render([
                     success: false,
@@ -561,7 +563,8 @@ class TreeJsonEditController {
         def errors = [];
 
         for(Link l: node.subLink.findAll { it.subnode.internalType == NodeInternalType.T } ) {
-            if(incompatibleNames(target.name, l.subnode.name)) {
+            // TODO: think about making this less APC
+            if(incompatibleNames(target.name, l.subnode.name) && DomainUtils.getNodeTypeUri(l.subnode).asQName() ==  "apc-voc:ApcConcept") {
                 errors.add( [msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning']);
             }
 
