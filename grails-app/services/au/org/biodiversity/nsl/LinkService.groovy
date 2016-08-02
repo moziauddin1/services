@@ -30,7 +30,9 @@ class LinkService {
     def grailsApplication
 
     @Timed()
-    @Cacheable(value='linkscache', key='#target.id')
+    // This is currently not cacheable as it returns an array of JSON objects which
+    // (strangely) aren't serializable
+//    @Cacheable(value='linkscache', key='#target.id')
     ArrayList getLinksForObject(target) {
         try {
             String url = getLinkServiceUrl(target, 'links', true)
@@ -55,11 +57,11 @@ class LinkService {
         return []
     }
 
-    @CacheEvict(value = 'linkscache', key = '#target.id')
-    void evictLinksCache(target) {
-        log.debug("evicting ${target?.id} from links cache")
-        // this method does nothing, but Spring catches calls to it
-    }
+//    @CacheEvict(value = 'linkscache', key = '#target.id')
+//    void evictLinksCache(target) {
+//        log.debug("evicting ${target?.id} from links cache")
+//        // this method does nothing, but Spring catches calls to it
+//    }
 
     @Timed()
     Boolean addTargetLink(target) {
@@ -121,7 +123,6 @@ class LinkService {
         log.debug("evicting ${target?.id} from link cache")
         // this method does nothing, but Spring catches calls to it
     }
-
 
     /**
      * Get the domain object matching a URI based identifier. This method asks
@@ -190,7 +191,7 @@ class LinkService {
                 break
             case 'node':
                 Node n = Node.findById(idNumber)
-                if(n && n.root.namespace == ns)
+                if (n && n.root.namespace == ns)
                     return n;
                 else
                     return null;
@@ -209,7 +210,7 @@ class LinkService {
      */
 
     @Timed()
-    @Cacheable(value='identitycache', key='#uri')
+    @Cacheable(value = 'identitycache', key = '#uri')
     Map getMapperIdentityForLink(String uri) {
         try {
 
@@ -235,7 +236,7 @@ class LinkService {
         getLinksForObject(target).each { mapperIdentityCacheEvict(it) };
     }
 
-    @CacheEvict(value='identitycache', key="#uri")
+    @CacheEvict(value = 'identitycache', key = "#uri")
     void mapperIdentityCacheEvict(String uri) {
         log.debug("evicting ${uri} from identity cache")
         // this method does nothing - it is a hook to allow us to manage the
@@ -339,7 +340,7 @@ class LinkService {
         try {
             // the sequence here is important, as the identity cache uses getLinks
             evictIdentityCache(target);
-            evictLinksCache(target);
+//            evictLinksCache(target);
             evictLinkCache(target);
 
             RestResponse response = restCallService.nakedGet("$mapper/admin/deleteIdentifier?$params")
@@ -379,8 +380,8 @@ class LinkService {
                 // the sequence here is important, as the identity cache uses getLinks
                 evictIdentityCache(from);
                 evictIdentityCache(to);
-                evictLinksCache(from);
-                evictLinksCache(to);
+//                evictLinksCache(from);
+//                evictLinksCache(to);
                 evictLinkCache(from);
                 evictLinkCache(to);
 
