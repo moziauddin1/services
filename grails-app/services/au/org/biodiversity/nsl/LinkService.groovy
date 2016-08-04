@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl
 
+import grails.converters.JSON
 import grails.plugin.cache.CacheEvict
 import grails.plugin.cache.CachePut
 import grails.plugin.cache.Cacheable
@@ -23,45 +24,55 @@ import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
 import org.codehaus.groovy.grails.web.json.JSONArray
 import org.grails.plugins.metrics.groovy.Timed
+import org.springframework.cache.Cache
+import org.springframework.cache.CacheManager
+import org.springframework.cache.ehcache.EhCacheCache
 
 @Transactional
 class LinkService {
     def restCallService
     def grailsApplication
+    CacheManager grailsCacheManager
 
     @Timed()
-    // This is currently not cacheable as it returns an array of JSON objects which
-    // (strangely) aren't serializable
-//    @Cacheable(value='linkscache', key='#target.id')
     ArrayList getLinksForObject(target) {
-        try {
-            String url = getLinkServiceUrl(target, 'links', true)
-            if (url) {
-                RestResponse response = restCallService.nakedGet(url)
-                if (response.status == 404) {
-                    if (addTargetLink(target)) {
-                        response = restCallService.nakedGet(url)
-                        if (response.status != 200) {
-                            log.error "Links not found for $target, but should be there."
+        String linkJson = doUsingCache(getLinksCache(), target?.id) {
+            try {
+                String url = getLinkServiceUrl(target, 'links', true)
+                if (url) {
+                    RestResponse response = restCallService.nakedGet(url)
+                    if (response.status == 404) {
+                        if (addTargetLink(target)) {
+                            response = restCallService.nakedGet(url)
+                            if (response.status != 200) {
+                                log.error "Links not found for $target, but should be there."
+                            }
+                        } else {
+                            log.error "Links not found for $target, and couldn't be added."
                         }
+                    }
+                    //if 404 json.links will be empty
+
+                    // I avoid calling response.json, as this fires off an unnecessary JSON.parse
+                    if(response.getHeaders().get('Content-Type').find { it == 'application/json' || it.startsWith('application/json;')} ) {
+                        return response.text
                     } else {
-                        log.error "Links not found for $target, and couldn't be added."
+                        return null
                     }
                 }
-                //if 404 json.links will be empty
-                return response.json as ArrayList
+            } catch (Exception e) {
+                log.error(e.message)
             }
-        } catch (Exception e) {
-            log.error(e.message)
-        }
-        return []
-    }
+            return '[]'
+        } as String
 
-//    @CacheEvict(value = 'linkscache', key = '#target.id')
-//    void evictLinksCache(target) {
-//        log.debug("evicting ${target?.id} from links cache")
-//        // this method does nothing, but Spring catches calls to it
-//    }
+        if(linkJson) {
+            return JSON.parse(linkJson) as ArrayList
+        }
+        else {
+            return null;
+        }
+    }
 
     @Timed()
     Boolean addTargetLink(target) {
@@ -87,9 +98,9 @@ class LinkService {
     }
 
     @Timed()
-    //target.id is unique for the linkable targets, if not this cache will break.
-    @Cacheable(value = 'linkcache', key = '#target.id')
     String getPreferredLinkForObject(target) {
+        doUsingCache(getLinkCache(), target?.id) {
+
         try {
             String url = getLinkServiceUrl(target, 'preferredLink', true)
             if (url) {
@@ -101,6 +112,9 @@ class LinkService {
                     if (addTargetLink(target)) {
                         response = restCallService.nakedGet(url)
                         if (response.status == 200) {
+                            if (response.json.link) {
+                                getLinkCache().put(target.id, response.json.link);
+                            }
                             return response.json.link as String
                         }
                         log.error "Link not found for $target, but should be there."
@@ -116,12 +130,7 @@ class LinkService {
             log.error "Error $e.message getting preferred link for $target"
         }
         return null
-    }
-
-    @CacheEvict(value = 'linkcache', key = '#target.id')
-    void evictLinkCache(target) {
-        log.debug("evicting ${target?.id} from link cache")
-        // this method does nothing, but Spring catches calls to it
+        } as String
     }
 
     /**
@@ -210,37 +219,27 @@ class LinkService {
      */
 
     @Timed()
-    @Cacheable(value = 'identitycache', key = '#uri')
     Map getMapperIdentityForLink(String uri) {
-        try {
+        doUsingCache(getIdentityCache(), uri) {
+            try {
 
-            String url = "${mapper(true)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
-            log.debug(url)
-            JSONArray data = restCallService.get(url) as JSONArray
-            if (data.size() != 1) {
-                log.error "expected only 1 identity for $uri"
+                String url = "${mapper(true)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
+                log.debug(url)
+                JSONArray data = restCallService.get(url) as JSONArray
+                if (data.size() != 1) {
+                    log.error "expected only 1 identity for $uri"
+                    return null
+                }
+
+                return data[0] as Map
+            } catch (RestCallException e) {
+                log.error "Error $e.message getting mapper id for $uri"
+                return null
+            } catch (Exception e) {
+                log.error "Error $e.message getting mapper id for $uri"
                 return null
             }
-
-            return data[0] as Map
-        } catch (RestCallException e) {
-            log.error "Error $e.message getting mapper id for $uri"
-            return null
-        } catch (Exception e) {
-            log.error "Error $e.message getting mapper id for $uri"
-            return null
-        }
-    }
-
-    void evictIdentityCache(target) {
-        getLinksForObject(target).each { mapperIdentityCacheEvict(it) };
-    }
-
-    @CacheEvict(value = 'identitycache', key = "#uri")
-    void mapperIdentityCacheEvict(String uri) {
-        log.debug("evicting ${uri} from identity cache")
-        // this method does nothing - it is a hook to allow us to manage the
-        // mapper identity cache
+        } as Map
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {
@@ -340,7 +339,7 @@ class LinkService {
         try {
             // the sequence here is important, as the identity cache uses getLinks
             evictIdentityCache(target);
-//            evictLinksCache(target);
+            evictLinksCache(target);
             evictLinkCache(target);
 
             RestResponse response = restCallService.nakedGet("$mapper/admin/deleteIdentifier?$params")
@@ -380,8 +379,8 @@ class LinkService {
                 // the sequence here is important, as the identity cache uses getLinks
                 evictIdentityCache(from);
                 evictIdentityCache(to);
-//                evictLinksCache(from);
-//                evictLinksCache(to);
+                evictLinksCache(from);
+                evictLinksCache(to);
                 evictLinkCache(from);
                 evictLinkCache(to);
 
@@ -421,5 +420,53 @@ class LinkService {
             }
         }
         return errors
+    }
+
+    private def doUsingCache(Cache cache, Object key, Closure c) {
+        if (key && cache.get(key)) {
+            return ((Cache.ValueWrapper) cache.get(key)).get()
+        }
+
+        Object value = c()
+
+        if (key && value) {
+            cache.put(key, value)
+        }
+
+        return value
+    }
+
+    private Cache getLinkCache() {
+        return grailsCacheManager.getCache('linkcache')
+    }
+
+    private Cache getLinksCache() {
+        return grailsCacheManager.getCache('linkscache')
+    }
+
+    private Cache getIdentityCache() {
+        return grailsCacheManager.getCache('identitycache')
+    }
+
+    private void evictLinkCache(target) {
+        if (target) {
+            getLinkCache().evict(target.id)
+        }
+    }
+
+    private void evictLinksCache(target) {
+        if (target) {
+            getLinksCache().evict(target.id)
+        }
+    }
+
+    void evictIdentityCache(target) {
+        if (target) {
+            getLinksForObject(target).each { mapperIdentityCacheEvict(it) };
+        }
+    }
+
+    void mapperIdentityCacheEvict(String uri) {
+        getIdentityCache().evict(uri)
     }
 }
