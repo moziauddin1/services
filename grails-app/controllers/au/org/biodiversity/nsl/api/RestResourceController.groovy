@@ -119,7 +119,10 @@ class RestResourceController {
         respond event, [model: [event: event, links: links], status: OK]
     }
 
+    // not sure why this needs to be wrapped in a transaction
+
     @Timed()
+    @Transactional
     def bulkFetch() {
         /*
             TODO:
