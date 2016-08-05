@@ -112,9 +112,6 @@ class LinkService {
                     if (addTargetLink(target)) {
                         response = restCallService.nakedGet(url)
                         if (response.status == 200) {
-                            if (response.json.link) {
-                                getLinkCache().put(target.id, response.json.link);
-                            }
                             return response.json.link as String
                         }
                         log.error "Link not found for $target, but should be there."
