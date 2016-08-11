@@ -327,7 +327,7 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
      WHERE nt.instance_id = apcn.instance_id)             AS "taxonDistribution",
 
     CASE WHEN apc_inst.id = apcn.instance_id
-      THEN regexp_replace(ntp.name_path, '\\>', '|',
+      THEN regexp_replace(ntp.name_path, '\\.', '|',
                           'g')
     ELSE NULL END                                         AS "higherClassification",
 

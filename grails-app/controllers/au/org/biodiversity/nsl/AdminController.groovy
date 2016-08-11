@@ -35,6 +35,7 @@ class AdminController {
     def authorService
     def configService
     def adminService
+    def flatViewService
 
     @RequiresRoles('admin') 
     def index() {
@@ -192,6 +193,22 @@ class AdminController {
     @RequiresRoles('admin')
     def setAdminModeOff() {
         adminService.enableServiceMode(false)
+        redirect(action: 'index')
+    }
+
+    @RequiresRoles('admin')
+    def refreshViews() {
+        String namespaceName = configService.nameSpace.name.toLowerCase()
+        flatViewService.refreshTaxonView(namespaceName)
+        flatViewService.refreshNameView(namespaceName)
+        redirect(action: 'index')
+    }
+
+    @RequiresRoles('admin')
+    def recreateViews() {
+        String namespaceName = configService.nameSpace.name.toLowerCase()
+        flatViewService.createTaxonView(namespaceName)
+        flatViewService.createNameView(namespaceName)
         redirect(action: 'index')
     }
 
