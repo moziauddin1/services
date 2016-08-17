@@ -462,7 +462,7 @@ class LinkService {
 
     void evictIdentityCache(target) {
         if (target) {
-            getLinksForObject(target).each { mapperIdentityCacheEvict(it) };
+            getLinksForObject(target).each { mapperIdentityCacheEvict(it.link) };
         }
     }
 
