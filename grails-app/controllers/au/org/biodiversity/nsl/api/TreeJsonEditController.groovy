@@ -76,41 +76,67 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            Node checkout = null;
+            Arrangement baseTree = null;
 
-            if (param.checkout) {
-                Object o = getObjectForLink(param.checkout)
+            if (param.baseTree) {
+                Object o = getObjectForLink(param.baseTree)
                 if (o == null) {
                     def result = [
                             success: false,
                             msg    : [
-                                    [msg: 'Not Found', body: "Node \"${param.checkout}\" not found", status: 'warning'],
+                                    [msg: 'Tree Found', body: "Node \"${param.baseTree}\" not found", status: 'warning'],
                             ]
                     ]
                     response.status = 404
                     return render(result as JSON)
                 }
-                if (!(o instanceof Node)) {
+                if (!(o instanceof Arrangement)) {
                     def result = [
                             success: false,
                             msg    : [
-                                    [msg: 'Not Found', body: "\"${param.node}\" is not a node", status: 'warning'],
+                                    [msg: 'Not Found', body: "\"${param.baseTree}\" is not a tree", status: 'warning'],
                             ]
                     ]
                     response.status = 404
                     return render(result as JSON)
                 }
-                checkout = o as Node
+                baseTree = o as Arrangement
+
+                if(baseTree.arrangementType != ArrangementType.P) {
+                    def result = [
+                            success: false,
+                            msg    : [
+                                    [msg: 'Not Found', body: "\"${param.baseTree}\" is not classification tree", status: 'warning'],
+                            ]
+                    ]
+                    response.status = 404
+                    return render(result as JSON)
+
+                }
+
+                if(baseTree.namespace != ns) {
+                    if(baseTree.arrangementType != ArrangementType.P) {
+                        def result = [
+                                success: false,
+                                msg    : [
+                                        [msg: 'Incorrect namespace', body: "\"${param.baseTree}\" is not in namespace ${ns.name}", status: 'warning'],
+                                ]
+                        ]
+                        response.status = 404
+                        return render(result as JSON)
+
+                    }
+                }
             }
 
-            Arrangement a = userWorkspaceManagerService.createWorkspace(ns, SecurityUtils.subject.principal, param.shared == null ? false : param.shared, title, param.description, checkout)
+            Arrangement a = userWorkspaceManagerService.createWorkspace(ns, baseTree, SecurityUtils.subject.principal, param.shared == null ? false : param.shared, title, param.description)
 
             def result = [
                     success: true,
                     msg    : [
                             [msg: 'Created Workspace', body: a.title, status: 'success'],
                     ],
-                    uri    : null
+                    uri    : linkService.getPreferredLinkForObject(a)
             ];
 
             response.status = 201
@@ -993,14 +1019,14 @@ class CreateWorkspaceParam {
     String namespace
     String title
     String description
-    String checkout
+    String baseTree
     Boolean shared
 
     static constraints = {
         namespace nullable: false
+        baseTree nullable: false
         title nullable: false
         description nullable: true
-        checkout nullable: true
         shared nullable: true
     }
 }
