@@ -57,6 +57,11 @@
           Trees
         </a>
       </li>
+      <li role="presentation" class="">
+        <a href="#views" aria-controls="views" role="tab" data-toggle="tab">
+          Views
+        </a>
+      </li>
     </ul>
 
     <div class="tab-content">
@@ -199,6 +204,34 @@
                 <a class=""
                    href="${g.createLink(controller: "classification", action: "validateClassifications")}">
                   Validate classifications
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div role="tabpanel"
+           class="tab-pane" id="views">
+        <div class="panel panel-info">
+
+          <div class="panel-heading">
+            Admin tasks for Views
+          </div>
+
+          <div class="panel-body">
+
+            <ul>
+              <li>
+                <a class=""
+                   href="${g.createLink(controller: "admin", action: "refreshViews")}">
+                  Refresh all views
+                </a>
+              </li>
+              <li>
+                <a class=""
+                   href="${g.createLink(controller: "admin", action: "recreateViews")}">
+                  Recreate all views
                 </a>
               </li>
             </ul>
