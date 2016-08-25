@@ -215,4 +215,27 @@ class ClassificationController {
         session[VALIDATION_RESULTS_KEY] = null
         redirect action: "index"
     }
+
+    @RequiresRoles('admin')
+    def rebuildNametreeForm() {
+    }
+
+    @RequiresRoles('admin')
+    def doRebuildNametree() {
+        if (params.nametreeLabel) {
+            try {
+                flash.message = "Name tree ${params.nametreeLabel} (re)built."
+                classificationManagerService.rebuildNameTree(configService.nameSpace, params.nametreeLabel as String, params.nametreeDescription as String)
+                redirect action: "index"
+            }
+            catch(Exception ex) {
+                flash.error = ex
+                render view: 'rebuildNametreeForm', model: [nametreeLabel: params.nametreeLabel, nametreeDescription: params.nametreeDescription]
+            }
+        } else {
+            flash.validation = 'Please specify a label for the tree'
+            render view: 'rebuildNametreeForm', model: [nametreeLabel: params.nametreeLabel, nametreeDescription: params.nametreeDescription]
+
+        }
+    }
 }

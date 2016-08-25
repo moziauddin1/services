@@ -206,6 +206,12 @@
                   Validate classifications
                 </a>
               </li>
+              <li>
+                <a class=""
+                   href="${g.createLink(controller: "classification", action: "rebuildNametreeForm")}">
+                  Rebuild name tree
+                </a>
+              </li>
             </ul>
           </div>
         </div>
