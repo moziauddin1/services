@@ -441,7 +441,9 @@ class TreeJsonViewController {
             return render(status: 404) { result as JSON }
         }
 
+        log.debug("Starting findNamesInSubtree");
         List results = queryService.findNamesInSubtree(searchSubtree, param.searchText)
+        log.debug("Done findNamesInSubtree");
 
         return render([
                 success: true,
@@ -481,8 +483,11 @@ class TreeJsonViewController {
             return render(status: 404) { result as JSON }
         }
 
+        log.debug("Starting findNamesDirectlyInSubtree");
         List results = queryService.findNamesDirectlyInSubtree(searchSubtree, param.searchText)
+        log.debug("Done findNamesDirectlyInSubtree");
         int sz = results.size()
+        log.debug("Done results.size()");
 
         return render([
                 success: true,
