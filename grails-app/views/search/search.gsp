@@ -31,7 +31,7 @@
           %{--${rankCount.value} ${rankCount.key},--}%
           %{--</g:each>--}%
           </strong>
-          <span class="text-muted">Limited to ${max} result<g:if test="${max == 0 || max > 1}">s</g:if>.</span>
+          <span class="text-muted">in ${queryTime}ms. Limited to ${max} result<g:if test="${max == 0 || max > 1}">s</g:if>. </span>
         </g:if>
         <div class="btn-group hideSearch hidden-print">
           <button id="expandAll" class="btn btn-success"><i class="fa fa-caret-down"></i> view detail</button>
@@ -64,8 +64,7 @@
 
                   <div data-nameId="${name.id}">
                     %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-                    <accepted-name><st:preferedLink target="${name}"
-                                                    api="api/apni-format">${raw(name.fullNameHtml)}</st:preferedLink>
+                    <accepted-name>${raw(name.fullNameHtml)}
                     </accepted-name><name-status
                       class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
                       class="${name.nameType.name}">, ${name.nameType.name}</name-type>
@@ -73,10 +72,6 @@
                       <st:editorLink nameId="${name.id}"><i class="fa fa-edit" title="Edit"></i></st:editorLink>
                     </editor>
 
-                    <span class="vertbar hidden-print">
-                      <st:preferedLink target="${name}" api="api/apni-format"><i title="Link to Name"
-                                                                                 class="fa fa-link"></i></st:preferedLink>
-                    </span>
                     <a class="loadFormat"
                        href="${g.createLink(controller: (params.display + 'Format'), action: 'name', id: name.id)}">
                       <i class="fa fa-caret-down"></i>

@@ -86,6 +86,7 @@ class SearchController {
                                     query         : params,
                                     count         : results.count,
                                     total         : results.total,
+                                    queryTime     : results.queryTime,
                                     max           : max,
                                     displayFormats: displayFormats])
                 }
@@ -203,7 +204,7 @@ class SearchController {
                 }
             }
         }
-        return CsvRenderer.renderAsCsv(['Found?', 'Search term', 'Census', 'Matched name(s)', 'Name status','Name type','Tags'], csvResults)
+        return CsvRenderer.renderAsCsv(['Found?', 'Search term', 'Census', 'Matched name(s)', 'Name status', 'Name type', 'Tags'], csvResults)
     }
 
     private static String apcStatus(Node node) {

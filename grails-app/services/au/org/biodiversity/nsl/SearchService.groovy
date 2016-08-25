@@ -148,11 +148,10 @@ class SearchService {
         log.debug "query took ${System.currentTimeMillis() - start}ms"
         //filter for just names.
         names = names.collect { result ->
-            println result
             result[0]
         }
 
-        return [count: count, total: total, names: names]
+        return [count: count, total: total, names: names, queryTime: (System.currentTimeMillis() - start)]
     }
 
     private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
