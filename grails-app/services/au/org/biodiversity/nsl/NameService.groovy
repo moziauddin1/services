@@ -58,15 +58,18 @@ class NameService {
         }
         seen.add(note.id)
 
-        log.info "name $name updated"
+        log.info "name $name has been updated. Checking name tree and NTP."
         if (name.nameType.scientific || name.nameType.cultivar) {
             if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) {
                 //we don't need domains to have a parent
+                log.debug "Checking APNI tree"
                 Node currentNode = updateAPNITree(name)
                 name = Name.get(name.id) //reload or it'll die with no session
                 if (currentNode) {
+                    log.debug "Checking NTP"
                     NameTreePath updatedNtp = nameTreePathService.updateNameTreePathFromNode(currentNode)
                     if (updatedNtp) {
+                        log.debug "updated NTP updating the branch of NTPs"
                         nameTreePathService.getCurrentNodesInBranch(updatedNtp).each { Node n ->
                             nameTreePathService.updateNameTreePathFromNode(n)
                         }
@@ -260,7 +263,7 @@ class NameService {
         author.namesForExBaseAuthor.each { Name name ->
             updateFullName(name)
         }
-
+        //todo update references for author
     }
 
     private Node updateAPNITree(Name name) {

@@ -84,6 +84,7 @@
     <g:elseif test="${synonymOf}">
       <af:sortedReferences instances="${synonymOf}" var="synonym" sortOn="cites">
         <div data-nameId="${name.id}">
+          <g:if test="${synonym.instanceType.doubtful}"><span class="fa fa-question-circle"></span></g:if>
           <g:if test="${synonym.instanceType.misapplied}">
             <st:preferedLink target="${name}" api="api/apni-format">${raw(name.fullNameHtml)}</st:preferedLink>
             <st:preferedLink target="${primaryInstance ?: name}"><i title="Link to use in reference"
