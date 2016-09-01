@@ -14,7 +14,7 @@
 <div>
   <af:apcSortedInstances instances="${instances.findAll { it.instanceType.misapplied }}" var="synonym">
     <has-synonym>
-      <g:if test="${synonym.instanceType.doubtful}"><span class="fa fa-question-circle"></span></g:if>
+      <g:if test="${synonym.instanceType.doubtful}">?</g:if>
       <st:preferedLink target="${synonym.name}" api="api/apni-format">${raw(synonym.name.fullNameHtml)}</st:preferedLink>
       <st:preferedLink target="${synonym}"><i title="Use in reference" class="fa fa-book"></i></st:preferedLink>
 
