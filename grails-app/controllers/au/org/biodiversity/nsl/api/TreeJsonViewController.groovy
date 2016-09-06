@@ -563,8 +563,8 @@ class NamesInSubtreeParam {
     String searchText
 
     static constraints = {
-        searchSubtree nullable: true
-        searchText nullable: true
+        searchSubtree nullable: false
+        searchText nullable: false
     }
 
 }
