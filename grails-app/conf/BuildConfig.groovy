@@ -97,6 +97,7 @@ grails.project.dependency.resolution = {
         compile ":executor:0.3"
         compile ":mail:1.0.7"
         compile ":yammer-metrics:3.0.1-2"
+        compile "org.grails.plugins:slack-logger:1.0.1"
 
         // plugins needed at runtime but not for compilation
         runtime ":hibernate4:4.3.5.5" // or ":hibernate:3.6.10.17"

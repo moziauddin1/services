@@ -15,6 +15,8 @@
 */
 
 import org.apache.log4j.DailyRollingFileAppender
+import org.apache.log4j.Level
+import com.theconnman.slacklogger.SlackAppender
 
 // locations to search for config files that get merged into the main config;
 // config files can be ConfigSlurper scripts, Java properties files, or classes
@@ -171,6 +173,12 @@ log4j.main = {
                 layout: pattern(conversionPattern: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%5p] %c:%L %x - %m%n')
         )
 
+        appender new SlackAppender(
+                name: 'slackAppender',
+                layout: pattern(conversionPattern: '%c{2} - %m%n'),
+                threshold: Level.ERROR
+        )
+
         console name: "stdout",
                 layout: pattern(conversionPattern: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%5p] %c:%L %x - %m%n')
 
@@ -179,7 +187,7 @@ log4j.main = {
     environments {
         development {
             root {
-                info 'stdout', 'dailyFileAppender'
+                info 'stdout', 'dailyFileAppender', 'slackAppender'
             }
         }
 
@@ -318,7 +326,7 @@ grails.assets.minifyJs = false
 
 cors {
     url.pattern = '/*'
-    headers = ['Access-Control-Allow-Origin': '*',
+    headers = ['Access-Control-Allow-Origin' : '*',
                'Access-Control-Allow-Headers': 'authorization, content-type'
     ]
 }
@@ -341,3 +349,7 @@ services {
         editor = 'https://biodiversity.org.au/test-nsl-editor'
     }
 }
+
+grails.plugin.slacklogger.webhook = "https://hooks.slack.com/services/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"
+grails.plugin.slacklogger.channel = "errors"
+grails.plugin.slacklogger.botName = "LocalNSLBot"

@@ -324,7 +324,9 @@ class SearchService {
 select n
 from Name n
 where ((lower(simpleName) like :q) or (lower(fullName) like :q))
-and n.nameStatus.name in ('legitimate', 'nom. cons.', '[n/a]', '[default]')
+and n.nameStatus.name in ('legitimate', 'nom. cons.', '[n/a]', '[default]', 'nom. alt.',
+'nom. cult.', 'nom. cons.', 'nom. cons., orth. cons.', 'nom. cons., nom. alt.', 'nom. cult., nom. alt.',
+'nom. et typ. cons.', 'nom. et orth. cons.', 'typ. cons.', 'orth. cons.', 'manuscript')
 and n.nameType.name <> 'common'
 and n.instances.size > 0
 order by sortName
