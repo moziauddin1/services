@@ -26,6 +26,7 @@ class SearchService {
     def nameTreePathService
     def linkService
     def classificationService
+    def configService
 
     @Timed(name = "SearchTimer")
     Map searchForName(Map params, Integer max) {
@@ -342,20 +343,6 @@ order by sortName
             }
             return null
         }
-    }
-
-    static Sql getNSL() {
-        (Environment.executeForCurrentEnvironment {
-            development {
-                Sql.newInstance('jdbc:postgresql://localhost:5432/nsl', 'nsldev', 'nsldev', 'org.postgresql.Driver')
-            }
-            test {
-                Sql.newInstance('jdbc:postgresql://localhost:5432/nsl', 'nsldev', 'nsldev', 'org.postgresql.Driver')
-            }
-            production {
-                Sql.newInstance('jdbc:postgresql://localhost:5432/nsl', 'nsl', 'nsl', 'org.postgresql.Driver')
-            }
-        } as Sql)
     }
 
     private static Integer getRankSuggestionParentSortOrder(NameRank rank, Boolean allRanksAbove) {

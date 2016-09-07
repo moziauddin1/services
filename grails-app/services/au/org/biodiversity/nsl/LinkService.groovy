@@ -114,7 +114,7 @@ class LinkService {
                         if (response.status == 200) {
                             return response.json.link as String
                         }
-                        log.error "Link not found for $target, but should be there."
+                        log.warn "Link not found for $target, but should be there. ${response.json}"
                         return null
                     } else {
                         log.error "Link not found for $target, and couldn't be added."

@@ -18,7 +18,6 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import groovy.sql.Sql
-import org.codehaus.groovy.grails.commons.GrailsApplication
 
 /**
  * NameTreePaths are a view of a tree linking directly to Names. They contain the tree path from root to the current name
@@ -250,7 +249,7 @@ class NameTreePathService {
         log.debug "in makeAllTreePathsSql"
         runAsync {
             try {
-                Sql sql = SearchService.getNSL()
+                Sql sql = configService.getSqlForNSLDB()
                 log.info "Truncating name tree path."
                 sql.execute('TRUNCATE TABLE ONLY name_tree_path RESTART IDENTITY')
                 sql.close()
@@ -266,7 +265,7 @@ class NameTreePathService {
     def makeTreePathsSql() {
         log.info "Making Tree Paths for all trees."
         Long start = System.currentTimeMillis()
-        Sql sql = SearchService.getNSL()
+        Sql sql = configService.getSqlForNSLDB()
         sql.connection.autoCommit = false
 
         try {

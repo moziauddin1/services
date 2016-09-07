@@ -186,8 +186,6 @@ class DataExportServiceSpec extends Specification {
         given: "we set it up"
         service.grailsApplication = [config: [nslServices: [temp: [file: [directory: "/tmp"]]]]]
 
-        service.searchService = new SearchService()  //just uses getNSL
-
         File zipFile = service.exportDarwinCoreArchiveFilesToCSV()
 
         expect: "the zip file to exist"

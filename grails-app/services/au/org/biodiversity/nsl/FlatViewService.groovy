@@ -32,7 +32,6 @@ import groovy.sql.Sql
 class FlatViewService {
 
     def grailsApplication
-    def searchService
     def configService
 
     private static String TAXON_VIEW = 'apc_taxon_view'
@@ -505,7 +504,7 @@ AS exists"""
     }
 
     private def withSql(Closure work) {
-        Sql sql = searchService.getNSL()
+        Sql sql = configService.getSqlForNSLDB()
         try {
             work(sql)
         } finally {

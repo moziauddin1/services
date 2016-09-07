@@ -16,6 +16,7 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
+import groovy.sql.Sql
 import org.codehaus.groovy.grails.commons.GrailsApplication
 
 /**
@@ -58,4 +59,14 @@ class ConfigService {
         }
         return classificationTree
     }
+
+    public Sql getSqlForNSLDB() {
+        String dbUrl = grailsApplication.config.dataSource_nsl.url
+        String username = grailsApplication.config.dataSource_nsl.username
+        String password = grailsApplication.config.dataSource_nsl.password
+        String driverClassName = grailsApplication.config.dataSource_nsl.driverClassName
+        log.debug "Getting sql for $dbUrl, $username, $password, $driverClassName"
+        Sql.newInstance(dbUrl, username, password, driverClassName)
+    }
+
 }

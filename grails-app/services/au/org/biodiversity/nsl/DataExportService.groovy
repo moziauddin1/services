@@ -30,7 +30,7 @@ import java.util.zip.ZipOutputStream
 class DataExportService {
 
     def grailsApplication
-    def searchService
+    def configService
 
     /**
      * export Darwin Core Archive
@@ -72,7 +72,7 @@ class DataExportService {
     }
 
     private withSql(Closure work) {
-        Sql sql = searchService.getNSL()
+        Sql sql = configService.getSqlForNSLDB()
         try {
             work(sql)
         } finally {
