@@ -1,5 +1,6 @@
 /**
  * Application configuration file for WebXml plugin.
+ * This is here to mute the complaint that it doesn't exist
  */
 webxml {
 	//========================================
