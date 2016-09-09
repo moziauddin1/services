@@ -215,7 +215,7 @@ class LinkService {
                     return null
                 }
 
-                return data[0] as Map
+                return new LinkedHashMap(data[0] as Map)
             } catch (RestCallException e) {
                 log.error "Error $e.message getting mapper id for $uri"
                 return null
