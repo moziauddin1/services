@@ -136,6 +136,7 @@ class RestResourceController {
             bare array or primitive as JSON. But everybody does, regardless.
          */
 
+        log.debug "Bulk Fetch request: $request.JSON"
         return render (request.JSON.collect { uri -> linkService.getObjectForLink(uri as String) } as JSON)
     }
 
