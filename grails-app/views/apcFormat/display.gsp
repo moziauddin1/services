@@ -2,6 +2,7 @@
   User: pmcneil
   Date: 15/09/14
 --%>
+<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
@@ -11,8 +12,10 @@
 
 <body>
 <g:render template="/search/searchTabs"/>
+<g:set var="panelClass"
+       value="panel ${((params.product == ConfigService.classificationTreeName) ? 'panel-success' : 'panel-info')}"/>
 
-<div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
+<div class="${panelClass}">
   <div class="panel-heading">
     <strong>Showing ${name.simpleName}</strong>
 

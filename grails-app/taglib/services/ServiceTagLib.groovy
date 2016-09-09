@@ -16,6 +16,7 @@
 
 package services
 
+import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.HibernateDomainUtils
 import au.org.biodiversity.nsl.Instance
 import au.org.biodiversity.nsl.Name
@@ -25,6 +26,7 @@ class ServiceTagLib {
     def grailsApplication
     def linkService
     def instanceService
+    def configService
 
 //    static defaultEncodeAs = 'html'
     static encodeAsForTags = [tagName: 'raw']
@@ -264,5 +266,26 @@ class ServiceTagLib {
             out << "<a class=\"doco\" href=\"$serverURL/docs/main.html\">"
             out << '<i class="fa fa-book"></i> docs </a>'
         }
+    }
+
+    def primaryClassification = { attrs ->
+        out << configService.getClassificationTreeName()
+    }
+
+    def nameTree = { attrs ->
+        out << configService.getNameTreeName()
+    }
+
+    def productBrief = { attrs ->
+        Arrangement arrangement = Arrangement.findByLabel(attrs.product)
+        if(arrangement) {
+            out << arrangement.description
+        } else {
+            out << ''
+        }
+    }
+
+    def productDescription = { attrs ->
+        out << configService.getProductDescription(attrs.product)
     }
 }

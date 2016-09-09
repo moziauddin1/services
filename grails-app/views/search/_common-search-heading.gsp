@@ -1,12 +1,12 @@
 <g:if test="${params.product}">
   <h3 class="text-default">
-    <g:message code="product.${params.product}" default="${params.product}"/>
+    ${params.product} - <st:productBrief product="${params.product}"/>
   </h3>
 
   <div id="productDescription" data-product="${params.product}" class="alert alert-warning alert-dismissible text-default" role="alert">
     <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span>
     </button>
-    <g:message code="product.description.${params.product}" default="Product not found."/>
+    <st:productDescription product="${params.product}"/>
   </div>
 </g:if>
 <g:else>

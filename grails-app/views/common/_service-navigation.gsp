@@ -1,4 +1,4 @@
-<%@ page import="org.apache.shiro.SecurityUtils" %>
+<%@ page import="au.org.biodiversity.nsl.ConfigService; org.apache.shiro.SecurityUtils" %>
 <div class="container">
   <h1>${grailsApplication.config.shard.product}</h1>
 </div>
@@ -29,13 +29,13 @@
                 class="fa fa-search"></i> Search</a>
           </li>
         </g:if>
-        <li class="${params.product == 'apni' ? 'active' : ''}">
-          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: 'apni'])}"><i
-              class="fa fa-search"></i> Names (APNI)</a>
+        <li class="${params.product == ConfigService.nameTreeName ? 'active' : ''}">
+          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.nameTreeName])}"><i
+              class="fa fa-search"></i> Names (<st:nameTree/>)</a>
         </li>
-        <li class="${params.product == 'apc' ? 'active' : ''}">
-          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: 'apc'])}"><i
-              class="fa fa-search"></i> APC Taxonomy</a>
+        <li class="${params.product == ConfigService.classificationTreeName ? 'active' : ''}">
+          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.classificationTreeName])}"><i
+              class="fa fa-search"></i> Taxonomy (<st:primaryClassification/>)</a>
         </li>
       </ul>
 

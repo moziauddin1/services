@@ -16,17 +16,13 @@
 
 package au.org.biodiversity.nsl
 
-import grails.converters.JSON
-import grails.plugin.cache.CacheEvict
-import grails.plugin.cache.CachePut
-import grails.plugin.cache.Cacheable
+
 import grails.plugins.rest.client.RestResponse
 import grails.transaction.Transactional
 import org.codehaus.groovy.grails.web.json.JSONArray
 import org.grails.plugins.metrics.groovy.Timed
 import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
-import org.springframework.cache.ehcache.EhCacheCache
 
 @Transactional
 class LinkService {
@@ -35,98 +31,84 @@ class LinkService {
     CacheManager grailsCacheManager
 
     @Timed()
-    ArrayList getLinksForObject(target) {
-        String linkJson = doUsingCache(getLinksCache(), target?.id) {
+    ArrayList<Map> getLinksForObject(target) {
+        return doUsingCache(getLinksCache(), target?.id) {
             try {
                 String url = getLinkServiceUrl(target, 'links', true)
                 if (url) {
                     RestResponse response = restCallService.nakedGet(url)
+                    if (response.status == 200) {
+                        return response.json as ArrayList
+                    }
                     if (response.status == 404) {
-                        if (addTargetLink(target)) {
-                            response = restCallService.nakedGet(url)
-                            if (response.status != 200) {
-                                log.error "Links not found for $target, but should be there."
-                            }
+                        String link = addTargetLink(target)
+                        if (link) {
+                            return [[link: link, resourceCount: 1, preferred: true]]  as ArrayList<Map>
                         } else {
                             log.error "Links not found for $target, and couldn't be added."
+                            return []
                         }
                     }
-                    //if 404 json.links will be empty
-
-                    // I avoid calling response.json, as this fires off an unnecessary JSON.parse
-                    if(response.getHeaders().get('Content-Type').find { it == 'application/json' || it.startsWith('application/json;')} ) {
-                        return response.text
-                    } else {
-                        return null
-                    }
+                    log.error "Couldn't get links for $target. $response.status: $response.json"
+                    return []
                 }
             } catch (Exception e) {
                 log.error(e.message)
             }
-            return '[]'
-        } as String
-
-        if(linkJson) {
-            return JSON.parse(linkJson) as ArrayList
-        }
-        else {
-            return null;
-        }
+            return []
+        } as ArrayList<Map>
     }
 
     @Timed()
-    Boolean addTargetLink(target) {
+    private String addTargetLink(target) {
         String params = targetParams(target) + "&" + mapperAuth()
         String mapper = mapper(true)
         try {
             RestResponse response = restCallService.nakedGet("$mapper/admin/addIdentifier?$params")
             if (response.status != 200) {
-                log.error "Get $mapper/admin/addIdentifier?$params failed with status $response.status"
-                return false
+                log.error "Get $mapper/admin/addIdentifier?$params failed with status $response.status. ${response.json}"
+                return null
             }
             if (response.json) {
                 if (response.json.error) {
                     log.error("Get $mapper/admin/addIdentifier?$params returned errors: ${response.json.error} ${response.json.errors ?: ''}")
-                    return false
+                    return null
                 }
-                return true
+                log.debug "$response.json"
+                return response.json.preferredURI as String
             }
         } catch (e) {
             log.error "Error $e.message adding link for $target"
         }
-        return false
+        return null
     }
 
     @Timed()
     String getPreferredLinkForObject(target) {
         doUsingCache(getLinkCache(), target?.id) {
 
-        try {
-            String url = getLinkServiceUrl(target, 'preferredLink', true)
-            if (url) {
-                RestResponse response = restCallService.nakedGet(url)
-                if (response.status == 200) {
-                    return response.json.link as String
-                }
-                if (response.status == 404) {
-                    if (addTargetLink(target)) {
-                        response = restCallService.nakedGet(url)
-                        if (response.status == 200) {
-                            return response.json.link as String
-                        }
-                        log.warn "Link not found for $target, but should be there. ${response.json}"
-                        return null
-                    } else {
-                        log.error "Link not found for $target, and couldn't be added."
-                        return null
+            try {
+                String url = getLinkServiceUrl(target, 'preferredLink', true)
+                if (url) {
+                    RestResponse response = restCallService.nakedGet(url)
+                    if (response.status == 200) {
+                        return response.json.link as String
                     }
+                    if (response.status == 404) {
+                        String link = addTargetLink(target)
+                        if (link) {
+                            return link as String
+                        } else {
+                            log.error "Link not found for $target, and couldn't be added."
+                            return null
+                        }
+                    }
+                    log.debug "Couldn't get links, status $response.status, response headers are $response.headers\n response body is: $response.body"
                 }
-                log.debug "Couldn't get links, status $response.status, response headers are $response.headers\n response body is: $response.body"
+            } catch (Exception e) {
+                log.error "Error $e.message getting preferred link for $target"
             }
-        } catch (Exception e) {
-            log.error "Error $e.message getting preferred link for $target"
-        }
-        return null
+            return null
         } as String
     }
 
@@ -219,7 +201,6 @@ class LinkService {
     Map getMapperIdentityForLink(String uri) {
         doUsingCache(getIdentityCache(), uri) {
             try {
-
                 String url = "${mapper(true)}/broker/getCurrentIdentity?uri=${URLEncoder.encode(uri, "UTF-8")}"
                 log.debug(url)
                 JSONArray data = restCallService.get(url) as JSONArray
@@ -301,7 +282,7 @@ class LinkService {
         if (target instanceof Node) {
             // override the default, because the namespace id on the node root rather than the root itself
             target = JsonRendererService.initializeAndUnproxy(target as Node)
-            String objectType = lowerFirst(target.class.simpleName)
+            String objectType = 'node'
             String nameSpace = (target).root.namespace.name.toLowerCase()
             Long idNumber = target.id
             return [nameSpace: nameSpace, objectType: objectType, idNumber: idNumber]

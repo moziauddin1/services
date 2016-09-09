@@ -187,7 +187,7 @@ log4j.main = {
     environments {
         development {
             root {
-                info 'stdout', 'dailyFileAppender', 'slackAppender'
+                info 'stdout', 'dailyFileAppender'//, 'slackAppender'
             }
         }
 

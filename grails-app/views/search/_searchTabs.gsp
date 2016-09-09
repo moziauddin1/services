@@ -1,3 +1,4 @@
+<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <div role="tabpanel">
   <ul class="nav nav-tabs" role="tablist">
     <li role="presentation"
@@ -26,12 +27,12 @@
   </ul>
 
   <div class="tab-content">
-
+    <g:set var="panelClass"
+           value="panel ${((params.product == ConfigService.classificationTreeName) ? 'panel-success' : 'panel-info')}"/>
     <div role="tabpanel"
          class="tab-pane ${!(query.advanced || query.nameCheck || query.sparql) ? 'active' : ''}"
          id="name">
-      <div class="panel ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
-
+      <div class="${panelClass}">
         <div class="panel-heading">
           <g:render template="/search/common-search-heading"/>
         </div>
@@ -45,7 +46,7 @@
 
     <div role="tabpanel" class="tab-pane ${query.advanced ? 'active' : ''}" id="advanced">
 
-      <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
+      <div class="${panelClass}">
         <div class="panel-heading">
           <g:render template="/search/common-search-heading"/>
           <g:render template="/search/hide-show"/>
@@ -59,7 +60,7 @@
 
     <div role="tabpanel" class="tab-pane ${query.nameCheck ? 'active' : ''}" id="nameCheck">
 
-      <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
+      <div class="${panelClass}">
         <div class="panel-heading">
           <g:render template="/search/common-search-heading"/>
           <g:render template="/search/hide-show"/>

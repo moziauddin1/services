@@ -2,7 +2,7 @@
   User: pmcneil
   Date: 16/09/14
 --%>
-
+<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <%@ page contentType="text/html;charset=UTF-8" %>
 
 <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
@@ -54,10 +54,10 @@
                     <g:if test="${(nameData.apc)}">
                       <a href="${g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: nameData.name.id)}">
                         <g:if test="${(nameData.apc as au.org.biodiversity.nsl.Node)?.typeUriIdPart == 'ApcConcept'}">
-                          <apc><i class="fa fa-check"></i>APC</apc>
+                          <apc><i class="fa fa-check"></i>${ConfigService.classificationTreeName}</apc>
                         </g:if>
                         <g:else>
-                          <apc title="excluded from APC"><i class="fa fa-ban"></i>APC ex.</apc>
+                          <apc title="excluded from APC"><i class="fa fa-ban"></i>${ConfigService.classificationTreeName} ex.</apc>
                         </g:else>
                       </a>
                     </g:if>

@@ -15,6 +15,7 @@
 */
 package au.org.biodiversity.nsl
 
+import grails.plugin.cache.Cacheable
 import grails.transaction.Transactional
 import groovy.sql.Sql
 import org.codehaus.groovy.grails.commons.GrailsApplication
@@ -35,29 +36,33 @@ class ConfigService {
 
     GrailsApplication grailsApplication
 
-    private Namespace nameSpace
-    private String nameTreeName
-    private String classificationTree
+    private static String configGetOrfail(String key) {
+        String value = ShardConfig.findByName(key)?.value
+        if (!value) {
+            Throw new Exception("Config error. Add '$key' to shard_config.")
+        }
+        return value
+    }
 
     public Namespace getNameSpace() {
+        String nameSpaceName = configGetOrfail('name space')
+        Namespace nameSpace = Namespace.findByName(nameSpaceName)
         if (!nameSpace) {
-            nameSpace = Namespace.findByName(grailsApplication.config.shard.classification.namespace as String)
+            log.error "Namespace not correctly set in config. Add 'name space' to shard_config, and make sure Namespace exists."
         }
         return nameSpace
     }
 
-    public String getNameTreeName() {
-        if (!nameTreeName) {
-            nameTreeName = ShardConfig.findByName('name tree label')?.value
-        }
-        return nameTreeName
+    public static String getNameTreeName() {
+        return configGetOrfail('name tree label')
     }
 
-    public String getClassificationTreeName() {
-        if (!classificationTree) {
-            classificationTree = ShardConfig.findByName('classification tree label')?.value
-        }
-        return classificationTree
+    public static String getClassificationTreeName() {
+        return configGetOrfail('classification tree label')
+    }
+
+    public static String getProductDescription(String productName) {
+        return configGetOrfail("$productName description")
     }
 
     public Sql getSqlForNSLDB() {

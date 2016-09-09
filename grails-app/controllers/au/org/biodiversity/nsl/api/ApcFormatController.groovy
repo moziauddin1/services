@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl.api
 
+import au.org.biodiversity.nsl.ConfigService
 import au.org.biodiversity.nsl.Instance
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Node
@@ -39,7 +40,7 @@ class ApcFormatController {
     @Timed()
     def display(Name name) {
         if (name) {
-            params.product = 'apc'
+            params.product = ConfigService.classificationTreeName
             String inc = g.cookie(name: 'searchInclude')
             if (inc) {
                 params.inc = JSON.parse(inc) as Map
@@ -47,7 +48,7 @@ class ApcFormatController {
                 params.inc = [scientific: 'on']
             }
 
-            getNameModel(name) << [query: [name: "$name.fullName", product: 'apc', inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
+            getNameModel(name) << [query: [name: "$name.fullName", product: ConfigService.classificationTreeName, inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')
@@ -57,7 +58,7 @@ class ApcFormatController {
     @Timed()
     def name(Name name) {
         if (name) {
-            log.info "getting apc name $name"
+            log.info "getting ${ConfigService.classificationTreeName} name $name"
             ResultObject model = new ResultObject(getNameModel(name))
             render(view: '_name', model: model)
         } else {

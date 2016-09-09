@@ -162,13 +162,12 @@ class SearchService {
             from.add('Node node')
             and << "node.root = :root and node.checkedInAt is not null and node.next is null and node.internalType = 'T'"
 
-            //todo remove this as APNI specific
-            if (root.label == 'APNI' || params.exclSynonym == 'on') {
-                and << "cast(n.id as string) = node.nameUriIdPart"
+            if (root.label == ConfigService.nameTreeName || params.exclSynonym == 'on') {
+                and << "n.id = node.name.id"
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
-                and << "n = s.name and (s.citedBy = i or s = i) and cast(i.id as string) = node.taxonUriIdPart"
+                and << "n = s.name and (s.citedBy = i or s = i) and i.id = node.instance.id"
             }
 
             if (params.inRank?.id) {

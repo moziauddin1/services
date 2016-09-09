@@ -16,9 +16,9 @@
 
 package au.org.biodiversity.nsl.api
 
+import au.org.biodiversity.nsl.ConfigService
 import au.org.biodiversity.nsl.Name
 import grails.converters.JSON
-import grails.plugin.cache.Cacheable
 import org.grails.plugins.metrics.groovy.Timed
 
 /**
@@ -45,7 +45,7 @@ class ApniFormatController {
     @Timed()
     def display(Name name) {
         if (name) {
-            params.product = 'apni'
+            params.product = ConfigService.nameTreeName
             String inc = g.cookie(name: 'searchInclude')
             if (inc) {
                 params.inc = JSON.parse(inc) as Map
@@ -53,7 +53,7 @@ class ApniFormatController {
                 params.inc = [scientific: 'on']
             }
 
-            apniFormatService.getNameModel(name) << [query: [name: "$name.fullName", product: 'apni', inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
+            apniFormatService.getNameModel(name) << [query: [name: "$name.fullName", product: ConfigService.nameTreeName, inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')
@@ -63,7 +63,7 @@ class ApniFormatController {
     @Timed()
     def name(Name name) {
         if (name) {
-            log.info "getting apni name $name"
+            log.info "getting ${ConfigService.nameTreeName} name $name"
             ResultObject model = new ResultObject(apniFormatService.getNameModel(name))
             render(view: '_name', model: model)
         } else {

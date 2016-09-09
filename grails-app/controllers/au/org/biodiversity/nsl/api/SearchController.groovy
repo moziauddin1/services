@@ -37,14 +37,15 @@ class SearchController {
         max = max ?: 100;
 
         if (!params.product && !SecurityUtils.subject?.authenticated) {
-            params.product = params.display ?: 'apni'
+            params.product = configService.nameTreeName
+            params.display = params.display ?: 'apni'
         }
 
         if (params.product) {
-            Arrangement tree = Arrangement.findByNamespaceAndLabel(configService.nameSpace, params.product.toUpperCase() as String)
+            Arrangement tree = Arrangement.findByNamespaceAndLabelIlike(configService.nameSpace, params.product as String)
             if (tree) {
                 params.tree = [id: tree.id]
-                params.display = params.product
+                params.display = (params.product == configService.nameTreeName ? 'apni' : 'apc')
             } else {
                 flash.message = "Unknown product ${params.product}"
                 return redirect(url: '/')
