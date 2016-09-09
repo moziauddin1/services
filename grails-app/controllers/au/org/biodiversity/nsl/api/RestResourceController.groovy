@@ -30,7 +30,6 @@ class RestResourceController {
     GrailsApplication grailsApplication
     def linkService
     def apniFormatService
-    def queryService
 
 //    @SuppressWarnings("GroovyUnusedDeclaration")
 //    static responseFormats = ['json', 'xml', 'html']

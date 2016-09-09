@@ -214,8 +214,7 @@ class LinkService {
                     log.error "expected only 1 identity for $uri"
                     return null
                 }
-
-                return new LinkedHashMap(data[0] as Map)
+                return [objectType: data[0].objectType, nameSpace: data[0].nameSpace, idNumber: data[0].idNumber]
             } catch (RestCallException e) {
                 log.error "Error $e.message getting mapper id for $uri"
                 return null
