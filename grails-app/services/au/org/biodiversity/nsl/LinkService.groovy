@@ -38,7 +38,13 @@ class LinkService {
                 if (url) {
                     RestResponse response = restCallService.nakedGet(url)
                     if (response.status == 200) {
-                        return new ArrayList<Map>(response.json as ArrayList)
+                        //copy the json response objects to a real ArrayList<Map> which is serializable
+                        ArrayList<Map> links = []
+                        ArrayList responseLinks = response.json as ArrayList
+                        responseLinks.each {Map linkMap ->
+                            links.add(new LinkedHashMap(linkMap))
+                        }
+                        return links
                     }
                     if (response.status == 404) {
                         String link = addTargetLink(target)
