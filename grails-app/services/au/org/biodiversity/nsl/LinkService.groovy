@@ -38,7 +38,7 @@ class LinkService {
                 if (url) {
                     RestResponse response = restCallService.nakedGet(url)
                     if (response.status == 200) {
-                        return response.json as ArrayList
+                        return new ArrayList<Map>(response.json as ArrayList)
                     }
                     if (response.status == 404) {
                         String link = addTargetLink(target)
