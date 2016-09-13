@@ -14,7 +14,7 @@ trait RequestUtil {
     public remoteAddress(HttpServletRequest request) {
         String ip = headers.find { String header ->
             String value = request.getHeader(header)
-            if (value && !"unknown".equalsIgnoreCase(ip)) {
+            if (value && !"unknown".equalsIgnoreCase(value)) {
                 return value
             }
             return null
