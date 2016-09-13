@@ -27,13 +27,14 @@ import org.apache.shiro.SecurityUtils
 
 import javax.servlet.http.Cookie
 
-class SearchController {
+class SearchController implements RequestUtil {
     def configService
     def searchService
 
     def search(Integer max) {
         String referer = request.getHeader('Referer')
-        log.info "Search params $params, Referer: ${referer}"
+        String remoteIP = remoteAddress(request)
+        log.info "Search params $params, Referer: ${referer}, Remote: ${remoteIP}"
         max = max ?: 100;
 
         if (!params.product && !SecurityUtils.subject?.authenticated) {
