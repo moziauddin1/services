@@ -5,6 +5,13 @@
   <title><g:layoutTitle default="Grails"/></title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="shortcut icon" href="${assetPath(src: 'gears.png')}?v=2.1">
+
+  <!-- Materialize http://materializecss.com/getting-started.html Compiled and minified CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/css/materialize.min.css">
+
+  <!-- Materialize http://materializecss.com/getting-started.html Compiled and minified JavaScript -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/js/materialize.min.js"></script>
+
   <script type="application/javascript">
     baseContextPath = "${request.getContextPath()}";
   </script>
