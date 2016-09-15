@@ -23,7 +23,7 @@
 
   <div>
     <h1>The National Species List</h1>
-    <div class="col s12 m7">
+    <div class="col-sm-12 col-md-7">
       <h2 class="header">Vascular Plants - APNI/APC</h2>
       <div class="card horizontal">
         <div class="card-image">
@@ -44,7 +44,7 @@
       </div>
     </div>
 
-    <div class="col s12 m7">
+    <div class="col-sm-12 col-md-7">
       <h2 class="header">Moss - AusMoss</h2>
       <div class="card horizontal">
         <div class="card-image">
@@ -65,7 +65,7 @@
       </div>
     </div>
 
-    <div class="col s12 m7">
+    <div class="col-sm-12 col-md-7">
       <h2 class="header">Lichen - ABRS Lichen</h2>
       <div class="card horizontal">
         <div class="card-image">

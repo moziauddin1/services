@@ -6,12 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="shortcut icon" href="${assetPath(src: 'gears.png')}?v=2.1">
 
-  <!-- Materialize http://materializecss.com/getting-started.html Compiled and minified CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/css/materialize.min.css">
-
-  <!-- Materialize http://materializecss.com/getting-started.html Compiled and minified JavaScript -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/js/materialize.min.js"></script>
-
   <script type="application/javascript">
     baseContextPath = "${request.getContextPath()}";
   </script>
@@ -59,20 +53,23 @@
     <span id="page-footer-inner-left" class="pull-left">
       Supported by
       <a href="http://www.anbg.gov.au/chah/">
-        <asset:image src="CHAH-logo.png" height="42" />
+        <asset:image src="CHAH-logo.png" height="42"/>
       </a>
     </span>
     <span id="page-footer-inner-right" class="pull-right">
-      <a href="https://twitter.com/aubiodiversity" class="twitter-link"><i class="fa fa-twitter fa-2x" style="color: #55acee"></i>
-        </a>
+      <a href="https://twitter.com/aubiodiversity" class="twitter-link"><i class="fa fa-twitter fa-2x"
+                                                                           style="color: #55acee"></i>
+      </a>
     </span>
-  <div>
-</div>
-<!-- Version: <g:meta name="app.version"/> -->
 
-<div id="spinner" class="spinner" style="display:none;"><g:message code="spinner.alt" default="Loading&hellip;"/></div>
+    <div>
+    </div>
+    <!-- Version: <g:meta name="app.version"/> -->
 
-<st:googleAnalytics/>
+    <div id="spinner" class="spinner" style="display:none;"><g:message code="spinner.alt"
+                                                                       default="Loading&hellip;"/></div>
+
+    <st:googleAnalytics/>
 
 </body>
 </html>
