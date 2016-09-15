@@ -45,11 +45,12 @@ class SearchController implements RequestUtil {
         if (params.product) {
             Arrangement tree = Arrangement.findByNamespaceAndLabelIlike(configService.nameSpace, params.product as String)
             if (tree) {
+                params.product = tree.label //force to the correct case for a product label
                 params.tree = [id: tree.id]
                 params.display = (params.product == configService.nameTreeName ? 'apni' : 'apc')
             } else {
                 flash.message = "Unknown product ${params.product}"
-                return redirect(url: '/')
+                return redirect(url: '/search')
             }
         } else {
             params.display = params.display ?: 'apni'

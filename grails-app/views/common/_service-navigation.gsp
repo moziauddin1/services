@@ -30,11 +30,13 @@
           </li>
         </g:if>
         <li class="${params.product == ConfigService.nameTreeName ? 'active' : ''}">
-          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.nameTreeName])}"><i
+          <a class="search"
+             href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.nameTreeName])}"><i
               class="fa fa-search"></i> Names (<st:nameTree/>)</a>
         </li>
         <li class="${params.product == ConfigService.classificationTreeName ? 'active' : ''}">
-          <a class="search" href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.classificationTreeName])}"><i
+          <a class="search"
+             href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.classificationTreeName])}"><i
               class="fa fa-search"></i> Taxonomy (<st:primaryClassification/>)</a>
         </li>
       </ul>
@@ -104,3 +106,7 @@
     </div><!--/.nav-collapse -->
   </div>
 </div>
+<g:if test="${flash.message}">
+  <div class="alert alert-warning" role="alert">
+    <span class="fa fa-warning" aria-hidden="true"></span>&nbsp;${flash.message}</div>
+</g:if>

@@ -39,7 +39,7 @@ class ConfigService {
     private static String configGetOrfail(String key) {
         String value = ShardConfig.findByName(key)?.value
         if (!value) {
-            Throw new Exception("Config error. Add '$key' to shard_config.")
+            throw new Exception("Config error. Add '$key' to shard_config.")
         }
         return value
     }
