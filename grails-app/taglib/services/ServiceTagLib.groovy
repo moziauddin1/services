@@ -288,4 +288,19 @@ class ServiceTagLib {
     def productDescription = { attrs ->
         out << configService.getProductDescription(attrs.product)
     }
+
+    def randomName = {attrs ->
+        String q = attrs.q
+        if(q) {
+            q = q[0]
+        }
+        String simpleName = Name.findBySimpleNameIlike("$q%")?.simpleName
+        if(!simpleName) {
+            simpleName = Name.list(max: 1)?.first()?.simpleName
+        }
+        if(!simpleName) {
+            simpleName = 'Doodia'
+        }
+        out << simpleName
+    }
 }

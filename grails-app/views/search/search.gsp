@@ -99,7 +99,7 @@
           <div class="results">
             <h2>No results found <g:if test="${query.name}">for &quot;${query.name}&quot;</g:if>.</h2>
 
-            <p>Try searching for a different name, e.g. "Doodia"</p>
+            <p>Try searching for a different name, e.g. "<st:randomName q="${query.name}"/>"</p>
           </div>
         </div>
       </div>
