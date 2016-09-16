@@ -384,3 +384,27 @@ a:hover {
     cursor: pointer;
     display: block;
 }
+
+.imageAndText {
+    position: relative;
+    overflow: hidden;
+}
+.imageAndText img {
+    margin-right: 0px;
+    margin-left: auto;
+}
+.imageAndText .col {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    text-shadow:
+            -1px -1px 0 #eee,
+            1px -1px 0 #eee,
+            -1px 1px 0 #eee,
+            1px 1px 0 #eee;
+}
+
+.imageAndText h1 {
+    font-size: calc(16px + 2vw);
+}

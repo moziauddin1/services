@@ -73,6 +73,10 @@ class ConfigService {
         return configGetOrfail('banner text')
     }
 
+    public static String getBannerImage() {
+        return configGetOrfail('banner image')
+    }
+
     public static String getProductDescription(String productName) {
         return configGetOrfail("$productName description")
     }

@@ -1,6 +1,15 @@
 <%@ page import="au.org.biodiversity.nsl.ConfigService; org.apache.shiro.SecurityUtils" %>
-<div class="container">
-  <h1>${ConfigService.bannerText} <g:if test="${params?.product}"> <span class="small">${params.product} <span class="text-muted"> - <st:productBrief product="${params.product}"/></span></span></g:if></h1>
+
+<div class="imageAndText">
+  <asset:image src="${ConfigService.bannerImage}" class="align-right img-responsive"/>
+  <div class="col">
+    <div class="col-sm-12">
+      <h1>${ConfigService.bannerText}
+      <g:if test="${params?.product}">
+        <span class="small">${params.product} - <st:productBrief product="${params.product}"/></span></h1>
+      </g:if>
+    </div>
+  </div>
 </div>
 
 <div class="navbar navbar-inverse" role="navigation">
