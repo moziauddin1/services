@@ -1,6 +1,6 @@
 <%@ page import="au.org.biodiversity.nsl.ConfigService; org.apache.shiro.SecurityUtils" %>
 <div class="container">
-  <h1>${grailsApplication.config.shard.product} <g:if test="${params?.product}">- ${params.product}</g:if></h1>
+  <h1>${ConfigService.bannerText} <g:if test="${params?.product}"> <span class="small">${params.product} <span class="text-muted"> - <st:productBrief product="${params.product}"/></span></span></g:if></h1>
 </div>
 
 <div class="navbar navbar-inverse" role="navigation">

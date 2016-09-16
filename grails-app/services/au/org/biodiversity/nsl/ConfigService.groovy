@@ -61,6 +61,18 @@ class ConfigService {
         return configGetOrfail('classification tree label')
     }
 
+    public static String getShardDescriptionHtml() {
+        return configGetOrfail('description html')
+    }
+
+    public static String getPageTitle() {
+        return configGetOrfail('page title')
+    }
+
+    public static String getBannerText() {
+        return configGetOrfail('banner text')
+    }
+
     public static String getProductDescription(String productName) {
         return configGetOrfail("$productName description")
     }

@@ -3,17 +3,18 @@
   Date: 16/09/14
 --%>
 
-<%@ page import="au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameType" contentType="text/html;charset=UTF-8" %>
+<%@ page import="au.org.biodiversity.nsl.ConfigService; au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameType" contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
   <meta name="layout" content="main">
   <title>
+    ${ConfigService.pageTitle}
     <g:if test="${params.product}">
-      ${params.product.toUpperCase()} -
+      ${params.product}
     </g:if>
-    <g:else>Search -</g:else>
-    <g:if test="${query.name}">${query.name}?</g:if>
-    <g:if test="${query.sparql}">SPARQL</g:if>
+    <g:else>Search</g:else>
+    <g:if test="${query.name}">- ${query.name}?</g:if>
+    <g:if test="${query.sparql}">- SPARQL</g:if>
   </title>
 </head>
 

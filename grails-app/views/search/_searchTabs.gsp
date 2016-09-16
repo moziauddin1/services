@@ -1,4 +1,8 @@
 <%@ page import="au.org.biodiversity.nsl.ConfigService" %>
+<g:set var="panelClass"
+       value="panel ${((params.product == ConfigService.classificationTreeName) ? 'panel-success' : 'panel-info')}"/>
+<g:render template="/search/common-search-heading"/>
+
 <div role="tabpanel">
   <ul class="nav nav-tabs" role="tablist">
     <li role="presentation"
@@ -27,14 +31,12 @@
   </ul>
 
   <div class="tab-content">
-    <g:set var="panelClass"
-           value="panel ${((params.product == ConfigService.classificationTreeName) ? 'panel-success' : 'panel-info')}"/>
     <div role="tabpanel"
          class="tab-pane ${!(query.advanced || query.nameCheck || query.sparql) ? 'active' : ''}"
          id="name">
       <div class="${panelClass}">
         <div class="panel-heading">
-          <g:render template="/search/common-search-heading"/>
+          %{--<g:render template="/search/common-search-heading"/>--}%
         </div>
 
         <div class="panel-body">
@@ -48,7 +50,7 @@
 
       <div class="${panelClass}">
         <div class="panel-heading">
-          <g:render template="/search/common-search-heading"/>
+          %{--<g:render template="/search/common-search-heading"/>--}%
           <g:render template="/search/hide-show"/>
         </div>
 
@@ -62,7 +64,7 @@
 
       <div class="${panelClass}">
         <div class="panel-heading">
-          <g:render template="/search/common-search-heading"/>
+          %{--<g:render template="/search/common-search-heading"/>--}%
           <g:render template="/search/hide-show"/>
         </div>
 

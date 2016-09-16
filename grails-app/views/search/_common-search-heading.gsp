@@ -1,9 +1,9 @@
+<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <g:if test="${params.product}">
-  <h3 class="text-default">
-    ${params.product} - <st:productBrief product="${params.product}"/>
-  </h3>
+  <g:set var="alertClass"
+         value="${((params.product == ConfigService.classificationTreeName) ? 'alert-success' : 'alert-info')}"/>
 
-  <div id="productDescription" data-product="${params.product}" class="alert alert-warning alert-dismissible text-default" role="alert">
+  <div id="productDescription" data-product="${params.product}" class="alert ${alertClass} alert-dismissible text-default" role="alert">
     <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span>
     </button>
     <st:productDescription product="${params.product}"/>

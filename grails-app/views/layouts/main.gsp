@@ -1,8 +1,9 @@
+<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <!DOCTYPE html>
 <head>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <title><g:layoutTitle default="Grails"/></title>
+  <title><g:layoutTitle default="${ConfigService.pageTitle}"/></title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="shortcut icon" href="${assetPath(src: 'gears.png')}?v=2.1">
 
