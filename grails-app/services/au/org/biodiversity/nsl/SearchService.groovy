@@ -179,7 +179,7 @@ class SearchService {
                         List<NameTreePath> ntps = nameTreePathService.findAllCurrentNameTreePathsForNames(rankNames, root)
                         if (ntps && !ntps.empty) {
                             from.add('NameTreePath ntp')
-                            if (root.label == 'APNI' || params.exclSynonym == 'on') {
+                            if (root.label == ConfigService.nameTreeName || params.exclSynonym == 'on') {
                                 and << "n = ntp.name and ntp.tree = :root"
                             } else {
                                 and << "i.name = ntp.name and ntp.tree = :root"
