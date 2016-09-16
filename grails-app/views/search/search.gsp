@@ -85,7 +85,7 @@
         </div>
       </div>
     </g:if>
-    <g:elseif test="${count == 0}">
+    <g:elseif test="${total == 0}">
       <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
         <div class="panel-heading">
           <strong>No results found</strong>
