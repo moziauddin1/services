@@ -152,7 +152,7 @@ class SearchController implements RequestUtil {
 
     def searchForm() {
         if (!params.product && !SecurityUtils.subject?.authenticated) {
-            params.product = params.display ?: 'apni'
+            params.product = configService.nameTreeName
         }
 
         if (params.product) {
@@ -174,7 +174,7 @@ class SearchController implements RequestUtil {
 
     def nameCheck(Integer max) {
         List<Map> results = searchService.nameCheck(params, max)
-        params.product = 'apni'
+        params.product = configService.nameTreeName
         if (params.csv) {
             render(file: renderCsvResults(results).bytes, contentType: 'text/csv', fileName: 'name-check.csv')
         } else {
