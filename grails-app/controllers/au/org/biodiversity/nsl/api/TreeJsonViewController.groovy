@@ -146,7 +146,7 @@ class TreeJsonViewController {
 
             uriPermissions.isClassification = a.arrangementType == ArrangementType.P;
             uriPermissions.isWorkspace = a.arrangementType == ArrangementType.U;
-            uriPermissions.canEdit = (uriPermissions.isWorkspace && principal == a.owner) || (uriPermissions.isClassification && SecurityUtils.subject.hasRole(a.label));
+            uriPermissions.canEdit = canEdit(a);
         }
 
 
@@ -505,6 +505,20 @@ class TreeJsonViewController {
         ] as JSON)
 
     }
+
+    boolean canEdit(Arrangement a) {
+        if(!a) return false;
+
+        switch(a.arrangementType) {
+            case ArrangementType.P:
+                return SecurityUtils.subject.hasRole(a.label);
+            case ArrangementType.U:
+                return SecurityUtils.subject.hasRole(a.baseArrangement?.label);
+            default:
+                return false;
+        }
+    }
+
 }
 
 @Validateable

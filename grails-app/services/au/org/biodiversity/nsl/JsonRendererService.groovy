@@ -163,6 +163,18 @@ class JsonRendererService {
         ]
     }
 
+    Map getBriefArrangement(Arrangement arrangement) {
+        if (!arrangement) {
+            return [:]
+        }
+        def json = brief(arrangement);
+        json.id = arrangement.id; // TODO: who needs this? This should not be being used anywhere.
+        if(arrangement.label) {
+            json.label = arrangement.label
+        }
+        return json
+    }
+
     Map brief(target, Map extra = [:]) {
         if (!target) {
             return [:]
@@ -456,7 +468,7 @@ class JsonRendererService {
                 typeUri    : getBriefTreeUri(DomainUtils.getNodeTypeUri(node)),
                 prev       : node.prev ? brief(node.prev, [id: node.prev.id]) : null,
                 next       : node.next ? brief(node.next) : null,
-                arrangement: brief(node.root, [id: node.root.id] << (node.root.label ? [label: node.root.label] : [:])),
+                arrangement: getBriefArrangement(node.root),
                 checkedInAt: node.checkedInAt ? brief(node.checkedInAt, [id: node.checkedInAt.id, timeStamp: node.checkedInAt.timeStamp]) : null,
                 replacedAt : node.replacedAt ? brief(node.replacedAt, [id: node.replacedAt.id, timeStamp: node.replacedAt.timeStamp]) : null,
                 isCurrent  : node.checkedInAt && !node.replacedAt,
@@ -526,6 +538,11 @@ class JsonRendererService {
                 currentRoot    : arrangement.arrangementType == ArrangementType.P && arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
         ];
+
+        if(arrangement.baseArrangement) {
+            data.baseArrangement = getBriefArrangement(arrangement.baseArrangement)
+        }
+
         return data;
     }
 

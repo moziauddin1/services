@@ -173,7 +173,7 @@ class TreeJsonEditController {
 
             Arrangement a = (Arrangement) o;
 
-            if (o.owner != SecurityUtils.subject.principal) {
+            if (!canEdit(a)) {
                 def result = [
                         success: false,
                         msg    : [
@@ -225,7 +225,7 @@ class TreeJsonEditController {
 
             Arrangement a = (Arrangement) o;
 
-            if (o.owner != SecurityUtils.subject.principal) {
+            if (!canEdit(a)) {
                 def result = [
                         success: false,
                         msg    : [
@@ -243,70 +243,6 @@ class TreeJsonEditController {
                     success: true,
                     msg    : [
                             [msg: 'Updated', body: "Workspace ${a.title} updated", status: 'success']
-                    ]
-            ] as JSON)
-        }
-    }
-
-    def addNamesToNode(AddNamesToNodeParam param) {
-        response.status = 200 // default
-
-        if (!param.validate()) return renderValidationErrors(param)
-
-        handleException { handleExceptionIgnore ->
-
-            Arrangement ws = (Arrangement) getObjectForLink(param.wsUri as String)
-            Node focus = (Node) getObjectForLink(param.focus as String)
-
-            def msgV = [];
-
-            if (ws.arrangementType != ArrangementType.U) {
-                msgV << [msg: "Illegal Argument", body: "${param.wsUri} is not a workspace", status: 'danger']
-            }
-
-            if (!msgV.isEmpty()) {
-                response.status = 400
-                def result = [
-                        success: false,
-                        msg    : msgV
-                ]
-                return render(result as JSON)
-            }
-
-            if (ws.owner != SecurityUtils.subject.principal) {
-                def result = [
-                        success: false,
-                        msg    : [
-                                [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'warning'],
-                        ]
-                ]
-                response.status = 403
-                return render(result as JSON)
-            }
-
-
-
-            def names = [];
-
-            // TODO better error handling here.
-
-            for (uri in param.names) {
-                def o = getObjectForLink(uri);
-                if (!(o instanceof Name) && !(o instanceof Instance)) {
-                    throw new IllegalArgumentException(uri);
-                }
-                names.add(o)
-            }
-
-            Node newFocus = userWorkspaceManagerService.addNamesToNode(ws, focus, names).target;
-            newFocus = DomainUtils.refetchNode(newFocus);
-
-            response.status = 200
-            return render([
-                    success : true,
-                    newFocus: linkService.getPreferredLinkForObject(newFocus),
-                    msg     : [
-                            [msg: 'Updated', body: "Names added", status: 'success']
                     ]
             ] as JSON)
         }
@@ -344,7 +280,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEdit(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -483,6 +419,11 @@ class TreeJsonEditController {
             }
         }
 
+        // ok, we need a lot more logic here. if the name of this instance is in the tree already (directly or as a synonym),
+        // then we need to ask the user what they would like to do about that. This code will now enforce the rule
+        // "a tree must not have the same name twice". Having said that, we can't guarrantee that that won't happen
+        // by code here.
+
 
         def result
 
@@ -529,94 +470,14 @@ class TreeJsonEditController {
     }
 
     private def dropNodeOntoNode(Arrangement ws, Node focus, Node target, Node node, DropUrisOntoNodeParam param) {
-
-        // if the node is a top-level node, then we may be attempting to drop the node or it's child nodes. We don't know.
-
-        if (node == target) {
+        if(!node.instance) {
             return render([
                     success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot drop a node onto itself.", status: 'info']
+                    msg    : [msg: 'Cannot drop', body: "Only nodes with instances can be dropped onto other nodes", status: 'warn']
             ] as JSON)
         }
 
-        def path = queryService.findPath(node, target)
-
-        if (path) {
-            return [
-                    success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot drop a node onto a subnode of itself.", status: 'info']
-            ]
-        }
-
-        if(node.subLink.findAll {it.subnode.internalType==NodeInternalType.T}.empty) {
-            return render([
-                    success: false,
-                    msg    : [msg: 'No subnodes', body: "Node has no subnodes to move.", status: 'info']
-            ] as JSON)
-        }
-
-        int pathsToTarget = queryService.countPaths(ws.node, target);
-        int pathsToNode = queryService.countPaths(ws.node, node);
-
-        if(pathsToTarget == 0) {
-            return [
-                    success: false,
-                    msg    : [msg: 'Not in workspace', body: "Target node is not in the nominated workspace", status: 'warning']
-            ]
-        }
-
-        if(pathsToNode == 0) {
-            return [
-                    success: false,
-                    msg    : [msg: 'Not in workspace', body: "Node being cropped is not in the nominated workspace", status: 'warning']
-            ]
-        }
-
-        if (pathsToTarget > 1 && DomainUtils.isCheckedIn(target)) {
-            return [
-                    success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
-            ]
-        }
-
-        if (pathsToNode > 1 && DomainUtils.isCheckedIn(node)) {
-            return [
-                    success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
-            ]
-        }
-
-        def errors = [];
-
-        for(Link l: node.subLink.findAll { it.subnode.internalType == NodeInternalType.T } ) {
-            // TODO: think about making this less APC
-            if(incompatibleNames(target.name, l.subnode.name) && DomainUtils.getNodeTypeUri(l.subnode).asQName() ==  "apc-voc:ApcConcept") {
-                errors.add( [msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning']);
-            }
-
-            if(target.name && target.name.nameRank.sortOrder >= l.subnode.name.nameRank.sortOrder) {
-                errors.add( [msg: 'Name rank mismatch', body: "Cannot place ${l.subnode.name.nameRank.name} ${l.subnode.name.simpleName} under ${target.name.nameRank.name} ${target.name.simpleName}", status: 'warning']);
-            }
-        }
-
-        if(!errors.empty) {
-            return [
-                    success: false,
-                    msg    : errors
-            ]
-       }
-
-        def result = userWorkspaceManagerService.moveWorkspaceSubnodes(ws, target, node)
-
-        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
-
-        return [
-                success  : true,
-                focusPath: queryService.findPath(ws.node, newFocus).collect { Node it -> linkService.getPreferredLinkForObject(it) },
-                refetch  : result.modified.collect { Node it ->
-                    queryService.findPath(newFocus, it).collect { Node it2 -> linkService.getPreferredLinkForObject(it2) }
-                }
-        ]
+        return dropInstanceOntoNode(ws, focus, target, node.instance, param)
     }
 
     def revertNode(RevertNodeParam param) {
@@ -643,7 +504,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEdit(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -784,7 +645,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEdit(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -867,7 +728,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEdit(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -914,6 +775,15 @@ class TreeJsonEditController {
 
             Node node = (Node) getObjectForLink(param.uri as String)
 
+            if (!canEdit(node.root) || !canEdit(node.prev?.root)) {
+                def result = [
+                        success: false,
+                        msg    : [msg: 'Authorisation', body: "You do not have permission to check in this node", status: 'danger']
+                ]
+                response.status = 403
+                return render(result as JSON)
+            }
+
             /*
         We get passed a uri.
 
@@ -947,8 +817,14 @@ class TreeJsonEditController {
 
             Node node = (Node) getObjectForLink(param.uri as String)
 
-            // doing no validation at all
-            // TODO: security, etc
+            if (!canEdit(node.root) || !canEdit(node.prev?.root)) {
+                def result = [
+                        success: false,
+                        msg    : [msg: 'Authorisation', body: "You do not have permission to check in this node", status: 'danger']
+                ]
+                response.status = 403
+                return render(result as JSON)
+            }
 
             def result = userWorkspaceManagerService.performCheckin(node);
 
@@ -1011,6 +887,20 @@ class TreeJsonEditController {
         }
 
     }
+
+    boolean canEdit(Arrangement a) {
+        if(!a) return false;
+
+        switch(a.arrangementType) {
+            case ArrangementType.P:
+                return SecurityUtils.subject.hasRole(a.label);
+            case ArrangementType.U:
+                return SecurityUtils.subject.hasRole(a.baseArrangement?.label);
+            default:
+                return false;
+        }
+    }
+
 }
 
 
@@ -1061,18 +951,6 @@ class CheckinNodeParam {
         uri nullable: false
     }
 }
-
-@Validateable
-class AddNamesToNodeParam {
-    String wsNode
-    String focus
-    List<String> names
-    static constraints = {
-        wsNode nullable: false
-        focus nullable: false
-    }
-}
-
 
 @Validateable
 class DropUrisOntoNodeParam {

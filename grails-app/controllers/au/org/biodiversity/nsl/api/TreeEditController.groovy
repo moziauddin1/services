@@ -106,7 +106,7 @@ class TreeEditController {
         log.debug "treeViewService.getInstancePlacementInTree"
         Node currentNode = classificationService.isNameInClassification(p.instance.name, apc)
 
-        nameTreePathService.updateNameTreePathFromNode(currentNode)
+        nameTreePathService. updateNameTreePathFromNode(currentNode)
 
         Map npt = treeViewService.getInstancePlacementInTree(apc, p.instance)
         result << npt
