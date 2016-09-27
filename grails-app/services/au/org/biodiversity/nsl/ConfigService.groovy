@@ -77,6 +77,10 @@ class ConfigService {
         return configGetOrfail('banner image')
     }
 
+    public static String getCardImage() {
+        return configGetOrfail('card image')
+    }
+
     public static String getProductDescription(String productName) {
         return configGetOrfail("$productName description")
     }

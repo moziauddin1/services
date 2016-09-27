@@ -15,7 +15,7 @@
   <div class="card horizontal">
 
     <div class="card-image">
-      <asset:image src="apni-vert-200.png" height="300px"/>
+      <asset:image src="${ConfigService.cardImage}" height="300px"/>
     </div>
 
     <div class="card-stacked">
