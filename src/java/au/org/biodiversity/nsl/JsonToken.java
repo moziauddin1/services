@@ -73,6 +73,10 @@ public class JsonToken implements AuthenticationToken {
             principal = subject.getPrincipal().toString();
         }
 
+        return buildUsingPrincipal(principal, secret);
+    }
+
+    public static JsonToken buildUsingPrincipal(String principal, Key secret) throws InvalidKeyException {
         JSONObject header = new JSONObject();
         JSONObject payload = new JSONObject();
 
