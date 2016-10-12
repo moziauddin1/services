@@ -20,9 +20,8 @@ import grails.transaction.Transactional
 import groovy.sql.Sql
 import groovy.transform.Synchronized
 import groovy.xml.MarkupBuilder
+import org.postgresql.PGConnection
 import org.postgresql.copy.CopyManager
-import org.postgresql.core.BaseConnection
-
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -36,7 +35,9 @@ class DataExportService {
      * export Darwin Core Archive
      *
      * This uses the postgresql function to dump it to a file then returns the file
+     *
      */
+    @Deprecated
     public File exportDarwinCoreArchiveFilesToCSV() {
         Date date = new Date()
         String tempFileDir = getBaseDir()
@@ -106,9 +107,10 @@ class DataExportService {
      * @return the file you passed in
      */
     static File sqlCopyToCsvFile(String sqlStatement, File file, Sql sql) {
+
         String statement = "COPY ($sqlStatement) TO STDOUT WITH CSV HEADER"
         println statement
-        CopyManager copyManager = new CopyManager(sql.connection as BaseConnection)
+        CopyManager copyManager = ((PGConnection) sql.connection).getCopyAPI()
         file.withWriter { writer ->
             copyManager.copyOut(statement, writer)
         }

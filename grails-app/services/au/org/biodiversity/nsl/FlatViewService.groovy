@@ -34,13 +34,14 @@ class FlatViewService {
     def grailsApplication
     def configService
 
-    private static String TAXON_VIEW = 'apc_taxon_view'
+    private static String TAXON_VIEW = 'taxon_view'
     private static String NAME_VIEW = 'name_view'
 
 
     Closure nameView = { namespace ->
+        String classificationTreeName = ConfigService.classificationTreeName
         return """
-CREATE MATERIALIZED VIEW name_view AS
+CREATE MATERIALIZED VIEW ${NAME_VIEW} AS
 
   SELECT
     'ICNAFP' :: TEXT                                         AS "nomenclaturalCode",
@@ -175,7 +176,7 @@ CREATE MATERIALIZED VIEW name_view AS
     JOIN instance_type apc_inst_type ON apc_inst.instance_type_id = apc_inst_type.id
     JOIN REFERENCE apc_ref ON apc_ref.id = apc_inst.reference_id
     JOIN tree_node apcn
-    JOIN tree_arrangement tree ON tree.id = apcn.tree_arrangement_id AND tree.label = 'APC'
+    JOIN tree_arrangement tree ON tree.id = apcn.tree_arrangement_id AND tree.label = '$classificationTreeName'
     JOIN name_tree_path ntp ON ntp.name_id = apcn.name_id and ntp.tree_id = tree.id
       ON (apcn.instance_id = apc_inst.id OR apcn.instance_id = apc_inst.cited_by_id)
          AND apcn.checked_in_at_id IS NOT NULL
@@ -193,10 +194,7 @@ CREATE MATERIALIZED VIEW name_view AS
     }
 
     def createNameView(String namespace, Sql sql) {
-        String drop = "DROP MATERIALIZED VIEW IF EXISTS $NAME_VIEW"
-        sql.execute(drop)
-        String query = nameView(namespace)
-        sql.execute(query)
+        createView(namespace, NAME_VIEW, sql, nameView)
     }
 
     def createNameView(String namespace) {
@@ -220,9 +218,10 @@ CREATE MATERIALIZED VIEW name_view AS
         }
     }
 
-    Closure apcTaxonView = { namespace ->
+    Closure taxonView = { namespace ->
+        String classificationTreeName = ConfigService.classificationTreeName
         return """
-CREATE MATERIALIZED VIEW apc_taxon_view AS
+CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
 
   SELECT
     'ICNAFP' :: TEXT                                      AS "nomenclaturalCode",
@@ -372,7 +371,7 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
     JOIN instance_type apc_inst_type ON apc_inst.instance_type_id = apc_inst_type.id
     JOIN REFERENCE apc_ref ON apc_ref.id = apc_inst.reference_id
     JOIN tree_node apcn
-    JOIN tree_arrangement tree ON tree.id = apcn.tree_arrangement_id AND tree.label = 'APC'
+    JOIN tree_arrangement tree ON tree.id = apcn.tree_arrangement_id AND tree.label = '${classificationTreeName}'
       ON (apcn.instance_id = apc_inst.id OR apcn.instance_id = apc_inst.cited_by_id)
          AND apcn.checked_in_at_id IS NOT NULL
          AND apcn.next_node_id IS NULL
@@ -402,10 +401,7 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
     }
 
     def createTaxonView(String namespace, Sql sql) {
-        String drop = "DROP MATERIALIZED VIEW IF EXISTS ${TAXON_VIEW}"
-        sql.execute(drop)
-        String query = apcTaxonView(namespace)
-        sql.execute(query)
+        createView(namespace, TAXON_VIEW, sql, taxonView)
     }
 
     def createTaxonView(String namespace) {
@@ -429,37 +425,38 @@ CREATE MATERIALIZED VIEW apc_taxon_view AS
         }
     }
 
-    public File exportApcTaxonToCSV() {
+    def createView(String namespace, String viewName, Sql sql, Closure viewDefn) {
+        String drop = "DROP MATERIALIZED VIEW IF EXISTS ${viewName}"
+        sql.execute(drop)
+        String query = viewDefn(namespace)
+        sql.execute(query)
+    }
+
+
+    public File exportTaxonToCSV() {
+        exportToCSV(TAXON_VIEW, "${ConfigService.classificationTreeName}-taxon", taxonView)
+    }
+
+    public File exportNamesToCSV() {
+        exportToCSV(NAME_VIEW, "${ConfigService.nameTreeName}-names", nameView)
+    }
+
+    private File exportToCSV(String viewName, String namePrefix, Closure viewDefn) {
         Date date = new Date()
         String tempFileDir = grailsApplication.config.shard.temp.file.directory
-        String fileName = "apc-taxon-${date.format('yyyy-MM-dd-mmss')}.csv"
+        String fileName = "$namePrefix-${date.format('yyyy-MM-dd-mmss')}.csv"
         File outputFile = new File(tempFileDir, fileName)
         withSql { Sql sql ->
-            if (!viewExists(sql, TAXON_VIEW)) {
-                log.debug "creating $TAXON_VIEW view for export."
-                createTaxonView(configService.nameSpace.name.toLowerCase(), sql)
+            if (!viewExists(sql, viewName)) {
+                log.debug "creating $viewName view for export."
+                createView(configService.nameSpace.name.toLowerCase(), viewName, sql, viewDefn)
             }
-            String query = "COPY (SELECT * FROM $TAXON_VIEW) TO '${outputFile.absolutePath}' WITH CSV HEADER"
-            sql.execute(query)
+            DataExportService.sqlCopyToCsvFile("SELECT * FROM $viewName",outputFile, sql)
         }
         return outputFile
     }
 
-    public File exportNamesToCSV() {
-        Date date = new Date()
-        String tempFileDir = grailsApplication.config.shard.temp.file.directory
-        String fileName = "names-${date.format('yyyy-MM-dd-mmss')}.csv"
-        File outputFile = new File(tempFileDir, fileName)
-        withSql { Sql sql ->
-            if (!viewExists(sql, NAME_VIEW)) {
-                log.debug "creating $NAME_VIEW view for export."
-                createNameView(configService.nameSpace.name.toLowerCase(), sql)
-            }
-            String query = "COPY (SELECT * FROM $NAME_VIEW) TO '${outputFile.absolutePath}' WITH CSV HEADER"
-            sql.execute(query)
-        }
-        return outputFile
-    }
+
 
     /**
      * Search the Taxon view for an accepted name tree (currently just APC) giving an APC format data output
