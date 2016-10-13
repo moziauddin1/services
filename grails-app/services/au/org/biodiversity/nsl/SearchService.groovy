@@ -315,7 +315,9 @@ class SearchService {
         use(SearchQueryCategory) {
             if ((params.name as String)?.trim()) {
                 LinkedHashSet<String> strings = (params.name as String).trim().split('\n').collect { String nameString ->
-                    String queryString = cleanUpName(nameString).replaceAll('×', 'x').replaceAll('(.*) , .*', '$1')
+                    String queryString = cleanUpName(nameString)
+                            .replaceMultiplicationSignWithX()
+                            .replaceAll('(.*) , .*', '$1') //remove stuff after a space comma, so cut paste from web pages (e.g. apni) work
                     queryString ?: null
                 }
                 strings.remove(null)
@@ -333,7 +335,7 @@ order by sortName
 ''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
-                        Node apc = classificationService.isNameInAPC(name)
+                        Node apc = classificationService.isNameInAcceptedTree(name)
                         [apc: apc, name: name]
                     }
                     [query: nameString, found: found, names: r, count: names.size()]

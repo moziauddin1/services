@@ -265,7 +265,7 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
     CASE WHEN apc_inst.id = apcn.instance_id AND apcp.id IS NOT NULL
       THEN
         CASE WHEN apcp.type_uri_id_part = 'classification-root'
-          THEN '[APC]'
+          THEN '[${classificationTreeName}]'
         ELSE
           'http://id.biodiversity.org.au/node/${namespace}/' || apcp.id
         END
@@ -456,7 +456,14 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
         return outputFile
     }
 
-
+    public Map findNameRow(Name name, String namespace = configService.nameSpace.name.toLowerCase()) {
+        String query = "select * from $NAME_VIEW where \"scientificNameID\" = 'http://id.biodiversity.org.au/name/$namespace/$name.id'"
+        List<Map> results = executeQuery(query,[])
+        if(results.size()) {
+            return results.first()
+        }
+        return null
+    }
 
     /**
      * Search the Taxon view for an accepted name tree (currently just APC) giving an APC format data output
