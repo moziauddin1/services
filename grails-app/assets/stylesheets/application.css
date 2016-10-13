@@ -43,6 +43,10 @@
     }
 }
 
+body {
+    min-width: 400px !important;
+}
+
 body.test {
     background-color: rgba(123, 0, 255, 0.22);
 }
