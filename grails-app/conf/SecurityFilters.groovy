@@ -23,6 +23,7 @@ import au.org.biodiversity.nsl.ApiKeyToken
 import au.org.biodiversity.nsl.JsonToken
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
+import org.apache.shiro.subject.SimplePrincipalCollection
 import org.codehaus.groovy.grails.web.util.WebUtils
 
 import static org.springframework.http.HttpStatus.*
@@ -57,6 +58,13 @@ def adminService
                         ApiKeyToken authToken = new ApiKeyToken(apiKey, null as char[], SecurityUtils.subject.host as String)
                         Long start = System.currentTimeMillis()
                         SecurityUtils.subject.login(authToken)
+
+                        // TODO: make a new permission "mayRunAsAnyUser"
+                        String runAs = params.remove('runAs')
+                        if(runAs) {
+                            SecurityUtils.subject.runAs(new SimplePrincipalCollection(runAs, ""));
+                        }
+
                         log.debug "login took ${System.currentTimeMillis() - start}ms"
                         return true
                     } catch (AuthenticationException e) {

@@ -963,6 +963,30 @@ class TreeJsonEditController {
     }
 
 
+    // ==============================
+    //
+    // Methods used by the NSL editor
+    // these methods do not report
+    // what needs to be refetched
+    //
+    // ==============================
+
+    def placeInstanceOnTree() {
+        return render([
+                success       : false,
+                msg           : [[msg: 'TODO', body: 'Implement placeInstanceOnTree', status: 'info']]
+        ] as JSON)
+    }
+
+    def removeInstanceFromTree() {
+        return render([
+                success       : false,
+                msg           : [[msg: 'TODO', body: 'Implement removeInstanceFromTree', status: 'info']]
+        ] as JSON)
+    }
+
+    // ==============================
+
     private renderValidationErrors(param) {
         def msg = [];
         msg += param.errors.globalErrors.collect { it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (Locale)null)] }
