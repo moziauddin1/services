@@ -3,6 +3,7 @@ quartz {
     waitForJobsToCompleteOnShutdown = true
     exposeSchedulerInRepository = false
     interruptJobsOnShutdown = true
+    threadCount = 2
 
     props {
         scheduler.skipUpdateCheck = true
