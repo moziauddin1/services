@@ -93,11 +93,12 @@ grails.project.dependency.resolution = {
         compile ":shiro:1.2.1", {
             excludes([name: 'quartz', group: 'org.opensymphony.quartz'])
         }
-        compile ':quartz:1.0-RC11'
+        compile ':quartz:1.0.2'
         compile ":executor:0.3"
         compile ":mail:1.0.7"
         compile ":yammer-metrics:3.0.1-2"
         compile "org.grails.plugins:slack-logger:1.0.1"
+        compile ":grails-melody:1.59.0"
 
         // plugins needed at runtime but not for compilation
         runtime ":hibernate4:4.3.5.5" // or ":hibernate:3.6.10.17"

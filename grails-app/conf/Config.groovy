@@ -114,6 +114,13 @@ environments {
         nslServices.rulesEngine.uri = 'http://localhost:7070/rulesEngine/'
         quartz {
             autoStartup = false
+            jdbcStore = false
+            waitForJobsToCompleteOnShutdown = true
+            interruptJobsOnShutdown = true
+
+            props {
+                scheduler.skipUpdateCheck = true
+            }
         }
         ldap {
             domain = 'domain'
@@ -129,6 +136,13 @@ environments {
         nslServices.rulesEngine.uri = 'http://localhost:7070/rulesEngine/'
         quartz {
             autoStartup = false
+            jdbcStore = false
+            waitForJobsToCompleteOnShutdown = true
+            interruptJobsOnShutdown = true
+
+            props {
+                scheduler.skipUpdateCheck = true
+            }
         }
         ldap {
             domain = 'domain'
@@ -144,6 +158,13 @@ environments {
         nslServices.rulesEngine.uri = 'http://localhost:1521/rulesEngine/'
         quartz {
             autoStartup = true
+            jdbcStore = false
+            waitForJobsToCompleteOnShutdown = true
+            interruptJobsOnShutdown = true
+
+            props {
+                scheduler.skipUpdateCheck = true
+            }
         }
         ldap {
             domain = 'domain'
