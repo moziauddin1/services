@@ -62,6 +62,7 @@ def adminService
                         // TODO: make a new permission "mayRunAsAnyUser"
                         String runAs = params.remove('runAs')
                         if(runAs) {
+                            log.debug("${SecurityUtils.subject.principal} is running as ${runAs}")
                             SecurityUtils.subject.runAs(new SimplePrincipalCollection(runAs, ""));
                         }
 

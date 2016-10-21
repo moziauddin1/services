@@ -26,6 +26,7 @@ import grails.transaction.Transactional
 import org.hibernate.Hibernate
 import org.hibernate.proxy.HibernateProxy
 import org.springframework.context.MessageSource
+import org.springframework.context.NoSuchMessageException
 
 @Transactional
 class JsonRendererService {
@@ -548,11 +549,28 @@ class JsonRendererService {
     }
 
     Map marshallTreeServiceMessage(Message msg) {
+        String message;
+        String rawMessage;
+
+        try {
+            message = messageSource.getMessage(msg, (Locale) null);
+        }
+        catch(NoSuchMessageException ex) {
+            message = msg.msg.key
+        }
+
+        try {
+            rawMessage = messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null);
+        }
+        catch(NoSuchMessageException ex) {
+            rawMessage = msg.msg.key
+        }
+
         return [
                 msg       : msg.msg.name(),
                 plainText : msg.getLocalisedString(),
-                message   : messageSource.getMessage(msg, (Locale) null),
-                rawMessage: messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null),
+                message   : message,
+                rawMessage: rawMessage,
                 args      : msg.args.collect { it ->
                     if (it in Node || it in Arrangement || it in Name || it in Instance || it in Reference) {
                         brief(it)
