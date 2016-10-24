@@ -98,6 +98,7 @@ grails.project.dependency.resolution = {
         compile ":mail:1.0.7"
         compile ":yammer-metrics:3.0.1-2"
         compile "org.grails.plugins:slack-logger:1.0.1"
+        compile "org.grails.plugins:jdbc-pool:7.0.47"
 //        compile ":grails-melody:1.59.0"
 
         // plugins needed at runtime but not for compilation
