@@ -213,9 +213,11 @@ class ReferenceService {
                 child.citationHtml = citationHtml
                 child.citation = ConstructedNameService.stripMarkUp(citationHtml)
                 child.save()
-                reconstructChildCitations(child) //go down a level and check the child of the child
+                //don't need to go down a level and check the child of the child since a change in the reference
+                //will cause a new notification, which will check.
                 log.debug "saved $child.citationHtml"
             } else {
+                log.debug "skipping $child.citationHtml, no change."
                 child.discard()
             }
         }
