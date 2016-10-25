@@ -19,12 +19,13 @@ package services
 import au.org.biodiversity.nsl.Author
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Notification
+import au.org.biodiversity.nsl.Reference
 
 
 class CheckNamesJob {
 
     def nameService
-
+    def referenceService
     def concurrent = false
     def sessionRequired = true
 //    def grailsCacheManager
@@ -65,7 +66,7 @@ class CheckNamesJob {
                         if (author) {
                             nameService.authorUpdated(author, note)
                         } else {
-                            log.debug "Author $note.objectId  doesn't exist "
+                            log.debug "Author $note.objectId  doesn't exist"
                         }
                         break
                     case 'author created':
@@ -74,6 +75,12 @@ class CheckNamesJob {
                         break
                     case 'reference updated':
                         log.debug "Reference $note.objectId updated"
+                        Reference reference = Reference.get(note.objectId)
+                        if(reference) {
+                            referenceService.checkReferenceChanges(reference)
+                        } else {
+                            log.debug "Reference $note.objectId doesn't exist"
+                        }
                         break
                     case 'reference created':
                     case 'reference deleted':
