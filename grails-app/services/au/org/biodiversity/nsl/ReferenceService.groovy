@@ -213,6 +213,7 @@ class ReferenceService {
                 child.citationHtml = citationHtml
                 child.citation = ConstructedNameService.stripMarkUp(citationHtml)
                 child.save()
+                reconstructChildCitations(child) //go down a level and check the child of the child
                 log.debug "saved $child.citationHtml"
             } else {
                 child.discard()
