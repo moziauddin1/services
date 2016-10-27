@@ -13,7 +13,7 @@
       The "everything" option ignores all classifications and just searches names. You can use this to find common names.
     </div>
   </help>
-  <g:select from="${au.org.biodiversity.nsl.Arrangement.findAllByLabelNotInList(['END-TREE', 'TMP'])}"
+  <g:select from="${Arrangement.findAllByLabelNotInList(['END-TREE', 'TMP'])}"
             noSelection="${['': 'everything']}"
             name="tree.id"
             value="${query?.tree?.id}"
