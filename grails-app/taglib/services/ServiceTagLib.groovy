@@ -278,7 +278,7 @@ class ServiceTagLib {
 
     def productBrief = { attrs ->
         Arrangement arrangement = Arrangement.findByLabel(attrs.product)
-        if(arrangement) {
+        if (arrangement) {
             out << arrangement.description
         } else {
             out << ''
@@ -289,16 +289,16 @@ class ServiceTagLib {
         out << configService.getProductDescription(attrs.product)
     }
 
-    def randomName = {attrs ->
+    def randomName = { attrs ->
         String q = attrs.q
-        if(q) {
+        if (q) {
             q = q[0]
         }
         String simpleName = Name.findBySimpleNameIlike("$q%")?.simpleName
-        if(!simpleName) {
+        if (!simpleName) {
             simpleName = Name.list(max: 1)?.first()?.simpleName
         }
-        if(!simpleName) {
+        if (!simpleName) {
             simpleName = 'Doodia'
         }
         out << simpleName

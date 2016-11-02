@@ -336,7 +336,8 @@ order by sortName
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
                         Node apc = classificationService.isNameInAcceptedTree(name)
-                        [apc: apc, name: name]
+                        Name family = RankUtils.getFamily(name, ConfigService.nameTreeName)
+                        [apc: apc, name: name, family: family]
                     }
                     [query: nameString, found: found, names: r, count: names.size()]
                 }
