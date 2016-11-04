@@ -551,6 +551,7 @@ class JsonRendererService {
     Map marshallTreeServiceMessage(Message msg) {
         String message;
         String rawMessage;
+        String plainText;
 
         try {
             message = messageSource.getMessage(msg, (Locale) null);
@@ -566,9 +567,16 @@ class JsonRendererService {
             rawMessage = msg.msg.key
         }
 
+        try {
+            plainText = msg.getHumanReadableMessage();
+        }
+        catch(NoSuchMessageException ex) {
+            plainText = msg.getLocalisedString()
+        }
+
         return [
                 msg       : msg.msg.name(),
-                plainText : msg.getLocalisedString(),
+                plainText : plainText,
                 message   : message,
                 rawMessage: rawMessage,
                 args      : msg.args.collect { it ->

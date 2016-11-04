@@ -213,7 +213,16 @@ class TreeEditController {
         }
 
         handleException { handleExceptionIgnore ->
-            Message msg = userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, param.placementType);
+            Uri placementType = null;
+
+            if("accepted".equals(param.placementType))
+                placementType = DomainUtils.uri('apc-voc', 'ApcConcept');
+            else if("excluded".equals(param.placementType))
+                placementType = DomainUtils.uri('apc-voc', 'ApcExcluded');
+            else if("untreated".equals(param.placementType))
+                placementType = DomainUtils.uri('apc-voc', 'DeclaredBt');
+
+            Message msg = userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, placementType);
 
             return render([
                     success: true,
@@ -281,7 +290,7 @@ class TreeEditController {
                             [
                                     msg   : ex.class.simpleName + ": " + ex.msg.msg,
                                     status: 'warning',
-                                    body  : ex.msg.getSpringMessage(),
+                                    body  : ex.msg.getHumanReadableMessage(),
                                     nested: ex.msg.nested
                             ]
                     ]
