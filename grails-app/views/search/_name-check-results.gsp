@@ -27,6 +27,7 @@
           <th>Search term</th>
           <th>Census</th>
           <th>Matched name(s)</th>
+          <th>Family</th>
           <th>Tags</th>
           <g:each in="${results}" var="result">
             <g:if test="${result.found}">
@@ -68,6 +69,11 @@
                       ${raw(nameData.name.fullNameHtml)}</st:preferedLink><name-status
                       class="${nameData.name.nameStatus.name}">, ${nameData.name.nameStatus.name}</name-status><name-type
                       class="${nameData.name.nameType.name}">, ${nameData.name.nameType.name}</name-type>
+                  </td>
+                  <td>
+                    <st:preferedLink target="${nameData.family}" api="api/apniFormat">
+                      ${raw(nameData.family.fullNameHtml)}
+                    </st:preferedLink>
                   </td>
                   <td>
                     <g:each in="${nameData.name.tags}" var="tag">

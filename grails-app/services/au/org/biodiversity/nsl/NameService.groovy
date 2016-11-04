@@ -458,11 +458,11 @@ or n.fullNameHtml is null""", params)
         }
     }
 
-    def addNamesNotInApni() {
+    def addNamesNotInNameTree(String treeLabel) {
         List<Name> namesNotInApni = Name.executeQuery("""select n from Name n
 where n.parent is not null
 and n.nameType.name <> 'common'
-and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = 'APNI')""")
+and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = '${treeLabel}')""")
         namesNotInApni.each { Name name ->
             Notification notification = new Notification(objectId: name.id, message: 'name created')
             notification.save()
@@ -477,11 +477,11 @@ or n.fullName is null
 or n.fullNameHtml is null""")?.first() as Integer
     }
 
-    Integer countNamesNotInApni() {
+    Integer countNamesNotInTree(String treeLabel) {
         Name.executeQuery("""select count(n) from Name n
 where n.parent is not null
 and n.nameType.name <> 'common'
-and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = 'APNI')""")?.first() as Integer
+and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = '${treeLabel}')""")?.first() as Integer
     }
 
     public static chunkThis(Integer chunkSize, Closure query, Closure work) {

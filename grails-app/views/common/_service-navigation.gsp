@@ -1,7 +1,7 @@
 <%@ page import="au.org.biodiversity.nsl.ConfigService; org.apache.shiro.SecurityUtils" %>
 
 <div class="imageAndText">
-  <asset:image src="${ConfigService.bannerImage}" class="align-right img-responsive"/>
+  <asset:image src="${ConfigService.bannerImage}" class="align-right"/>
   <div class="col">
     <div class="col-sm-12">
       <h1>${ConfigService.bannerText}

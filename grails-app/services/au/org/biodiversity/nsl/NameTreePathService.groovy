@@ -270,6 +270,8 @@ class NameTreePathService {
 
         try {
             sql.execute('''
+alter table name_tree_path drop CONSTRAINT fk_sfj3hoevcuni3ak7no6byjp3;
+
 WITH RECURSIVE level(node_id, tree_id, parent_id, name_id_path, name_path, rank_path, name_id, family_id)
 AS (
   SELECT
@@ -347,13 +349,20 @@ INSERT INTO name_tree_path (tree_id,
    FROM level l
    WHERE name_id IS NOT NULL
          AND name_path IS NOT NULL);
+
 UPDATE name_tree_path target
 SET parent_id = (SELECT ntp.id
                  FROM tree_node node
                    JOIN name n ON node.name_id = n.id
                    , name_tree_path ntp
                  WHERE node.id = target.parent_id AND ntp.name_id = n.id AND ntp.tree_id = target.tree_id)
-WHERE target.parent_id IS NOT NULL;''') //not null tests for DeclaredBT that don't exists see NSL-1017
+WHERE target.parent_id IS NOT NULL;
+
+alter table if exists name_tree_path
+  add constraint FK_sfj3hoevcuni3ak7no6byjp3
+foreign key (parent_id)
+references name_tree_path;
+''') //not null tests for DeclaredBT that don't exists see NSL-1017
             sql.commit()
         } catch (e) {
             sql.rollback()

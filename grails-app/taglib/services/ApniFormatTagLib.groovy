@@ -179,17 +179,16 @@ class ApniFormatTagLib {
         out << " <bhl>"
     }
 
-    //todo need to make this more generic for products
-    def refAPNISearchLink = { attrs ->
+    def refNameTreeSearchLink = { attrs ->
         String citation = attrs.citation
         String product = attrs.product
         Map params = [publication: citation, search: true, advanced: true, display: 'apni']
         if (product) {
             params << [product: product]
         } else {
-            //if not logged in force to APNI
+            //if not logged in force to name tree name
             if (!SecurityUtils.subject?.principal) {
-                params << [product: 'apni']
+                params << [product: ConfigService.nameTreeName]
             }
         }
         out << g.createLink(absolute: true, controller: 'search', action: 'search', params: params)

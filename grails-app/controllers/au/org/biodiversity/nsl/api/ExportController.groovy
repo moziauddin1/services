@@ -13,12 +13,12 @@ class ExportController implements UnauthenticatedHandler {
     static responseFormats = [
             index      : ['html'],
             namesCsv   : ['json', 'xml', 'html'],
-            apcTaxonCsv: ['json', 'xml', 'html'],
+            taxonCsv   : ['json', 'xml', 'html'],
     ]
 
     static allowedMethods = [
             namesCsv   : ["GET"],
-            apcTaxonCsv: ["GET"],
+            taxonCsv   : ["GET"],
     ]
 
     static namespace = "api"
@@ -30,8 +30,8 @@ class ExportController implements UnauthenticatedHandler {
     }
 
     @Timed()
-    def apcTaxonCsv() {
-        File exportFile = flatViewService.exportApcTaxonToCSV()
+    def taxonCsv() {
+        File exportFile = flatViewService.exportTaxonToCSV()
         render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
     }
 }

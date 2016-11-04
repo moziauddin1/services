@@ -43,7 +43,7 @@ class AdminController {
 
 
         stats.namesNeedingConstruction = nameService.countIncompleteNameStrings()
-        stats.namesNotInApni = nameService.countNamesNotInApni()
+        stats.namesNotInNameTree = nameService.countNamesNotInTree(configService.nameTreeName)
         stats.namesNotInApniTreePath = nameTreePathService.treePathReport(configService.nameTreeName)
         stats.namesNotInApcTreePath = nameTreePathService.treePathReport(configService.classificationTreeName)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
@@ -162,7 +162,7 @@ class AdminController {
     @RequiresRoles('admin') 
     def notifyMissingApniNames() {
         log.debug "adding notifications for names not in APNI"
-        nameService.addNamesNotInApni()
+        nameService.addNamesNotInNameTree(configService.nameTreeName)
         redirect(action: 'index')
     }
 

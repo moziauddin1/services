@@ -18,6 +18,8 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.CsvRenderer
+import au.org.biodiversity.nsl.FlatViewService
+import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.NameTagName
 import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.UriNs
@@ -30,6 +32,7 @@ import javax.servlet.http.Cookie
 class SearchController implements RequestUtil {
     def configService
     def searchService
+    FlatViewService flatViewService
 
     def search(Integer max) {
         String referer = request.getHeader('Referer')
@@ -182,8 +185,29 @@ class SearchController implements RequestUtil {
         }
     }
 
-    private static String renderCsvResults(List<Map> results) {
+    private String renderCsvResults(List<Map> results) {
         List<List> csvResults = []
+        List<String> flatViewExportFields = [
+                'canonicalName',
+                'scientificNameAuthorship',
+                'taxonRank',
+                'taxonRankSortOrder',
+                'taxonRankAbbreviation',
+                'kingdom',
+                'class',
+                'subclass',
+                'family',
+                'genericName',
+                'specificEpithet',
+                'infraspecificEpithet',
+                'nameElement',
+                'firstHybridParentName',
+                'firstHybridParentNameID',
+                'secondHybridParentName',
+                'secondHybridParentNameID'
+        ]
+        List<String> headers = ['Found?', 'Search term', 'Census', 'Matched name(s)', 'Name status', 'Name type', 'Tags']
+        headers.addAll(flatViewExportFields)
         results.each { Map result ->
             if (result.names.empty) {
                 csvResults.add([result.found,
@@ -196,18 +220,25 @@ class SearchController implements RequestUtil {
                 ])
             } else {
                 result.names.each { Map nameData ->
-                    csvResults.add([result.found,
-                                    result.query,
-                                    apcStatus(nameData.apc),
-                                    nameData.name.fullName,
-                                    nameData.name.nameStatus.name,
-                                    nameData.name.nameType.name,
-                                    (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString()
-                    ])
+                    Map flatViewRow = flatViewService.findNameRow(nameData.name as Name)
+                    List values = [result.found,
+                                   result.query,
+                                   apcStatus(nameData.apc),
+                                   nameData.name.fullName,
+                                   nameData.name.nameStatus.name,
+                                   nameData.name.nameType.name,
+                                   (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString(),
+
+                    ]
+                    flatViewExportFields.each {fieldName ->
+                        values.add(flatViewRow[fieldName] ?: '')
+                    }
+
+                    csvResults.add(values)
                 }
             }
         }
-        return CsvRenderer.renderAsCsv(['Found?', 'Search term', 'Census', 'Matched name(s)', 'Name status', 'Name type', 'Tags'], csvResults)
+        return CsvRenderer.renderAsCsv(headers, csvResults)
     }
 
     private static String apcStatus(Node node) {

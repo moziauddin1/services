@@ -43,6 +43,10 @@
     }
 }
 
+body {
+    min-width: 400px !important;
+}
+
 body.test {
     background-color: rgba(123, 0, 255, 0.22);
 }
@@ -390,6 +394,7 @@ a:hover {
     overflow: hidden;
 }
 .imageAndText img {
+    float: right;
     margin-right: 0px;
     margin-left: auto;
 }
@@ -404,7 +409,16 @@ a:hover {
             -1px 1px 0 #eee,
             1px 1px 0 #eee;
 }
-
 .imageAndText h1 {
-    font-size: calc(16px + 2vw);
+    font-size: 46px;
+}
+@media(max-width: 1500px) {
+    .imageAndText h1 {
+        font-size: calc(12px + 2vw);
+    }
+}
+@media(max-width: 400px) {
+    .imageAndText h1 {
+        font-size: 20px;
+    }
 }

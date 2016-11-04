@@ -112,9 +112,6 @@ environments {
         grails.logging.jul.usebridge = true
         grails.serverURL = 'http://localhost:8080/services'
         nslServices.rulesEngine.uri = 'http://localhost:7070/rulesEngine/'
-        quartz {
-            autoStartup = false
-        }
         ldap {
             domain = 'domain'
             server.url = 'ldap://localhost:10389'
@@ -127,9 +124,6 @@ environments {
         grails.logging.jul.usebridge = true
         grails.serverURL = 'http://localhost:8080/services'
         nslServices.rulesEngine.uri = 'http://localhost:7070/rulesEngine/'
-        quartz {
-            autoStartup = false
-        }
         ldap {
             domain = 'domain'
             server.url = 'ldap://localhost:10389'
@@ -142,9 +136,6 @@ environments {
         grails.logging.jul.usebridge = false
         grails.serverURL = 'http://155.187.10.62:1521/nsl/services'
         nslServices.rulesEngine.uri = 'http://localhost:1521/rulesEngine/'
-        quartz {
-            autoStartup = true
-        }
         ldap {
             domain = 'domain'
             server.url = 'ldap://localhost:10389'

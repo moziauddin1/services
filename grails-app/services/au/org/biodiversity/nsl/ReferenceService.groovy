@@ -198,6 +198,31 @@ class ReferenceService {
         return null
     }
 
+    public void checkReferenceChanges(Reference reference) {
+        reconstructChildCitations(reference)
+    }
+
+    @Transactional
+    public void reconstructChildCitations(Reference parent){
+        Author unknownAuthor = Author.findByName('-')
+        RefAuthorRole editor = RefAuthorRole.findByName('Editor')
+
+        Reference.findAllByParent(parent).each { Reference child ->
+            String citationHtml = generateReferenceCitation(child, unknownAuthor, editor)
+            if (child.citationHtml != citationHtml) {
+                child.citationHtml = citationHtml
+                child.citation = ConstructedNameService.stripMarkUp(citationHtml)
+                child.save()
+                //don't need to go down a level and check the child of the child since a change in the reference
+                //will cause a new notification, which will check.
+                log.debug "saved $child.citationHtml"
+            } else {
+                log.debug "skipping $child.citationHtml, no change."
+                child.discard()
+            }
+        }
+    }
+
     @Transactional
     def reconstructAllCitations() {
         runAsync {
@@ -231,6 +256,7 @@ class ReferenceService {
         }
     }
 
+    @Transactional
     Map deduplicateMarked(String user) {
         List<Map> refs = []
         //remove nested duplicates first

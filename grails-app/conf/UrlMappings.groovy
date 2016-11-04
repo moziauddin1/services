@@ -16,6 +16,8 @@
 
 class UrlMappings {
 
+    static excludes = ["/metrics/*", "/monitoring", "/monitoring/*"]
+
     static mappings = {
 
         "/tree/$treeLabel"(controller: 'treeView', action: 'index')
