@@ -455,3 +455,23 @@ class RemoveNameFromTreeParam {
         name nullable: false
     }
 }
+
+@Validateable
+class RemoveApcInstanceParam {
+    Instance instance;
+    Name replacementName;
+    Instance replacementInstance;
+
+    String toString() {
+        return [instance: instance,
+                replacementName: replacementName,
+                replacementInstance: replacementInstance].toString()
+    }
+
+    static constraints = {
+        instance nullable: false
+        replacementName nullable: true
+        replacementInstance nullable: true
+    }
+
+}
