@@ -422,10 +422,17 @@ class JsonRendererService {
     Map getBriefLinkNoSupernode(Link link) {
         // links do not have mapper ids in and of themselves.
         // so rather than use brief(), this gets done by hand
+
+        Map subNode = brief(link.subnode, [
+                id: link.subnodeId,
+                type       : link.subnode.internalType.name(),
+                typeUri    : getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
+        ]);
+
         Map data = [
                 class           : link.class.name,
                 typeUri         : getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
-                subNode         : brief(link.subnode, [id: link.subnodeId]),
+                subNode         : subNode,
                 linkSeq         : link.linkSeq,
                 versioningMethod: link.versioningMethod,
                 isSynthetic     : link.synthetic,
