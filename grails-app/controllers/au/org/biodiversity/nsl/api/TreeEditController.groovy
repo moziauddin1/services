@@ -16,6 +16,8 @@
 
 package au.org.biodiversity.nsl.api
 
+import org.apache.shiro.SecurityUtils
+import org.apache.shiro.authz.annotation.RequiresRoles
 import org.codehaus.groovy.grails.commons.GrailsApplication
 
 import grails.converters.JSON
@@ -23,6 +25,9 @@ import grails.transaction.Transactional
 import grails.validation.Validateable
 import au.org.biodiversity.nsl.*
 import au.org.biodiversity.nsl.tree.*
+import org.springframework.context.MessageSource
+import org.springframework.validation.FieldError
+
 import static au.org.biodiversity.nsl.tree.DomainUtils.*
 
 @Transactional
@@ -34,6 +39,14 @@ class TreeEditController {
     QueryService queryService
     ClassificationService classificationService
     NameTreePathService nameTreePathService
+    MessageSource messageSource
+    UserWorkspaceManagerService userWorkspaceManagerService
+
+    ///////////////////////////////////////////
+    //
+    // These methods support the new old APC
+    // edit component in the NSL editor
+    // and are to be deleted
 
     /** @deprecated */
 
@@ -178,6 +191,138 @@ class TreeEditController {
         p.replacementName = refetchName(p.replacementName);
         p.replacementInstance = refetchInstance(p.replacementInstance);
     }
+
+    ///////////////////////////////////////////
+    //
+    // These methods support the new edit classification
+    // component in the NSL editor
+
+    @RequiresRoles('treebuilder')
+    def placeNameOnTree(PlaceNameOnTreeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+
+        if (!canEdit(param.tree)) {
+            response.status = 403
+            return render([
+                    success: false,
+                    msg    : [msg   : "403 - Forbidden",
+                              body  : "You do not have permission to edit this tree",
+                              status: 'danger',
+                    ]
+            ] as JSON)
+        }
+
+        handleException { handleExceptionIgnore ->
+            Uri placementType = null;
+
+            if("accepted".equals(param.placementType))
+                placementType = DomainUtils.uri('apc-voc', 'ApcConcept');
+            else if("excluded".equals(param.placementType))
+                placementType = DomainUtils.uri('apc-voc', 'ApcExcluded');
+            else if("untreated".equals(param.placementType))
+                placementType = DomainUtils.uri('apc-voc', 'DeclaredBt');
+
+            Message msg = userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, placementType);
+
+            return render([
+                    success: true,
+                    msg    : msg
+            ] as JSON)
+        }
+    }
+
+    @RequiresRoles('treebuilder')
+    def removeNameFromTree(RemoveNameFromTreeParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+        if (!canEdit(param.tree)) {
+            response.status = 403
+            return render([
+                    success: false,
+                    msg    : [msg   : "403 - Forbidden",
+                              body  : "You do not have permission to edit this tree",
+                              status: 'danger',
+                    ]
+            ] as JSON)
+        }
+
+        handleException { handleExceptionIgnore ->
+            Message msg = userWorkspaceManagerService.removeNameFromTree(param.tree, param.name);
+
+            return render([
+                    success: true,
+                    msg    : msg
+            ] as JSON)
+        }
+    }
+
+    boolean canEdit(Arrangement a) {
+        return a.arrangementType == ArrangementType.U && SecurityUtils.subject.hasRole(a.baseArrangement.label);
+    }
+
+    // ==============================
+
+    private renderValidationErrors(param) {
+        def msg = [];
+        msg += param.errors.globalErrors.collect { it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (java.util.Locale) null)] }
+        msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, (java.util.Locale) null)] }
+        response.status = 400
+
+        log.debug msg
+
+        return render([
+                success: false,
+                msg    : msg
+        ] as JSON)
+    }
+
+    private handleException(Closure doIt) {
+        try {
+            return doIt();
+        }
+        catch (ServiceException ex) {
+            log.debug ex
+
+            doIt.delegate.response.status = 400
+
+            return render([
+                    success   : false,
+                    msg       : [
+                            [
+                                    msg   : ex.class.simpleName + ": " + ex.msg.msg,
+                                    status: 'warning',
+                                    body  : ex.msg.getHumanReadableMessage(),
+                                    nested: ex.msg.nested
+                            ]
+                    ]
+                    ,
+                    stackTrace: ex.getStackTrace().findAll {
+                        StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
+                    }.collect {
+                        StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
+                    }
+            ] as JSON)
+        }
+        catch (Exception ex) {
+            log.debug ex
+
+            doIt.delegate.response.status = 500
+            return render([
+                    success: false,
+                    msg    : [msg       : ex.class.simpleName,
+                              body      : ex.getMessage(),
+                              status    : 'danger',
+                              stackTrace: ex.getStackTrace().findAll {
+                                  StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
+                              }.collect {
+                                  StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
+                              }
+                    ]
+            ] as JSON)
+        }
+
+    }
+
+
 }
 
 /** This class does not belong here. */
@@ -232,6 +377,7 @@ class TMP_RDF_TO_MAP {
     static Object resourceAsMap(RdfRenderable.Resource r) {
         return r.uri
     }
+
 }
 
 @Validateable
@@ -275,13 +421,51 @@ class PlaceApcInstanceParam {
 }
 
 @Validateable
-class RemoveApcInstanceParam {
+class PlaceNameOnTreeParam {
+    Arrangement tree
+    Name name
     Instance instance
-    Name replacementName
-    Instance replacementInstance
+    Name parentName
+    String placementType
 
     String toString() {
-        return [instance: instance, replacementName: replacementName].toString()
+        return [tree: tree, name: name, instance: instance, parentName: parentName, placementType: placementType].toString()
+    }
+
+    static constraints = {
+        tree nullable: false
+        name nullable: false
+        instance nullable: false
+        parentName nullable: true
+        placementType nullable: false
+    }
+}
+
+@Validateable
+class RemoveNameFromTreeParam {
+    Arrangement tree
+    Name name
+
+    String toString() {
+        return [tree: tree, name: name].toString()
+    }
+
+    static constraints = {
+        tree nullable: false
+        name nullable: false
+    }
+}
+
+@Validateable
+class RemoveApcInstanceParam {
+    Instance instance;
+    Name replacementName;
+    Instance replacementInstance;
+
+    String toString() {
+        return [instance: instance,
+                replacementName: replacementName,
+                replacementInstance: replacementInstance].toString()
     }
 
     static constraints = {
@@ -289,4 +473,5 @@ class RemoveApcInstanceParam {
         replacementName nullable: true
         replacementInstance nullable: true
     }
+
 }

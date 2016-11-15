@@ -20,7 +20,17 @@ import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
+import org.apache.shiro.authc.AuthenticationInfo
+import org.apache.shiro.authc.AuthenticationToken
 import org.apache.shiro.authc.UsernamePasswordToken
+import org.apache.shiro.authz.annotation.RequiresRoles
+import org.apache.shiro.mgt.SecurityManager
+import org.apache.shiro.session.Session
+import org.apache.shiro.subject.Subject
+import org.apache.shiro.subject.PrincipalCollection
+import org.apache.shiro.subject.SimplePrincipalCollection
+import org.apache.shiro.subject.SubjectContext
+import org.apache.shiro.subject.support.DefaultSubjectContext
 import org.apache.shiro.web.util.SavedRequest
 import org.apache.shiro.web.util.WebUtils
 import org.springframework.http.HttpStatus
@@ -93,15 +103,9 @@ class AuthController {
         def authToken = new UsernamePasswordToken(params.username, params.password as String)
         try {
             SecurityUtils.subject.login(authToken)
-            SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
-            JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, signingKey)
 
-            def result = [
-                    success    : true,
-                    principal  : SecurityUtils.subject?.principal,
-                    jwt        : jsonToken.getCredentials()
-            ]
-            render result as JSON
+            JSON result = get_json_for_subject(SecurityUtils.subject)
+            render result
         }
         catch (AuthenticationException ex) {
             response.setStatus(401)
@@ -116,7 +120,7 @@ class AuthController {
                 success: true,
                 principal: null
         ] as JSON
-        render result
+        render result as JSON
     }
 
     def getInfoJson = {
@@ -125,15 +129,49 @@ class AuthController {
         // we don't want to build a whole new request. I suspect that this getInfo method does nothing
         // and is not needed. Either that, or it should not be returning a jwt.
 
-        SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
-        JsonToken jsonToken = JsonToken.buildUsingSubject(SecurityUtils.subject, signingKey)
-
-        def result = [
-                success: true,
-                principal: SecurityUtils.subject?.principal,
-                jwt: jsonToken
-        ] as JSON
+        JSON result = get_json_for_subject(SecurityUtils.subject)
         render result
+    }
+
+    /**
+     * This method is used by the NSL editor. That is, the subject that calls this method is one we recognise as being
+     * secure. This is setup in services-config.groovy . Note that no checking is done to see that the user actually exists.
+     */
+
+    @RequiresRoles('may-fetch-jwt-for-any-username')
+    def getInfoJsonForUsername() {
+        JSON result = get_json_for_principal(params.username)
+        render result
+    }
+
+    private JSON get_json_for_subject(Subject subject) {
+        SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
+        JsonToken jsonToken = JsonToken.buildUsingSubject(subject, signingKey)
+
+        JSON result = [
+                success: true,
+                principal: subject.principal,
+                jwt: jsonToken.getCredentials()
+        ] as JSON
+
+        return result
+    }
+
+    // this stuff is not right - the JWT needs a proper Subject so that it can put additional claims
+    // in the token. However, at the moment the only claim is 'sub', so meh.
+
+
+    private JSON get_json_for_principal(String principal) {
+        SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
+        JsonToken jsonToken = JsonToken.buildUsingPrincipal(principal, signingKey)
+
+        JSON result = [
+                success: true,
+                principal:principal,
+                jwt: jsonToken.getCredentials()
+        ] as JSON
+
+        return result
     }
 
     def signOut = {

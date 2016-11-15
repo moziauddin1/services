@@ -26,6 +26,7 @@ import grails.transaction.Transactional
 import org.hibernate.Hibernate
 import org.hibernate.proxy.HibernateProxy
 import org.springframework.context.MessageSource
+import org.springframework.context.NoSuchMessageException
 
 @Transactional
 class JsonRendererService {
@@ -421,10 +422,17 @@ class JsonRendererService {
     Map getBriefLinkNoSupernode(Link link) {
         // links do not have mapper ids in and of themselves.
         // so rather than use brief(), this gets done by hand
+
+        Map subNode = brief(link.subnode, [
+                id: link.subnodeId,
+                type       : link.subnode.internalType.name(),
+                typeUri    : getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
+        ]);
+
         Map data = [
                 class           : link.class.name,
                 typeUri         : getBriefTreeUri(DomainUtils.getLinkTypeUri(link)),
-                subNode         : brief(link.subnode, [id: link.subnodeId]),
+                subNode         : subNode,
                 linkSeq         : link.linkSeq,
                 versioningMethod: link.versioningMethod,
                 isSynthetic     : link.synthetic,
@@ -548,11 +556,36 @@ class JsonRendererService {
     }
 
     Map marshallTreeServiceMessage(Message msg) {
+        String message;
+        String rawMessage;
+        String plainText;
+
+        try {
+            message = messageSource.getMessage(msg, (Locale) null);
+        }
+        catch(NoSuchMessageException ex) {
+            message = msg.msg.key
+        }
+
+        try {
+            rawMessage = messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null);
+        }
+        catch(NoSuchMessageException ex) {
+            rawMessage = msg.msg.key
+        }
+
+        try {
+            plainText = msg.getHumanReadableMessage();
+        }
+        catch(NoSuchMessageException ex) {
+            plainText = msg.getLocalisedString()
+        }
+
         return [
                 msg       : msg.msg.name(),
-                plainText : msg.getLocalisedString(),
-                message   : messageSource.getMessage(msg, (Locale) null),
-                rawMessage: messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null),
+                plainText : plainText,
+                message   : message,
+                rawMessage: rawMessage,
                 args      : msg.args.collect { it ->
                     if (it in Node || it in Arrangement || it in Name || it in Instance || it in Reference) {
                         brief(it)
