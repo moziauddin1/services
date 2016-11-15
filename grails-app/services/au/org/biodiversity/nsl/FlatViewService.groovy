@@ -124,7 +124,7 @@ CREATE MATERIALIZED VIEW ${NAME_VIEW} AS
     substring(ntp.rank_path FROM 'Familia:([^>]*)')          AS "family",
     substring(ntp.rank_path FROM 'Genus:([^>]*)')            AS "genericName",
     substring(ntp.rank_path FROM 'Species:([^>]*)')          AS "specificEpithet",
-    substring(ntp.rank_path FROM 'Species:[^>]*>.*:(.*)\\\\\$') AS "infraspecificEpithet",
+    substring(ntp.rank_path FROM 'Species:[^>]*>.*:(.*)\$') AS "infraspecificEpithet",
 
     n.created_at                                             AS "created",
     n.updated_at                                             AS "modified",
