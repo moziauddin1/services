@@ -107,7 +107,7 @@ CREATE MATERIALIZED VIEW ${NAME_VIEW} AS
       ELSE NULL END
     END                                                      AS "originalNameUsageID",
     /*apc_comment.value */
-    (SELECT string_agg(regexp_replace(VALUE, E'[\\\\n\\\\r\\\\u2028]+', ' ', 'g'), ' ')
+    (SELECT string_agg(regexp_replace(VALUE, E'[\\n\\r\\u2028]+', ' ', 'g'), ' ')
      FROM instance_note nt
        JOIN instance_note_key key1
          ON key1.id = nt.instance_note_key_id
@@ -309,7 +309,7 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
     END                                                   AS "nameAccordingTo",
 
     -- apc_comment.value
-    (SELECT string_agg(regexp_replace(VALUE, E'[\\\\n\\\\r\\\\u2028]+', ' ', 'g'), ' ')
+    (SELECT string_agg(regexp_replace(VALUE, E'[\\n\\r\\u2028]+', ' ', 'g'), ' ')
      FROM instance_note nt
        JOIN instance_note_key key1
          ON key1.id = nt.instance_note_key_id
@@ -317,7 +317,7 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
      WHERE nt.instance_id = apcn.instance_id)             AS "taxonRemarks",
 
     -- apc_dist.value
-    (SELECT string_agg(regexp_replace(VALUE, E'[\\\\n\\\\r\\\\u2028]+', ' ', 'g'), ' ')
+    (SELECT string_agg(regexp_replace(VALUE, E'[\\n\\r\\u2028]+', ' ', 'g'), ' ')
      FROM instance_note nt
        JOIN instance_note_key key1
          ON key1.id = nt.instance_note_key_id
