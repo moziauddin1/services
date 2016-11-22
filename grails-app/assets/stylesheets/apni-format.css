@@ -92,6 +92,7 @@ name-type {
 }
 
 name-type.common,
+name-type.vernacular,
 name-type.show-always {
     display: inline;
 }
