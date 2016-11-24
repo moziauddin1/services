@@ -54,14 +54,7 @@
       </span>
       <g:if test="${apc}">
         <span class="vertbar">
-          <a href="${g.createLink(controller: 'apcFormat', action: 'display', id: name.id)}">
-            <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.typeUriIdPart == 'ApcConcept'}">
-              <apc><i class="fa fa-check"></i>${ConfigService.classificationTreeName}</apc>
-            </g:if>
-            <g:else>
-              <apc><i class="fa fa-ban"></i>${ConfigService.classificationTreeName}</apc>
-            </g:else>
-          </a>
+          <af:apc apc="${apc}"/>
         </span>
       </g:if>
 

@@ -22,16 +22,8 @@
       <a href="${af.refNameTreeSearchLink(citation: reference?.citation, product: params.product)}" class="hidden-print"><i
           class="fa fa-search"></i></a>
     </g:if>
-    <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.taxonUriIdPart == instance.id.toString()}">
-      <a href="${g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: name.id)}">
-        <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.typeUriIdPart == 'ApcConcept'}">
-          <apc><i class="fa fa-check"></i>${ConfigService.classificationTreeName}</apc>
-        </g:if>
-        <g:else>
-          <apc title="excluded from APC"><i class="fa fa-ban"></i>APC</apc>
-        </g:else>
-      </a>
-    </g:if>
+
+    <af:apc apc="${apc}" instance="${instance}"/>
 
     <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
     <instance data-instanceId="${instance.id}">

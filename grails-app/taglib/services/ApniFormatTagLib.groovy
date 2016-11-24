@@ -232,4 +232,28 @@ class ApniFormatTagLib {
             out << '<i class="fa fa-square-o"></i>'
         }
     }
+
+    def apc = {attrs ->
+        Node apcNode = attrs.apc
+        Instance instance = attrs.instance ?: apcNode.instance
+        if(apcNode && instance && apcNode.instance.id == instance.id) {
+            String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: apcNode.name.id)
+            String tree = ConfigService.classificationTreeName
+            out << """<a href="${link}">"""
+            switch(apcNode.typeUriIdPart) {
+                case 'ApcConcept':
+                    out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>"""
+                    break
+                case 'ApcExcluded':
+                    out << """<apc title="excluded from $tree"><i class="fa fa-ban"></i> ${tree}</apc>"""
+                    break
+                case 'DeclaredBt':
+                    out << """<apc title="Declared broader term in $tree">BT ${tree}</apc>"""
+                    break
+                case 'ApcRecord':
+                    break
+            }
+            out << "</a>"
+        }
+    }
 }
