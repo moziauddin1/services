@@ -75,7 +75,7 @@ class ApcFormatController {
         Boolean excluded = false
         if (!apc) {
             synonymOf = name.instances.findAll { Instance i ->
-                i.citedBy && classificationService.isInstanceInAPC(i.citedBy)
+                !i.draft && i.citedBy && classificationService.isInstanceInAPC(i.citedBy)
             }
         } else {
             excluded = apc.typeUriIdPart != 'ApcConcept'

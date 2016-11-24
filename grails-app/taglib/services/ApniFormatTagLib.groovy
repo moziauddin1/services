@@ -135,7 +135,7 @@ class ApniFormatTagLib {
     def branch = { attrs, body ->
         Name name = attrs.name
         String treeName = attrs.tree ?: configService.classificationTreeName
-        NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, treeName as String)
+        NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, treeName)
         if (nameTreePath) {
             out << '<branch title="click to see branch.">'
             out << body()

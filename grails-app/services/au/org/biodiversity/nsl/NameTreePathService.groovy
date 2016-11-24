@@ -45,9 +45,13 @@ class NameTreePathService {
      * @return
      */
     NameTreePath updateNameTreePathFromNode(Node currentNode) {
-        log.debug "update name tree path for $currentNode"
-        NameTreePath currentNtp = findCurrentNameTreePath(currentNode.name, currentNode.root)
-        updateNameTreePathFromNode(currentNode, currentNtp)
+        if(currentNode) {
+            log.debug "update name tree path for $currentNode"
+            NameTreePath currentNtp = findCurrentNameTreePath(currentNode.name, currentNode.root)
+            updateNameTreePathFromNode(currentNode, currentNtp)
+        } else {
+            return null
+        }
     }
 
     /**
@@ -115,8 +119,8 @@ class NameTreePathService {
      */
     List<Node> getCurrentNodesInBranch(NameTreePath ntp) {
         ntp.namesInBranch().collect { Name name ->
-            classificationService.isNameInClassification(name, ntp.tree)
-        }
+            classificationService.isNameInClassification(name, ntp.tree) // get the Node
+        }.findAll { it != null }
     }
 
     /**

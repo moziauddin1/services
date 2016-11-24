@@ -92,13 +92,25 @@ class ClassificationService {
         arrangement ? isNameInClassification(name, arrangement) : null
     }
 
+    /**
+     * Looks for a current Node in the arrangement that has a non null, non draft instance.
+     * The name should only be on the current version of the tree once, so we return the first valid one returned by
+     * the query service.
+     * @param name
+     * @param arrangement
+     * @return the first node with non null non draft instance it finds
+     */
     Node isNameInClassification(Name name, Arrangement arrangement) {
         if (arrangement) {
             List<Node> nodes = queryService.findCurrentNslName(arrangement, name)
-            nodes ? nodes.first() : null
-        } else {
-            return null
+            if (nodes && !nodes.empty) {
+                Node firstNonDraftNode = nodes.find { node ->
+                    node.instance && !node.instance.draft
+                }
+                return firstNonDraftNode ?: null
+            }
         }
+        return null
     }
 
     Node isInstanceInClassification(Instance instance, Namespace namespace, String classification) {
@@ -107,7 +119,7 @@ class ClassificationService {
     }
 
     Node isInstanceInClassification(Instance instance, Arrangement arrangement) {
-        if (arrangement) {
+        if (arrangement && !instance.draft) {
             List<Node> nodes = queryService.findCurrentNslInstance(arrangement, instance)
             nodes ? nodes.first() : null
         } else {

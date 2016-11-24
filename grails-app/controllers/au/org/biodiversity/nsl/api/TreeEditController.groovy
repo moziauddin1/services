@@ -119,10 +119,11 @@ class TreeEditController {
         log.debug "treeViewService.getInstancePlacementInTree"
         Node currentNode = classificationService.isNameInClassification(p.instance.name, apc)
 
+// if the instance is draft currentNode will be null and updateNameTreePathFromNode will do nothing and return null
         nameTreePathService.updateNameTreePathFromNode(currentNode)
 
-        Map npt = treeViewService.getInstancePlacementInTree(apc, p.instance)
-        result << npt
+        Map nodePlacementInTree = treeViewService.getInstancePlacementInTree(apc, p.instance)
+        result << nodePlacementInTree
 
         log.debug "render(result as JSON)"
         return render(result as JSON)
@@ -215,11 +216,11 @@ class TreeEditController {
         handleException { handleExceptionIgnore ->
             Uri placementType = null;
 
-            if("accepted".equals(param.placementType))
+            if ("accepted".equals(param.placementType))
                 placementType = DomainUtils.uri('apc-voc', 'ApcConcept');
-            else if("excluded".equals(param.placementType))
+            else if ("excluded".equals(param.placementType))
                 placementType = DomainUtils.uri('apc-voc', 'ApcExcluded');
-            else if("untreated".equals(param.placementType))
+            else if ("untreated".equals(param.placementType))
                 placementType = DomainUtils.uri('apc-voc', 'DeclaredBt');
 
             Message msg = userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, placementType);
@@ -463,8 +464,8 @@ class RemoveApcInstanceParam {
     Instance replacementInstance;
 
     String toString() {
-        return [instance: instance,
-                replacementName: replacementName,
+        return [instance           : instance,
+                replacementName    : replacementName,
                 replacementInstance: replacementInstance].toString()
     }
 

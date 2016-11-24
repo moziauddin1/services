@@ -39,7 +39,11 @@ class ApniFormatService {
     }
 
     Map nameReferenceInstanceMap(Name name) {
-        Map<Reference, List<Instance>> refGroups = name.instances.groupBy { instance -> instance.reference }
+        Map<Reference, List<Instance>> refGroups = name.instances.findAll { instance ->
+            instance.draft == false
+        }.groupBy { instance ->
+            instance.reference
+        }
         List<Reference> references = new ArrayList(refGroups.keySet())
         references.sort { a, b ->
             //NSL-1119 protolog references must come first so if a reference contains a protologue instance make it win
@@ -51,7 +55,7 @@ class ApniFormatService {
             //NSL-1827 use parent details for sorting
             Integer aYear = ReferenceService.findReferenceYear(a)
             Integer bYear = ReferenceService.findReferenceYear(b)
-            if ( aYear == bYear) {
+            if (aYear == bYear) {
                 if (aProto == bProto) {
                     if (aPrimary == bPrimary) {
                         if (a == b) {
