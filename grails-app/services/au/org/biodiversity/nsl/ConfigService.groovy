@@ -94,4 +94,7 @@ class ConfigService {
         Sql.newInstance(dbUrl, username, password, driverClassName)
     }
 
+    public String getWebUserName() {
+        grailsApplication.config.shard.webUser
+    }
 }
