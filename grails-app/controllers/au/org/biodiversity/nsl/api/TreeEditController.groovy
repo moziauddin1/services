@@ -256,6 +256,38 @@ class TreeEditController {
         }
     }
 
+    @RequiresRoles('treebuilder')
+    def updateValue(UpdateValueParam param) {
+        if (!param.validate()) return renderValidationErrors(param)
+        if (!canEdit(param.tree)) {
+            response.status = 403
+            return render([
+                    success: false,
+                    msg    : [msg   : "403 - Forbidden",
+                              body  : "You do not have permission to edit this tree",
+                              status: 'danger',
+                    ]
+            ] as JSON)
+        }
+
+        handleException { handleExceptionIgnore ->
+
+            ValueNodeUri uri = ValueNodeUri.findByRootAndLabel(param.tree.baseArrangement ?: param.tree, param.valueUriLabel)
+
+            if(uri==null) {
+                // TODO: this should be a validation exception
+                ServiceException.raise(Message.makeMsg(Msg.SIMPLE_2, ["Unknown value uri", param.valueUriLabel]));
+            }
+
+            Message msg = userWorkspaceManagerService.updateValue(param.tree, param.name, uri, param.value);
+
+            return render([
+                    success: true,
+                    msg    : msg
+            ] as JSON)
+        }
+    }
+
     boolean canEdit(Arrangement a) {
         return a.arrangementType == ArrangementType.U && SecurityUtils.subject.hasRole(a.baseArrangement.label);
     }
@@ -454,6 +486,24 @@ class RemoveNameFromTreeParam {
     static constraints = {
         tree nullable: false
         name nullable: false
+    }
+}
+
+@Validateable
+class UpdateValueParam {
+    Arrangement tree
+    Name name
+    String valueUriLabel
+    String value
+
+    String toString() {
+        return [tree: tree, name: name, valueUriLabel: valueUriLabel, value: value].toString()
+    }
+
+    static constraints = {
+        tree nullable: false
+        valueUriLabel nullable: false
+        value nullable: true
     }
 }
 
