@@ -97,4 +97,13 @@ class ConfigService {
     public String getWebUserName() {
         grailsApplication.config.shard.webUser
     }
+
+    public Map getUpdateScriptParams() {
+        [
+                webUserName: getWebUserName(),
+                classificationTreeName: classificationTreeName,
+                nameTreeName: nameTreeName,
+                nameSpace: nameSpace
+        ]
+    }
 }

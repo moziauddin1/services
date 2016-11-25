@@ -27,8 +27,8 @@ class BootStrap {
 
     def init = { servletContext ->
         if(!nslDomainService.checkUpToDate()) {
-            String webUser = configService.getWebUserName()
-            if(!nslDomainService.updateToCurrentVersion(configService.sqlForNSLDB, [webUserName: webUser])) {
+            Map scriptParams = configService.getUpdateScriptParams()
+            if(!nslDomainService.updateToCurrentVersion(configService.sqlForNSLDB, scriptParams)) {
                 log.error "Database is not up to date. Run update script on the DB before restarting."
                 throw new Exception('Database not at expected version.')
             }
