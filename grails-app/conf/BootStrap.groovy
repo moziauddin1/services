@@ -1,3 +1,5 @@
+import au.org.biodiversity.nsl.ConfigService
+
 /*
     Copyright 2015 Australian National Botanic Gardens
 
@@ -21,11 +23,15 @@ class BootStrap {
     def nslDomainService
     def shiroSecurityManager
     def shiroSubjectDAO
+    def configService
 
     def init = { servletContext ->
         if(!nslDomainService.checkUpToDate()) {
-            log.error "Database is not up to date. Run update script on the DB before restarting."
-            throw new Exception('Database not at expected version.')
+            String webUser = configService.getWebUserName()
+            if(!nslDomainService.updateToCurrentVersion(configService.sqlForNSLDB, [webUserName: webUser])) {
+                log.error "Database is not up to date. Run update script on the DB before restarting."
+                throw new Exception('Database not at expected version.')
+            }
         }
         searchService.registerSuggestions()
         jsonRendererService.registerObjectMashallers()
