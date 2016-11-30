@@ -22,10 +22,15 @@ import grails.validation.Validateable
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
 import org.codehaus.groovy.grails.commons.GrailsApplication
+import org.hibernate.JDBCException
+import org.hibernate.engine.jdbc.spi.SqlExceptionHelper
+import org.hibernate.exception.ConstraintViolationException
 import org.springframework.context.MessageSource
 import org.springframework.context.MessageSourceResolvable
 import org.springframework.validation.Errors
 import org.springframework.validation.FieldError
+
+import java.sql.SQLException
 
 /**
  * Created by ibis on 14/01/2016.
@@ -995,13 +1000,48 @@ class TreeJsonEditController {
                     treeServiceException: ex,
             ] as JSON)
         }
+        catch (JDBCException ex) {
+            doIt.delegate.response.status = 500
+
+            def nested = [];
+            for(SQLException sex = ex.getSQLException(); sex != null; sex = sex.getNextException()) {
+                nested += [
+                    msg: sex.getClass().getSimpleName(),
+                    body : sex.getLocalizedMessage()
+                ]
+            }
+
+            return render([
+                    success: false,
+                    msg    : [msg       : ex.class.simpleName,
+                              body      : ex.getMessage(),
+                              nested    : nested,
+                              status    : 'danger',
+                              stackTrace: ex.getStackTrace().findAll {
+                                  StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
+                              }.collect {
+                                  StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
+                              }
+                    ]
+            ] as JSON)
+        }
         catch (Exception ex) {
             doIt.delegate.response.status = 500
+
+            def nested = [];
+            for(Throwable tex = ex.getCause(); tex != null; tex = tex.getCause()) {
+                nested += [
+                        msg: tex.getClass().getSimpleName(),
+                        body : tex.getLocalizedMessage()
+                ]
+            }
+
             return render([
                     success: false,
                     msg    : [msg       : ex.class.simpleName,
                               body      : ex.getMessage(),
                               status    : 'danger',
+                              nested    : nested,
                               stackTrace: ex.getStackTrace().findAll {
                                   StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
                               }.collect {
