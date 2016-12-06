@@ -122,65 +122,65 @@ class ApcTreeService {
                 Statement stmt = connection.createStatement();
                 try {
                     ResultSet rs = stmt.executeQuery('''
-with zz as (
-select tax.id node_id, instance.id instance_id, instance.name_id name_id,
-  (select max(value)
-    from instance_note n
-    join instance_note_key nk on n.instance_note_key_id=nk.id
-    where n.instance_id = instance.id
-    and nk.name='APC Comment\'
-  ) as inst_apc_comment,
-  (select max(value)
-    from instance_note n
-    join instance_note_key nk on n.instance_note_key_id=nk.id
-    where n.instance_id = instance.id
-    and nk.name='APC Dist.\'
-  ) as inst_apc_dist,
-  (select max(lit.literal)
-    from tree_link
-    join tree_uri_ns ns on  tree_link.type_uri_ns_part_id = ns.id
-    join tree_node lit on tree_link.subnode_id = lit.id
-    where
+WITH zz AS (
+SELECT tax.id node_id, instance.id instance_id, instance.name_id name_id,
+  (SELECT max(value)
+    FROM instance_note n
+    JOIN instance_note_key nk ON n.instance_note_key_id=nk.id
+    WHERE n.instance_id = instance.id
+    AND nk.name='APC Comment\'
+  ) AS inst_apc_comment,
+  (SELECT max(value)
+    FROM instance_note n
+    JOIN instance_note_key nk ON n.instance_note_key_id=nk.id
+    WHERE n.instance_id = instance.id
+    AND nk.name='APC Dist.\'
+  ) AS inst_apc_dist,
+  (SELECT max(lit.literal)
+    FROM tree_link
+    JOIN tree_uri_ns ns ON  tree_link.type_uri_ns_part_id = ns.id
+    JOIN tree_node lit ON tree_link.subnode_id = lit.id
+    WHERE
         tax.id = tree_link.supernode_id
-    and ns.label = 'apc-voc\'
-    and tree_link.type_uri_id_part = 'comment\'
-    and lit.internal_type = 'V\'
-    ) as tree_apc_comment,
-  (select max(lit.literal)
-    from tree_link
-    join tree_uri_ns ns on  tree_link.type_uri_ns_part_id = ns.id
-    join tree_node lit on tree_link.subnode_id = lit.id
-    where
+    AND ns.label = 'apc-voc\'
+    AND tree_link.type_uri_id_part = 'comment\'
+    AND lit.internal_type = 'V\'
+    ) AS tree_apc_comment,
+  (SELECT max(lit.literal)
+    FROM tree_link
+    JOIN tree_uri_ns ns ON  tree_link.type_uri_ns_part_id = ns.id
+    JOIN tree_node lit ON tree_link.subnode_id = lit.id
+    WHERE
         tax.id = tree_link.supernode_id
-    and ns.label = 'apc-voc\'
-    and tree_link.type_uri_id_part = 'distribution\'
-    and lit.internal_type = 'V\'
-    ) as tree_apc_dist
-  from tree_arrangement apc_tree
-  join tree_node tax on apc_tree.id = tax.tree_arrangement_id
-  join instance on tax.instance_id = instance.id
-  where apc_tree.label = 'APC\'
-    and tax.checked_in_at_id is not null
-    and tax.replaced_at_id is null
+    AND ns.label = 'apc-voc\'
+    AND tree_link.type_uri_id_part = 'distribution\'
+    AND lit.internal_type = 'V\'
+    ) AS tree_apc_dist
+  FROM tree_arrangement apc_tree
+  JOIN tree_node tax ON apc_tree.id = tax.tree_arrangement_id
+  JOIN instance ON tax.instance_id = instance.id
+  WHERE apc_tree.label = 'APC\'
+    AND tax.checked_in_at_id IS NOT NULL
+    AND tax.replaced_at_id IS NULL
 )
-select
-    case when zz.inst_apc_comment is null then '***NULLL***' else zz.inst_apc_comment end
+SELECT
+    CASE WHEN zz.inst_apc_comment IS NULL THEN '***NULLL***' ELSE zz.inst_apc_comment END
     <>
-    case when zz.tree_apc_comment is null then '***NULLL***' else zz.tree_apc_comment end
+    CASE WHEN zz.tree_apc_comment IS NULL THEN '***NULLL***' ELSE zz.tree_apc_comment END
       COMMENT_DIFF,
-    case when zz.inst_apc_dist is null then '***NULLL***' else zz.inst_apc_dist end
+    CASE WHEN zz.inst_apc_dist IS NULL THEN '***NULLL***' ELSE zz.inst_apc_dist END
     <>
-    case when zz.tree_apc_dist is null then '***NULLL***' else zz.tree_apc_dist end
+    CASE WHEN zz.tree_apc_dist IS NULL THEN '***NULLL***' ELSE zz.tree_apc_dist END
       DIST_DIFF,
-zz.* from zz
-where
-    case when zz.inst_apc_comment is null then '***NULLL***' else zz.inst_apc_comment end
+zz.* FROM zz
+WHERE
+    CASE WHEN zz.inst_apc_comment IS NULL THEN '***NULLL***' ELSE zz.inst_apc_comment END
     <>
-    case when zz.tree_apc_comment is null then '***NULLL***' else zz.tree_apc_comment end
-  or
-    case when zz.inst_apc_dist is null then '***NULLL***' else zz.inst_apc_dist end
+    CASE WHEN zz.tree_apc_comment IS NULL THEN '***NULLL***' ELSE zz.tree_apc_comment END
+  OR
+    CASE WHEN zz.inst_apc_dist IS NULL THEN '***NULLL***' ELSE zz.inst_apc_dist END
     <>
-    case when zz.tree_apc_dist is null then '***NULLL***' else zz.tree_apc_dist end
+    CASE WHEN zz.tree_apc_dist IS NULL THEN '***NULLL***' ELSE zz.tree_apc_dist END
 ''');
                     try {
                         while (rs.next()) {
@@ -292,5 +292,31 @@ where
 
     }
 
+    String distribution(Instance instance) {
+        valueNodeFromTree(instance, 'distribution', Arrangement.findByLabel(ConfigService.classificationTreeName))
+    }
+
+    String comment(Instance instance) {
+        valueNodeFromTree(instance, 'comment', Arrangement.findByLabel(ConfigService.classificationTreeName))
+    }
+
+    String valueNodeFromTree(Instance instance, String type, Arrangement tree) {
+        List<Node> valueNodes = Node.executeQuery("""
+select vnode 
+from Node n, Link vlink, Node vnode 
+where n.checkedInAt is not null 
+and n.next is null 
+and n.internalType = 'T' 
+and n.root = :root
+and n.instance = :instance
+and n = vlink.supernode and vlink.typeUriIdPart = :valueType
+and vlink.subnode = vnode
+""", [root: tree, valueType: type, instance: instance])
+
+        if (valueNodes && !valueNodes.empty) {
+            return valueNodes.first().literal
+        }
+        return null
+    }
 
 }

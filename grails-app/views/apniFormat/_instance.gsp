@@ -19,7 +19,8 @@
         </bhl-link>
       </g:if>
 
-      <a href="${af.refNameTreeSearchLink(citation: reference?.citation, product: params.product)}" class="hidden-print"><i
+      <a href="${af.refNameTreeSearchLink(citation: reference?.citation, product: params.product)}"
+         class="hidden-print"><i
           class="fa fa-search"></i></a>
     </g:if>
 
@@ -61,6 +62,13 @@
 
 
       <ul class="instance-notes list-unstyled">
+        <af:getAPCNotes instance="${instance}" apc="${apc}" var="apcNote">
+          <li>
+            <instance-note-key
+                class="${apcNote.key}">${apcNote.key}:</instance-note-key>
+            <instance-note><af:replaceXics text="${apcNote.value}"/></instance-note>
+          </li>
+        </af:getAPCNotes>
         <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote">
           <li>
             <instance-note-key

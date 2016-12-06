@@ -28,6 +28,7 @@ class ApniFormatTagLib {
     def instanceService
     LinkService linkService
     def configService
+    def apcTreeService
 
 //    static defaultEncodeAs = 'html'
     static encodeAsForTags = [tagName: 'raw']
@@ -40,13 +41,25 @@ class ApniFormatTagLib {
     }
 
     def getDisplayableNonTypeNotes = { attrs, body ->
-        List<String> types = ['Type', 'Lectotype', 'Neotype', 'EPBC Advice', 'EPBC Impact', 'Synonym']
+        List<String> types = ['Type', 'Lectotype', 'Neotype', 'EPBC Advice', 'EPBC Impact', 'Synonym', 'APC Comment', 'APC Dist.']
         filterNotes(attrs, types, body, true)
     }
 
     def getAPCNotes = { attrs, body ->
-        List<String> types = ['APC Comment', 'APC Dist.']
-        filterNotes(attrs, types, body)
+        Node apcNode = attrs.apc
+        Instance instance = attrs.instance
+        String var = attrs.var ?: "note"
+        if (apcNode && apcNode.instance.id == instance.id) {
+            String apcComment = apcTreeService.comment(instance)
+            String apcDistribution = apcTreeService.distribution(instance)
+
+            if (apcComment) {
+                out << body((var): [key: 'APC Comment', value: apcComment])
+            }
+            if (apcDistribution) {
+                out << body((var): [key: 'APC Dist.', value: apcDistribution])
+            }
+        }
     }
 
     private void filterNotes(Map attrs, List<String> types, body, boolean invertMatch = false) {
@@ -96,7 +109,9 @@ class ApniFormatTagLib {
     }
 
     def replaceXics = { attrs ->
-        out << ApniFormatService.transformXics(attrs.text)
+        if (attrs.text) {
+            out << ApniFormatService.transformXics(attrs.text)
+        }
     }
 
     def apcSortedInstances = { attrs, body ->
@@ -211,7 +226,7 @@ class ApniFormatTagLib {
 
     def apniLink = { attrs ->
         String link = attrs.link
-        if(!link) {
+        if (!link) {
             Name name = attrs.name
             link = linkService.getPreferredLinkForObject(name) + '/api/apni-format'
         }
@@ -233,14 +248,14 @@ class ApniFormatTagLib {
         }
     }
 
-    def apc = {attrs ->
+    def apc = { attrs ->
         Node apcNode = attrs.apc
         Instance instance = attrs.instance ?: apcNode.instance
-        if(apcNode && instance && apcNode.instance.id == instance.id) {
+        if (apcNode && instance && apcNode.instance.id == instance.id) {
             String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: apcNode.name.id)
             String tree = ConfigService.classificationTreeName
             out << """<a href="${link}">"""
-            switch(apcNode.typeUriIdPart) {
+            switch (apcNode.typeUriIdPart) {
                 case 'ApcConcept':
                     out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>"""
                     break

@@ -35,9 +35,11 @@
             <g:render template="hasSynonym" model="[instances: instances]"/>
           </g:if>
           <ul class="instance-notes list-unstyled">
-            <af:getAPCNotes instance="${apcInstance}" var="instanceNote">
+            <af:getAPCNotes instance="${apcInstance}" apc="${apc}" var="instanceNote">
               <li>
-                <instance-note>${raw(instanceNote.value)}</instance-note>
+                <instance-note-key
+                    class="${apcNote.key}">${apcNote.key}:</instance-note-key>
+                <instance-note><af:replaceXics text="${apcNote.value}"/></instance-note>
               </li>
             </af:getAPCNotes>
           </ul>
