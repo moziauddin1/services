@@ -935,22 +935,28 @@ class TreeJsonEditController {
 
          */
 
-            def problems = []
+            def problems = userWorkspaceManagerService.getCheckinErrors(node).collect { Message it->
+                [
+                        msg: 'ERROR',
+                        body: it.humanReadableMessage,
+                        status: 'danger'
+                ]
+            }
 
-            if(problems.empty) {
-                try {
-                    userWorkspaceManagerService.performCheckinChecks(node);
-                }
-                catch(ServiceException ex) {
-                    problems.addAll(unpack(ex.msg).nested);
-                }
+            def warnings = userWorkspaceManagerService.getCheckinWarnings(node).collect { Message it->
+                [
+                    msg: 'WARNING',
+                    body: it.humanReadableMessage,
+                    status: 'warning'
+                ]
             }
 
             return render([
                     success            : true,
                     verificationResults: [
                             goodToGo: problems.empty,
-                            problems: problems
+                            problems: problems,
+                            warnings: warnings
                     ]
             ] as JSON)
         }
