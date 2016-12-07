@@ -1,4 +1,5 @@
-import au.org.biodiversity.nsl.ConfigService
+import grails.util.Environment
+import org.quartz.Scheduler
 
 /*
     Copyright 2015 Australian National Botanic Gardens
@@ -24,6 +25,7 @@ class BootStrap {
     def shiroSecurityManager
     def shiroSubjectDAO
     def configService
+    Scheduler quartzScheduler
 
     def init = { servletContext ->
         if(!nslDomainService.checkUpToDate()) {
@@ -39,6 +41,9 @@ class BootStrap {
         if(shiroSecurityManager) {
             shiroSecurityManager.setSubjectDAO(shiroSubjectDAO)
             println "Set subject DAO on security manager."
+        }
+        if(Environment.current == Environment.PRODUCTION) {
+            quartzScheduler.start()
         }
     }
     def destroy = {
