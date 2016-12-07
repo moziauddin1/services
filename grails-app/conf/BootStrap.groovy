@@ -42,9 +42,9 @@ class BootStrap {
             shiroSecurityManager.setSubjectDAO(shiroSubjectDAO)
             println "Set subject DAO on security manager."
         }
-        if(Environment.current == Environment.PRODUCTION) {
-            quartzScheduler.start()
-        }
+//        if(Environment.current == Environment.PRODUCTION) {
+//            quartzScheduler.start()
+//        }
     }
     def destroy = {
     }
