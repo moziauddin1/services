@@ -14,6 +14,7 @@ import au.org.biodiversity.nsl.Reference
 import au.org.biodiversity.nsl.UriNs
 import au.org.biodiversity.nsl.tree.BasicOperationsService
 import au.org.biodiversity.nsl.tree.DomainUtils
+import au.org.biodiversity.nsl.tree.Message
 import au.org.biodiversity.nsl.tree.QueryService
 import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.UserWorkspaceManagerService
@@ -22,10 +23,15 @@ import grails.validation.Validateable
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
 import org.codehaus.groovy.grails.commons.GrailsApplication
+import org.hibernate.JDBCException
+import org.hibernate.engine.jdbc.spi.SqlExceptionHelper
+import org.hibernate.exception.ConstraintViolationException
 import org.springframework.context.MessageSource
 import org.springframework.context.MessageSourceResolvable
 import org.springframework.validation.Errors
 import org.springframework.validation.FieldError
+
+import java.sql.SQLException
 
 /**
  * Created by ibis on 14/01/2016.
@@ -929,12 +935,28 @@ class TreeJsonEditController {
 
          */
 
+            def problems = userWorkspaceManagerService.getCheckinErrors(node).collect { Message it->
+                [
+                        msg: 'ERROR',
+                        body: it.humanReadableMessage,
+                        status: 'danger'
+                ]
+            }
+
+            def warnings = userWorkspaceManagerService.getCheckinWarnings(node).collect { Message it->
+                [
+                    msg: 'WARNING',
+                    body: it.humanReadableMessage,
+                    status: 'warning'
+                ]
+            }
 
             return render([
                     success            : true,
-                    msg                : [[msg: 'TODO', body: 'actually verify the checkin', status: 'info']],
                     verificationResults: [
-                            goodToGo: true
+                            goodToGo: problems.empty,
+                            problems: problems,
+                            warnings: warnings
                     ]
             ] as JSON)
         }
@@ -946,9 +968,6 @@ class TreeJsonEditController {
         handleException { handleExceptionIgnore ->
 
             Node node = (Node) getObjectForLink(param.uri as String)
-
-            // doing no validation at all
-            // TODO: security, etc
 
             def result = userWorkspaceManagerService.performCheckin(node);
 
@@ -982,36 +1001,87 @@ class TreeJsonEditController {
         catch (ServiceException ex) {
             doIt.delegate.response.status = 400
 
+            def msg = unpack(ex, true)
+            msg['status'] = 'warning'
+
             return render([
                     success             : false,
-                    msg                 : [msg       : ex.class.simpleName,
-                                           body      : ex.getMessage(),
-                                           status    : 'danger',
-                                           stackTrace: ex.getStackTrace().findAll {
-                                               StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
-                                           }.collect {
-                                               StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
-                                           }],
+                    msg                 : msg,
                     treeServiceException: ex,
+            ] as JSON)
+        }
+        catch (JDBCException ex) {
+            doIt.delegate.response.status = 500
+
+            def messages = []
+
+            def msg = unpack(ex, false)
+            msg['status'] = 'danger'
+
+            messages += msg;
+
+            for(SQLException sex = ex.getSQLException(); sex != null; sex = sex.getNextException()) {
+                msg = unpack(sex, true)
+                msg['status'] = 'info'
+                messages += msg
+            }
+
+            return render([
+                    success: false,
+                    msg    : messages
             ] as JSON)
         }
         catch (Exception ex) {
             doIt.delegate.response.status = 500
+
+            def msg = unpack(ex, true)
+            msg['status'] = 'danger'
+
             return render([
                     success: false,
-                    msg    : [msg       : ex.class.simpleName,
-                              body      : ex.getMessage(),
-                              status    : 'danger',
-                              stackTrace: ex.getStackTrace().findAll {
-                                  StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
-                              }.collect {
-                                  StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
-                              }
-                    ]
+                    msg    : msg
             ] as JSON)
         }
-
     }
+
+    private Map unpack(Throwable t, boolean recursive) {
+        def msg;
+
+        if(t instanceof  ServiceException) {
+            msg =  unpack(((ServiceException)t).msg);
+        }
+        else {
+            def nested = [];
+            if(recursive) {
+                for (Throwable tt = t.getCause(); tt; tt = tt.getCause()) {
+                    nested += unpack(tt, false)
+                }
+            }
+            msg = [
+                    msg: t.class.simpleName,
+                    body: t.getMessage(),
+                    nested: nested
+            ]
+
+        }
+
+        msg['stackTrace'] = t.getStackTrace().findAll {
+                    StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
+                }.collect {
+                    StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
+                }
+
+        return msg;
+    }
+
+    private Map unpack(Message m) {
+        [
+                msg: m.msg.name(),
+                body: m.getHumanReadableMessage(),
+                nested: m.nested.collect { Message mm -> unpack(mm);}
+        ]
+    }
+
 }
 
 
