@@ -58,6 +58,11 @@ class ConfigService {
     }
 
     public static String getClassificationTreeName() {
+        try {
+            return configGetOrfail('classification tree key')
+        } catch (e) {
+            log.error(e.message)
+        }
         return configGetOrfail('classification tree label')
     }
 
