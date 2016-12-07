@@ -15,10 +15,10 @@
 */
 package au.org.biodiversity.nsl
 
-import grails.plugin.cache.Cacheable
 import grails.transaction.Transactional
 import groovy.sql.Sql
 import org.codehaus.groovy.grails.commons.GrailsApplication
+import org.apache.commons.logging.LogFactory
 
 /**
  * This is a helper service for abstracting, accessing and managing configuration of the services.
@@ -61,7 +61,7 @@ class ConfigService {
         try {
             return configGetOrfail('classification tree key')
         } catch (e) {
-            log.error(e.message)
+            LogFactory.getLog(this).error e.message
         }
         return configGetOrfail('classification tree label')
     }
@@ -105,10 +105,10 @@ class ConfigService {
 
     public Map getUpdateScriptParams() {
         [
-                webUserName: getWebUserName(),
+                webUserName           : getWebUserName(),
                 classificationTreeName: classificationTreeName,
-                nameTreeName: nameTreeName,
-                nameSpace: nameSpace
+                nameTreeName          : nameTreeName,
+                nameSpace             : nameSpace
         ]
     }
 }
