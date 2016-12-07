@@ -61,7 +61,7 @@ class ConfigService {
         try {
             return configGetOrfail('classification tree key')
         } catch (e) {
-            log.error(e.message)
+            println e.message
         }
         return configGetOrfail('classification tree label')
     }
@@ -105,10 +105,10 @@ class ConfigService {
 
     public Map getUpdateScriptParams() {
         [
-                webUserName: getWebUserName(),
+                webUserName           : getWebUserName(),
                 classificationTreeName: classificationTreeName,
-                nameTreeName: nameTreeName,
-                nameSpace: nameSpace
+                nameTreeName          : nameTreeName,
+                nameSpace             : nameSpace
         ]
     }
 }
