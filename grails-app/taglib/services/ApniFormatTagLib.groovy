@@ -46,19 +46,27 @@ class ApniFormatTagLib {
     }
 
     def getAPCNotes = { attrs, body ->
-        Node apcNode = attrs.apc
         Instance instance = attrs.instance
+        Node apcNode = apcTreeService.hasThisBeenOnTheTree(instance, configService.classificationTree)
         String var = attrs.var ?: "note"
-        if (apcNode && apcNode.instance.id == instance.id) {
-            String apcComment = apcTreeService.comment(instance)
-            String apcDistribution = apcTreeService.distribution(instance)
-
-            if (apcComment) {
-                out << body((var): [key: 'APC Comment', value: apcComment])
-            }
-            if (apcDistribution) {
-                out << body((var): [key: 'APC Dist.', value: apcDistribution])
-            }
+        String apcComment
+        String apcDistribution
+        if (apcNode) {
+            apcComment = apcTreeService.comment(instance)
+            apcDistribution = apcTreeService.distribution(instance)
+        } else {
+            apcComment = instance.instanceNotes.find { InstanceNote note ->
+                note.instanceNoteKey.name == 'APC Comment'
+            }?.value
+            apcDistribution = instance.instanceNotes.find { InstanceNote note ->
+                note.instanceNoteKey.name == 'APC Dist.'
+            }?.value
+        }
+        if (apcComment) {
+            out << body((var): [key: 'APC Comment', value: apcComment])
+        }
+        if (apcDistribution) {
+            out << body((var): [key: 'APC Dist.', value: apcDistribution])
         }
     }
 

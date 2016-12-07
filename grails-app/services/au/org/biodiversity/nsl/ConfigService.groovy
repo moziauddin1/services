@@ -35,6 +35,7 @@ import org.apache.commons.logging.LogFactory
 class ConfigService {
 
     GrailsApplication grailsApplication
+    Arrangement classificationTree
 
     private static String configGetOrfail(String key) {
         String value = ShardConfig.findByName(key)?.value
@@ -88,6 +89,13 @@ class ConfigService {
 
     public static String getProductDescription(String productName) {
         return configGetOrfail("$productName description")
+    }
+
+    public Arrangement getClassificationTree() {
+        if(!classificationTree) {
+            classificationTree = Arrangement.findByLabel(getClassificationTreeName())
+        }
+        return classificationTree
     }
 
     public Sql getSqlForNSLDB() {

@@ -62,7 +62,7 @@
 
 
       <ul class="instance-notes list-unstyled">
-        <af:getAPCNotes instance="${instance}" apc="${apc}" var="apcNote">
+        <af:getAPCNotes instance="${instance}" var="apcNote">
           <li>
             <instance-note-key
                 class="${apcNote.key}">${apcNote.key}:</instance-note-key>

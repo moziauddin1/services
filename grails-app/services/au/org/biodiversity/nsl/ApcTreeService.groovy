@@ -41,6 +41,7 @@ class ApcTreeService {
     BasicOperationsService basicOperationsService;
     QueryService queryService
     VersioningService versioningService;
+    def configService
 
     static class ApcData {
         Long node_id;
@@ -292,12 +293,16 @@ WHERE
 
     }
 
+    Node hasThisBeenOnTheTree(Instance instance, Arrangement tree){
+        Node.findByInstanceAndRoot(instance, tree)
+    }
+
     String distribution(Instance instance) {
-        valueNodeFromTree(instance, 'distribution', Arrangement.findByLabel(ConfigService.classificationTreeName))
+        valueNodeFromTree(instance, 'distribution', configService.classificationTree)
     }
 
     String comment(Instance instance) {
-        valueNodeFromTree(instance, 'comment', Arrangement.findByLabel(ConfigService.classificationTreeName))
+        valueNodeFromTree(instance, 'comment', configService.classificationTree)
     }
 
     String valueNodeFromTree(Instance instance, String type, Arrangement tree) {

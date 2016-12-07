@@ -35,7 +35,7 @@
             <g:render template="hasSynonym" model="[instances: instances]"/>
           </g:if>
           <ul class="instance-notes list-unstyled">
-            <af:getAPCNotes instance="${apcInstance}" apc="${apc}" var="instanceNote">
+            <af:getAPCNotes instance="${apcInstance}" var="instanceNote">
               <li>
                 <instance-note-key
                     class="${apcNote.key}">${apcNote.key}:</instance-note-key>
