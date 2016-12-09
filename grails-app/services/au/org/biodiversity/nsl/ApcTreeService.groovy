@@ -55,61 +55,159 @@ class ApcTreeService {
     }
 
     def transferApcProfileData(Namespace namespace, String classificationTreeLabel) {
-        log.debug "applying instance APC comments and distribution text to the APC tree"
+        log.info "applying instance APC comments and distribution text to the APC tree"
 
         /**
-         * find instances where the comment or apc distribution text does not match the text of the current APC tree node
-         * if there are any, then {*   make a workspace and an event.
-         *   Check out the APC root into it.
-         *   For each instance needing to be fixed {*     check it out into the ws if it is not already checked out
-         *     fix the profile items needing to be fixed
-         *}*   bulk versioning
-         *}* return number of instances fixed up.
+         * Use the existing event, because a node cannot have a subnode whose checkin
+         * is subsequent to its own checkin
          */
 
-        Collection<ApcData> fixups = getFixups();
-
-        if (fixups.isEmpty()) {
-            log.debug "No fixups needed."
-            return "No fixups needed."
+        Event e = Event.findByNote('APC import - create empty classification').first();
+        if (!e) {
+            log.warn "Did not find APC creation tree event"
+            throw new IllegalStateException("APC creation not found");
         }
 
-        log.debug "${fixups.size()} fixups needed."
+        log.debug("APC tree creation event is ${e}")
 
-        Arrangement apc = Arrangement.findByNamespaceAndLabel(namespace, classificationTreeLabel);
+        Arrangement apc = Arrangement.findByLabel('APC').first()
+        log.debug("APC tree is ${apc}")
 
-        if (!apc) {
-            throw new IllegalStateException('No APC tree?')
-        }
+        UriNs apcNs = UriNs.findByLabel('apc-voc').first()
+        UriNs xsNs = UriNs.findByLabel('xs').first()
 
-        log.info "transferring profile data in ${apc}"
+        sessionFactory_nsl.getCurrentSession().doWork(new Work() {
+            void execute(Connection connection) throws SQLException {
 
-        log.debug "temp arrangement"
-        Arrangement tempSpace = basicOperationsService.createTemporaryArrangement(namespace)
-        apc = DomainUtils.refetchArrangement(apc)
-        Link topLink = basicOperationsService.adoptNode(tempSpace.node, DomainUtils.getSingleSubnode(apc.node), VersioningMethod.F)
-        basicOperationsService.checkoutLink(topLink)
+                log.debug "deleting links"
+                connection.createStatement().execute('''
+DELETE FROM tree_link l
+USING
+    tree_node subnode JOIN tree_arrangement sub_a ON subnode.tree_arrangement_id = sub_a.id
+WHERE
+    l.subnode_id = subnode.id
+    AND l.type_uri_id_part IN ('comment', 'distribution')
+    AND subnode.internal_type = 'V'
+'''
+                )
 
-        fixups.each { ApcData fixup -> fixupProfileItem(fixup, tempSpace) }
+                log.debug "deleting nodes"
+                connection.createStatement().execute('''
+DELETE FROM tree_node n
+WHERE n.internal_type = 'V'
+AND NOT exists (
+  SELECT l.id FROM tree_link l WHERE l.subnode_id = n.id
+)
+'''
+                )
 
-        // OK! Now to fix up the profile data!
+                /*
+                    Ok, time to extract the notes. I will make one value node for each relevant instance_note.
+                    They could be combined, but I think it would confuse people.
+                 */
 
-        log.debug "event"
-        Event transferEvent = basicOperationsService.newEvent(namespace, 'Transfer instance profile data to the APC tree')
+                log.debug "creating temp table"
+                connection.createStatement().execute('''
+DROP TABLE IF  EXISTS tmp_instance_note_nodes
+'''
+                );
 
-        log.debug "persist"
-        basicOperationsService.persistNode(transferEvent, tempSpace.node)
+                connection.createStatement().execute('''
+CREATE TEMPORARY TABLE IF NOT EXISTS tmp_instance_note_nodes (
+instance_note_id BIGINT PRIMARY KEY,
+instance_id BIGINT,
+note_key CHARACTER VARYING(255) NOT NULL,
+node_id BIGINT NOT NULL
+)
+ON COMMIT DELETE ROWS'''
+                );
 
-        log.debug "version"
-        Map<Node, Node> v = versioningService.getStandardVersioningMap(tempSpace, apc)
+                log.debug "populating temp table"
+                // this is not frequently executed, so I'll just put the ids in the string with groovy
+                connection.createStatement().execute("""
+insert into tmp_instance_note_nodes
+select instance_note.id,
+instance_note.instance_id,
+instance_note_key.name,
+nextval('nsl_global_seq')
+from instance_note join instance_note_key on instance_note.instance_note_key_id = instance_note_key.id
+where instance_note_key.name in ('APC Comment', 'APC Dist.')
+and exists (
+  select tree_node.id
+  from tree_node
+    join tree_arrangement on tree_node.tree_arrangement_id = tree_arrangement.id
+  where tree_node.instance_id = instance_note.instance_id
+  and (tree_arrangement.id = ${apc.id} or tree_arrangement.base_arrangement_id = ${apc.id})
+)
+"""
+                );
 
-        versioningService.performVersioning(transferEvent, v, apc)
-        log.debug "cleanup"
-        basicOperationsService.moveFinalNodesFromTreeToTree(tempSpace, apc)
-        basicOperationsService.deleteArrangement(tempSpace)
-        log.debug "done"
+                log.debug "creating value nodes"
+                connection.createStatement().execute("""
+insert into tree_node(
+  id,
+  lock_version,
+  checked_in_at_id,
+  internal_type,
+  literal,
+  tree_arrangement_id,
+  type_uri_ns_part_id,
+  type_uri_id_part
+)
+select
+  nn.node_id,--id,
+  1,--lock_version,
+  ${e.id},--checked_in_at_id,
+  'V',--internal_type,
+  instance_note.value,--literal,
+  ${apc.id},--tree_arrangement_id,
+  case nn.note_key when 'APC Comment' then ${xsNs.id} when 'APC Dist.' then ${apcNs.id} end,--type_uri_ns_part_id,
+  case nn.note_key when 'APC Comment' then 'string' when 'APC Dist.' then 'distributionstring' end--type_uri_id_part
+from tmp_instance_note_nodes nn join instance_note on nn.instance_note_id = instance_note.id
+"""
+                );
 
-        return "${fixups.size()} fixups performed."
+                log.debug "creating links to value nodes"
+                connection.createStatement().execute("""
+insert into tree_link(
+  id,
+  lock_version,
+  link_seq,
+  supernode_id,
+  subnode_id,
+  is_synthetic,
+  type_uri_ns_part_id,
+  type_uri_id_part,
+  versioning_method
+)
+select
+  nextval('nsl_global_seq'),--id,
+  1,--lock_version,
+  currval('nsl_global_seq'),--link_seq,
+  n.id,--supernode_id,
+  nn.node_id,--subnode_id,
+  false,--is_synthetic,
+  ${apcNs.id},--type_uri_ns_part_id,
+  case nn.note_key when 'APC Comment' then 'comment' when 'APC Dist.' then 'distribution' end,--type_uri_id_part,
+  'F'--versioning_method
+from tree_arrangement a
+join tree_node n on a.id = n.tree_arrangement_id
+join tmp_instance_note_nodes nn on n.instance_id = nn.instance_id
+where (a.id = ${apc.id} or a.base_arrangement_id = ${apc.id})
+"""
+                );
+
+
+                log.debug "dropping temp table"
+                connection.createStatement().execute('''
+DROP TABLE IF  EXISTS instance_note_nodes
+'''
+                );
+
+            }
+        })
+
+        return "All comments and distributions reset."
     }
 
     private List<ApcData> getFixups() {
@@ -122,65 +220,65 @@ class ApcTreeService {
                 Statement stmt = connection.createStatement();
                 try {
                     ResultSet rs = stmt.executeQuery('''
-with zz as (
-select tax.id node_id, instance.id instance_id, instance.name_id name_id,
-  (select max(value)
-    from instance_note n
-    join instance_note_key nk on n.instance_note_key_id=nk.id
-    where n.instance_id = instance.id
-    and nk.name='APC Comment\'
-  ) as inst_apc_comment,
-  (select max(value)
-    from instance_note n
-    join instance_note_key nk on n.instance_note_key_id=nk.id
-    where n.instance_id = instance.id
-    and nk.name='APC Dist.\'
-  ) as inst_apc_dist,
-  (select max(lit.literal)
-    from tree_link
-    join tree_uri_ns ns on  tree_link.type_uri_ns_part_id = ns.id
-    join tree_node lit on tree_link.subnode_id = lit.id
-    where
+WITH zz AS (
+SELECT tax.id node_id, instance.id instance_id, instance.name_id name_id,
+  (SELECT max(value)
+    FROM instance_note n
+    JOIN instance_note_key nk ON n.instance_note_key_id=nk.id
+    WHERE n.instance_id = instance.id
+    AND nk.name='APC Comment\'
+  ) AS inst_apc_comment,
+  (SELECT max(value)
+    FROM instance_note n
+    JOIN instance_note_key nk ON n.instance_note_key_id=nk.id
+    WHERE n.instance_id = instance.id
+    AND nk.name='APC Dist.\'
+  ) AS inst_apc_dist,
+  (SELECT max(lit.literal)
+    FROM tree_link
+    JOIN tree_uri_ns ns ON  tree_link.type_uri_ns_part_id = ns.id
+    JOIN tree_node lit ON tree_link.subnode_id = lit.id
+    WHERE
         tax.id = tree_link.supernode_id
-    and ns.label = 'apc-voc\'
-    and tree_link.type_uri_id_part = 'comment\'
-    and lit.internal_type = 'V\'
-    ) as tree_apc_comment,
-  (select max(lit.literal)
-    from tree_link
-    join tree_uri_ns ns on  tree_link.type_uri_ns_part_id = ns.id
-    join tree_node lit on tree_link.subnode_id = lit.id
-    where
+    AND ns.label = 'apc-voc\'
+    AND tree_link.type_uri_id_part = 'comment\'
+    AND lit.internal_type = 'V\'
+    ) AS tree_apc_comment,
+  (SELECT max(lit.literal)
+    FROM tree_link
+    JOIN tree_uri_ns ns ON  tree_link.type_uri_ns_part_id = ns.id
+    JOIN tree_node lit ON tree_link.subnode_id = lit.id
+    WHERE
         tax.id = tree_link.supernode_id
-    and ns.label = 'apc-voc\'
-    and tree_link.type_uri_id_part = 'distribution\'
-    and lit.internal_type = 'V\'
-    ) as tree_apc_dist
-  from tree_arrangement apc_tree
-  join tree_node tax on apc_tree.id = tax.tree_arrangement_id
-  join instance on tax.instance_id = instance.id
-  where apc_tree.label = 'APC\'
-    and tax.checked_in_at_id is not null
-    and tax.replaced_at_id is null
+    AND ns.label = 'apc-voc\'
+    AND tree_link.type_uri_id_part = 'distribution\'
+    AND lit.internal_type = 'V\'
+    ) AS tree_apc_dist
+  FROM tree_arrangement apc_tree
+  JOIN tree_node tax ON apc_tree.id = tax.tree_arrangement_id
+  JOIN instance ON tax.instance_id = instance.id
+  WHERE apc_tree.label = 'APC\'
+    AND tax.checked_in_at_id IS NOT NULL
+    AND tax.replaced_at_id IS NULL
 )
-select
-    case when zz.inst_apc_comment is null then '***NULLL***' else zz.inst_apc_comment end
+SELECT
+    CASE WHEN zz.inst_apc_comment IS NULL THEN '***NULLL***' ELSE zz.inst_apc_comment END
     <>
-    case when zz.tree_apc_comment is null then '***NULLL***' else zz.tree_apc_comment end
+    CASE WHEN zz.tree_apc_comment IS NULL THEN '***NULLL***' ELSE zz.tree_apc_comment END
       COMMENT_DIFF,
-    case when zz.inst_apc_dist is null then '***NULLL***' else zz.inst_apc_dist end
+    CASE WHEN zz.inst_apc_dist IS NULL THEN '***NULLL***' ELSE zz.inst_apc_dist END
     <>
-    case when zz.tree_apc_dist is null then '***NULLL***' else zz.tree_apc_dist end
+    CASE WHEN zz.tree_apc_dist IS NULL THEN '***NULLL***' ELSE zz.tree_apc_dist END
       DIST_DIFF,
-zz.* from zz
-where
-    case when zz.inst_apc_comment is null then '***NULLL***' else zz.inst_apc_comment end
+zz.* FROM zz
+WHERE
+    CASE WHEN zz.inst_apc_comment IS NULL THEN '***NULLL***' ELSE zz.inst_apc_comment END
     <>
-    case when zz.tree_apc_comment is null then '***NULLL***' else zz.tree_apc_comment end
-  or
-    case when zz.inst_apc_dist is null then '***NULLL***' else zz.inst_apc_dist end
+    CASE WHEN zz.tree_apc_comment IS NULL THEN '***NULLL***' ELSE zz.tree_apc_comment END
+  OR
+    CASE WHEN zz.inst_apc_dist IS NULL THEN '***NULLL***' ELSE zz.inst_apc_dist END
     <>
-    case when zz.tree_apc_dist is null then '***NULLL***' else zz.tree_apc_dist end
+    CASE WHEN zz.tree_apc_dist IS NULL THEN '***NULLL***' ELSE zz.tree_apc_dist END
 ''');
                     try {
                         while (rs.next()) {
