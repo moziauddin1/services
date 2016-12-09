@@ -57,27 +57,26 @@ class ApcTreeService {
     def transferApcProfileData(Namespace namespace, String classificationTreeLabel) {
         log.info "applying instance APC comments and distribution text to the APC tree"
 
-        /**
-         * Use the existing event, because a node cannot have a subnode whose checkin
-         * is subsequent to its own checkin
-         */
-
-        Event e = Event.findByNote('APC import - create empty classification').first();
-        if (!e) {
-            log.warn "Did not find APC creation tree event"
-            throw new IllegalStateException("APC creation not found");
-        }
-
-        log.debug("APC tree creation event is ${e}")
-
-        Arrangement apc = Arrangement.findByLabel('APC').first()
-        log.debug("APC tree is ${apc}")
-
-        UriNs apcNs = UriNs.findByLabel('apc-voc').first()
-        UriNs xsNs = UriNs.findByLabel('xs').first()
-
         sessionFactory_nsl.getCurrentSession().doWork(new Work() {
             void execute(Connection connection) throws SQLException {
+                Closure getN = { sql ->
+                    ResultSet rs = connection.createStatement().executeQuery(sql);
+                    rs.next();
+                    int n = rs.getInt(1);
+                    rs.close();
+                    return n;
+                }
+
+                int eventId = getN('''select id from tree_event where note = 'APC import - create empty classification' ''')
+                int apcId = getN('''select id from tree_arrangement where label = 'APC' ''')
+                int apcNsId = getN('''select id from tree_uri_ns where label = 'apc-voc' ''')
+                int xsNsId = getN('''select id from tree_uri_ns where label = 'xs' ''')
+
+                log.debug("APC tree creation event is ${eventId}")
+                log.debug("APC tree is ${apcId}")
+                log.debug("APC vocabulary is ${apcNsId}")
+                log.debug("XML vocabulary is ${xsNsId}")
+
 
                 log.debug "deleting links"
                 connection.createStatement().execute('''
@@ -137,10 +136,15 @@ and exists (
   from tree_node
     join tree_arrangement on tree_node.tree_arrangement_id = tree_arrangement.id
   where tree_node.instance_id = instance_note.instance_id
-  and (tree_arrangement.id = ${apc.id} or tree_arrangement.base_arrangement_id = ${apc.id})
+  and (tree_arrangement.id = ${apcId} or tree_arrangement.base_arrangement_id = ${apcId})
 )
 """
                 );
+
+                ResultSet rs = connection.createStatement().executeQuery("SELECT count(*) n FROM tmp_instance_note_nodes ")
+                rs.next()
+                log.debug "${rs.getInt('n')} values found"
+                rs.close()
 
                 log.debug "creating value nodes"
                 connection.createStatement().execute("""
@@ -149,6 +153,7 @@ insert into tree_node(
   lock_version,
   checked_in_at_id,
   internal_type,
+  is_synthetic,
   literal,
   tree_arrangement_id,
   type_uri_ns_part_id,
@@ -157,11 +162,12 @@ insert into tree_node(
 select
   nn.node_id,--id,
   1,--lock_version,
-  ${e.id},--checked_in_at_id,
+  ${eventId},--checked_in_at_id,
   'V',--internal_type,
+  'N',
   instance_note.value,--literal,
-  ${apc.id},--tree_arrangement_id,
-  case nn.note_key when 'APC Comment' then ${xsNs.id} when 'APC Dist.' then ${apcNs.id} end,--type_uri_ns_part_id,
+  ${apcId},--tree_arrangement_id,
+  case nn.note_key when 'APC Comment' then ${xsNsId} when 'APC Dist.' then ${apcNsId} end,--type_uri_ns_part_id,
   case nn.note_key when 'APC Comment' then 'string' when 'APC Dist.' then 'distributionstring' end--type_uri_id_part
 from tmp_instance_note_nodes nn join instance_note on nn.instance_note_id = instance_note.id
 """
@@ -186,14 +192,14 @@ select
   currval('nsl_global_seq'),--link_seq,
   n.id,--supernode_id,
   nn.node_id,--subnode_id,
-  false,--is_synthetic,
-  ${apcNs.id},--type_uri_ns_part_id,
+  'N',--is_synthetic,
+  ${apcNsId},--type_uri_ns_part_id,
   case nn.note_key when 'APC Comment' then 'comment' when 'APC Dist.' then 'distribution' end,--type_uri_id_part,
   'F'--versioning_method
 from tree_arrangement a
 join tree_node n on a.id = n.tree_arrangement_id
 join tmp_instance_note_nodes nn on n.instance_id = nn.instance_id
-where (a.id = ${apc.id} or a.base_arrangement_id = ${apc.id})
+where (a.id = ${apcId} or a.base_arrangement_id = ${apcId})
 """
                 );
 
