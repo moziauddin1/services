@@ -189,10 +189,16 @@
                 </a>
               </li>
               <li>
-                <a class=""
-                   href="${g.createLink(controller: "admin", action: "transferApcProfileData")}">
-                  Apply APC comments and distribution text on instances to the APC tree
-                </a>
+                Apply APC comments and distribution text on instances to the APC tree.
+                <div class="alert-danger" style="margin-left:2em; padding: 1em; border: thick solid red;">
+                    <strong>WARNING:</strong> clicking this link will irrevocably erase all distribution and comment information currently on the tree without further warning.
+                We intend to do this import once and once only, after which we will remove this section of this page.
+                    <a style="display: block; margin-left:4em; margin-right: 4em;"
+                       href="${g.createLink(controller: "admin", action: "transferApcProfileData")}">
+                        <strong>YES!</strong> I want to permanently and irrevocably erase all distribution and comment data and replace them with
+                    whatever is in the instance notes, without further warning!
+                    </a>
+                </div>
               </li>
               <li>
                 <a class=""
