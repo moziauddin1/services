@@ -25,7 +25,6 @@ class BootStrap {
     def shiroSecurityManager
     def shiroSubjectDAO
     def configService
-    Scheduler quartzScheduler
 
     def init = { servletContext ->
         if(!nslDomainService.checkUpToDate()) {
@@ -42,9 +41,6 @@ class BootStrap {
             shiroSecurityManager.setSubjectDAO(shiroSubjectDAO)
             println "Set subject DAO on security manager."
         }
-//        if(Environment.current == Environment.PRODUCTION) {
-//            quartzScheduler.start()
-//        }
     }
     def destroy = {
     }

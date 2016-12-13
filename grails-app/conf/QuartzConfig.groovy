@@ -22,7 +22,7 @@ environments {
     }
     production {
         quartz {
-            autoStartup = false
+            autoStartup = true
         }
     }
 }
