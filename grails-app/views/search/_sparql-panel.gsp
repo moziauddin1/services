@@ -742,7 +742,7 @@ LIMIT 50
             clear_sparql_result();
             sparql_spinner_on();
 
-            $.ajax("https://biodiversity.org.au/sparql/", {
+            $.ajax("/sparql/", {
                 data: {
                     output: "json",
                     query: query // encodeURIComponent(
