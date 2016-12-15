@@ -146,7 +146,7 @@ class SearchController implements RequestUtil {
 
             UriNs.all.each { uriPrefixes.put(it.uri, it.label) }
 
-            return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: stats]
+            return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: [:]]
         }
 
         return [query: params, max: max, displayFormats: displayFormats]
