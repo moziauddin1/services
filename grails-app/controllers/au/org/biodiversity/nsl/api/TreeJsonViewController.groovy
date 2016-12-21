@@ -146,9 +146,11 @@ class TreeJsonViewController {
 
             uriPermissions.isClassification = a.arrangementType == ArrangementType.P;
             uriPermissions.isWorkspace = a.arrangementType == ArrangementType.U;
-            uriPermissions.canEdit = (uriPermissions.isWorkspace && principal == a.owner) || (uriPermissions.isClassification && SecurityUtils.subject.hasRole(a.label));
+            uriPermissions.canEdit = (uriPermissions.isWorkspace && principal == a.owner) ||
+             (uriPermissions.isClassification && SecurityUtils.subject.hasRole(a.label)) ||
+             (uriPermissions.isWorkpace && SecurityUtils.subject.hasRole(a.baseArrangement.label))
+            ;
         }
-
 
         def result = [
                 success        : true,
