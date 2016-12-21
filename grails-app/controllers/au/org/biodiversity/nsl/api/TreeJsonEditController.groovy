@@ -179,7 +179,7 @@ class TreeJsonEditController {
 
             Arrangement a = (Arrangement) o;
 
-            if (o.owner != SecurityUtils.subject.principal) {
+            if (!canEditWorkspace(a)) {
                 def result = [
                         success: false,
                         msg    : [
@@ -231,7 +231,7 @@ class TreeJsonEditController {
 
             Arrangement a = (Arrangement) o;
 
-            if (o.owner != SecurityUtils.subject.principal) {
+            if (!canEditWorkspace(a)) {
                 def result = [
                         success: false,
                         msg    : [
@@ -279,7 +279,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
                         msg    : [
@@ -350,7 +350,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -649,7 +649,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -790,7 +790,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -873,7 +873,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            if (ws.owner != SecurityUtils.subject.principal) {
+            if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
                         msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
@@ -1080,6 +1080,10 @@ class TreeJsonEditController {
                 body: m.getHumanReadableMessage(),
                 nested: m.nested.collect { Message mm -> unpack(mm);}
         ]
+    }
+
+    private static boolean canEditWorkspace(Arrangement a) {
+        return a && a.arrangementType == ArrangementType.U && SecurityUtils.subject.hasRole(a.baseArrangement.label);
     }
 
 }
