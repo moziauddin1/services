@@ -18,3 +18,7 @@
     padding-right: 1em;
     vertical-align: text-top;
 }
+ #SPARQLQUERY {
+     font-family: monospace;
+     white-space: pre;
+ }
