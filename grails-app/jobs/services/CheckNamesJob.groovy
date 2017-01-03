@@ -20,6 +20,7 @@ import au.org.biodiversity.nsl.Author
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Notification
 import au.org.biodiversity.nsl.Reference
+import org.springframework.transaction.support.DefaultTransactionStatus
 
 
 class CheckNamesJob {
@@ -38,7 +39,7 @@ class CheckNamesJob {
         Name.withTransaction {
             List<Notification> notifications = Notification.list()
             notifications.each { Notification note ->
-                Name.withNewTransaction { tx ->
+                Name.withNewTransaction { DefaultTransactionStatus tx ->
                     switch (note.message) {
                         case 'name updated':
                             log.debug "Name $note.objectId updated"
@@ -91,7 +92,7 @@ class CheckNamesJob {
                             log.error "unhandled notification $note.message:$note.objectId"
                     }
                     note.delete()
-                    tx.commit()
+                    tx.flush()
                 }
             }
         }
