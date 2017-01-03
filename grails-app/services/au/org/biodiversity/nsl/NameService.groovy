@@ -269,19 +269,22 @@ class NameService {
     private Node updateAPNITree(Name name) {
         Node node = classificationService.isNameInNameTree(name)
 
-        Link parentLink = null
         if (name.parent) {
             Node parentNode = classificationService.isNameInNameTree(name.parent)
             if (!parentNode) {
                 updateAPNITree(name.parent)
             }
-            parentLink = node?.supLink?.find { Link link ->
-                link.supernode.next == null && link.supernode.nameUriIdPart == name.parent.id.toString()
+        }
+
+        Link parentLink = null
+        if(node) { //check the parent link of the existing node matches the current parent
+            parentLink = node.supLink.find { Link link ->
+                link.supernode.next == null && link.supernode.name == name.parent
             }
         }
 
-        if (!parentLink) {
-            //the parent has changed
+        //if the name is not on the tree or the parent changed we want to add/update it.
+        if (!node || !parentLink) {
             log.info "$name isn't in the tree or it's parent ${name.parent} has changed. Placing it in the name tree."
             try {
                 Name.withSession { s ->
@@ -481,7 +484,9 @@ or n.fullNameHtml is null""")?.first() as Integer
         Name.executeQuery("""select count(n) from Name n
 where n.parent is not null
 and n.nameType.name <> 'common'
-and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = '${treeLabel}')""")?.first() as Integer
+and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = '${
+            treeLabel
+        }')""")?.first() as Integer
     }
 
     public static chunkThis(Integer chunkSize, Closure query, Closure work) {

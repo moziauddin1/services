@@ -102,15 +102,30 @@ class ClassificationService {
      */
     Node isNameInClassification(Name name, Arrangement arrangement) {
         if (arrangement) {
-            List<Node> nodes = queryService.findCurrentNslName(arrangement, name)
-            if (nodes && !nodes.empty) {
-                Node firstNonDraftNode = nodes.find { node ->
-                    node.instance && !node.instance.draft
-                }
-                return firstNonDraftNode ?: null
-            }
+            return findCurrentNonDraftNslName(arrangement, name)
         }
         return null
+    }
+
+    /**
+     * todo move to Query Service in the tree services plugin
+     * @param classification
+     * @param name
+     * @return
+     */
+    Node findCurrentNonDraftNslName(Arrangement classification, Name name) {
+        List<Node> nodes = Node.executeQuery('''select n from Node n left join n.instance i 
+where n.root = :arrangement
+and n.name = :name
+and n.checkedInAt is not null
+and n.next is null
+and (n.instance.id = null or i.draft = false)
+''', [arrangement: classification, name: name])
+        if(nodes.empty) {
+            return null
+        }
+        assert nodes.size() == 1
+        return nodes.first()
     }
 
     Node isInstanceInClassification(Instance instance, Namespace namespace, String classification) {

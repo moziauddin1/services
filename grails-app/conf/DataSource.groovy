@@ -66,10 +66,10 @@ environments {
             username = "nsldev"
             password = "nsldev"
             dialect = "au.org.biodiversity.nsl.ExtendedPostgreSQLDialect"
-            dbCreate = "update"
+//            dbCreate = "update"
             url = "jdbc:postgresql://localhost:5432/nsl"
-            formatSql = false
-            logSql = false
+            formatSql = true
+            logSql = true
             //noinspection GroovyAssignabilityCheck
             properties {
                 defaultTransactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED
