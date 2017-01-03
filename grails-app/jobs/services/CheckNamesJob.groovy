@@ -38,58 +38,61 @@ class CheckNamesJob {
         Name.withTransaction {
             List<Notification> notifications = Notification.list()
             notifications.each { Notification note ->
-                switch (note.message) {
-                    case 'name updated':
-                        log.debug "Name $note.objectId updated"
-                        Name name = Name.get(note.objectId)
-                        if (name) {
-                            nameService.nameUpdated(name, note)
-                        } else {
-                            log.debug "Name $note.objectId  doesn't exist "
-                        }
-                        break
-                    case 'name created':
-                        log.debug "Name $note.objectId created"
-                        Name name = Name.get(note.objectId)
-                        if (name) {
-                            nameService.nameCreated(name, note)
-                        } else {
-                            log.debug "Name $note.objectId doesn't exist"
-                        }
-                        break
-                    case 'name deleted':
-                        log.info "Name $note.objectId was deleted."
-                        break
-                    case 'author updated':
-                        log.debug "Author $note.objectId updated"
-                        Author author = Author.get(note.objectId)
-                        if (author) {
-                            nameService.authorUpdated(author, note)
-                        } else {
-                            log.debug "Author $note.objectId  doesn't exist"
-                        }
-                        break
-                    case 'author created':
-                    case 'author deleted':
-                        //NSL-1032 ignore for now, deleted authors can't have names
-                        break
-                    case 'reference updated':
-                        log.debug "Reference $note.objectId updated"
-                        Reference reference = Reference.get(note.objectId)
-                        if(reference) {
-                            referenceService.checkReferenceChanges(reference)
-                        } else {
-                            log.debug "Reference $note.objectId doesn't exist"
-                        }
-                        break
-                    case 'reference created':
-                    case 'reference deleted':
-                        break
-                    default:
-                        //probably caused by previous error. This note will be deleted
-                        log.error "unhandled notification $note.message:$note.objectId"
+                Name.withNewTransaction { tx ->
+                    switch (note.message) {
+                        case 'name updated':
+                            log.debug "Name $note.objectId updated"
+                            Name name = Name.get(note.objectId)
+                            if (name) {
+                                nameService.nameUpdated(name, note)
+                            } else {
+                                log.debug "Name $note.objectId  doesn't exist "
+                            }
+                            break
+                        case 'name created':
+                            log.debug "Name $note.objectId created"
+                            Name name = Name.get(note.objectId)
+                            if (name) {
+                                nameService.nameCreated(name, note)
+                            } else {
+                                log.debug "Name $note.objectId doesn't exist"
+                            }
+                            break
+                        case 'name deleted':
+                            log.info "Name $note.objectId was deleted."
+                            break
+                        case 'author updated':
+                            log.debug "Author $note.objectId updated"
+                            Author author = Author.get(note.objectId)
+                            if (author) {
+                                nameService.authorUpdated(author, note)
+                            } else {
+                                log.debug "Author $note.objectId  doesn't exist"
+                            }
+                            break
+                        case 'author created':
+                        case 'author deleted':
+                            //NSL-1032 ignore for now, deleted authors can't have names
+                            break
+                        case 'reference updated':
+                            log.debug "Reference $note.objectId updated"
+                            Reference reference = Reference.get(note.objectId)
+                            if (reference) {
+                                referenceService.checkReferenceChanges(reference)
+                            } else {
+                                log.debug "Reference $note.objectId doesn't exist"
+                            }
+                            break
+                        case 'reference created':
+                        case 'reference deleted':
+                            break
+                        default:
+                            //probably caused by previous error. This note will be deleted
+                            log.error "unhandled notification $note.message:$note.objectId"
+                    }
+                    note.delete()
+                    tx.commit()
                 }
-                note.delete()
             }
         }
     }
