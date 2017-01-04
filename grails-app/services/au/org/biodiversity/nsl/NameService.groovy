@@ -351,10 +351,12 @@ class NameService {
     }
 
     void notifyNameEvent(Name name, String type) {
-        runAsync {
-            String link = linkService.getPreferredLinkForObject(name)
-            restClients.each { String uri ->
-                restCallService.get("$uri/$type?id=${link}")
+        if(!restClients.empty) {
+            runAsync {
+                String link = linkService.getPreferredLinkForObject(name)
+                restClients.each { String uri ->
+                    restCallService.get("$uri/$type?id=${link}")
+                }
             }
         }
     }
