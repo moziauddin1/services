@@ -599,11 +599,13 @@ class JsonRendererService {
                         brief(it)
                     } else if (it in Link) {
                         marshallLink(it as Link)
+                    } else if (it instanceof Message ) {
+                        marshallTreeServiceMessage(it)
                     } else {
                         it
                     }
                 },
-                nested    : msg.nested
+                nested    : msg.nested.collect { Message it -> marshallTreeServiceMessage(it)}
         ]
     }
 

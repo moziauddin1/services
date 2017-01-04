@@ -129,6 +129,7 @@ class TreeEditController {
         return render(result as JSON)
     }
 
+    @Deprecated // removing support for the APC editor pane
     private Uri extractLinkTypeUri(Arrangement apc, Name name) {
         Uri linkTypeUri = null
         List<Link> supernameLinks = queryService.findCurrentNslNamePlacement(apc, name)
@@ -141,6 +142,7 @@ class TreeEditController {
         return linkTypeUri
     }
 
+    @Deprecated // removing support for the APC editor pane
     def removeApcInstance(RemoveApcInstanceParam p) {
         // most of this code belongs in the classification service
 
@@ -182,11 +184,13 @@ class TreeEditController {
         return render(result as JSON)
     }
 
+    @Deprecated // removing support for the APC editor pane
     private static void refetch(PlaceApcInstanceParam p) {
         p.instance = refetchInstance(p.instance);
         p.supername = refetchName(p.supername);
     }
 
+    @Deprecated // removing support for the APC editor pane
     private static void refetch(RemoveApcInstanceParam p) {
         p.instance = refetchInstance(p.instance);
         p.replacementName = refetchName(p.replacementName);
@@ -359,6 +363,7 @@ class TreeEditController {
 }
 
 /** This class does not belong here. */
+@Deprecated
 class TMP_RDF_TO_MAP {
     static Object asMap(RdfRenderable r) {
         if (r == null) return null
@@ -437,6 +442,7 @@ class PlaceApniNameParam {
 }
 
 @Validateable
+@Deprecated // removing support for the APC editor pane
 class PlaceApcInstanceParam {
     Instance instance
     Name supername
@@ -508,6 +514,7 @@ class UpdateValueParam {
 }
 
 @Validateable
+@Deprecated // removing support for the APC editor pane
 class RemoveApcInstanceParam {
     Instance instance;
     Name replacementName;
