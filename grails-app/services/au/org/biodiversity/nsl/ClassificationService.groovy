@@ -87,6 +87,10 @@ class ClassificationService {
         isInstanceInClassification(instance, configService.getNameSpace(), configService.getClassificationTreeName())
     }
 
+    Node isInstanceInAcceptedTree(Instance instance) {
+        isInstanceInClassification(instance, configService.getNameSpace(), configService.getClassificationTreeName())
+    }
+
     Node isNameInClassification(Name name, Namespace namespace, String classification) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(namespace, classification)
         arrangement ? isNameInClassification(name, arrangement) : null

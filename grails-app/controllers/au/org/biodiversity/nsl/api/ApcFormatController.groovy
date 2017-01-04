@@ -67,7 +67,7 @@ class ApcFormatController {
     }
 
     private Map getNameModel(Name name) {
-        Node apc = classificationService.isNameInAPC(name)
+        Node apc = classificationService.isNameInAcceptedTree(name)
         Instance apcInstance = null
         Set<Instance> synonymOf = null
         Set<Instance> misapplied = null
@@ -75,18 +75,19 @@ class ApcFormatController {
         Boolean excluded = false
         if (!apc) {
             synonymOf = name.instances.findAll { Instance i ->
-                !i.draft && i.citedBy && classificationService.isInstanceInAPC(i.citedBy)
+                !i.draft && i.citedBy && classificationService.isInstanceInAcceptedTree(i.citedBy)
             }
         } else {
             excluded = apc.typeUriIdPart != 'ApcConcept'
             apcInstance = Instance.get(apc.taxonUriIdPart as Long)
             instances = apcInstance?.instancesForCitedBy ?: []
             misapplied = name.instances.findAll { Instance i ->
-                i.cites && classificationService.isInstanceInAPC(i.citedBy)
+                i.cites && classificationService.isInstanceInAcceptedTree(i.citedBy)
             }
         }
         String preferredNameLink = linkService.getPreferredLinkForObject(name)
         [name             : name,
+         apcNode          : apc,
          synonymOf        : synonymOf,
          misapplied       : misapplied,
          apcInstance      : apcInstance,
