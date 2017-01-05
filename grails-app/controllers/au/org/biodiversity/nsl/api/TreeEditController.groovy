@@ -129,7 +129,8 @@ class TreeEditController {
         return render(result as JSON)
     }
 
-    @Deprecated // removing support for the APC editor pane
+    @Deprecated
+    // removing support for the APC editor pane
     private Uri extractLinkTypeUri(Arrangement apc, Name name) {
         Uri linkTypeUri = null
         List<Link> supernameLinks = queryService.findCurrentNslNamePlacement(apc, name)
@@ -142,7 +143,8 @@ class TreeEditController {
         return linkTypeUri
     }
 
-    @Deprecated // removing support for the APC editor pane
+    @Deprecated
+    // removing support for the APC editor pane
     def removeApcInstance(RemoveApcInstanceParam p) {
         // most of this code belongs in the classification service
 
@@ -184,13 +186,15 @@ class TreeEditController {
         return render(result as JSON)
     }
 
-    @Deprecated // removing support for the APC editor pane
+    @Deprecated
+    // removing support for the APC editor pane
     private static void refetch(PlaceApcInstanceParam p) {
         p.instance = refetchInstance(p.instance);
         p.supername = refetchName(p.supername);
     }
 
-    @Deprecated // removing support for the APC editor pane
+    @Deprecated
+    // removing support for the APC editor pane
     private static void refetch(RemoveApcInstanceParam p) {
         p.instance = refetchInstance(p.instance);
         p.replacementName = refetchName(p.replacementName);
@@ -210,9 +214,11 @@ class TreeEditController {
             response.status = 403
             return render([
                     success: false,
-                    msg    : [msg   : "403 - Forbidden",
-                              body  : "You do not have permission to edit this tree",
-                              status: 'danger',
+                    msg    : [
+                            [msg   : "403 - Forbidden",
+                             body  : "You do not have permission to edit this tree",
+                             status: 'danger'
+                            ]
                     ]
             ] as JSON)
         }
@@ -231,7 +237,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : msg
+                    msg    : TreeServiceMessageGregifier.unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -243,9 +249,11 @@ class TreeEditController {
             response.status = 403
             return render([
                     success: false,
-                    msg    : [msg   : "403 - Forbidden",
-                              body  : "You do not have permission to edit this tree",
-                              status: 'danger',
+                    msg    : [
+                            [msg   : "403 - Forbidden",
+                             body  : "You do not have permission to edit this tree",
+                             status: 'danger',
+                            ]
                     ]
             ] as JSON)
         }
@@ -255,7 +263,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : msg
+                    msg    : TreeServiceMessageGregifier.unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -267,9 +275,11 @@ class TreeEditController {
             response.status = 403
             return render([
                     success: false,
-                    msg    : [msg   : "403 - Forbidden",
-                              body  : "You do not have permission to edit this tree",
-                              status: 'danger',
+                    msg    : [
+                            [msg   : "403 - Forbidden",
+                             body  : "You do not have permission to edit this tree",
+                             status: 'danger',
+                            ]
                     ]
             ] as JSON)
         }
@@ -278,7 +288,7 @@ class TreeEditController {
 
             ValueNodeUri uri = ValueNodeUri.findByRootAndLabel(param.tree.baseArrangement ?: param.tree, param.valueUriLabel)
 
-            if(uri==null) {
+            if (uri == null) {
                 // TODO: this should be a validation exception
                 ServiceException.raise(Message.makeMsg(Msg.SIMPLE_2, ["Unknown value uri", param.valueUriLabel]));
             }
@@ -287,7 +297,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : msg
+                    msg    : TreeServiceMessageGregifier.unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -316,50 +326,18 @@ class TreeEditController {
         try {
             return doIt();
         }
-        catch (ServiceException ex) {
-            log.debug ex
-
-            doIt.delegate.response.status = 400
-
-            return render([
-                    success   : false,
-                    msg       : [
-                            [
-                                    msg   : ex.class.simpleName + ": " + ex.msg.msg,
-                                    status: 'warning',
-                                    body  : ex.msg.getHumanReadableMessage(),
-                                    nested: ex.msg.nested
-                            ]
-                    ]
-                    ,
-                    stackTrace: ex.getStackTrace().findAll {
-                        StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
-                    }.collect {
-                        StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
-                    }
-            ] as JSON)
-        }
         catch (Exception ex) {
             log.debug ex
 
-            doIt.delegate.response.status = 500
+            doIt.delegate.response.status = ex instanceof ServiceException ? 400 : 500
+
             return render([
-                    success: false,
-                    msg    : [msg       : ex.class.simpleName,
-                              body      : ex.getMessage(),
-                              status    : 'danger',
-                              stackTrace: ex.getStackTrace().findAll {
-                                  StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
-                              }.collect {
-                                  StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
-                              }
-                    ]
+                    success   : false,
+                    msg       : TreeServiceMessageGregifier.unpackThrowable(ex),
+                    stackTrace: TreeServiceMessageGregifier.unpackStacktrace(ex)
             ] as JSON)
         }
-
     }
-
-
 }
 
 /** This class does not belong here. */
@@ -442,7 +420,8 @@ class PlaceApniNameParam {
 }
 
 @Validateable
-@Deprecated // removing support for the APC editor pane
+@Deprecated
+// removing support for the APC editor pane
 class PlaceApcInstanceParam {
     Instance instance
     Name supername
@@ -514,7 +493,8 @@ class UpdateValueParam {
 }
 
 @Validateable
-@Deprecated // removing support for the APC editor pane
+@Deprecated
+// removing support for the APC editor pane
 class RemoveApcInstanceParam {
     Instance instance;
     Name replacementName;

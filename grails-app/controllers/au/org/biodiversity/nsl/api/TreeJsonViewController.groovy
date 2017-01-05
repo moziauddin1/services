@@ -147,7 +147,7 @@ class TreeJsonViewController {
             uriPermissions.isClassification = a.arrangementType == ArrangementType.P;
             uriPermissions.isWorkspace = a.arrangementType == ArrangementType.U;
             uriPermissions.canEdit = (uriPermissions.isClassification && SecurityUtils.subject.hasRole(a.label)) ||
-             (uriPermissions.isWorkspace && SecurityUtils.subject.hasRole(a.baseArrangement.label))
+                    (uriPermissions.isWorkspace && SecurityUtils.subject.hasRole(a.baseArrangement.label))
             ;
         }
 
@@ -436,7 +436,9 @@ class TreeJsonViewController {
         if (!searchSubtree || !(searchSubtree instanceof Node)) {
             def result = [
                     success: false,
-                    msg    : [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"],
+                    msg    : [
+                            [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"]
+                    ],
             ];
 
             return render(status: 404) { result as JSON }
@@ -448,11 +450,15 @@ class TreeJsonViewController {
 
         return render([
                 success: true,
-                msg    : results ? [msg: "Found", status: "success", body: "Found ${results.size()} matching placements"] : [msg: "Not found", status: "success", body: "Name not found in selected subtree."],
+                msg    : [
+                        results
+                                ? [msg: "Found", status: "success", body: "Found ${results.size()} matching placements"]
+                                : [msg: "Not found", status: "success", body: "Name not found in selected subtree."]
+                ],
                 results: results.sort { r1, r2 ->
                     // I use a tilde because it is the last printable in ascii.
                     "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
-                } .collect { result -> [ node: linkService.getPreferredLinkForObject(result.node), matched: linkService.getPreferredLinkForObject(result.matchedInstance)] }
+                }.collect { result -> [node: linkService.getPreferredLinkForObject(result.node), matched: linkService.getPreferredLinkForObject(result.matchedInstance)] }
         ] as JSON)
 
     }
@@ -478,7 +484,9 @@ class TreeJsonViewController {
         if (!searchSubtree || !(searchSubtree instanceof Node)) {
             def result = [
                     success: false,
-                    msg    : [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"],
+                    msg    : [
+                            [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"]
+                    ],
             ];
 
             return render(status: 404) { result as JSON }
@@ -492,17 +500,23 @@ class TreeJsonViewController {
 
         return render([
                 success: true,
-                msg    : results ? [msg: "Found", status: "success", body: "Found ${results.size()} matching placements"] : [msg: "Not found", status: "success", body: "Name not found in selected subtree."],
+                msg    : [
+                        results
+                                ? [msg: "Found", status: "success", body: "Found ${results.size()} matching placements"]
+                                : [msg: "Not found", status: "success", body: "Name not found in selected subtree."]
+                ],
                 total  : sz,
                 results: results.sort { r1, r2 ->
                     // I use a tilde because it is the last printable in ascii.
                     "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
                 }
                 .subList(0, sz > 10 ? 10 : sz)
-                .collect { result -> [
-                        node: linkService.getPreferredLinkForObject(result.node),
-                        simpleName: result.matchedInstance.name.simpleName
-                ] }
+                        .collect { result ->
+                    [
+                            node      : linkService.getPreferredLinkForObject(result.node),
+                            simpleName: result.matchedInstance.name.simpleName
+                    ]
+                }
         ] as JSON)
 
     }
