@@ -18,8 +18,6 @@ package au.org.biodiversity.nsl.api
 
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
-import org.codehaus.groovy.grails.commons.GrailsApplication
-
 import grails.converters.JSON
 import grails.transaction.Transactional
 import grails.validation.Validateable
@@ -237,7 +235,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : TreeServiceMessageGregifier.unpackMessage(msg, 'success')
+                    msg    : TreeServiceMessageUtil.unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -263,7 +261,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : TreeServiceMessageGregifier.unpackMessage(msg, 'success')
+                    msg    : TreeServiceMessageUtil.unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -297,7 +295,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : TreeServiceMessageGregifier.unpackMessage(msg, 'success')
+                    msg    : TreeServiceMessageUtil.unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -333,8 +331,8 @@ class TreeEditController {
 
             return render([
                     success   : false,
-                    msg       : TreeServiceMessageGregifier.unpackThrowable(ex),
-                    stackTrace: TreeServiceMessageGregifier.unpackStacktrace(ex)
+                    msg       : TreeServiceMessageUtil.unpackThrowable(ex),
+                    stackTrace: TreeServiceMessageUtil.unpackStacktrace(ex)
             ] as JSON)
         }
     }

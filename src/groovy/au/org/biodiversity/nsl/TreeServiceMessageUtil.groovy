@@ -13,7 +13,7 @@ import java.sql.SQLException
  *
  * Created by ibis on 3/1/17.
  */
-class TreeServiceMessageGregifier {
+class TreeServiceMessageUtil {
     static List unpackMessage(Message m, status = "danger") {
         List msg = [];
         msg << [msg: m.getHumanReadableMessage(), status: status]

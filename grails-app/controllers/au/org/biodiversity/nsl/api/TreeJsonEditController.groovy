@@ -11,9 +11,8 @@ import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.NodeInternalType
 import au.org.biodiversity.nsl.Reference
-import au.org.biodiversity.nsl.TreeServiceMessageGregifier
+import au.org.biodiversity.nsl.TreeServiceMessageUtil
 import au.org.biodiversity.nsl.UriNs
-import au.org.biodiversity.nsl.tree.BasicOperationsService
 import au.org.biodiversity.nsl.tree.DomainUtils
 import au.org.biodiversity.nsl.tree.Message
 import au.org.biodiversity.nsl.tree.QueryService
@@ -24,15 +23,8 @@ import grails.validation.Validateable
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
 import org.codehaus.groovy.grails.commons.GrailsApplication
-import org.hibernate.JDBCException
-import org.hibernate.engine.jdbc.spi.SqlExceptionHelper
-import org.hibernate.exception.ConstraintViolationException
 import org.springframework.context.MessageSource
-import org.springframework.context.MessageSourceResolvable
-import org.springframework.validation.Errors
 import org.springframework.validation.FieldError
-
-import java.sql.SQLException
 
 /**
  * Created by ibis on 14/01/2016.
@@ -1050,8 +1042,8 @@ class TreeJsonEditController {
 
             return render([
                     success   : false,
-                    msg       : TreeServiceMessageGregifier.unpackThrowable(ex),
-                    stackTrace: TreeServiceMessageGregifier.unpackStacktrace(ex)
+                    msg       : TreeServiceMessageUtil.unpackThrowable(ex),
+                    stackTrace: TreeServiceMessageUtil.unpackStacktrace(ex)
             ] as JSON)
         }
     }
