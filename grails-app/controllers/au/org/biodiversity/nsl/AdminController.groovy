@@ -36,6 +36,7 @@ class AdminController {
     def configService
     def adminService
     def flatViewService
+    def postgresInfoService
 
     @RequiresRoles('admin') 
     def index() {
@@ -48,8 +49,9 @@ class AdminController {
         stats.namesNotInApcTreePath = nameTreePathService.treePathReport(configService.classificationTreeName)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         Boolean servicing = adminService.serviceMode()
+        String dbInfo = postgresInfoService.connectionInfo.toString()
         //todo iterate trees add back stats if they don't interrupt ops.
-        [pollingNames: nameService.pollingStatus(), stats: stats, servicing: servicing]
+        [pollingNames: nameService.pollingStatus(), stats: stats, servicing: servicing, dbInfo: dbInfo]
     }
 
     @RequiresRoles('admin') 
@@ -115,6 +117,20 @@ class AdminController {
     def constructMissingNames() {
         nameService.constructMissingNames()
         flash.message = "constructing missing names."
+        redirect(action: 'index')
+    }
+
+    @RequiresRoles('admin')
+    def replaceInstanceNoteXics() {
+        instanceService.replaceXICSinInstanceNotes()
+        flash.message = "replacing XICs in instance notes."
+        redirect(action: 'index')
+    }
+
+    @RequiresRoles('admin')
+    def replaceReferenceTitleXics() {
+        referenceService.replaceXICSinReferenceTitles()
+        flash.message = "replacing XICs in reference titles."
         redirect(action: 'index')
     }
 

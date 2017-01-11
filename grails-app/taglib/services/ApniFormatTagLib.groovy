@@ -29,8 +29,8 @@ class ApniFormatTagLib {
     LinkService linkService
     def configService
 
-//    static defaultEncodeAs = 'html'
-    static encodeAsForTags = [tagName: 'raw']
+    static defaultEncodeAs = 'raw'
+//    static encodeAsForTags = [replaceXics: 'raw']
 
     static namespace = "af"
 

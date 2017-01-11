@@ -14,10 +14,6 @@
 
 <div class="">
 
-  <g:if test="${flash.message}">
-    <div class="row alert alert-info" role="status">${flash.message}</div>
-  </g:if>
-
   <h1>Admin dashboard</h1>
 
   <g:if test="${servicing}">
@@ -39,7 +35,6 @@
     </li>
   </ul>
 
-
   <div role="tabpanel">
     <ul class="nav nav-tabs" role="tablist">
       <li role="presentation" class="active">
@@ -53,6 +48,11 @@
         </a>
       </li>
       <li role="presentation" class="">
+        <a href="#instances" aria-controls="instances" role="tab" data-toggle="tab">
+          Instances
+        </a>
+      </li>
+      <li role="presentation" class="">
         <a href="#trees" aria-controls="trees" role="tab" data-toggle="tab">
           Trees
         </a>
@@ -60,6 +60,11 @@
       <li role="presentation" class="">
         <a href="#views" aria-controls="views" role="tab" data-toggle="tab">
           Views
+        </a>
+      </li>
+      <li role="presentation" class="">
+        <a href="#database" aria-controls="database" role="tab" data-toggle="tab">
+          Database
         </a>
       </li>
     </ul>
@@ -157,6 +162,33 @@
                   Deduplicate marked references
                 </a>
               </li>
+              <li>
+                <a class=""
+                   href="${g.createLink(controller: "admin", action: "replaceReferenceTitleXics")}">
+                  Replace XICs in reference titles
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div role="tabpanel"
+           class="tab-pane" id="instances">
+        <div class="panel panel-info">
+
+          <div class="panel-heading">
+            Admin tasks for Instances
+          </div>
+
+          <div class="panel-body">
+            <ul>
+              <li>
+                <a class=""
+                   href="${g.createLink(controller: "admin", action: "replaceInstanceNoteXics")}">
+                  Replace XICs in Instance Notes
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -191,13 +223,13 @@
               <li>
                 Apply APC comments and distribution text on instances to the APC tree.
                 <div class="alert-danger" style="margin-left:2em; padding: 1em; border: thick solid red;">
-                    <strong>WARNING:</strong> clicking this link will irrevocably erase all distribution and comment information currently on the tree without further warning.
+                  <strong>WARNING:</strong> clicking this link will irrevocably erase all distribution and comment information currently on the tree without further warning.
                 We intend to do this import once and once only, after which we will remove this section of this page.
-                    <a style="display: block; margin-left:4em; margin-right: 4em;"
-                       href="${g.createLink(controller: "admin", action: "transferApcProfileData")}">
-                        <strong>YES!</strong> I want to permanently and irrevocably erase all distribution and comment data and replace them with
-                    whatever is in the instance notes, without further warning!
-                    </a>
+                  <a style="display: block; margin-left:4em; margin-right: 4em;"
+                     href="${g.createLink(controller: "admin", action: "transferApcProfileData")}">
+                    <strong>YES!</strong> I want to permanently and irrevocably erase all distribution and comment data and replace them with
+                  whatever is in the instance notes, without further warning!
+                  </a>
                 </div>
               </li>
               <li>
@@ -250,9 +282,26 @@
           </div>
         </div>
       </div>
+
+      <div role="tabpanel"
+           class="tab-pane" id="database">
+        <div class="panel panel-info">
+
+          <div class="panel-heading">
+            Database
+          </div>
+
+          <div class="panel-body">
+            ${dbInfo}
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id='logs' class="row">
+
+  </div>
+
+  <div id='logs' class="row">
 
     </div>
 

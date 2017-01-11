@@ -55,7 +55,8 @@ public class HTMLSanitiser {
             HTMLElementName.OL,
             HTMLElementName.UL,
             HTMLElementName.LI,
-            HTMLElementName.A
+            HTMLElementName.A,
+            HTMLElementName.SUP
     }));
 
     // list of HTML attributes that will be retained in the final output:
