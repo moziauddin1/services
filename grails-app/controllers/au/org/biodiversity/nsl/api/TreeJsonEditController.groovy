@@ -11,8 +11,8 @@ import au.org.biodiversity.nsl.Namespace
 import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.NodeInternalType
 import au.org.biodiversity.nsl.Reference
+import au.org.biodiversity.nsl.TreeServiceMessageUtil
 import au.org.biodiversity.nsl.UriNs
-import au.org.biodiversity.nsl.tree.BasicOperationsService
 import au.org.biodiversity.nsl.tree.DomainUtils
 import au.org.biodiversity.nsl.tree.Message
 import au.org.biodiversity.nsl.tree.QueryService
@@ -23,15 +23,8 @@ import grails.validation.Validateable
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authz.annotation.RequiresRoles
 import org.codehaus.groovy.grails.commons.GrailsApplication
-import org.hibernate.JDBCException
-import org.hibernate.engine.jdbc.spi.SqlExceptionHelper
-import org.hibernate.exception.ConstraintViolationException
 import org.springframework.context.MessageSource
-import org.springframework.context.MessageSourceResolvable
-import org.springframework.validation.Errors
 import org.springframework.validation.FieldError
-
-import java.sql.SQLException
 
 /**
  * Created by ibis on 14/01/2016.
@@ -48,7 +41,7 @@ class TreeJsonEditController {
     QueryService queryService
 
     def getObjectForLink(String uri) {
-        if(uri.contains('/api/')) {
+        if (uri.contains('/api/')) {
             uri = uri.substring(0, uri.indexOf('/api/'))
         }
 
@@ -108,7 +101,7 @@ class TreeJsonEditController {
                 }
                 baseTree = o as Arrangement
 
-                if(baseTree.arrangementType != ArrangementType.P) {
+                if (baseTree.arrangementType != ArrangementType.P) {
                     def result = [
                             success: false,
                             msg    : [
@@ -120,8 +113,8 @@ class TreeJsonEditController {
 
                 }
 
-                if(baseTree.namespace != ns) {
-                    if(baseTree.arrangementType != ArrangementType.P) {
+                if (baseTree.namespace != ns) {
+                    if (baseTree.arrangementType != ArrangementType.P) {
                         def result = [
                                 success: false,
                                 msg    : [
@@ -331,7 +324,9 @@ class TreeJsonEditController {
                 response.status = 400
                 def result = [
                         success: false,
-                        msg    : [msg: "Illegal Argument", body: "${param.wsNode} not found", status: 'danger']
+                        msg    : [
+                                [msg: "Illegal Argument", body: "${param.wsNode} not found", status: 'danger']
+                        ]
                 ]
                 return render(result as JSON)
             }
@@ -345,7 +340,9 @@ class TreeJsonEditController {
                 response.status = 400
                 def result = [
                         success: false,
-                        msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+                        msg    : [
+                                [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+                        ]
                 ]
                 return render(result as JSON)
             }
@@ -353,7 +350,9 @@ class TreeJsonEditController {
             if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
-                        msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+                        msg    : [
+                                [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+                        ]
                 ]
                 response.status = 403
                 return render(result as JSON)
@@ -366,7 +365,9 @@ class TreeJsonEditController {
                 return render([
                         success: false,
                         //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                        msg    : [msg: 'No Drop', body: "nothing appears to have been dropped", status: 'info']
+                        msg    : [
+                                [msg: 'No Drop', body: "nothing appears to have been dropped", status: 'info']
+                        ]
                 ] as JSON)
             }
 
@@ -374,7 +375,9 @@ class TreeJsonEditController {
                 return render([
                         success: false,
                         //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                        msg    : [msg: 'Multiple', body: "Multiple drops is not implemented yet", status: 'info']
+                        msg    : [
+                                [msg: 'Multiple', body: "Multiple drops is not implemented yet", status: 'info']
+                        ]
                 ] as JSON)
             }
 
@@ -399,7 +402,9 @@ class TreeJsonEditController {
                     if (!o) {
                         def result = [
                                 success: false,
-                                msg    : [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger'],
+                                msg    : [
+                                        [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger']
+                                ]
                         ];
 
                         return render(result as JSON)
@@ -410,17 +415,21 @@ class TreeJsonEditController {
                     if (!o) {
                         def result = [
                                 success: false,
-                                msg    : [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger'],
+                                msg    : [
+                                        [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger']
+                                ]
                         ];
 
                         return render(result as JSON)
                     }
                 }
-                if((o as Instance).citedBy) {
+                if ((o as Instance).citedBy) {
                     if (!o) {
                         def result = [
                                 success: false,
-                                msg    : [msg: 'Not standalone', body: "${param.uris.get(0)} does not appear to be a standalone instance", status: 'danger'],
+                                msg    : [
+                                        [msg: 'Not standalone', body: "${param.uris.get(0)} does not appear to be a standalone instance", status: 'danger']
+                                ]
                         ];
 
                         return render(result as JSON)
@@ -435,7 +444,9 @@ class TreeJsonEditController {
             } else {
                 def result = [
                         success             : false,
-                        msg                 : [msg: 'Cannot handle drop', body: o as String, status: 'danger'],
+                        msg                 : [
+                                [msg: 'Cannot handle drop', body: o as String, status: 'danger']
+                        ],
                         treeServiceException: ex,
                 ];
 
@@ -448,7 +459,9 @@ class TreeJsonEditController {
     private def dropNameOntoNode(Arrangement ws, Node focus, Node target, Name name, DropUrisOntoNodeParam param) {
         return [
                 success: false,
-                msg    : [msg: 'Not supported', body: "Names cannot be dropped onto trees - an instance must be specified", status: 'warning']
+                msg    : [
+                        [msg: 'Not supported', body: "Names cannot be dropped onto trees - an instance must be specified", status: 'warning']
+                ]
         ]
     }
 
@@ -468,15 +481,19 @@ class TreeJsonEditController {
         if (queryService.countPaths(ws.node, target) > 1 && DomainUtils.isCheckedIn(target)) {
             return [
                     success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+                    msg    : [
+                            [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+                    ]
             ]
         }
 
-        if(target.name) {
+        if (target.name) {
             if (target.name.nameRank.sortOrder >= instance.name.nameRank.sortOrder) {
                 return [
                         success: false,
-                        msg    : [msg: 'Higher name rank', body: "A name of rank ${instance.name.nameRank.name} cannot be placed under a name of rank ${target.name.nameRank.name}", status: 'warning']
+                        msg    : [
+                                [msg: 'Higher name rank', body: "A name of rank ${instance.name.nameRank.name} cannot be placed under a name of rank ${target.name.nameRank.name}", status: 'warning']
+                        ]
                 ]
             }
 
@@ -484,7 +501,9 @@ class TreeJsonEditController {
             if (incompatibleNames(target.name, instance.name)) {
                 return [
                         success: false,
-                        msg    : [msg: 'incompatible names', body: "${instance.name.simpleName} cannot be placed under ${target.name.simpleName}", status: 'warning']
+                        msg    : [
+                                [msg: 'incompatible names', body: "${instance.name.simpleName} cannot be placed under ${target.name.simpleName}", status: 'warning']
+                        ]
                 ]
             }
         }
@@ -495,10 +514,9 @@ class TreeJsonEditController {
         log.debug('this instance is parent of')
         log.debug(instance.instancesForParent)
 
-        if(target.name == instance.name) {
+        if (target.name == instance.name) {
             result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
-        }
-        else {
+        } else {
             result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
         }
 
@@ -516,11 +534,11 @@ class TreeJsonEditController {
     }
 
     private boolean incompatibleNames(Name a, Name b) {
-        for(;;) {
+        for (; ;) {
             // genus has a sort order of 120
-            if(!a || !b ||  a.nameRank.sortOrder < 120|| b.nameRank.sortOrder < 120) return false;
-            if(a.nameRank.sortOrder == b.nameRank.sortOrder) return a != b;
-            if(a.nameRank.sortOrder > b.nameRank.sortOrder) a = a.parent;
+            if (!a || !b || a.nameRank.sortOrder < 120 || b.nameRank.sortOrder < 120) return false;
+            if (a.nameRank.sortOrder == b.nameRank.sortOrder) return a != b;
+            if (a.nameRank.sortOrder > b.nameRank.sortOrder) a = a.parent;
             else b = b.parent;
         }
     }
@@ -530,7 +548,9 @@ class TreeJsonEditController {
         return [
                 success: false,
                 //newFocus: linkService.getPreferredLinkForObject(newFocus),
-                msg    : [msg: 'Not supported!', body: "References cannot be dropped onto trees", status: 'warning'],
+                msg    : [
+                        [msg: 'Not supported!', body: "References cannot be dropped onto trees", status: 'warning']
+                ]
         ]
     }
 
@@ -541,7 +561,9 @@ class TreeJsonEditController {
         if (node == target) {
             return render([
                     success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot drop a node onto itself.", status: 'info']
+                    msg    : [
+                            [msg: 'Cannot drop', body: "Cannot drop a node onto itself.", status: 'info']
+                    ]
             ] as JSON)
         }
 
@@ -550,67 +572,77 @@ class TreeJsonEditController {
         if (path) {
             return [
                     success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot drop a node onto a subnode of itself.", status: 'info']
+                    msg    : [
+                            [msg: 'Cannot drop', body: "Cannot drop a node onto a subnode of itself.", status: 'info']
+                    ]
             ]
         }
 
-        if(node.subLink.findAll {it.subnode.internalType==NodeInternalType.T}.empty) {
+        if (node.subLink.findAll { it.subnode.internalType == NodeInternalType.T }.empty) {
             return render([
                     success: false,
-                    msg    : [msg: 'No subnodes', body: "Node has no subnodes to move.", status: 'info']
+                    msg    : [
+                            [msg: 'No subnodes', body: "Node has no subnodes to move.", status: 'info']
+                    ]
             ] as JSON)
         }
 
         int pathsToTarget = queryService.countPaths(ws.node, target);
         int pathsToNode = queryService.countPaths(ws.node, node);
 
-        if(pathsToTarget == 0) {
+        if (pathsToTarget == 0) {
             return [
                     success: false,
-                    msg    : [msg: 'Not in workspace', body: "Target node is not in the nominated workspace", status: 'warning']
+                    msg    : [
+                            [msg: 'Not in workspace', body: "Target node is not in the nominated workspace", status: 'warning']
+                    ]
             ]
         }
 
-        if(pathsToNode == 0) {
+        if (pathsToNode == 0) {
             return [
                     success: false,
-                    msg    : [msg: 'Not in workspace', body: "Node being cropped is not in the nominated workspace", status: 'warning']
+                    msg    : [
+                            [msg: 'Not in workspace', body: "Node being cropped is not in the nominated workspace", status: 'warning']
+                    ]
             ]
         }
 
         if (pathsToTarget > 1 && DomainUtils.isCheckedIn(target)) {
             return [
                     success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+                    msg    : [[msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']]
             ]
         }
 
         if (pathsToNode > 1 && DomainUtils.isCheckedIn(node)) {
             return [
                     success: false,
-                    msg    : [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+                    msg    : [
+                            [msg: 'Cannot drop', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+                    ]
             ]
         }
 
         def errors = [];
 
-        for(Link l: node.subLink.findAll { it.subnode.internalType == NodeInternalType.T } ) {
+        for (Link l : node.subLink.findAll { it.subnode.internalType == NodeInternalType.T }) {
             // TODO: think about making this less APC
-            if(incompatibleNames(target.name, l.subnode.name) && DomainUtils.getNodeTypeUri(l.subnode).asQName() ==  "apc-voc:ApcConcept") {
-                errors.add( [msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning']);
+            if (incompatibleNames(target.name, l.subnode.name) && DomainUtils.getNodeTypeUri(l.subnode).asQName() == "apc-voc:ApcConcept") {
+                errors.add([msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning']);
             }
 
-            if(target.name && target.name.nameRank.sortOrder >= l.subnode.name.nameRank.sortOrder) {
-                errors.add( [msg: 'Name rank mismatch', body: "Cannot place ${l.subnode.name.nameRank.name} ${l.subnode.name.simpleName} under ${target.name.nameRank.name} ${target.name.simpleName}", status: 'warning']);
+            if (target.name && target.name.nameRank.sortOrder >= l.subnode.name.nameRank.sortOrder) {
+                errors.add([msg: 'Name rank mismatch', body: "Cannot place ${l.subnode.name.nameRank.name} ${l.subnode.name.simpleName} under ${target.name.nameRank.name} ${target.name.simpleName}", status: 'warning']);
             }
         }
 
-        if(!errors.empty) {
+        if (!errors.empty) {
             return [
                     success: false,
                     msg    : errors
             ]
-       }
+        }
 
         def result = userWorkspaceManagerService.moveWorkspaceSubnodes(ws, target, node)
 
@@ -644,7 +676,7 @@ class TreeJsonEditController {
                 response.status = 400
                 def result = [
                         success: false,
-                        msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+                        msg    : [[msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']]
                 ]
                 return render(result as JSON)
             }
@@ -652,7 +684,7 @@ class TreeJsonEditController {
             if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
-                        msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+                        msg    : [[msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']]
                 ]
                 response.status = 403
                 return render(result as JSON)
@@ -662,7 +694,7 @@ class TreeJsonEditController {
                 response.status = 400
                 def result = [
                         success: false,
-                        msg    : [msg: "Not draft", body: "${param.wsNode} is not a draft node", status: 'danger']
+                        msg    : [[msg: "Not draft", body: "${param.wsNode} is not a draft node", status: 'danger']]
                 ]
                 return render(result as JSON)
             }
@@ -671,7 +703,7 @@ class TreeJsonEditController {
                 response.status = 400
                 def result = [
                         success: false,
-                        msg    : [msg: "Not an edited node", body: "${param.wsNode} is not an edited version of some persistent node", status: 'danger']
+                        msg    : [[msg: "Not an edited node", body: "${param.wsNode} is not an edited version of some persistent node", status: 'danger']]
                 ]
                 return render(result as JSON)
             }
@@ -712,9 +744,12 @@ class TreeJsonEditController {
                         def result = [
                                 success       : false,
                                 msg           : [
-                                        msg   : "Previous node is not current",
-                                        body  : "${param.wsNode} is an edited version of a node that is no longer current",
-                                        status: 'warning'],
+                                        [
+                                                msg   : "Previous node is not current",
+                                                body  : "${param.wsNode} is an edited version of a node that is no longer current",
+                                                status: 'warning'
+                                        ]
+                                ],
                                 moreInfoNeeded: [
                                         [name: 'confirm', selected: param.confirm['confirm']],
                                         [
@@ -741,7 +776,9 @@ class TreeJsonEditController {
                 } else {
                     def result = [
                             success: false,
-                            msg    : [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current and has been deleted. This draft node can be removed, but it cannot be reverted.", status: 'info'],
+                            msg    : [
+                                    [msg: "Previous node is not current", body: "${param.wsNode} is an edited version of a node that is no longer current and has been deleted. This draft node can be removed, but it cannot be reverted.", status: 'info']
+                            ],
                     ]
                     return render(result as JSON)
                 }
@@ -785,7 +822,7 @@ class TreeJsonEditController {
                 response.status = 400
                 def result = [
                         success: false,
-                        msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+                        msg    : [[msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']]
                 ]
                 return render(result as JSON)
             }
@@ -793,7 +830,7 @@ class TreeJsonEditController {
             if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
-                        msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+                        msg    : [[msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']]
                 ]
                 response.status = 403
                 return render(result as JSON)
@@ -803,7 +840,7 @@ class TreeJsonEditController {
                 response.status = 400
                 return render([
                         success: false,
-                        msg    : [msg: 'Cannot delete', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']
+                        msg    : [[msg: 'Cannot delete', body: "Cannot check out a node which appears more than once in the workspace", status: 'warning']]
                 ] as JSON)
             }
 
@@ -868,7 +905,7 @@ class TreeJsonEditController {
                 response.status = 400
                 def result = [
                         success: false,
-                        msg    : [msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']
+                        msg    : [[msg: "Illegal Argument", body: "${param.wsNode} is not a workspace root", status: 'danger']]
                 ]
                 return render(result as JSON)
             }
@@ -876,7 +913,7 @@ class TreeJsonEditController {
             if (!canEditWorkspace(ws)) {
                 def result = [
                         success: false,
-                        msg    : [msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']
+                        msg    : [[msg: 'Authorisation', body: "You do not have permission to alter workspace ${ws.title}", status: 'danger']]
                 ]
                 response.status = 403
                 return render(result as JSON)
@@ -885,7 +922,7 @@ class TreeJsonEditController {
             if (target.internalType != NodeInternalType.T) {
                 def result = [
                         success: false,
-                        msg    : [msg: 'Target', body: "${param.target} is not a taxonomic node", status: 'danger']
+                        msg    : [[msg: 'Target', body: "${param.target} is not a taxonomic node", status: 'danger']]
                 ]
                 response.status = 400
                 return render(result as JSON)
@@ -895,7 +932,7 @@ class TreeJsonEditController {
                 response.status = 400
                 return render([
                         success: false,
-                        msg    : [msg: 'No match', body: "Unrecognised uri namespace {{param.nsPart}}", status: 'info']
+                        msg    : [[msg: 'No match', body: "Unrecognised uri namespace {{param.nsPart}}", status: 'info']]
                 ] as JSON)
             }
 
@@ -935,19 +972,19 @@ class TreeJsonEditController {
 
          */
 
-            def problems = userWorkspaceManagerService.getCheckinErrors(node).collect { Message it->
+            def problems = userWorkspaceManagerService.getCheckinErrors(node).collect { Message it ->
                 [
-                        msg: 'ERROR',
-                        body: it.humanReadableMessage,
+                        msg   : 'ERROR',
+                        body  : it.humanReadableMessage,
                         status: 'danger'
                 ]
             }
 
-            def warnings = userWorkspaceManagerService.getCheckinWarnings(node).collect { Message it->
+            def warnings = userWorkspaceManagerService.getCheckinWarnings(node).collect { Message it ->
                 [
-                    msg: 'WARNING',
-                    body: it.humanReadableMessage,
-                    status: 'warning'
+                        msg   : 'WARNING',
+                        body  : it.humanReadableMessage,
+                        status: 'warning'
                 ]
             }
 
@@ -981,12 +1018,12 @@ class TreeJsonEditController {
         }
     }
 
-    // ==============================
+// ==============================
 
     private renderValidationErrors(param) {
         def msg = [];
-        msg += param.errors.globalErrors.collect { it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (Locale)null)] }
-        msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, (Locale)null)] }
+        msg += param.errors.globalErrors.collect { it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (Locale) null)] }
+        msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, (Locale) null)] }
         response.status = 400
         return render([
                 success: false,
@@ -998,88 +1035,17 @@ class TreeJsonEditController {
         try {
             return doIt();
         }
-        catch (ServiceException ex) {
-            doIt.delegate.response.status = 400
-
-            def msg = unpack(ex, true)
-            msg['status'] = 'warning'
-
-            return render([
-                    success             : false,
-                    msg                 : msg,
-                    treeServiceException: ex,
-            ] as JSON)
-        }
-        catch (JDBCException ex) {
-            doIt.delegate.response.status = 500
-
-            def messages = []
-
-            def msg = unpack(ex, false)
-            msg['status'] = 'danger'
-
-            messages += msg;
-
-            for(SQLException sex = ex.getSQLException(); sex != null; sex = sex.getNextException()) {
-                msg = unpack(sex, true)
-                msg['status'] = 'info'
-                messages += msg
-            }
-
-            return render([
-                    success: false,
-                    msg    : messages
-            ] as JSON)
-        }
         catch (Exception ex) {
-            doIt.delegate.response.status = 500
+            log.debug ex
 
-            def msg = unpack(ex, true)
-            msg['status'] = 'danger'
+            doIt.delegate.response.status = ex instanceof ServiceException ? 400 : 500
 
             return render([
-                    success: false,
-                    msg    : msg
+                    success   : false,
+                    msg       : TreeServiceMessageUtil.unpackThrowable(ex),
+                    stackTrace: TreeServiceMessageUtil.unpackStacktrace(ex)
             ] as JSON)
         }
-    }
-
-    private Map unpack(Throwable t, boolean recursive) {
-        def msg;
-
-        if(t instanceof  ServiceException) {
-            msg =  unpack(((ServiceException)t).msg);
-        }
-        else {
-            def nested = [];
-            if(recursive) {
-                for (Throwable tt = t.getCause(); tt; tt = tt.getCause()) {
-                    nested += unpack(tt, false)
-                }
-            }
-            msg = [
-                    msg: t.class.simpleName,
-                    body: t.getMessage(),
-                    nested: nested
-            ]
-
-        }
-
-        msg['stackTrace'] = t.getStackTrace().findAll {
-                    StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
-                }.collect {
-                    StackTraceElement it -> [file: it.fileName, line: it.lineNumber, method: it.methodName, clazz: it.className]
-                }
-
-        return msg;
-    }
-
-    private Map unpack(Message m) {
-        [
-                msg: m.msg.name(),
-                body: m.getHumanReadableMessage(),
-                nested: m.nested.collect { Message mm -> unpack(mm);}
-        ]
     }
 
     private static boolean canEditWorkspace(Arrangement a) {
