@@ -72,7 +72,7 @@
           <li>
             <instance-note-key
                 class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
-            <instance-note><af:replaceXics text="${instanceNote.value}"/></instance-note>
+            <instance-note>${instanceNote.value}</instance-note>
           </li>
         </af:getTypeNotes>
       </ul>
@@ -117,7 +117,7 @@
           <li>
             <instance-note-key
                 class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
-            <instance-note><af:replaceXics text="${instanceNote.value}"/></instance-note>
+            <instance-note>${instanceNote.value}</instance-note>
           </li>
         </af:getDisplayableNonTypeNotes>
       </ul>

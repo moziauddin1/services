@@ -457,6 +457,35 @@ class ReferenceService {
         }
         return [ok: true]
     }
+
+    def replaceXICSinReferenceTitles() {
+
+        runAsync {
+
+            def count = Reference.executeQuery("select count(ref) from Reference ref where regex(title, '.*(\\~[a-zA-Z]|\\<[A-Z]|\\^).*') = true").first()
+            log.debug "about to change $count Reference titles"
+
+            long changed = 0
+
+            List<Reference> references = Reference.executeQuery("select ref from Reference ref where regex(title, '.*(\\~[a-zA-Z]|\\<[A-Z]|\\^).*') = true order by id")
+            Reference.withSession { session ->
+                references.each { Reference reference ->
+                    String newValue = ApniFormatService.transformXicsToUTF8(reference.title)
+                    if (newValue != reference.title) {
+                        reference.title = newValue
+                        reference.save()
+                        changed++
+                    } else {
+                        log.debug "NOT changing $reference.title -> $newValue"
+                        reference.discard()
+                    }
+                }
+                session.flush()
+            }
+            log.debug "changed $changed notes"
+        }
+    }
+
 }
 
 class ReferenceStringCategory {

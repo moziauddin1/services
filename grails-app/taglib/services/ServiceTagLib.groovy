@@ -28,8 +28,8 @@ class ServiceTagLib {
     def instanceService
     def configService
 
-//    static defaultEncodeAs = 'html'
-    static encodeAsForTags = [tagName: 'raw']
+    static defaultEncodeAs = 'raw'
+//    static encodeAsForTags = [tagName: 'raw']
     static namespace = "st"
 
     def displayMap = { attrs ->
