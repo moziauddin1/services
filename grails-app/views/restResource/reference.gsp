@@ -26,7 +26,7 @@
   <reference data-referenceId="${reference.id}">
     <ref-citation>
       %{--don't reformat the citationHtml line--}%
-      <b><st:encodeWithHTML text='${reference?.citationHtml}'/></b> <st:preferedLink target="${reference}"><i
+      <b>${raw(reference?.citationHtml)}</b> <st:preferedLink target="${reference}"><i
         class="fa fa-link"></i></st:preferedLink>
     </ref-citation>
     (<reference-type>${reference.refType.name}</reference-type>)
@@ -46,7 +46,7 @@
         <g:each
             in="${(au.org.biodiversity.nsl.Instance.executeQuery('select distinct(i.name) from Instance i where i.reference = :ref', [ref: reference])).sort {it.simpleName}}"
             var="name">
-          <li><st:encodeWithHTML text='${name.fullNameHtml}'/></li>
+          <li>${raw(name.fullNameHtml)}</li>
         </g:each>
       </ol>
 

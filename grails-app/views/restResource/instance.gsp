@@ -25,7 +25,7 @@
 
   <div data-nameId="${instance.name.id}">
     %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-    <b><st:preferedLink target="${instance.name}"><st:encodeWithHTML text='${instance.name.fullNameHtml}'/></st:preferedLink></b><name-status
+    <b><st:preferedLink target="${instance.name}">${raw(instance.name.fullNameHtml)}</st:preferedLink></b><name-status
       class="${instance.name.nameStatus.name}">, ${instance.name.nameStatus.name}</name-status><name-type
       class="${instance.name.nameType.name}">, ${instance.name.nameType.name}</name-type>
     <span class="text-muted small">${instance?.instanceType?.name}</span>
@@ -42,7 +42,7 @@
   <reference data-referenceId="${instance.reference.id}">
     <ref-citation>
       %{--don't reformat the citationHtml line--}%
-      <st:preferedLink target="${instance.reference}"><st:encodeWithHTML text='${instance.reference?.citationHtml}'/></st:preferedLink>:
+      <st:preferedLink target="${instance.reference}">${raw(instance.reference?.citationHtml)}</st:preferedLink>:
     </ref-citation>
 
     <page><af:page instance="${instance}"/></page>
@@ -85,7 +85,7 @@
         <has-synonym>
           Cites <synonym-type
             class="${instance.cites.instanceType.name}">${instance.cites.instanceType.name}:</synonym-type>
-          <st:preferedLink target="${instance.cites}"><st:encodeWithHTML text='${instance.cites.name.fullNameHtml}'/></st:preferedLink>
+          <st:preferedLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferedLink>
           <name-status
               class="${instance.cites.name.nameStatus.name}">${instance.cites.name.nameStatus.name}</name-status>
 
@@ -125,7 +125,7 @@
       <g:if test="${instance.instanceType.secondaryInstance}">
         <h4>Secondary reference of</h4>
         <st:primaryInstance var="primaryInstance" name="${instance.name}">
-          <st:preferedLink target="${primaryInstance}"><st:encodeWithHTML text='${primaryInstance.name.fullNameHtml}'/></st:preferedLink>
+          <st:preferedLink target="${primaryInstance}">${raw(primaryInstance.name.fullNameHtml)}</st:preferedLink>
         </st:primaryInstance>
       </g:if>
 

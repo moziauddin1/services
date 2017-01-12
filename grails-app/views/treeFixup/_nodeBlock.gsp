@@ -18,7 +18,7 @@
             <div class="row">
                 <div class="col-md-3">Value</div>
 
-                <div class="col-md-9"><st:encodeWithHTML text='${node.literal}'/></div>
+                <div class="col-md-9">${raw(node.literal)}</div>
             </div>
         </g:if>
     </g:if>
@@ -28,7 +28,7 @@
             <div class="col-md-3">Checkin</div>
 
             <div class="col-md-9">${node.checkedInAt?.id}, by ${node.checkedInAt?.authUser}, at ${node.checkedInAt?.timeStamp}
-                <g:if test="${node.checkedInAt?.note}">: <st:encodeWithHTML text='${node.checkedInAt?.note}'/></g:if></div>
+                <g:if test="${node.checkedInAt?.note}">: ${raw(node.checkedInAt?.note)}</g:if></div>
         </div>
 
         <g:if test="${node.nameUriIdPart || node.name}">
@@ -41,7 +41,7 @@
                         ${node.nameUriNsPart?.label}:${node.nameUriIdPart}
                     </g:if>
                     <g:if test="${node.name}">
-                        <st:encodeWithHTML text='${node.name.fullNameHtml}'/>
+                        ${raw(node.name.fullNameHtml)}
                     </g:if>
 
                 </div>
@@ -58,7 +58,7 @@
                         ${node.taxonUriNsPart?.label}:${node.taxonUriIdPart}
                     </g:if>
                     <g:if test="${node.instance}">
-                        <st:encodeWithHTML text='${node.instance.reference.citationHtml}'/>
+                        ${raw(node.instance.reference.citationHtml)}
                     </g:if>
 
                 </div>

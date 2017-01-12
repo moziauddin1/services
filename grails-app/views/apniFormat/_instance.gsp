@@ -5,7 +5,7 @@
     <g:if test="${newPage}">
       <ref-citation>
         %{--don't reformat the citationHtml line--}%
-        <st:preferedLink target="${instance}"><st:encodeWithHTML text='${reference?.citationHtml}'/></st:preferedLink>:
+        <st:preferedLink target="${instance}">${raw(reference?.citationHtml)}</st:preferedLink>:
       </ref-citation>
       <page><af:page instance="${instance}"/></page>
       <g:if test="${instance.sourceId && instance.sourceSystem == 'PLANT_NAME_REFERENCE'}">

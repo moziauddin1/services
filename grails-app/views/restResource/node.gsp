@@ -34,13 +34,13 @@
     <dl class="dl-horizontal">
         <dt>Id</dt><dd>${node.id}</dd>
         <dt>Tree</dt><dd><g:render template="tree" model="${[tree: node.root]}"/></dd>
-        <g:if test="${name}"><dt>Name</dt><dd><st:preferedLink target="${name}"><st:encodeWithHTML text='${name.fullNameHtml}'/></st:preferedLink></dd></g:if>
-        <g:if test="${instance}"><dt>Instance</dt><dd><st:preferedLink target="${instance}"> in <st:encodeWithHTML text='${instance.reference?.citationHtml}'/></st:preferedLink></dd></g:if>
+        <g:if test="${name}"><dt>Name</dt><dd><st:preferedLink target="${name}">${raw(name.fullNameHtml)}</st:preferedLink></dd></g:if>
+        <g:if test="${instance}"><dt>Instance</dt><dd><st:preferedLink target="${instance}"> in ${raw(instance.reference?.citationHtml)}</st:preferedLink></dd></g:if>
         <dt>Type URI</dt><dd><a href="${DomainUtils.getNodeTypeUri(node).asUri()}">${DomainUtils.getNodeTypeUri(node).asQNameIfOk()}</a></dd>
         <g:if test="${DomainUtils.getNameUri(node)}"><dt>Name URI</dt><dd><a href="${DomainUtils.getNameUri(node).asUri()}">${DomainUtils.getNameUri(node).asQNameIfOk()}</a></dd></g:if>
         <g:if test="${DomainUtils.getTaxonUri(node)}"><dt>Taxon URI</dt><dd><a href="${DomainUtils.getTaxonUri(node).asUri()}">${DomainUtils.getTaxonUri(node).asQNameIfOk()}</a></dd></g:if>
         <g:if test="${DomainUtils.getResourceUri(node)}"><dt>Resource URI</dt><dd><a href="${DomainUtils.getResourceUri(node).asUri()}">${DomainUtils.getResourceUri(node).asQNameIfOk()}</a></dd></g:if>
-        <g:if test="${node.literal}"><dt>Literal</dt><dd><st:encodeWithHTML text='${node.literal}'/></dd></g:if>
+        <g:if test="${node.literal}"><dt>Literal</dt><dd>${raw(node.literal)}</dd></g:if>
         <g:if test="${node.prev}"><dt>Copy of</dt><dd><g:render template="node" model="${[event: node.prev]}"/></dd></g:if>
         <g:if test="${node.checkedInAt}"><dt>Checked in</dt><dd><g:render template="event" model="${[event: node.checkedInAt]}"/></dd></g:if>
         <g:if test="${node.next}"><dt>Replaced by</dt><dd><g:render template="node" model="${[event: node.next]}"/></dd></g:if>

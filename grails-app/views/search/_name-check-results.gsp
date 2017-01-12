@@ -66,13 +66,13 @@
                   </td>
                   <td>
                     <st:preferedLink target="${nameData.name}" api="api/apniFormat">
-                      <st:encodeWithHTML text='${nameData.name.fullNameHtml}'/></st:preferedLink><name-status
+                      ${raw(nameData.name.fullNameHtml)}</st:preferedLink><name-status
                       class="${nameData.name.nameStatus.name}">, ${nameData.name.nameStatus.name}</name-status><name-type
                       class="${nameData.name.nameType.name}">, ${nameData.name.nameType.name}</name-type>
                   </td>
                   <td>
                     <st:preferedLink target="${nameData.family}" api="api/apniFormat">
-                      <st:encodeWithHTML text='${nameData.family.fullNameHtml}'/>
+                      ${raw(nameData.family.fullNameHtml)}
                     </st:preferedLink>
                   </td>
                   <td>

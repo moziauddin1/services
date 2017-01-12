@@ -27,7 +27,7 @@
         <g:elseif test="${node.internalType == NodeInternalType.T}">
             <g:if test="${DomainUtils.hasName(node)}">
                 <g:if test="${name}">
-                    <st:encodeWithHTML text='${name.simpleNameHtml}'/>
+                    ${raw(name.simpleNameHtml)}
                 </g:if>
                 <g:else>
                     ${DomainUtils.getNameUri(node)?.asQNameIfOk()}
@@ -36,7 +36,7 @@
 
             <g:if test="${DomainUtils.hasTaxon(node)}">
                 <g:if test="${instance}">
-                    in <st:encodeWithHTML text='${node.instance.reference?.citationHtml}'/>
+                    in ${raw(node.instance.reference?.citationHtml)}
                 </g:if>
                 <g:else>
                     as ${DomainUtils.getTaxonUri(node)?.asQNameIfOk()}

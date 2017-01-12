@@ -306,6 +306,10 @@ class ServiceTagLib {
         out << simpleName
     }
 
+    /**
+     * encodes HTML output converting chars to entities and cleaning invalid tags.
+     * Use sparingly as this is slowish at ~1ms for a call.
+     */
     def encodeWithHTML = { attrs ->
         String text = attrs.text
         Set<String> allowedTags = []
