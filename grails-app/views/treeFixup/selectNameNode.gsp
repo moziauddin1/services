@@ -34,7 +34,7 @@
 
 
 <div>
-    <p><strong>${raw(name.fullNameHtml)} appears multiple times in ${classification.label}.</strong></p>
+    <p><strong><st:encodeWithHTML text='${name.fullNameHtml}'/> appears multiple times in ${classification.label}.</strong></p>
 
     <p>The name may appear in more than one place, or it may appear under different instances. In normal use via the appliaciton, this should never happen.</p>
 

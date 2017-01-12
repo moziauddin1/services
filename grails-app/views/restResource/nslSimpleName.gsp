@@ -24,13 +24,13 @@
     <dt>taxonName</dt><dd>${name.taxonName}</dd>
     <dt>nameElement</dt><dd>${name.nameElement}</dd>
     <dt>cultivarName</dt><dd>${name.cultivarName}</dd>
-    <dt>simpleNameHtml</dt><dd>${raw(name.simpleNameHtml)}</dd>
+    <dt>simpleNameHtml</dt><dd><st:encodeWithHTML text='${name.simpleNameHtml}'/></dd>
     <dt>fullNameHtml</dt><dd><st:preferedLink
-      target="${Name.get(name.id)}">${raw(name.fullNameHtml)}</st:preferedLink></dd>
+      target="${Name.get(name.id)}"><st:encodeWithHTML text='${name.fullNameHtml}'/></st:preferedLink></dd>
 
     <dt class='divide'>&nbsp;</dt><dd class='divide'>&nbsp;</dd>
     <dt>apcInstance</dt><dd><st:preferedLink
-      target="${name.apcInstance}">${raw(name.apcInstance?.reference?.citationHtml)}</st:preferedLink></dd>
+      target="${name.apcInstance}"><st:encodeWithHTML text='${name.apcInstance?.reference?.citationHtml}'/></st:preferedLink></dd>
     <dt>apcName</dt><dd><st:preferedLink
       target="${name.apcInstance?.citedBy?.name ?: name.apcInstance?.name}">${name.apcName}</st:preferedLink></dd>
     <dt>apcRelationshipType</dt><dd>${name.apcRelationshipType}</dd>
@@ -71,15 +71,15 @@
 
     <dt class='divide'>&nbsp;</dt><dd class='divide'>&nbsp;</dd>
     <dt>parentNsl</dt><dd><st:preferedLink
-      target="${name.parentNsl}">${raw(name.parentNsl.fullNameHtml)}</st:preferedLink></dd>
+      target="${name.parentNsl}"><st:encodeWithHTML text='${name.parentNsl.fullNameHtml}'/></st:preferedLink></dd>
     <dt>secondParentNsl</dt><dd><st:preferedLink
-      target="${name.secondParentNsl}">${raw(name.secondParentNsl.fullNameHtml)}</st:preferedLink></dd>
+      target="${name.secondParentNsl}"><st:encodeWithHTML text='${name.secondParentNsl.fullNameHtml}'/></st:preferedLink></dd>
     <dt>familyNsl</dt><dd><st:preferedLink
-      target="${name.familyNsl}">${raw(name.familyNsl.fullNameHtml)}</st:preferedLink></dd>
+      target="${name.familyNsl}"><st:encodeWithHTML text='${name.familyNsl.fullNameHtml}'/></st:preferedLink></dd>
     <dt>genusNsl</dt><dd><st:preferedLink
-      target="${name.genusNsl}">${raw(name.genusNsl.fullNameHtml)}</st:preferedLink></dd>
+      target="${name.genusNsl}"><st:encodeWithHTML text='${name.genusNsl.fullNameHtml}'/></st:preferedLink></dd>
     <dt>speciesNsl</dt><dd><st:preferedLink
-      target="${name.speciesNsl}">${raw(name.speciesNsl.fullNameHtml)}</st:preferedLink></dd>
+      target="${name.speciesNsl}"><st:encodeWithHTML text='${name.speciesNsl.fullNameHtml}'/></st:preferedLink></dd>
 
     <dt>classis</dt><dd>${name.classis}</dd>
     <dt>subclassis</dt><dd>${name.subclassis}</dd>

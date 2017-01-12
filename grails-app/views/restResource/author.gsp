@@ -75,7 +75,7 @@
       ${author.references.size()} References:
       <ol>
         <g:each in="${author.references.sort{it.year}}" var="ref">
-          <li>${raw(ref.citationHtml)}</li>
+          <li><st:encodeWithHTML text='${ref.citationHtml}'/></li>
         </g:each>
       </ol>
 

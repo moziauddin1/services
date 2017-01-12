@@ -17,6 +17,7 @@
 package services
 
 import au.org.biodiversity.nsl.Arrangement
+import au.org.biodiversity.nsl.HTMLSanitiser
 import au.org.biodiversity.nsl.HibernateDomainUtils
 import au.org.biodiversity.nsl.Instance
 import au.org.biodiversity.nsl.Name
@@ -29,7 +30,8 @@ class ServiceTagLib {
     def configService
 
     static defaultEncodeAs = 'raw'
-//    static encodeAsForTags = [tagName: 'raw']
+    static encodeAsForTags = [encodeHTML: 'raw']
+
     static namespace = "st"
 
     def displayMap = { attrs ->
@@ -303,4 +305,11 @@ class ServiceTagLib {
         }
         out << simpleName
     }
+
+    def encodeWithHTML = { attrs ->
+        String text = attrs.text
+        Set<String> allowedTags = []
+        out << HTMLSanitiser.encodeInvalidMarkup(text, allowedTags).trim()
+    }
+
 }

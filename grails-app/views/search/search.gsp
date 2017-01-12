@@ -58,14 +58,14 @@
                 <div class="name" id="${name.id}">
                   <family>
                     <g:if test="${familyName}">
-                      ${raw(familyName.fullNameHtml)} <af:branch name="${name}" tree="APC"><i
+                      <st:encodeWithHTML text='${familyName.fullNameHtml}'/> <af:branch name="${name}" tree="APC"><i
                         class="fa fa-code-fork"></i></af:branch>
                     </g:if>
                   </family>
 
                   <div data-nameId="${name.id}">
                     %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-                    <accepted-name>${raw(name.fullNameHtml)}
+                    <accepted-name><st:encodeWithHTML text='${name.fullNameHtml}'/>
                     </accepted-name><name-status
                       class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
                       class="${name.nameType.name}">, ${name.nameType.name}</name-type>

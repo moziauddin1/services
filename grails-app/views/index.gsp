@@ -20,7 +20,7 @@
 
     <div class="card-stacked">
       <div class="card-content">
-        ${raw(ConfigService.shardDescriptionHtml)}
+        <st:encodeWithHTML text='${ConfigService.shardDescriptionHtml}'/>
       </div>
 
       <div class="card-action">

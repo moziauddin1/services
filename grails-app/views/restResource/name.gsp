@@ -28,13 +28,13 @@
   <div class="name" id="${name.id}">
     <family>
       <g:if test="${familyName}">
-        ${raw(familyName.fullNameHtml)} <af:branch name="${name}" tree="APC"><i class="fa fa-code-fork"></i></af:branch>
+        <st:encodeWithHTML text='${familyName.fullNameHtml}'/> <af:branch name="${name}" tree="APC"><i class="fa fa-code-fork"></i></af:branch>
       </g:if>
     </family>
 
     <div data-nameId="${name.id}">
       %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-      <accepted-name><st:preferedLink target="${name}">${raw(name.fullNameHtml)}</st:preferedLink>
+      <accepted-name><st:preferedLink target="${name}"><st:encodeWithHTML text='${name.fullNameHtml}'/></st:preferedLink>
       </accepted-name><name-status class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
         class="show-always">${name.nameType.name}</name-type>
       <g:if test="${!familyName}">
@@ -71,7 +71,7 @@
           <reference data-referenceId="${instance.reference.id}">
             <ref-citation>
               %{--don't reformat the citationHtml line--}%
-              <st:preferedLink target="${instance}">${raw(instance.reference?.citationHtml)}</st:preferedLink>:
+              <st:preferedLink target="${instance}"><st:encodeWithHTML text='${instance.reference?.citationHtml}'/></st:preferedLink>:
             </ref-citation>
 
             <page><af:page instance="${instance}"/></page>
@@ -105,7 +105,7 @@
                 <has-synonym>
                   Cites <synonym-type
                     class="${instance.cites.instanceType.name}">${instance.cites.instanceType.name}:</synonym-type>
-                  <st:preferedLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferedLink>
+                  <st:preferedLink target="${instance.cites}"><st:encodeWithHTML text='${instance.cites.name.fullNameHtml}'/></st:preferedLink>
                   <name-status
                       class="${instance.cites.name.nameStatus.name}">${instance.cites.name.nameStatus.name}</name-status>
 

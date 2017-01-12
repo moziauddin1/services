@@ -20,7 +20,7 @@
 
                 <g:if test="${DomainUtils.hasName(node)}">
                     <g:if test="${name}">
-                        ${raw(name.fullNameHtml)}
+                        <st:encodeWithHTML text='${name.fullNameHtml}'/>
                     </g:if>
                     <g:else>
                         ${DomainUtils.getNameUri(node)?.asQNameIfOk()}
@@ -29,7 +29,7 @@
 
                 <g:if test="${DomainUtils.hasTaxon(node)}">
                     <g:if test="${instance}">
-                        in ${raw(instance.reference?.citationHtml)}
+                        in <st:encodeWithHTML text='${instance.reference?.citationHtml}'/>
                     </g:if>
                     <g:else>
                         as ${DomainUtils.getTaxonUri(node)?.asQNameIfOk()}
