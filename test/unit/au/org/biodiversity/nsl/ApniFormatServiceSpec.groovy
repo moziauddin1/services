@@ -144,4 +144,114 @@ class ApniFormatServiceSpec extends Specification {
         '<F,17>~u <F,4>' | '&#10219;'
         '<F,17>^u<F,4>'  | '&#10219;'
     }
+
+    void "test xics elements are replaced with UTF8 correctly"() {
+        when:
+        String output = ApniFormatService.transformXicsToUTF8(test)
+
+        println output
+
+        then:
+        output == result
+
+        where:
+        test                                                                                                                 | result
+        "Substitute name for WILLEMETIA Marklin ^t KOCHIA Roth according to <IT>Index Nominum Genericorum <RO>1 (1979) 594." | 'Substitute name for WILLEMETIA Marklin = KOCHIA Roth according to <i>Index Nominum Genericorum </i>1 (1979) 594.'
+        "<IT>nom. illeg. <RO>non Endl. (1848). Published as `^u <IT>sericea<RO>'."                                           | '<i>nom. illeg. </i>non Endl. (1848). Published as `α <i>sericea</i>\'.'
+        "<IT>Cactus opuntia <RO>L. ^t <IT>Opuntia vulgaris <RO>Miller"                                                       | '<i>Cactus opuntia </i>L. = <i>Opuntia vulgaris </i>Miller'
+        "Published as `^v <IT>megaphylla <RO>'."                                                                             | 'Published as `β <i>megaphylla </i>\'.'
+        "<IT>Stomoisia cornuta <(Michx.) RO>Raf."                                                                            | '<i>Stomoisia cornuta <(Michx.) RO>Raf.'
+        "D.E.Anderson, loc. cit. [i.e. <i>Contributions from the United States National Herbarium</i> 2: 42  (1892)]"        | 'D.E.Anderson, loc. cit. [i.e. <i>Contributions from the United States National Herbarium</i> 2: 42  (1892)]'
+        "Let it snow ☃"                                                                                                      | 'Let it snow ☃'
+        "Lake Takapo, S. Isl., 83, CHEESEMAN (hb. Stockholm.) <F,17>~u<F,4>alt. 2500 feet<F,17>~u<F,4>Det. & comm. AR. BENNETT. Tasmania, R.C. GUNN (hb. Stockholm.)," | "Lake Takapo, S. Isl., 83, CHEESEMAN (hb. Stockholm.) ⟪alt. 2500 feet⟪Det. & comm. AR. BENNETT. Tasmania, R.C. GUNN (hb. Stockholm.),"
+    }
+
+    void "test all xics elements are replaced with UTF8"() {
+
+        when:
+        String output = ApniFormatService.transformXicsToUTF8(test)
+
+        then:
+        output == result
+
+        where:
+        test             | result
+        '~J'             | 'Á'
+        '~c'             | 'À'
+        '~T'             | 'Â'
+        '~p'             | 'Ä'
+        '<AOU>'          | 'Å'
+        '~K'             | 'É'
+        '~d'             | 'È'
+        '~U'             | 'Ê'
+        '~q'             | 'Ë'
+        '~L'             | 'Í'
+        '~3'             | 'Ì'
+        '~V'             | 'Î'
+        '~r'             | 'Ï'
+        '~M'             | 'Ó'
+        '~e'             | 'Ò'
+        '~W'             | 'Ô'
+        '~s'             | 'Ö'
+        '~N'             | 'Ú'
+        '~f'             | 'Ù'
+        '\\'             | 'Û'
+        '~t'             | 'Ü'
+        '~z'             | 'Ç'
+        '~1'             | 'Ñ'
+        '~O'             | 'á'
+        '~g'             | 'à'
+        '~X'             | 'â'
+        '~u'             | 'ä'
+        '<AOL>'          | 'å'
+        '<ATL>'          | 'ã'
+        '~P'             | 'é'
+        '~h'             | 'è'
+        '~Y'             | 'ê'
+        '~v'             | 'ë'
+        '~Q'             | 'í'
+        '~i'             | 'ì'
+        '~Z'             | 'î'
+        '~w'             | 'ï'
+        '~R'             | 'ó'
+        '~D'             | 'ò'
+        '~a'             | 'ô'
+        '~x'             | 'ö'
+        '<OTL>'          | 'õ'
+        '~S'             | 'ú'
+        '~E'             | 'ù'
+        '~b'             | 'û'
+        '~y'             | 'ü'
+        '~0'             | 'ç'
+        '~2'             | 'ñ'
+        '<PM>'           | '±'
+        '<MR>'           | '—'
+        '<NR>'           | '–'
+        '<BY>'           | '×'
+        '<DEG>'          | '°'
+        '<MIN>'          | '′'
+        '^I'             | '†'
+        '^K'             | 'Š'
+        '^k'             | '½'
+        '^l'             | '⅓'
+        '^m'             | '⅔'
+        '^n'             | '¼'
+        '^o'             | '¾'
+        '^u'             | 'α'
+        '^v'             | 'β'
+        '^w'             | 'γ'
+        '^x'             | 'δ'
+        '^t'             | '='
+        '<13>'           | '⅓'
+        '<23>'           | '⅔'
+        '<IT><RO>'       | '<i></i>'
+        '<IT><RRO>'      | '<i></i>'
+        '<MALE>'         | '♂'
+        '<M>'            | '♂'
+        '<FM>'           | '♀'
+        '<F,8>~S<F,4>'   | 'Δ'
+        '<F,17>~u<F,4>'  | '⟪'
+        '<F,17>^u<F,4>'  | '⟫'
+    }
+
 }

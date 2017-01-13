@@ -36,7 +36,8 @@ def adminService
 
         all(uri: "/**") {
             before = {
-
+                //fix bug in Grails <2.4.5
+                response.setCharacterEncoding('UTF-8')
                 //need the .format to get a good response in case of errors
                 String requested = (WebUtils.getForwardURI(request) ?: request.getAttribute('javax.servlet.error.request_uri'))
                 requested = requested.decodeURL()

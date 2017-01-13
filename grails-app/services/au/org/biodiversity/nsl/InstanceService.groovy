@@ -212,4 +212,33 @@ class InstanceService {
         return null
     }
 
+    def replaceXICSinInstanceNotes() {
+
+        runAsync {
+
+            def count = InstanceNote.executeQuery("select count(note) from InstanceNote note where regex(value, '.*(\\~[a-zA-Z]|\\<[A-Z]|\\^).*') = true").first()
+            log.debug "about to change $count Instance Notes"
+
+            long changed = 0
+
+            List<InstanceNote> notes = InstanceNote.executeQuery("select note from InstanceNote note where regex(value, '.*(\\~[a-zA-Z]|\\<[A-Z]|\\^).*') = true order by id")
+            InstanceNote.withSession { session ->
+                notes.each { InstanceNote note ->
+                    String newValue = ApniFormatService.transformXicsToUTF8(note.value)
+                    if (newValue != note.value) {
+                        note.value = newValue
+                        note.save()
+                        changed++
+                    } else {
+                        log.debug "NOT changing $note.value -> $newValue"
+                        note.discard()
+                    }
+                }
+                session.flush()
+            }
+            log.debug "changed $changed notes"
+        }
+    }
+
+
 }

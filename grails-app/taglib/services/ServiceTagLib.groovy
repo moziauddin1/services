@@ -17,6 +17,7 @@
 package services
 
 import au.org.biodiversity.nsl.Arrangement
+import au.org.biodiversity.nsl.HTMLSanitiser
 import au.org.biodiversity.nsl.HibernateDomainUtils
 import au.org.biodiversity.nsl.Instance
 import au.org.biodiversity.nsl.Name
@@ -28,8 +29,9 @@ class ServiceTagLib {
     def instanceService
     def configService
 
-//    static defaultEncodeAs = 'html'
-    static encodeAsForTags = [tagName: 'raw']
+    static defaultEncodeAs = 'raw'
+    static encodeAsForTags = [encodeHTML: 'raw']
+
     static namespace = "st"
 
     def displayMap = { attrs ->
@@ -303,4 +305,15 @@ class ServiceTagLib {
         }
         out << simpleName
     }
+
+    /**
+     * encodes HTML output converting chars to entities and cleaning invalid tags.
+     * Use sparingly as this is slowish at ~1ms for a call.
+     */
+    def encodeWithHTML = { attrs ->
+        String text = attrs.text
+        Set<String> allowedTags = []
+        out << HTMLSanitiser.encodeInvalidMarkup(text, allowedTags).trim()
+    }
+
 }
