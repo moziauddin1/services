@@ -33,7 +33,6 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     def nameService
     def apniFormatService
     def instanceService
-    def searchService
     def flatViewService
 
     @SuppressWarnings("GroovyUnusedDeclaration")

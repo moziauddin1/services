@@ -26,6 +26,7 @@ class ReferenceService {
 
     def instanceService
     def linkService
+    def nameService
 
     /**
      * Create a reference citation from reference
@@ -226,6 +227,8 @@ class ReferenceService {
     @Transactional
     def reconstructAllCitations() {
         runAsync {
+            String updaterWas = nameService.pollingStatus()
+            nameService.pauseUpdates()
             Closure query = { Map params ->
                 Reference.listOrderById(params)
             }
@@ -252,7 +255,9 @@ class ReferenceService {
                 }
                 log.info "$top done. 1000 took ${System.currentTimeMillis() - start} ms"
             }
-
+            if (updaterWas == 'running') {
+                nameService.resumeUpdates()
+            }
         }
     }
 
