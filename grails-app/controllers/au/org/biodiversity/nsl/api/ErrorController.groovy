@@ -55,7 +55,7 @@ class ErrorController {
 
         withFormat {
             html {
-                if (status == HttpStatus.UNAUTHORIZED.value()) {
+                if (status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.FORBIDDEN.value()) {
                     redirect(controller: 'auth',
                             action: 'login',
                             params: [targetUri: request.forwardURI - request.contextPath])

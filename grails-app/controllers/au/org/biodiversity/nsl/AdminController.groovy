@@ -148,10 +148,14 @@ class AdminController {
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
     def logs() {
-        List<String> processLog = logSummary(300)
-        render(template: 'log', model: [processLog: processLog])
+        try {
+            SecurityUtils.subject.checkRole('admin')
+            List<String> processLog = logSummary(300)
+            render(template: 'log', model: [processLog: processLog])
+        } catch (e) {
+            render(template: 'log', model: [processLog: ["You are not logged in."]])
+        }
     }
 
     @RequiresRoles('admin') 
