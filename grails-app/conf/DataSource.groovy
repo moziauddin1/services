@@ -68,8 +68,8 @@ environments {
             dialect = "au.org.biodiversity.nsl.ExtendedPostgreSQLDialect"
 //            dbCreate = "update"
             url = "jdbc:postgresql://localhost:5432/nsl"
-            formatSql = true
-            logSql = true
+//            formatSql = true
+//            logSql = true
             //noinspection GroovyAssignabilityCheck
             properties {
                 defaultTransactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED

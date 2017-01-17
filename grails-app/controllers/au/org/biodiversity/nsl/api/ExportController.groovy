@@ -24,13 +24,13 @@ class ExportController implements UnauthenticatedHandler {
     static namespace = "api"
 
     @Timed()
-    def namesCsv() {
+    namesCsv() {
         File exportFile = flatViewService.exportNamesToCSV()
         render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
     }
 
     @Timed()
-    def taxonCsv() {
+    taxonCsv() {
         File exportFile = flatViewService.exportTaxonToCSV()
         render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
     }
