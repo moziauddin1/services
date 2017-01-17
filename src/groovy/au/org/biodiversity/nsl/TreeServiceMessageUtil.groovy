@@ -52,7 +52,7 @@ class TreeServiceMessageUtil {
     private static List unpackServiceException(ServiceException ex, String status) {
         List msg = []
         if (ex != null) {
-            msg += unpackMessage(ex.message, status)
+            msg += unpackMessage(ex.msg, status)
             if (ex.getCause() && ex.getCause() != ex) {
                 msg += unpackThrowable(ex.getCause(), status);
             }
