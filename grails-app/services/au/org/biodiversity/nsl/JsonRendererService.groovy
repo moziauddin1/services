@@ -59,9 +59,9 @@ class JsonRendererService {
         XML.registerObjectMarshaller(InstanceNote) { InstanceNote instanceNote, XML xml -> xml.convertAnother(marshallInstanceNote(instanceNote)) }
         XML.registerObjectMarshaller(ResourceLink) { ResourceLink resourceLink, XML xml ->
             xml.startNode('link')
-                    .attribute('resources', resourceLink.resources.toString())
-                    .chars(resourceLink.link)
-                    .end()
+               .attribute('resources', resourceLink.resources.toString())
+               .chars(resourceLink.link)
+               .end()
         }
 
         XML.registerObjectMarshaller(Node) { Node node, XML xml -> xml.convertAnother(marshallNode(node)) }
@@ -424,9 +424,9 @@ class JsonRendererService {
         // so rather than use brief(), this gets done by hand
 
         Map subNode = brief(link.subnode, [
-                id: link.subnodeId,
-                type       : link.subnode.internalType.name(),
-                typeUri    : getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
+                id     : link.subnodeId,
+                type   : link.subnode.internalType.name(),
+                typeUri: getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
         ]);
 
         Map data = [
@@ -571,21 +571,21 @@ class JsonRendererService {
         try {
             message = messageSource.getMessage(msg, (Locale) null);
         }
-        catch(NoSuchMessageException ex) {
+        catch (NoSuchMessageException ex) {
             message = msg.msg.key
         }
 
         try {
             rawMessage = messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null);
         }
-        catch(NoSuchMessageException ex) {
+        catch (NoSuchMessageException ex) {
             rawMessage = msg.msg.key
         }
 
         try {
             plainText = msg.getHumanReadableMessage();
         }
-        catch(NoSuchMessageException ex) {
+        catch (NoSuchMessageException ex) {
             plainText = msg.getLocalisedString()
         }
 
@@ -599,13 +599,13 @@ class JsonRendererService {
                         brief(it)
                     } else if (it in Link) {
                         marshallLink(it as Link)
-                    } else if (it instanceof Message ) {
+                    } else if (it instanceof Message) {
                         marshallTreeServiceMessage(it)
                     } else {
                         it
                     }
                 },
-                nested    : msg.nested.collect { Message it -> marshallTreeServiceMessage(it)}
+                nested    : msg.nested.collect { Message it -> marshallTreeServiceMessage(it) }
         ]
     }
 
@@ -618,7 +618,7 @@ class JsonRendererService {
         Hibernate.initialize(entity);
         if (entity instanceof HibernateProxy) {
             entity = (T) ((HibernateProxy) entity).getHibernateLazyInitializer()
-                    .getImplementation();
+                                                  .getImplementation();
         }
         return entity;
     }

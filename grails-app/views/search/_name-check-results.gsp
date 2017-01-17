@@ -65,15 +65,15 @@
                     <g:else>&nbsp;</g:else>
                   </td>
                   <td>
-                    <st:preferedLink target="${nameData.name}" api="api/apniFormat">
-                      ${raw(nameData.name.fullNameHtml)}</st:preferedLink><name-status
+                    <st:preferredLink target="${nameData.name}" api="api/apniFormat">
+                      ${raw(nameData.name.fullNameHtml)}</st:preferredLink><name-status
                       class="${nameData.name.nameStatus.name}">, ${nameData.name.nameStatus.name}</name-status><name-type
                       class="${nameData.name.nameType.name}">, ${nameData.name.nameType.name}</name-type>
                   </td>
                   <td>
-                    <st:preferedLink target="${nameData.family}" api="api/apniFormat">
+                    <st:preferredLink target="${nameData.family}" api="api/apniFormat">
                       ${raw(nameData.family.fullNameHtml)}
-                    </st:preferedLink>
+                    </st:preferredLink>
                   </td>
                   <td>
                     <g:each in="${nameData.name.tags}" var="tag">

@@ -40,7 +40,7 @@ class ApniFormatService {
 
     Map nameReferenceInstanceMap(Name name) {
         Map<Reference, List<Instance>> refGroups = name.instances.findAll { instance ->
-            instance.draft == false
+            (!instance.draft)
         }.groupBy { instance ->
             instance.reference
         }

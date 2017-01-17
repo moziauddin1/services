@@ -19,10 +19,10 @@
 
 <div class="rest-resource-content node-gsp">
     <div>
-        <span><st:preferedLink target="${node.root}">${node.root.label ?: "Tree ${node.root.id}"}</st:preferedLink></span>
+        <span><st:preferredLink target="${node.root}">${node.root.label ?: "Tree ${node.root.id}"}</st:preferredLink></span>
         <g:each var="l" in="${path.findAll { DomainUtils.getNodeTypeUri(it.subnode).asQName() != 'boatree-voc:classification-root' } .reverse()}">
             &gt;
-            <st:preferedLink target="${l.subnode}">${raw(queryService.resolveName(l.subnode)?.simpleNameHtml ?: "unable to resolve name on ${l.subnode}")}</st:preferedLink>
+            <st:preferredLink target="${l.subnode}">${raw(queryService.resolveName(l.subnode)?.simpleNameHtml ?: "unable to resolve name on ${l.subnode}")}</st:preferredLink>
         </g:each>
     </div>
 
@@ -34,8 +34,8 @@
     <dl class="dl-horizontal">
         <dt>Id</dt><dd>${node.id}</dd>
         <dt>Tree</dt><dd><g:render template="tree" model="${[tree: node.root]}"/></dd>
-        <g:if test="${name}"><dt>Name</dt><dd><st:preferedLink target="${name}">${raw(name.fullNameHtml)}</st:preferedLink></dd></g:if>
-        <g:if test="${instance}"><dt>Instance</dt><dd><st:preferedLink target="${instance}"> in ${raw(instance.reference?.citationHtml)}</st:preferedLink></dd></g:if>
+        <g:if test="${name}"><dt>Name</dt><dd><st:preferredLink target="${name}">${raw(name.fullNameHtml)}</st:preferredLink></dd></g:if>
+        <g:if test="${instance}"><dt>Instance</dt><dd><st:preferredLink target="${instance}"> in ${raw(instance.reference?.citationHtml)}</st:preferredLink></dd></g:if>
         <dt>Type URI</dt><dd><a href="${DomainUtils.getNodeTypeUri(node).asUri()}">${DomainUtils.getNodeTypeUri(node).asQNameIfOk()}</a></dd>
         <g:if test="${DomainUtils.getNameUri(node)}"><dt>Name URI</dt><dd><a href="${DomainUtils.getNameUri(node).asUri()}">${DomainUtils.getNameUri(node).asQNameIfOk()}</a></dd></g:if>
         <g:if test="${DomainUtils.getTaxonUri(node)}"><dt>Taxon URI</dt><dd><a href="${DomainUtils.getTaxonUri(node).asUri()}">${DomainUtils.getTaxonUri(node).asQNameIfOk()}</a></dd></g:if>

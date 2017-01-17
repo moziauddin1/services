@@ -12,7 +12,7 @@
 %>
 <div class="branch-branch">
     <div class="branch-branch-node">
-        <st:preferedLink target="${node}">
+        <st:preferredLink target="${node}">
             <span class="branch_node ${DomainUtils.getNodeTypeUri(node).asCssClass()}
             ${node.checkedInAt ? node.replacedAt ? 'replaced' : 'current' : 'draft'}
             ${node.synthetic ? 'synthetic' : ''}
@@ -40,7 +40,7 @@
                     (see: ${DomainUtils.getResourceUri(node)?.asQNameIfOk()})
                 </g:elseif>
             </span>
-        </st:preferedLink>
+        </st:preferredLink>
 
         <g:if test="${subnodes && depth < 1 && subnodes.size()>3}">
             <span style="font-size: smaller;"> (${subnodes.size()} subnames)</span>

@@ -11,10 +11,10 @@
     ${node.synthetic ? 'synthetic' : ''}
     ">
         <g:if test="${node.internalType == NodeInternalType.S}">
-            ${DomainUtils.getNodeTypeUri(node)?.asQNameIfOk() ?: 'System node'} <st:preferedLink target="${node}">${node.id}</st:preferedLink>
+            ${DomainUtils.getNodeTypeUri(node)?.asQNameIfOk() ?: 'System node'} <st:preferredLink target="${node}">${node.id}</st:preferredLink>
         </g:if>
         <g:elseif test="${node.internalType == NodeInternalType.Z}">
-            ${DomainUtils.getNodeTypeUri(node)?.asQNameIfOk() ?: 'Temporary node'} <st:preferedLink target="${node}">${node.id}</st:preferedLink>
+            ${DomainUtils.getNodeTypeUri(node)?.asQNameIfOk() ?: 'Temporary node'} <st:preferredLink target="${node}">${node.id}</st:preferredLink>
         </g:elseif>
         <g:elseif test="${node.typeUriIdPart == 'classification-root'}">
             <g:render template="tree" model="${[tree: node.root]}"/>
@@ -22,7 +22,7 @@
             <g:render template="event" model="${[event: node.checkedInAt]}"/>
             to
             <g:render template="event" model="${[event: node.replacedAt]}"/>
-            (node id <st:preferedLink target="${node}">${node.id}</st:preferedLink>)
+            (node id <st:preferredLink target="${node}">${node.id}</st:preferredLink>)
         </g:elseif>
         <g:elseif test="${node.internalType == NodeInternalType.T}">
             <g:if test="${DomainUtils.hasName(node)}">

@@ -27,6 +27,7 @@ class ApcFormatController {
 
     def classificationService
     def linkService
+    def jsonRendererService
 
     static responseFormats = [
             display: ['html'],
@@ -38,7 +39,7 @@ class ApcFormatController {
     }
 
     @Timed()
-    def display(Name name) {
+    display(Name name) {
         if (name) {
             params.product = ConfigService.classificationTreeName
             String inc = g.cookie(name: 'searchInclude')
@@ -56,7 +57,7 @@ class ApcFormatController {
     }
 
     @Timed()
-    def name(Name name) {
+    name(Name name) {
         if (name) {
             log.info "getting ${ConfigService.classificationTreeName} name $name"
             ResultObject model = new ResultObject(getNameModel(name))

@@ -41,7 +41,7 @@ class LinkService {
                         //copy the json response objects to a real ArrayList<Map> which is serializable
                         ArrayList<Map> links = []
                         ArrayList responseLinks = response.json as ArrayList
-                        responseLinks.each {Map linkMap ->
+                        responseLinks.each { Map linkMap ->
                             links.add(new LinkedHashMap(linkMap))
                         }
                         return links
@@ -49,7 +49,7 @@ class LinkService {
                     if (response.status == 404) {
                         String link = addTargetLink(target)
                         if (link) {
-                            return [[link: link, resourceCount: 1, preferred: true]]  as ArrayList<Map>
+                            return [[link: link, resourceCount: 1, preferred: true]] as ArrayList<Map>
                         } else {
                             log.error "Links not found for $target, and couldn't be added."
                             return []
@@ -186,9 +186,9 @@ class LinkService {
             case 'node':
                 Node n = Node.findById(idNumber)
                 if (n && n.root.namespace == ns)
-                    return n;
+                    return n
                 else
-                    return null;
+                    return null
                 break
             default:
                 return null
@@ -321,9 +321,9 @@ class LinkService {
         String mapper = mapper(true)
         try {
             // the sequence here is important, as the identity cache uses getLinks
-            evictIdentityCache(target);
-            evictLinksCache(target);
-            evictLinkCache(target);
+            evictIdentityCache(target)
+            evictLinksCache(target)
+            evictLinkCache(target)
 
             RestResponse response = restCallService.nakedGet("$mapper/admin/deleteIdentifier?$params")
             if (response.status != 200) {
@@ -360,12 +360,12 @@ class LinkService {
             String mapper = mapper(true)
             try {
                 // the sequence here is important, as the identity cache uses getLinks
-                evictIdentityCache(from);
-                evictIdentityCache(to);
-                evictLinksCache(from);
-                evictLinksCache(to);
-                evictLinkCache(from);
-                evictLinkCache(to);
+                evictIdentityCache(from)
+                evictIdentityCache(to)
+                evictLinksCache(from)
+                evictLinksCache(to)
+                evictLinkCache(from)
+                evictLinkCache(to)
 
                 RestResponse response = restCallService.nakedGet("$mapper/admin/moveIdentity?$params")
                 if (response.status != 200) {
@@ -405,7 +405,7 @@ class LinkService {
         return errors
     }
 
-    private def doUsingCache(Cache cache, Object key, Closure c) {
+    private static doUsingCache(Cache cache, Object key, Closure c) {
         if (key && cache.get(key)) {
             return ((Cache.ValueWrapper) cache.get(key)).get()
         }
@@ -445,7 +445,7 @@ class LinkService {
 
     void evictIdentityCache(target) {
         if (target) {
-            getLinksForObject(target).each { mapperIdentityCacheEvict(it.link) };
+            getLinksForObject(target).each { mapperIdentityCacheEvict(it.link as String) }
         }
     }
 

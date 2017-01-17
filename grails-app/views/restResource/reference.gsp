@@ -26,14 +26,14 @@
   <reference data-referenceId="${reference.id}">
     <ref-citation>
       %{--don't reformat the citationHtml line--}%
-      <b>${raw(reference?.citationHtml)}</b> <st:preferedLink target="${reference}"><i
-        class="fa fa-link"></i></st:preferedLink>
+      <b>${raw(reference?.citationHtml)}</b> <st:preferredLink target="${reference}"><i
+        class="fa fa-link"></i></st:preferredLink>
     </ref-citation>
     (<reference-type>${reference.refType.name}</reference-type>)
 
     <reference-author data-authorId="${reference.author?.id}"><i
-        class="fa fa-user"></i> <st:preferedLink
-        target="${reference.author}">${reference.author?.name}</st:preferedLink> <reference-author-role
+        class="fa fa-user"></i> <st:preferredLink
+        target="${reference.author}">${reference.author?.name}</st:preferredLink> <reference-author-role
         class="${reference.refAuthorRole.name}">${reference.refAuthorRole.name}</reference-author-role>
     </reference-author>
 

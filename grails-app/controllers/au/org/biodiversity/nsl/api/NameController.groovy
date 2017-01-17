@@ -20,7 +20,6 @@ import au.org.biodiversity.nsl.*
 import grails.transaction.Transactional
 import org.apache.shiro.SecurityUtils
 import org.grails.plugins.metrics.groovy.Timed
-import org.springframework.http.HttpStatus
 
 import static org.springframework.http.HttpStatus.*
 
@@ -71,12 +70,12 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     static namespace = "api"
 
     @Timed()
-    def index() {
+    index() {
         redirect(uri: '/docs/main.html')
     }
 
     @Timed()
-    def apniFormat(Name name) {
+    apniFormat(Name name) {
         if (name) {
             if (params.embed) {
                 forward(controller: 'apniFormat', action: 'name', id: name.id)
@@ -89,7 +88,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def apniFormatEmbed(Name name) {
+    apniFormatEmbed(Name name) {
         if (name) {
             forward(controller: 'apniFormat', action: 'name', id: name.id)
         } else {
@@ -98,7 +97,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def apcFormat(Name name) {
+    apcFormat(Name name) {
         if (name) {
             if (params.embed) {
                 forward(controller: 'apcFormat', action: 'name', id: name.id)
@@ -111,7 +110,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def apcFormatEmbed(Name name) {
+    apcFormatEmbed(Name name) {
         if (name) {
             forward(controller: 'apcFormat', action: 'name', id: name.id)
         } else {
@@ -120,7 +119,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def nameStrings(Name name) {
+    nameStrings(Name name) {
         withTarget(name) { ResultObject result ->
             result.result = constructedNameService.constructName(name)
             result.result.fullName = constructedNameService.stripMarkUp(result.result.fullMarkedUpName as String)
@@ -139,7 +138,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def delete(Name name, String reason) {
+    delete(Name name, String reason) {
         withTarget(name) { ResultObject result ->
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
@@ -156,9 +155,9 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def family(Name name) {
+    family(Name name) {
         withTarget(name) { ResultObject result ->
-            Name familyName = classificationService.getAPNIFamilyName(name)
+            Name familyName = classificationService.getNameTreeFamilyName(name)
 
             if (familyName) {
                 result << [familyName: familyName]
@@ -170,17 +169,17 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def branch(Name name) {
+    branch(Name name) {
         withTarget(name) { ResultObject result ->
-            List<Name> namesInBranch = classificationService.getPath(name)
+            List<Name> namesInBranch = classificationService.getPathFromNameTree(name)
             result << [branch: namesInBranch]
         }
     }
 
     @Timed()
-    def apc(Name name) {
+    apc(Name name) {
         withTarget(name) { ResultObject result ->
-            Node node = classificationService.isNameInAPC(name)
+            Node node = classificationService.isNameInAcceptedTree(name)
             result << ["inAPC"   : node != null,
                        excluded  : node?.typeUriIdPart == 'ApcExcluded',
                        operation : params.action,
@@ -195,9 +194,9 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def apni(Name name) {
+    apni(Name name) {
         withTarget(name) { ResultObject result ->
-            Node node = classificationService.isNameInAPNI(name)
+            Node node = classificationService.isNameInNameTree(name)
             result << ["inAPNI"  : node != null,
                        operation : params.action,
                        "nsl-name": name.id,
@@ -209,7 +208,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def nameUpdateEventUri(String uri) {
+    nameUpdateEventUri(String uri) {
         if (request.method == 'PUT') {
             log.info "Adding $uri to event notification list"
             nameService.nameEventRegister(uri)
@@ -227,7 +226,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
      * @param name
      */
     @Timed()
-    def acceptableName(String name) {
+    acceptableName(String name) {
         if (name) {
             List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
             List<Name> names = Name.executeQuery('''
@@ -259,7 +258,7 @@ order by n.simpleName asc''',
     }
 
     @Timed()
-    def findConcept(Name name, String term) {
+    findConcept(Name name, String term) {
         log.debug "search concepts for $term"
         withTarget(name) { ResultObject result ->
             List<String> terms = term.replaceAll('(,|&)', '').split(' ')
@@ -286,7 +285,7 @@ order by n.simpleName asc''',
     }
 
     @Timed()
-    def apniConcepts(Name name, Boolean relationships) {
+    apniConcepts(Name name, Boolean relationships) {
         if (relationships == null) {
             relationships = true
         }
@@ -402,17 +401,16 @@ order by n.simpleName asc''',
         }
     }
 
-
     //see NSL-1805
     @Timed
-    def taxonSearch() {
+    taxonSearch() {
         def json = request.JSON
         Map searchParams = params
         if (json) {
             searchParams = new LinkedHashMap(json as Map)
         }
 
-        Map taxonRecords = flatViewService.taxonSearch(searchParams.q)
+        Map taxonRecords = flatViewService.taxonSearch(searchParams.q as String)
 
         ResultObject result = new ResultObject([records: taxonRecords])
         //noinspection GroovyAssignabilityCheck
@@ -449,10 +447,53 @@ order by n.simpleName asc''',
 class ResultObject {
     @Delegate
     Map data
-
-    HttpStatus status = OK
+    JsonRendererService jsonRendererService1
 
     ResultObject(Map data) {
         this.data = data
+        data.status = OK
+    }
+
+    ResultObject(Map data, JsonRendererService jsonRendererService) {
+        this.data = data
+        this.jsonRendererService1 = jsonRendererService
+        data.status = OK
+    }
+
+    def error(String error) {
+        if (data.error) {
+            data.error += "\n error"
+        } else {
+            data.error = error
+        }
+    }
+
+    def briefObject(Object target, String key = null) {
+        if(!key) {
+            key = target.class.simpleName.toLowerCase()
+        }
+        if (jsonRendererService1) {
+            switch (target.class.simpleName) {
+                case 'Instance':
+                    data[key] = jsonRendererService1.getBriefInstance(target as Instance)
+                    break
+                case 'Name':
+                    data[key] = jsonRendererService1.getBriefName(target as Name)
+                    break
+                case 'Reference':
+                    data[key] = jsonRendererService1.getBriefReference(target as Reference)
+                    break
+                case 'Author':
+                    data[key] = jsonRendererService1.getBriefAuthor(target as Author)
+                    break
+                case 'InstanceNote':
+                    data[key] = jsonRendererService1.getBriefInstanceNote(target as InstanceNote)
+                    break
+                default:
+                    data[key] = jsonRendererService1.brief(target)
+            }
+        } else {
+            throw new Exception("You need to set jsonRendererService on the result object to call addBriefObject")
+        }
     }
 }

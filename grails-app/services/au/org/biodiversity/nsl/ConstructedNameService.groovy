@@ -21,7 +21,7 @@ class ConstructedNameService {
     def classificationService
     static transactional = false
 
-    public static String stripMarkUp(String string) {
+    static String stripMarkUp(String string) {
         string?.replaceAll(/<[^>]*>/, '')?.replaceAll(/(&lsquo;|&rsquo;)/, "'")?.trim()
     }
 
@@ -34,24 +34,20 @@ class ConstructedNameService {
      * @param simpleName
      * @return sort name string
      */
-    public String makeSortName(Name name, String simpleName) {
+    String makeSortName(Name name, String simpleName) {
 
         String abbrev = name.nameRank.abbrev
         String sortName = simpleName.toLowerCase()
-                              .replaceAll(/^x /, '') //remove hybrid marks
-                              .replaceAll(/ (x|\+|-) /, ' ') //remove hybrid marks
-                              .replaceAll(" $abbrev ", ' ') //remove rank abreviations
-                              .replaceAll(/ MS$/, '') //remove manuscript
+                                    .replaceAll(/^x /, '') //remove hybrid marks
+                                    .replaceAll(/ (x|\+|-) /, ' ') //remove hybrid marks
+                                    .replaceAll(" $abbrev ", ' ') //remove rank abreviations
+                                    .replaceAll(/ MS$/, '') //remove manuscript
 
         return sortName
     }
 
     Map constructName(Name name) {
         constructName(name, null, 0)
-    }
-
-    Map constructName(Name name, Name parent) {
-        constructName(name, parent, null, 0)
     }
 
     Map constructName(Name name, Integer nextRank, Integer count) {
@@ -140,7 +136,7 @@ class ConstructedNameService {
 
         String rank = makeRankString(parent, name)
 
-        String connector = makeConnectorString(name, precedingName, rank)
+        String connector = makeConnectorString(name, rank)
 
         String el = "<element class='${name.nameElement}'>${name.nameElement}</element>"
         Map nameElement = [fullMarkedUpName: el, simpleMarkedUpName: el]
@@ -194,7 +190,7 @@ class ConstructedNameService {
         }
     }
 
-    public String makeConnectorString(Name name, Map precedingName, String rank) {
+    String makeConnectorString(Name name, String rank) {
         if ((name.nameType.connector) &&
                 !(rank && name.nameType.connector == 'x' && name.nameRank.abbrev.startsWith('notho'))
         ) {
@@ -204,7 +200,7 @@ class ConstructedNameService {
         }
     }
 
-    public String makeRankString(Name parent, Name name) {
+    String makeRankString(Name parent, Name name) {
         if (parent && name.nameRank?.visibleInName && !name.nameType.formula) {
             if (name.nameRank.name == '[unranked]' && name.verbatimRank) {
                 return "<rank id='${name.nameRank?.id}'>${name.verbatimRank}</rank>"
@@ -246,10 +242,6 @@ class ConstructedNameService {
 
     private static String filterPrecedingName(String string) {
         string.replaceAll(/ (<manuscript>MS<\/manuscript>)/, '')
-    }
-
-    public String getAuthorityFromFullNameHTML(String fullName) {
-        stripMarkUp(fullName.replaceAll(/^.*<authors>(.*)<\/authors>.*$/, '$1'))
     }
 
     String constructAuthor(Name name) {
@@ -311,8 +303,7 @@ class ConstructedNameService {
             return namesInBranch.reverse().find { it.nameRank.major }
         } else {
             log.error "no name tree path for $parent checking tree"
-            List<Name> namesInBranch = classificationService.getPath(parent)
-            //todo make name tree paths ?
+            List<Name> namesInBranch = classificationService.getPathFromNameTree(parent)
             if (namesInBranch) {
                 return namesInBranch.reverse().find {
                     if (it) {

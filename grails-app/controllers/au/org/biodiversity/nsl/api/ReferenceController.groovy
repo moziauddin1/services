@@ -33,17 +33,31 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
     def referenceService
     def jsonRendererService
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
-    static responseFormats = ['json', 'xml', 'html']
+    static responseFormats = [
+            index            : ['html'],
+            citationStrings  : ['json', 'xml', 'html'],
+            delete           : ['json', 'xml', 'html'],
+            deduplicateMarked: ['json', 'xml', 'html'],
+            move             : ['json', 'xml', 'html']
+    ]
+
+    static allowedMethods = [
+            citationStrings  : ["GET", "PUT"],
+            delete           : ["GET", "DELETE"],
+            deduplicateMarked: ["DELETE"],
+            move             : ["DELETE"]
+    ]
+
     static namespace = "api"
 
     def list(Integer max) {
         params.max = Math.min(max ?: 10, 100)
-        respond Reference.list(params), [status: OK]
+        def refs = Reference.list(params)
+        respond(refs, [status: OK, view: '/common/serviceResult', model: [data: [max: params.max, references: refs]]])
     }
 
     @Timed()
-    def citationStrings(Reference reference) {
+    citationStrings(Reference reference) {
         withTarget(reference) { ResultObject result ->
 
             Author unknownAuthor = Author.findByName('-')
@@ -67,7 +81,7 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
     }
 
     @Timed()
-    def delete(Reference reference, String reason) {
+    delete(Reference reference, String reason) {
         withTarget(reference) { ResultObject result ->
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
@@ -85,33 +99,32 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     @RequiresRoles('admin')
-    def move(Reference reference, Long target, String user) {
+    move(Reference reference, Long target, String user) {
         Reference targetRef = null
         if (target) {
             targetRef = Reference.get(target)
         }
-        withTarget(reference, "source Reference") { ResultObject result1 ->
-            withTarget(targetRef, "target Reference ($target)") { ResultObject result ->
-                if (!user) {
-                    user = SecurityUtils.subject.principal.toString()
-                }
-                if(targetRef == reference) {
-                    result.status = BAD_REQUEST
-                    result.ok = false
-                    result.error = "Source and target are the same. Here I am, brain the size of a planet...."
-                    return
-                }
-                result << referenceService.moveReference(reference, targetRef, user)
-                if (!result.ok) {
-                    result.status = FORBIDDEN
-                }
+
+        withTargets(["source Reference": reference, "target Reference": targetRef]) { ResultObject result ->
+            if (!user) {
+                user = SecurityUtils.subject.principal.toString()
+            }
+            if (targetRef == reference) {
+                result.status = BAD_REQUEST
+                result.ok = false
+                result.error("Source and target are the same, but shouldn't be.")
+                return
+            }
+            result << referenceService.moveReference(reference, targetRef, user)
+            if (!result.ok) {
+                result.status = FORBIDDEN
             }
         }
     }
 
     @Timed()
     @RequiresRoles('admin')
-    def deduplicateMarked(String user){
+    deduplicateMarked(String user) {
         if (!user) {
             user = SecurityUtils.subject.principal.toString()
         }

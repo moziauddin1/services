@@ -70,6 +70,7 @@ class RestCallService {
             if (data && data instanceof Map && data.error) {
                 throw new RestCallException("Service error: ${data?.error}")
             }
+            //noinspection ChangeToOperator for JSON must use the equals method
             if (data.equals(null)) {
                 data = null //turn it into a real null
             }
@@ -84,9 +85,6 @@ class RestCallService {
 }
 
 class RestCallException extends Throwable {
-    RestCallException() {
-        super()
-    }
 
     RestCallException(String message) {
         super(message)
@@ -96,7 +94,4 @@ class RestCallException extends Throwable {
         super(message, cause)
     }
 
-    RestCallException(Throwable cause) {
-        super(cause)
-    }
 }

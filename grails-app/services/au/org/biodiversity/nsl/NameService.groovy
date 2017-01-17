@@ -183,7 +183,7 @@ class NameService {
      * @param name
      * @return a map with ok and a list of error Strings
      */
-    public Map canDelete(Name name, String reason) {
+    Map canDelete(Name name, String reason) {
         List<String> errors = []
         if (!reason) {
             errors << 'You need to supply a reason for deleting this name.'
@@ -277,7 +277,7 @@ class NameService {
         }
 
         Link parentLink = null
-        if(node) { //check the parent link of the existing node matches the current parent
+        if (node) { //check the parent link of the existing node matches the current parent
             parentLink = node.supLink.find { Link link ->
                 link.supernode.next == null && link.supernode.name == name.parent
             }
@@ -351,7 +351,7 @@ class NameService {
     }
 
     void notifyNameEvent(Name name, String type) {
-        if(!restClients.empty) {
+        if (!restClients.empty) {
             runAsync {
                 String link = linkService.getPreferredLinkForObject(name)
                 restClients.each { String uri ->
@@ -491,7 +491,7 @@ and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPar
         }')""")?.first() as Integer
     }
 
-    public static chunkThis(Integer chunkSize, Closure query, Closure work) {
+    static chunkThis(Integer chunkSize, Closure query, Closure work) {
 
         Integer i = 0
         Integer size = chunkSize

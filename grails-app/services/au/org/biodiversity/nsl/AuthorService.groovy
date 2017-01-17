@@ -55,6 +55,10 @@ class AuthorService {
         }
     }
 
+    def deduplicate(Author duplicate, Author target) {
+        dedupe([duplicate], target)
+    }
+
     private void dedupe(List<Author> authors, Author targetAuthor) {
         authors.each { Author dupeAuthor ->
             if (dupeAuthor != targetAuthor) {

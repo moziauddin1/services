@@ -25,12 +25,12 @@
   <person>
 
     <g:if test="${author?.abbrev}">
-      <b>${author.abbrev}</b> <st:preferedLink target="${author}"><i class="fa fa-link"></i></st:preferedLink>
+      <b>${author.abbrev}</b> <st:preferredLink target="${author}"><i class="fa fa-link"></i></st:preferredLink>
       <span class="text-muted">Name author</span>
     </g:if>
 
     <g:if test="${author?.name}">
-      <b>${author.name}</b> <st:preferedLink target="${author}"><i class="fa fa-link"></i></st:preferedLink>
+      <b>${author.name}</b> <st:preferredLink target="${author}"><i class="fa fa-link"></i></st:preferredLink>
       <span class="text-muted">Reference author</span>
     </g:if>
 

@@ -7,11 +7,11 @@ class AdminService {
 
     private Boolean servicing = false
 
-    public Boolean serviceMode() {
+    Boolean serviceMode() {
         return servicing
     }
 
-    public Boolean enableServiceMode(Boolean on) {
+    Boolean enableServiceMode(Boolean on) {
         servicing = on
     }
 

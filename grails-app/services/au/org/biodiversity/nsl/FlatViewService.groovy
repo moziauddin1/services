@@ -433,11 +433,11 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
     }
 
 
-    public File exportTaxonToCSV() {
+    File exportTaxonToCSV() {
         exportToCSV(TAXON_VIEW, "${ConfigService.classificationTreeName}-taxon", taxonView)
     }
 
-    public File exportNamesToCSV() {
+    File exportNamesToCSV() {
         exportToCSV(NAME_VIEW, "${ConfigService.nameTreeName}-names", nameView)
     }
 
@@ -451,15 +451,15 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
                 log.debug "creating $viewName view for export."
                 createView(configService.nameSpace.name.toLowerCase(), viewName, sql, viewDefn)
             }
-            DataExportService.sqlCopyToCsvFile("SELECT * FROM $viewName",outputFile, sql)
+            DataExportService.sqlCopyToCsvFile("SELECT * FROM $viewName", outputFile, sql)
         }
         return outputFile
     }
 
-    public Map findNameRow(Name name, String namespace = configService.nameSpace.name.toLowerCase()) {
+    Map findNameRow(Name name, String namespace = configService.nameSpace.name.toLowerCase()) {
         String query = "select * from $NAME_VIEW where \"scientificNameID\" = 'http://id.biodiversity.org.au/name/$namespace/$name.id'"
-        List<Map> results = executeQuery(query,[])
-        if(results.size()) {
+        List<Map> results = executeQuery(query, [])
+        if (results.size()) {
             return results.first()
         }
         return null
@@ -472,23 +472,23 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
      * @param nameQuery - the query name
      * @return a Map of synonyms and accepted names that match the query
      */
-    public Map taxonSearch(String name) {
+    Map taxonSearch(String name) {
         String nameQuery = name.toLowerCase()
         Map results = [:]
         String query = "select * from $TAXON_VIEW where lower(\"canonicalName\") like ? or lower(\"scientificName\") like ? limit 100"
-        List<Map> allResults = executeQuery(query,[nameQuery, nameQuery])
+        List<Map> allResults = executeQuery(query, [nameQuery, nameQuery])
         List<Map> acceptedResults = allResults.findAll { Map result ->
             result.acceptedNameUsage == null
         }
         allResults.removeAll(acceptedResults)
-        if(!allResults.empty) {
+        if (!allResults.empty) {
             results.synonyms = allResults
         }
         results.acceptedNames = [:]
         acceptedResults.each { Map result ->
-            results.acceptedNames[result.scientificNameID] = result
+            results.acceptedNames[result.scientificNameID as String] = result
             List<Map> synonyms = executeQuery("select * from $TAXON_VIEW where \"acceptedNameUsage\" = ? limit 100", [result.scientificName])
-            results.acceptedNames[result.scientificNameID].synonyms = synonyms
+            results.acceptedNames[result.scientificNameID as String].synonyms = synonyms
         }
         return results
 
@@ -507,7 +507,7 @@ AS exists"""
         return rowResult.exists
     }
 
-    private def withSql(Closure work) {
+    private withSql(Closure work) {
         Sql sql = configService.getSqlForNSLDB()
         try {
             work(sql)
@@ -517,7 +517,7 @@ AS exists"""
 
     }
 
-    private List<Map> executeQuery(String query, List params){
+    private List<Map> executeQuery(String query, List params) {
         log.debug "executing query: $query, $params"
         List results = []
         withSql { Sql sql ->
