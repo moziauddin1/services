@@ -50,15 +50,17 @@ trait WithTarget {
     def withTargets(Map targets, Closure work) {
         assert jsonRendererService
         ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+        boolean ok = true
         for (key in targets.keySet()) {
             if (!targets[key]) {
                 result.status = NOT_FOUND
                 result.error("$key not found.")
+                ok = false
             } else {
                 result.briefObject(targets[key], key as String)
             }
         }
-        if(!result.error) {
+        if(ok) {
             work(result)
         }
         log.debug "result status is ${result.status}"

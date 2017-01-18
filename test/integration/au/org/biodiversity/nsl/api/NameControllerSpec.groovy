@@ -16,22 +16,16 @@
 
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.JsonRendererService
 import au.org.biodiversity.nsl.LinkService
 import au.org.biodiversity.nsl.Name
 import grails.test.mixin.TestFor
-import grails.test.mixin.TestMixin
-import grails.test.mixin.domain.DomainClassUnitTestMixin
 import spock.lang.Specification
 
 @TestFor(NameController)
-@TestMixin(DomainClassUnitTestMixin)
 class NameControllerSpec extends Specification {
     static transactional = false
 
     def setup() {
-//        controller.transactionManager = getTransactionManager()
-//        controller.jsonRendererService = new JsonRendererService()
         def linkServiceMock = mockFor(LinkService)
         linkServiceMock.demand.getLinksForObject(0..1) { Object thing -> ["first $thing link", "second $thing link"] }
         linkServiceMock.demand.getPreferredLinkForObject(0..1) { Object thing -> "Link for $thing" }

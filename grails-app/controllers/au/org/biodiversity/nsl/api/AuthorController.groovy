@@ -45,6 +45,7 @@ class AuthorController implements UnauthenticatedHandler, WithTarget {
                 result.status = OK
                 result.ok = true
             } catch (e) {
+                e.printStackTrace()
                 result.error "Could not deduplicate: $e.message"
                 result.status = INTERNAL_SERVER_ERROR
                 result.ok = false

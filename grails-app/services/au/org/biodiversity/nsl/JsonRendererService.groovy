@@ -22,13 +22,11 @@ import au.org.biodiversity.nsl.tree.ServiceException
 import au.org.biodiversity.nsl.tree.Uri
 import grails.converters.JSON
 import grails.converters.XML
-import grails.transaction.Transactional
 import org.hibernate.Hibernate
 import org.hibernate.proxy.HibernateProxy
 import org.springframework.context.MessageSource
 import org.springframework.context.NoSuchMessageException
 
-@Transactional
 class JsonRendererService {
 
     def grailsApplication
