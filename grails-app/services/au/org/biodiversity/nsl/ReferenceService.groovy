@@ -28,6 +28,8 @@ class ReferenceService {
     def linkService
     def nameService
 
+    private List<Long> seen = []
+
     /**
      * Create a reference citation from reference
      *
@@ -491,6 +493,30 @@ class ReferenceService {
         }
     }
 
+    @Transactional
+    authorUpdated(Author author, Notification note) {
+        if (seen.contains(note.id)) {
+            log.info "seen note, skipping $note"
+            return
+        }
+        seen.add(note.id)
+
+        Author unknownAuthor = Author.findByName('-')
+        RefAuthorRole editor = RefAuthorRole.findByName('Editor')
+
+        author.references.each {Reference reference ->
+            String citationHtml = generateReferenceCitation(reference, unknownAuthor, editor)
+
+            if (reference.citationHtml != citationHtml) {
+                reference.citationHtml = citationHtml
+                reference.citation = ConstructedNameService.stripMarkUp(citationHtml)
+                reference.save()
+                log.debug "saved $reference.citationHtml"
+            } else {
+                reference.discard()
+            }
+        }
+    }
 }
 
 class ReferenceStringCategory {

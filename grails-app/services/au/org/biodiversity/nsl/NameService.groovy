@@ -263,7 +263,6 @@ class NameService {
         author.namesForExBaseAuthor.each { Name name ->
             updateFullName(name)
         }
-        //todo update references for author
     }
 
     private Node updateAPNITree(Name name) {

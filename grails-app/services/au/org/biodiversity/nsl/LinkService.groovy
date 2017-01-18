@@ -24,7 +24,6 @@ import org.grails.plugins.metrics.groovy.Timed
 import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
 
-@Transactional
 class LinkService {
     def restCallService
     def grailsApplication
