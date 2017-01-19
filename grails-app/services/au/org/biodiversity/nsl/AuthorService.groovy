@@ -17,6 +17,7 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
+import org.springframework.transaction.TransactionStatus
 
 @Transactional
 class AuthorService {
@@ -55,18 +56,50 @@ class AuthorService {
         }
     }
 
-    private void dedupe(List<Author> authors, Author targetAuthor) {
-        authors.each { Author dupeAuthor ->
-            if (dupeAuthor != targetAuthor) {
-                rewireDuplicateTo(targetAuthor, dupeAuthor)
-                log.debug "move links to $targetAuthor from $dupeAuthor"
-                linkService.moveTargetLinks(dupeAuthor, targetAuthor)
-                log.info "About to delete $dupeAuthor"
-                dupeAuthor.delete()
-                targetAuthor.duplicateOf = null
-                targetAuthor.save()
+    Map deduplicate(Author duplicate, Author target) {
+        dedupe([duplicate], target)
+    }
+
+    private Map dedupe(List<Author> duplicateAuthors, Author targetAuthor) {
+        Map results = [success: true, target: targetAuthor, deduplicationResults: []]
+        duplicateAuthors.each { Author dupeAuthor ->
+            Map result = [duplicateAuthor: dupeAuthor.id]
+            Boolean success = true
+            Author.withNewTransaction { TransactionStatus tx ->
+                if (dupeAuthor != targetAuthor) {
+                    try {
+                        rewireDuplicateTo(targetAuthor, dupeAuthor)
+                        result.rewired = true
+
+                        log.debug "move links to $targetAuthor from $dupeAuthor"
+
+                        Map linkResult = linkService.moveTargetLinks(dupeAuthor, targetAuthor)
+                        if (!linkResult.success) {
+                            throw new Exception("relinking [$dupeAuthor] failed: ($linkResult.errors)")
+                        }
+
+                        result.relinked = true
+                        log.info "About to delete $dupeAuthor"
+                        dupeAuthor.delete()
+                        targetAuthor.duplicateOf = null
+                        targetAuthor.save()
+                    } catch (e) {
+//                        e.printStackTrace()
+                        result.error = "Deduplication failed: ($e.message)"
+                        tx.setRollbackOnly()
+                        success = false
+                    }
+                } else {
+                    result.error = "Duplicate ($dupeAuthor) = Target ($targetAuthor)"
+                    success = false
+                }
+                if(!success) { //flag overall failure
+                    results.success = false
+                }
+                results.deduplicationResults << result
             }
         }
+        return results
     }
 
     /**

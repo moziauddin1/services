@@ -520,6 +520,57 @@ class TreeJsonViewController {
         ] as JSON)
 
     }
+
+    def listChanges(UriParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return render(status: 400) { result as JSON }
+        }
+
+        Object n = linkService.getObjectForLink(param.uri);
+
+        if (!(n instanceof Node)) {
+            return render(status: 400) {
+                [
+                        success: false,
+                        msg    : [
+                                [msg: "${param.uri} does not appear to be a node"]
+                        ]
+                ]
+            }
+        }
+
+        Node node = (Node) n;
+
+        if(!node.prev) {
+            return render(status: 200) {
+                [
+                        success: true,
+                        msg    : [
+                                [msg: "This node does not have a previous version with which to compare it."]
+                        ]
+                ]
+            }
+        }
+
+        def changes = queryService.findDifferences(node.prev, node);
+
+        return render([
+                success: true,
+                changes: changes
+        ] as JSON)
+    }
+
 }
 
 @Validateable

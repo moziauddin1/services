@@ -16,8 +16,6 @@
 
 package au.org.biodiversity.nsl
 
-import grails.util.Environment
-import groovy.sql.Sql
 import org.grails.plugins.metrics.groovy.Timed
 
 class SearchService {
@@ -138,18 +136,18 @@ class SearchService {
         log.debug query
         log.debug queryParams
         Long start = System.currentTimeMillis()
-        List counter = (Name.executeQuery(countQuery, queryParams, [max: max])) as List<List>
+        List<List> counter = (Name.executeQuery(countQuery, queryParams, [max: max])) as List<List>
         Integer total = 0
         Map count = [:]
         counter.each { c ->
             total += c[0] as Integer
             count.put(c[1], c[0])
         }
-        List names = (Name.executeQuery(query, queryParams, [max: max])) as List<List>
+        List<List> nameResults = (Name.executeQuery(query, queryParams, [max: max])) as List<List>
         log.debug "query took ${System.currentTimeMillis() - start}ms"
         //filter for just names.
-        names = names.collect { result ->
-            result[0]
+        List<Name> names = nameResults.collect { result ->
+            result[0] as Name
         }
 
         return [count: count, total: total, names: names, queryTime: (System.currentTimeMillis() - start)]
@@ -239,20 +237,20 @@ class SearchService {
                 .trim()
     }
 
-    public static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
+    static String tokenizeQueryString(String query, boolean leadingWildCard = false) {
         use(SearchQueryCategory) {
             if (query.startsWith('"') && query.endsWith('"')) {
-                return query.dequote()
+                return query.topAndTail()
             }
             (leadingWildCard ? '%' : '') + query.compressSpaces() + '%'
         }
     }
 
-    public static String regexTokenizeReferenceQueryString(String query, boolean leadingWildCard = false) {
+    static String regexTokenizeReferenceQueryString(String query, boolean leadingWildCard = false) {
         use(SearchQueryCategory) {
             if (query.startsWith('"') && query.endsWith('"')) {
                 return '^' +
-                        query.dequote()
+                        query.topAndTail()
                              .escapeRegexSpecialChars()
                              .sqlToRegexWildCard() + '$'
             }
@@ -264,11 +262,11 @@ class SearchService {
     }
 
 
-    public static String regexTokenizeNameQueryString(String query, boolean leadingWildCard = false) {
+    static String regexTokenizeNameQueryString(String query, boolean leadingWildCard = false) {
         use(SearchQueryCategory) {
             if (query.startsWith('"') && query.endsWith('"')) {
                 return '^' +
-                        query.dequote()
+                        query.topAndTail()
                              .escapeRegexSpecialChars()
                              .sqlToRegexWildCard()
                              .replaceMultiplicationSignWithX() + '$'
@@ -311,7 +309,7 @@ class SearchService {
      * against close matches.
      * @return
      */
-    public List<Map> nameCheck(Map params, Integer max) {
+    List<Map> nameCheck(Map params, Integer max) {
         use(SearchQueryCategory) {
             if ((params.name as String)?.trim()) {
                 LinkedHashSet<String> strings = (params.name as String).trim().split('\n').collect { String nameString ->
@@ -503,7 +501,7 @@ where lower(n.nameElement) like :query and n.instances.size > 0 and n.nameType.c
      * @param set - the set of checkboxes to check are checked
      * @return map of checked checkboxes as [key: 'on', ...]
      */
-    public Map checked(params, String set) {
+    Map checked(params, String set) {
         Map checked = [:]
         params[set].each { k, v ->
             if (v == 'on') {
@@ -518,7 +516,7 @@ where lower(n.nameElement) like :query and n.instances.size > 0 and n.nameType.c
 class SearchQueryCategory {
 
     static String escapeRegexSpecialChars(String query) {
-        return query.replaceAll(/([\.\[\]\(\)\+\?\*\\])/, '\\\\$1')
+        return query.replaceAll(/([.\[\]()+?*\\])/, '\\\\$1')
     }
 
     static String sqlToRegexWildCard(String query) {
@@ -530,10 +528,10 @@ class SearchQueryCategory {
     }
 
     static String compressSpaces(String query) {
-        return query.replaceAll(/[ ]+/, ' ')
+        return query.replaceAll(/[\s]+/, ' ')
     }
 
-    static String dequote(String query) {
+    static String topAndTail(String query) {
         return query.size() > 2 ? query[1..-2] : ""
     }
 

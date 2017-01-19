@@ -82,12 +82,12 @@ class InstanceService {
      * @param instance
      * @return a map with ok and a list of error Strings
      */
-    public Map canDelete(Instance instance, String reason) {
+    Map canDelete(Instance instance, String reason) {
         List<String> errors = []
         if (!reason) {
             errors << 'You need to supply a reason for deleting this instance.'
         }
-        if (classificationService.isInstanceInAPC(instance)) {
+        if (classificationService.isInstanceInAcceptedTree(instance)) {
             errors << "This instance is in APC."
         }
         if (instance.instancesForCites) {
@@ -133,14 +133,14 @@ class InstanceService {
         }
     }
 
-    public List<Instance> findPrimaryInstance(Name name) {
+    List<Instance> findPrimaryInstance(Name name) {
         if (name) {
             return Instance.executeQuery("select i from Instance i where i.name = :name and i.instanceType.primaryInstance = true", [name: name])
         }
         return null
     }
 
-    public List<Instance> sortInstances(List<Instance> instances) {
+    List<Instance> sortInstances(List<Instance> instances) {
         instances.sort { a, b ->
             //NSL-1827 use parent details on references where appropriate
             Integer aRefYear = ReferenceService.findReferenceYear(a.cites?.reference)
@@ -164,7 +164,7 @@ class InstanceService {
         }
     }
 
-    public static Integer compareReferences(Instance a1, Instance b1, String sortOn = null) {
+    static Integer compareReferences(Instance a1, Instance b1, String sortOn = null) {
         Instance a = (sortOn ? a1[sortOn] : a1) as Instance
         Instance b = (sortOn ? b1[sortOn] : b1) as Instance
         if (a && b) {

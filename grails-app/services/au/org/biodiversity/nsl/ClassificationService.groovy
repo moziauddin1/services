@@ -16,9 +16,7 @@
 
 package au.org.biodiversity.nsl
 
-import grails.plugins.rest.client.RestBuilder
 import grails.transaction.Transactional
-import org.codehaus.groovy.grails.commons.GrailsApplication
 
 /**
  * The Classification service is a high level service over the tree service plugin services. It's primary aim is to provide
@@ -35,11 +33,16 @@ class ClassificationService {
 
     /**
      * Get the list of names in the path
+     * Deprecated, use getPathFromNameTree or other getPath methods
      * @param name
      * @return
      */
     @Deprecated
     List<Name> getPath(Name name) {
+        getPathFromNameTree(name)
+    }
+
+    List<Name> getPathFromNameTree(Name name) {
         getPath(name, configService.getNameSpace(), configService.getNameTreeName())
     }
 
@@ -125,7 +128,7 @@ and n.checkedInAt is not null
 and n.next is null
 and (n.instance.id = null or i.draft = false)
 ''', [arrangement: classification, name: name])
-        if(nodes.empty) {
+        if (nodes.empty) {
             return null
         }
         assert nodes.size() == 1
@@ -146,10 +149,15 @@ and (n.instance.id = null or i.draft = false)
         }
     }
 
+    Name getNameTreeFamilyName(Name name) {
+        getFamilyName(name, configService.getNameSpace(), configService.getNameTreeName())
+    }
+
     @Deprecated
     Name getAPNIFamilyName(Name name) {
         getFamilyName(name, configService.getNameSpace(), configService.getNameTreeName())
     }
+
 
     Name getFamilyName(Name name, Namespace namespace, String tree) {
         NameRank familyRank = NameRank.findByName('Familia')
@@ -181,6 +189,7 @@ from Instance i,
         if (instances.size() == 1) {
             return instances.first()
         }
+        return null
     }
 
     @Deprecated

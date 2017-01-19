@@ -14,13 +14,19 @@
     limitations under the License.
 */
 
-package au.org.biodiversity.nsl
+package services
 
-import grails.test.mixin.TestFor
+import au.org.biodiversity.nsl.*
 import spock.lang.Specification
 
-@TestFor(SearchService)
-class NameTreePathSpec extends Specification {
+import static org.springframework.http.HttpStatus.OK
+
+/**
+ *
+ */
+class ClassificationServiceSpec extends Specification {
+
+    def classificationService
 
     def setup() {
     }
@@ -28,11 +34,17 @@ class NameTreePathSpec extends Specification {
     def cleanup() {
     }
 
-    void "test ids are correctly extracted"() {
+    void "Find non draft Node in name tree"() {
         when:
-        NameTreePath nameTreePath = new NameTreePath(nameIdPath: '231182.54697.211565.208772.208959.208797.54408.74428.93305.93310')
+        Arrangement tree = Arrangement.findByLabel('APNI')
+        Name name = Name.get(8020746)
+        Node node = classificationService.findCurrentNonDraftNslName(tree, name)
 
-        then:
-        nameTreePath.namePathIds() == [231182,54697,211565,208772,208959,208797,54408,74428,93305,93310] as List<Long>
+        then: "A node with id 8020783 is returned"
+        node != null
+        node.id == 8020783l
+        node.instance == null
     }
+
+
 }

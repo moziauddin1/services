@@ -329,7 +329,7 @@ class TreeViewService {
         if (!an && !bn) return 0
         if (!an) return -1
         if (!bn) return 1
-        return (an.simpleName ?: '').compareTo(bn.simpleName ?: '')
+        return (an.simpleName ?: '') <=> (bn.simpleName ?: '')
 
     }
 }

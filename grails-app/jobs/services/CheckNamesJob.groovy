@@ -67,6 +67,7 @@ class CheckNamesJob {
                             Author author = Author.get(note.objectId)
                             if (author) {
                                 nameService.authorUpdated(author, note)
+                                referenceService.authorUpdated(author, note)
                             } else {
                                 log.debug "Author $note.objectId  doesn't exist"
                             }

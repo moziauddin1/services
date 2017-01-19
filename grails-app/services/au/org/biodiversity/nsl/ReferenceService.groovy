@@ -26,6 +26,9 @@ class ReferenceService {
 
     def instanceService
     def linkService
+    def nameService
+
+    private List<Long> seen = []
 
     /**
      * Create a reference citation from reference
@@ -110,7 +113,7 @@ class ReferenceService {
 
             String result = bits.findAll { it }.join(' ').removeFullStop()
             assert result != 'true'
-            return result;
+            return result
         }
     }
 
@@ -184,11 +187,11 @@ class ReferenceService {
         }
     }
 
-    public static Integer findReferenceYear(Reference reference) {
-        if(!reference) {
+    static Integer findReferenceYear(Reference reference) {
+        if (!reference) {
             return null
         }
-        if(reference.year) {
+        if (reference.year) {
             return reference.year
         }
 
@@ -198,12 +201,12 @@ class ReferenceService {
         return null
     }
 
-    public void checkReferenceChanges(Reference reference) {
+    void checkReferenceChanges(Reference reference) {
         reconstructChildCitations(reference)
     }
 
     @Transactional
-    public void reconstructChildCitations(Reference parent){
+    void reconstructChildCitations(Reference parent) {
         Author unknownAuthor = Author.findByName('-')
         RefAuthorRole editor = RefAuthorRole.findByName('Editor')
 
@@ -224,8 +227,10 @@ class ReferenceService {
     }
 
     @Transactional
-    def reconstructAllCitations() {
+    reconstructAllCitations() {
         runAsync {
+            String updaterWas = nameService.pollingStatus()
+            nameService.pauseUpdates()
             Closure query = { Map params ->
                 Reference.listOrderById(params)
             }
@@ -252,7 +257,9 @@ class ReferenceService {
                 }
                 log.info "$top done. 1000 took ${System.currentTimeMillis() - start} ms"
             }
-
+            if (updaterWas == 'running') {
+                nameService.resumeUpdates()
+            }
         }
     }
 
@@ -313,7 +320,7 @@ class ReferenceService {
             Reference.withTransaction { t ->
                 Reference.withSession { session ->
                     Timestamp now = new Timestamp(System.currentTimeMillis())
-                    if (source.notes && (!source.notes.equals(target.notes))) {
+                    if (source.notes && source.notes != target.notes) {
                         //copy to the source instances as an instance note
                         if (source.instances.size() > 0) {
                             InstanceNote note = new InstanceNote(
@@ -425,7 +432,7 @@ class ReferenceService {
         return canWeDelete
     }
 
-    public Map canDelete(Reference reference, String reason) {
+    Map canDelete(Reference reference, String reason) {
         List<String> errors = []
 
         if (!reason) {
@@ -486,6 +493,30 @@ class ReferenceService {
         }
     }
 
+    @Transactional
+    authorUpdated(Author author, Notification note) {
+        if (seen.contains(note.id)) {
+            log.info "seen note, skipping $note"
+            return
+        }
+        seen.add(note.id)
+
+        Author unknownAuthor = Author.findByName('-')
+        RefAuthorRole editor = RefAuthorRole.findByName('Editor')
+
+        author.references.each {Reference reference ->
+            String citationHtml = generateReferenceCitation(reference, unknownAuthor, editor)
+
+            if (reference.citationHtml != citationHtml) {
+                reference.citationHtml = citationHtml
+                reference.citation = ConstructedNameService.stripMarkUp(citationHtml)
+                reference.save()
+                log.debug "saved $reference.citationHtml"
+            } else {
+                reference.discard()
+            }
+        }
+    }
 }
 
 class ReferenceStringCategory {

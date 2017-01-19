@@ -39,7 +39,7 @@
       <g:if test="${instanceNote?.instance}">
         <dt>Instance</dt>
         <dd>
-          <st:preferedLink target="${instanceNote?.instance}">${link}</st:preferedLink>
+          <st:preferredLink target="${instanceNote?.instance}">${link}</st:preferredLink>
         </dd>
       </g:if>
 

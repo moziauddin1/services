@@ -29,7 +29,9 @@ class ServiceTagLib {
     def instanceService
     def configService
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     static defaultEncodeAs = 'raw'
+    @SuppressWarnings("GroovyUnusedDeclaration")
     static encodeAsForTags = [encodeHTML: 'raw']
 
     static namespace = "st"
@@ -88,13 +90,13 @@ class ServiceTagLib {
     }
 
     def scheme = { attrs ->
-        def colourScheme = grailsApplication.config.shard.colourScheme
+        String colourScheme = grailsApplication.config.shard.colourScheme
         if (colourScheme) {
             out << colourScheme
         }
     }
 
-    def preferedLink = { attrs, body ->
+    def preferredLink = { attrs, body ->
         def target = attrs.target
         def api = attrs.api
         if (target) {
@@ -105,7 +107,7 @@ class ServiceTagLib {
                     if (api) {
                         link += "/$api"
                     }
-                    out << "<a href='${link}'>"
+                    out << "<a href='${link}'>".toString()
                     out << body(link: link)
                     out << "</a>"
                 } else {
@@ -245,7 +247,7 @@ class ServiceTagLib {
     }
 
     private static String toCamelCase(String text) {
-        return text.toLowerCase().replaceAll("(_)([A-Za-z0-9])", { Object[] it -> it[2].toUpperCase() })
+        return text.toLowerCase().replaceAll("(_)([A-Za-z0-9])", { String[] it -> it[2].toUpperCase() })
     }
 
     def primaryInstance = { attrs, body ->

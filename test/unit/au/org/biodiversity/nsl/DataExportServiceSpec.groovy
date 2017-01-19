@@ -16,9 +16,7 @@
 
 package au.org.biodiversity.nsl
 
-import grails.test.GrailsMock
 import grails.test.mixin.TestFor
-import groovy.sql.Sql
 import spock.lang.Specification
 
 /**
@@ -89,7 +87,7 @@ class DataExportServiceSpec extends Specification {
 
     void "test base output directory"() {
         given:
-        service.grailsApplication = [config: [nslServices: [temp: [file: [directory: "/tmp"]]]]]
+        service.grailsApplication = [config: [shard: [temp: [file: [directory: "/tmp"]]]]]
         File dir = service.getBaseDir()
         if (dir.exists()) {
             //clean up
@@ -130,67 +128,5 @@ class DataExportServiceSpec extends Specification {
         !dir.exists()
     }
 
-    void "test creating taxa csv from db"() {
-        given:
-
-        service.grailsApplication = [config: [nslServices: [temp: [file: [directory: "/tmp", group: 'export']]]]]
-        File baseDir = service.getBaseDir()
-        File outputFile = new File(baseDir, 'test.csv')
-        if (outputFile.exists()) outputFile.delete()
-        Sql sql = Sql.newInstance('jdbc:postgresql://localhost:5432/nsl', 'nsldev', 'nsldev', 'org.postgresql.Driver')
-
-        expect:
-        !outputFile.exists()
-
-        when:
-        service.makeDCAStandaloneInstanceExport(sql, outputFile)
-
-        then:
-        outputFile.exists()
-        outputFile.size() > 0
-
-        when: "I delete the file"
-        outputFile.delete()
-
-        then: "it is gone"
-        !outputFile.exists()
-    }
-
-    void "test creating resource csv from db"() {
-        given:
-
-        service.grailsApplication = [config: [nslServices: [temp: [file: [directory: "/tmp"]]]]]
-        File baseDir = service.getBaseDir()
-        File outputFile = new File(baseDir, 'test-relationship.csv')
-        if (outputFile.exists()) outputFile.delete()
-        Sql sql = Sql.newInstance('jdbc:postgresql://localhost:5432/nsl', 'nsldev', 'nsldev', 'org.postgresql.Driver')
-
-        expect:
-        !outputFile.exists()
-
-        when:
-        service.makeDCARelationshipInstanceExportTable(sql, outputFile)
-
-        then:
-        outputFile.exists()
-        outputFile.size() > 0
-
-        when: "I delete the file"
-        outputFile.delete()
-
-        then: "it is gone"
-        !outputFile.exists()
-    }
-
-    void "test creating the darwin core archive zip"() {
-        given: "we set it up"
-        service.grailsApplication = [config: [nslServices: [temp: [file: [directory: "/tmp"]]]]]
-
-        File zipFile = service.exportDarwinCoreArchiveFilesToCSV()
-
-        expect: "the zip file to exist"
-
-        zipFile.exists()
-    }
-
+    //removed tests for currently unused or removed functions.
 }

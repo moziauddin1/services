@@ -55,6 +55,10 @@ body.local {
     background-color: rgba(159, 255, 0, 0.08);
 }
 
+body.stage {
+    background-color: #a3cbdd;
+}
+
 div.logo {
     font-size: 1.5em;
     color: darkolivegreen;

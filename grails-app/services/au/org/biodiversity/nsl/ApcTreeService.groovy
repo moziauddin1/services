@@ -16,17 +16,14 @@
 
 package au.org.biodiversity.nsl
 
-import au.org.biodiversity.nsl.tree.*
 import grails.transaction.Transactional
 import org.codehaus.groovy.grails.commons.GrailsApplication
-import org.hibernate.Session
 import org.hibernate.SessionFactory
 import org.hibernate.jdbc.Work
 
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.sql.Statement
 
 /**
  * This class contains code that is specific to the APC tree in NSL.
@@ -38,33 +35,18 @@ import java.sql.Statement
 class ApcTreeService {
     GrailsApplication grailsApplication
     SessionFactory sessionFactory_nsl
-    BasicOperationsService basicOperationsService;
-    QueryService queryService
-    VersioningService versioningService;
 
-    static class ApcData {
-        Long node_id;
-        Long instance_id;
-        Long name_id;
-        String inst_apc_comment;
-        String inst_apc_dist;
-        String tree_apc_comment;
-        String tree_apc_dist;
-        boolean comment_diff;
-        boolean dist_diff;
-    }
-
-    def transferApcProfileData(Namespace namespace, String classificationTreeLabel) {
+    def transferApcProfileData() {
         log.info "applying instance APC comments and distribution text to the APC tree"
 
         sessionFactory_nsl.getCurrentSession().doWork(new Work() {
             void execute(Connection connection) throws SQLException {
-                Closure getN = { sql ->
-                    ResultSet rs = connection.createStatement().executeQuery(sql);
-                    rs.next();
-                    int n = rs.getInt(1);
-                    rs.close();
-                    return n;
+                Closure getN = { String sqlQuery ->
+                    ResultSet rs = connection.createStatement().executeQuery(sqlQuery)
+                    (++rs)
+                    int n = rs.getInt(1)
+                    rs.close()
+                    return n
                 }
 
                 int eventId = getN('''select id from tree_event where note = 'APC import - create empty classification' ''')
@@ -109,7 +91,7 @@ AND NOT exists (
                 connection.createStatement().execute('''
 DROP TABLE IF  EXISTS tmp_instance_note_nodes
 '''
-                );
+                )
 
                 connection.createStatement().execute('''
 CREATE TEMPORARY TABLE IF NOT EXISTS tmp_instance_note_nodes (
@@ -119,10 +101,11 @@ note_key CHARACTER VARYING(255) NOT NULL,
 node_id BIGINT NOT NULL
 )
 ON COMMIT DELETE ROWS'''
-                );
+                )
 
                 log.debug "populating temp table"
                 // this is not frequently executed, so I'll just put the ids in the string with groovy
+                //noinspection SqlResolve
                 connection.createStatement().execute("""
 insert into tmp_instance_note_nodes
 select instance_note.id,
@@ -139,14 +122,16 @@ and exists (
   and (tree_arrangement.id = ${apcId} or tree_arrangement.base_arrangement_id = ${apcId})
 )
 """
-                );
+                )
 
+                //noinspection SqlResolve
                 ResultSet rs = connection.createStatement().executeQuery("SELECT count(*) n FROM tmp_instance_note_nodes ")
-                rs.next()
+                ++rs
                 log.debug "${rs.getInt('n')} values found"
                 rs.close()
 
                 log.debug "creating value nodes"
+                //noinspection SqlResolve
                 connection.createStatement().execute("""
 insert into tree_node(
   id,
@@ -171,9 +156,10 @@ select
   case nn.note_key when 'APC Comment' then 'string' when 'APC Dist.' then 'distributionstring' end--type_uri_id_part
 from tmp_instance_note_nodes nn join instance_note on nn.instance_note_id = instance_note.id
 """
-                );
+                )
 
                 log.debug "creating links to value nodes"
+                //noinspection SqlResolve
                 connection.createStatement().execute("""
 insert into tree_link(
   id,
@@ -201,200 +187,19 @@ join tree_node n on a.id = n.tree_arrangement_id
 join tmp_instance_note_nodes nn on n.instance_id = nn.instance_id
 where (a.id = ${apcId} or a.base_arrangement_id = ${apcId})
 """
-                );
+                )
 
 
                 log.debug "dropping temp table"
                 connection.createStatement().execute('''
 DROP TABLE IF  EXISTS instance_note_nodes
 '''
-                );
+                )
 
             }
         })
 
         return "All comments and distributions reset."
     }
-
-    private List<ApcData> getFixups() {
-        List<ApcData> fixups = new ArrayList<ApcData>();
-
-        Session s = sessionFactory_nsl.getCurrentSession()
-        s.doWork(new Work() {
-            @Override
-            void execute(Connection connection) throws SQLException {
-                Statement stmt = connection.createStatement();
-                try {
-                    ResultSet rs = stmt.executeQuery('''
-WITH zz AS (
-SELECT tax.id node_id, instance.id instance_id, instance.name_id name_id,
-  (SELECT max(value)
-    FROM instance_note n
-    JOIN instance_note_key nk ON n.instance_note_key_id=nk.id
-    WHERE n.instance_id = instance.id
-    AND nk.name='APC Comment\'
-  ) AS inst_apc_comment,
-  (SELECT max(value)
-    FROM instance_note n
-    JOIN instance_note_key nk ON n.instance_note_key_id=nk.id
-    WHERE n.instance_id = instance.id
-    AND nk.name='APC Dist.\'
-  ) AS inst_apc_dist,
-  (SELECT max(lit.literal)
-    FROM tree_link
-    JOIN tree_uri_ns ns ON  tree_link.type_uri_ns_part_id = ns.id
-    JOIN tree_node lit ON tree_link.subnode_id = lit.id
-    WHERE
-        tax.id = tree_link.supernode_id
-    AND ns.label = 'apc-voc\'
-    AND tree_link.type_uri_id_part = 'comment\'
-    AND lit.internal_type = 'V\'
-    ) AS tree_apc_comment,
-  (SELECT max(lit.literal)
-    FROM tree_link
-    JOIN tree_uri_ns ns ON  tree_link.type_uri_ns_part_id = ns.id
-    JOIN tree_node lit ON tree_link.subnode_id = lit.id
-    WHERE
-        tax.id = tree_link.supernode_id
-    AND ns.label = 'apc-voc\'
-    AND tree_link.type_uri_id_part = 'distribution\'
-    AND lit.internal_type = 'V\'
-    ) AS tree_apc_dist
-  FROM tree_arrangement apc_tree
-  JOIN tree_node tax ON apc_tree.id = tax.tree_arrangement_id
-  JOIN instance ON tax.instance_id = instance.id
-  WHERE apc_tree.label = 'APC\'
-    AND tax.checked_in_at_id IS NOT NULL
-    AND tax.replaced_at_id IS NULL
-)
-SELECT
-    CASE WHEN zz.inst_apc_comment IS NULL THEN '***NULLL***' ELSE zz.inst_apc_comment END
-    <>
-    CASE WHEN zz.tree_apc_comment IS NULL THEN '***NULLL***' ELSE zz.tree_apc_comment END
-      COMMENT_DIFF,
-    CASE WHEN zz.inst_apc_dist IS NULL THEN '***NULLL***' ELSE zz.inst_apc_dist END
-    <>
-    CASE WHEN zz.tree_apc_dist IS NULL THEN '***NULLL***' ELSE zz.tree_apc_dist END
-      DIST_DIFF,
-zz.* FROM zz
-WHERE
-    CASE WHEN zz.inst_apc_comment IS NULL THEN '***NULLL***' ELSE zz.inst_apc_comment END
-    <>
-    CASE WHEN zz.tree_apc_comment IS NULL THEN '***NULLL***' ELSE zz.tree_apc_comment END
-  OR
-    CASE WHEN zz.inst_apc_dist IS NULL THEN '***NULLL***' ELSE zz.inst_apc_dist END
-    <>
-    CASE WHEN zz.tree_apc_dist IS NULL THEN '***NULLL***' ELSE zz.tree_apc_dist END
-''');
-                    try {
-                        while (rs.next()) {
-                            ApcData d = new ApcData();
-                            d.node_id = rs.getLong('node_id');
-                            if (rs.wasNull()) d.node_id = null;
-                            d.instance_id = rs.getLong('node_id');
-                            if (rs.wasNull()) d.instance_id = null;
-                            d.name_id = rs.getLong('node_id');
-                            if (rs.wasNull()) d.name_id = null;
-
-                            d.inst_apc_comment = rs.getString('inst_apc_comment')
-                            d.inst_apc_dist = rs.getString('inst_apc_dist')
-                            d.tree_apc_comment = rs.getString('tree_apc_comment')
-                            d.tree_apc_dist = rs.getString('tree_apc_dist')
-
-                            d.comment_diff = rs.getBoolean('comment_diff');
-                            d.dist_diff = rs.getBoolean('dist_diff');
-
-                            fixups.add(d);
-                        }
-
-                    } finally {
-                        rs.close();
-                    }
-                } finally {
-                    stmt.close()
-                }
-
-            }
-        });
-
-        return fixups;
-
-    }
-
-    private fixupProfileItem(ApcData fixup, Arrangement tempSpace) {
-        // ok either check out the node and grab the checked out node, or
-        // find the node already checked out.
-
-        if (fixup.comment_diff) log.debug("set comment on ${fixup.instance_id} from ${fixup.tree_apc_comment} to ${fixup.inst_apc_comment}")
-        if (fixup.dist_diff) log.debug("set dist on ${fixup.instance_id} from ${fixup.tree_apc_dist} to ${fixup.inst_apc_dist}")
-
-        Uri commentLinkUri = new Uri(DomainUtils.ns('apc-voc'), 'comment');
-        Uri commentTypeUri = new Uri(DomainUtils.ns('xs'), 'string');
-        Uri distLinkUri = new Uri(DomainUtils.ns('apc-voc'), 'distribution');
-        Uri distTypeUri = new Uri(DomainUtils.ns('apc-voc'), 'distributionstring');
-
-        Link fixupLink = queryService.findNodeCurrentOrCheckedout(tempSpace.node, Node.get(fixup.node_id));
-
-        if (!fixupLink) {
-            throw new IllegalStateException("Tempspace does not contain node ${fixup.node_id}");
-        }
-
-        Node checkedOut;
-
-        if (DomainUtils.isCheckedIn(fixupLink.subnode)) {
-            checkedOut = basicOperationsService.checkoutNode(tempSpace.node, fixupLink.subnode)
-        } else {
-            checkedOut = fixupLink.subnode;
-        }
-
-        if (fixup.comment_diff) {
-            if (fixup.tree_apc_comment) {
-                // we do the each *first* so that the link deletions dont to odd things to the collection
-                checkedOut.subLink.findAll { Link profileLink ->
-                    DomainUtils.getLinkTypeUri(profileLink) == commentLinkUri
-                }.each { Link profileLink ->
-                    profileLink = DomainUtils.refetchLink(profileLink);
-                    basicOperationsService.deleteLink(profileLink.supernode, profileLink.linkSeq)
-                }
-            }
-
-            if (fixup.inst_apc_comment) {
-                checkedOut = DomainUtils.refetchNode(checkedOut)
-
-                basicOperationsService.createDraftNode(checkedOut, VersioningMethod.F, NodeInternalType.V,
-                        nodeType: commentTypeUri,
-                        linkType: commentLinkUri,
-                        literal: fixup.inst_apc_comment
-                );
-            }
-        }
-
-        checkedOut = DomainUtils.refetchNode(checkedOut)
-
-        if (fixup.dist_diff) {
-            if (fixup.tree_apc_dist) {
-                checkedOut = DomainUtils.refetchNode(checkedOut)
-                // we do the each *first* so that the link deletions dont to odd things to the collection
-                checkedOut.subLink.findAll { Link profileLink ->
-                    DomainUtils.getLinkTypeUri(profileLink) == distLinkUri
-                }.each { Link profileLink ->
-                    profileLink = DomainUtils.refetchLink(profileLink);
-                    basicOperationsService.deleteLink(profileLink.supernode, profileLink.linkSeq)
-                }
-            }
-
-            if (fixup.inst_apc_dist) {
-                checkedOut = DomainUtils.refetchNode(checkedOut)
-
-                basicOperationsService.createDraftNode(checkedOut, VersioningMethod.F, NodeInternalType.V,
-                        nodeType: distTypeUri,
-                        linkType: distLinkUri,
-                        literal: fixup.inst_apc_dist
-                );
-            }
-        }
-
-    }
-
 
 }

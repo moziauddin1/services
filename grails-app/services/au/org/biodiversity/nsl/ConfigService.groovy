@@ -44,7 +44,7 @@ class ConfigService {
         return value
     }
 
-    public Namespace getNameSpace() {
+    Namespace getNameSpace() {
         String nameSpaceName = configGetOrfail('name space')
         Namespace nameSpace = Namespace.findByName(nameSpaceName)
         if (!nameSpace) {
@@ -53,11 +53,11 @@ class ConfigService {
         return nameSpace
     }
 
-    public static String getNameTreeName() {
+    static String getNameTreeName() {
         return configGetOrfail('name tree label')
     }
 
-    public static String getClassificationTreeName() {
+    static String getClassificationTreeName() {
         try {
             return configGetOrfail('classification tree key')
         } catch (e) {
@@ -66,31 +66,31 @@ class ConfigService {
         return configGetOrfail('classification tree label')
     }
 
-    public static String getShardDescriptionHtml() {
+    static String getShardDescriptionHtml() {
         return configGetOrfail('description html')
     }
 
-    public static String getPageTitle() {
+    static String getPageTitle() {
         return configGetOrfail('page title')
     }
 
-    public static String getBannerText() {
+    static String getBannerText() {
         return configGetOrfail('banner text')
     }
 
-    public static String getBannerImage() {
+    static String getBannerImage() {
         return configGetOrfail('banner image')
     }
 
-    public static String getCardImage() {
+    static String getCardImage() {
         return configGetOrfail('card image')
     }
 
-    public static String getProductDescription(String productName) {
+    static String getProductDescription(String productName) {
         return configGetOrfail("$productName description")
     }
 
-    public Sql getSqlForNSLDB() {
+    Sql getSqlForNSLDB() {
         String dbUrl = grailsApplication.config.dataSource_nsl.url
         String username = grailsApplication.config.dataSource_nsl.username
         String password = grailsApplication.config.dataSource_nsl.password
@@ -99,11 +99,11 @@ class ConfigService {
         Sql.newInstance(dbUrl, username, password, driverClassName)
     }
 
-    public String getWebUserName() {
+    String getWebUserName() {
         grailsApplication.config.shard.webUser
     }
 
-    public Map getUpdateScriptParams() {
+    Map getUpdateScriptParams() {
         [
                 webUserName           : getWebUserName(),
                 classificationTreeName: classificationTreeName,

@@ -34,7 +34,7 @@
 
     <div data-nameId="${name.id}">
       %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-      <accepted-name><st:preferedLink target="${name}">${raw(name.fullNameHtml)}</st:preferedLink>
+      <accepted-name><st:preferredLink target="${name}">${raw(name.fullNameHtml)}</st:preferredLink>
       </accepted-name><name-status class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
         class="show-always">${name.nameType.name}</name-type>
       <g:if test="${!familyName}">
@@ -50,7 +50,7 @@
       <af:apniLink name="${name}"/>
 
       <span class="vertbar">
-        <st:preferedLink target="${name}"><i title="citable link to name" class="fa fa-link"></i></st:preferedLink>
+        <st:preferredLink target="${name}"><i title="citable link to name" class="fa fa-link"></i></st:preferredLink>
       </span>
       <g:if test="${apc}">
         <span class="vertbar">
@@ -71,14 +71,14 @@
           <reference data-referenceId="${instance.reference.id}">
             <ref-citation>
               %{--don't reformat the citationHtml line--}%
-              <st:preferedLink target="${instance}">${raw(instance.reference?.citationHtml)}</st:preferedLink>:
+              <st:preferredLink target="${instance}">${raw(instance.reference?.citationHtml)}</st:preferredLink>:
             </ref-citation>
 
             <page><af:page instance="${instance}"/></page>
 
             <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
             <span title="Reference link">
-              <st:preferedLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferedLink>
+              <st:preferredLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferredLink>
             </span>
             <span class="vertbar">
               <a href="${g.createLink(controller: 'search', params: [publication: instance.reference?.citation, search: true, advanced: true, display: 'apni'])}"
@@ -105,7 +105,7 @@
                 <has-synonym>
                   Cites <synonym-type
                     class="${instance.cites.instanceType.name}">${instance.cites.instanceType.name}:</synonym-type>
-                  <st:preferedLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferedLink>
+                  <st:preferredLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferredLink>
                   <name-status
                       class="${instance.cites.name.nameStatus.name}">${instance.cites.name.nameStatus.name}</name-status>
 

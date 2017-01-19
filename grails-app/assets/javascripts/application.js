@@ -43,6 +43,8 @@ $(function () {
                     if (jqXHR.status == 200) {
                         $('#logs').html(data);
                         setTimeout(worker, 5000);
+                    } else {
+                        location.reload(true);
                     }
                 }
             });

@@ -28,6 +28,7 @@ import org.grails.plugins.metrics.groovy.Timed
 class ApniFormatController {
 
     def apniFormatService
+    def jsonRendererService
 
     static responseFormats = [
             display: ['html'],
@@ -43,7 +44,7 @@ class ApniFormatController {
      * @param Name
      */
     @Timed()
-    def display(Name name) {
+    display(Name name) {
         if (name) {
             params.product = ConfigService.nameTreeName
             String inc = g.cookie(name: 'searchInclude')
@@ -61,7 +62,7 @@ class ApniFormatController {
     }
 
     @Timed()
-    def name(Name name) {
+    name(Name name) {
         if (name) {
             log.info "getting ${ConfigService.nameTreeName} name $name"
             ResultObject model = new ResultObject(apniFormatService.getNameModel(name))

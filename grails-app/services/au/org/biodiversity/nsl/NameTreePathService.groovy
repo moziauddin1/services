@@ -45,7 +45,7 @@ class NameTreePathService {
      * @return
      */
     NameTreePath updateNameTreePathFromNode(Node currentNode) {
-        if(currentNode) {
+        if (currentNode) {
             log.debug "update name tree path for $currentNode"
             NameTreePath currentNtp = findCurrentNameTreePath(currentNode.name, currentNode.root)
             updateNameTreePathFromNode(currentNode, currentNtp)
@@ -103,7 +103,7 @@ class NameTreePathService {
                 child.nameIdPath = newParent.nameIdPath + (child.nameIdPath - oldNameIdPath)
                 child.rankPath = newParent.rankPath + (child.rankPath - oldRankPath)
                 child.namePath = newParent.namePath + (child.namePath - oldNamePath)
-                if(newParent.family) {
+                if (newParent.family) {
                     child.family = newParent.family
                 }
             }
@@ -201,7 +201,7 @@ class NameTreePathService {
                 nameTreePath.nameIdPath = "${name.id}" as String
                 nameTreePath.rankPath = "${name.nameRank.name}:${name.nameElement}"
                 nameTreePath.namePath = name.nameElement
-                if(name.nameRank.name == 'Familia') {
+                if (name.nameRank.name == 'Familia') {
                     nameTreePath.family = name
                 }
             }
@@ -242,7 +242,7 @@ class NameTreePathService {
             and nd.nameUriIdPart IS NOT NULL
             and not exists (select 1 from NameTreePath ntp where ntp.name = nd.name and ntp.tree = nd.root)''',
                     [tree: Arrangement.findByNamespaceAndLabel(configService.nameSpace,
-                    treeLabel)])
+                            treeLabel)])
             results?.first() as Integer
         } else {
             return 0
@@ -274,7 +274,7 @@ class NameTreePathService {
 
         try {
             sql.execute('''
-alter table name_tree_path drop CONSTRAINT fk_sfj3hoevcuni3ak7no6byjp3;
+ALTER TABLE name_tree_path DROP CONSTRAINT fk_sfj3hoevcuni3ak7no6byjp3;
 
 WITH RECURSIVE level(node_id, tree_id, parent_id, name_id_path, name_path, rank_path, name_id, family_id)
 AS (
@@ -313,8 +313,8 @@ AS (
     CASE
     WHEN r.name = 'Familia\'
       THEN nm.id
-    WHEN parent.family_id is not null
-      then parent.family_id
+    WHEN parent.family_id IS NOT NULL
+      THEN parent.family_id
     ELSE NULL
     END                                                                                         AS family_id
 
@@ -362,10 +362,10 @@ SET parent_id = (SELECT ntp.id
                  WHERE node.id = target.parent_id AND ntp.name_id = n.id AND ntp.tree_id = target.tree_id)
 WHERE target.parent_id IS NOT NULL;
 
-alter table if exists name_tree_path
-  add constraint FK_sfj3hoevcuni3ak7no6byjp3
-foreign key (parent_id)
-references name_tree_path;
+ALTER TABLE IF EXISTS name_tree_path
+  ADD CONSTRAINT FK_sfj3hoevcuni3ak7no6byjp3
+FOREIGN KEY (parent_id)
+REFERENCES name_tree_path;
 ''') //not null tests for DeclaredBT that don't exists see NSL-1017
             sql.commit()
         } catch (e) {

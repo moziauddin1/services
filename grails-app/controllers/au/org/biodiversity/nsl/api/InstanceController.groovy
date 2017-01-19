@@ -41,7 +41,7 @@ class InstanceController implements UnauthenticatedHandler, WithTarget {
     def index() {}
 
     @Timed()
-    def delete(Instance instance, String reason) {
+    delete(Instance instance, String reason) {
         withTarget(instance) { ResultObject result ->
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')

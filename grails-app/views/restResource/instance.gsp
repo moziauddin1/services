@@ -25,7 +25,7 @@
 
   <div data-nameId="${instance.name.id}">
     %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-    <b><st:preferedLink target="${instance.name}">${raw(instance.name.fullNameHtml)}</st:preferedLink></b><name-status
+    <b><st:preferredLink target="${instance.name}">${raw(instance.name.fullNameHtml)}</st:preferredLink></b><name-status
       class="${instance.name.nameStatus.name}">, ${instance.name.nameStatus.name}</name-status><name-type
       class="${instance.name.nameType.name}">, ${instance.name.nameType.name}</name-type>
     <span class="text-muted small">${instance?.instanceType?.name}</span>
@@ -35,14 +35,14 @@
 
     <af:apniLink name="${instance.name}"/>
     <span class="vertbar">
-      <st:preferedLink target="${instance}"><i class="fa fa-link"></i></st:preferedLink>
+      <st:preferredLink target="${instance}"><i class="fa fa-link"></i></st:preferredLink>
     </span>
   </div>
 
   <reference data-referenceId="${instance.reference.id}">
     <ref-citation>
       %{--don't reformat the citationHtml line--}%
-      <st:preferedLink target="${instance.reference}">${raw(instance.reference?.citationHtml)}</st:preferedLink>:
+      <st:preferredLink target="${instance.reference}">${raw(instance.reference?.citationHtml)}</st:preferredLink>:
     </ref-citation>
 
     <page><af:page instance="${instance}"/></page>
@@ -57,7 +57,7 @@
     </g:if>
     <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
 
-    <st:preferedLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferedLink>
+    <st:preferredLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferredLink>
 
     <span class="vertbar">
       <a href="${af.refNameTreeSearchLink(citation: instance.reference?.citation, product: params.product)}"
@@ -85,7 +85,7 @@
         <has-synonym>
           Cites <synonym-type
             class="${instance.cites.instanceType.name}">${instance.cites.instanceType.name}:</synonym-type>
-          <st:preferedLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferedLink>
+          <st:preferredLink target="${instance.cites}">${raw(instance.cites.name.fullNameHtml)}</st:preferredLink>
           <name-status
               class="${instance.cites.name.nameStatus.name}">${instance.cites.name.nameStatus.name}</name-status>
 
@@ -125,7 +125,7 @@
       <g:if test="${instance.instanceType.secondaryInstance}">
         <h4>Secondary reference of</h4>
         <st:primaryInstance var="primaryInstance" name="${instance.name}">
-          <st:preferedLink target="${primaryInstance}">${raw(primaryInstance.name.fullNameHtml)}</st:preferedLink>
+          <st:preferredLink target="${primaryInstance}">${raw(primaryInstance.name.fullNameHtml)}</st:preferredLink>
         </st:primaryInstance>
       </g:if>
 

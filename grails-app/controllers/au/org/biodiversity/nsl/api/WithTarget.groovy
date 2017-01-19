@@ -16,6 +16,8 @@
 
 package au.org.biodiversity.nsl.api
 
+import au.org.biodiversity.nsl.JsonRendererService
+
 import static org.springframework.http.HttpStatus.NOT_FOUND
 
 /**
@@ -26,48 +28,43 @@ import static org.springframework.http.HttpStatus.NOT_FOUND
  */
 trait WithTarget {
 
-    public withTarget(Object target, Closure work) {
+    def withTarget(Object target, Closure work) {
         withTarget(target, 'Object', work)
     }
 
-    public withTarget(Object target, String targetInfo, Closure work) {
+    def withTarget(Object target, String targetInfo, Closure work) {
         assert jsonRendererService
 
+        ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+
         if (target) {
-            ResultObject result
-            switch (target.class.simpleName) {
-                case 'Instance':
-                    result = new ResultObject([instance: jsonRendererService.getBriefInstance(target)])
-                    break
-                case 'Name':
-                    result = new ResultObject([name: jsonRendererService.getBriefName(target)])
-                    break
-                case 'Reference':
-                    result = new ResultObject([reference: jsonRendererService.getBriefReference(target)])
-                    break
-                case 'Author':
-                    result = new ResultObject([author: jsonRendererService.getBriefAuthor(target)])
-                    break
-                case 'InstanceNote':
-                    result = new ResultObject([instanceNote: jsonRendererService.getBriefInstanceNote(target)])
-                    break
-                default:
-                    result = new ResultObject([target: jsonRendererService.brief(target)])
-            }
-            result << [
-                    action: params.action,
-            ]
+            result.briefObject(target)
             work(result)
-            //noinspection GroovyAssignabilityCheck
-            respond(result, [view: '/common/serviceResult', model: [data: result], status: result.status])
         } else {
-            ResultObject result = new ResultObject([
-                    action: params.action,
-                    error : "$targetInfo not found."
-            ])
-            //noinspection GroovyAssignabilityCheck
-            respond(result, [view: '/common/serviceResult', model: [data: result], status: NOT_FOUND])
+            result.error("$targetInfo not found.")
+            result.status = NOT_FOUND
         }
+        respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
+    }
+
+    def withTargets(Map targets, Closure work) {
+        assert jsonRendererService
+        ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+        boolean ok = true
+        for (key in targets.keySet()) {
+            if (!targets[key]) {
+                result.status = NOT_FOUND
+                result.error("$key not found.")
+                ok = false
+            } else {
+                result.briefObject(targets[key], key as String)
+            }
+        }
+        if(ok) {
+            work(result)
+        }
+        log.debug "result status is ${result.status}"
+        respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
     }
 
 }

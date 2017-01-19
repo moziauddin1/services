@@ -37,9 +37,10 @@ class AdminController {
     def adminService
     def flatViewService
     def postgresInfoService
+    def jsonRendererService
 
-    @RequiresRoles('admin') 
-    def index() {
+    @RequiresRoles('admin')
+    index() {
         Map stats = [:]
 
 
@@ -54,8 +55,8 @@ class AdminController {
         [pollingNames: nameService.pollingStatus(), stats: stats, servicing: servicing, dbInfo: dbInfo]
     }
 
-    @RequiresRoles('admin') 
-    def checkNames() {
+    @RequiresRoles('admin')
+    checkNames() {
         Closure query = { Map params ->
             Name.listOrderById(params)
         }
@@ -71,7 +72,7 @@ class AdminController {
                     String constStripped = constructedNameService.stripMarkUp(constructedNames.fullMarkedUpName)
                     String nameStripped = constructedNameService.stripMarkUp(name.fullNameHtml)
                     if (constStripped != nameStripped) {
-                        String verbatim
+                        String verbatim = null
                         List<Instance> primaryInstances = instanceService.findPrimaryInstance(name)
                         if(primaryInstances && primaryInstances.size() > 0) {
                             verbatim = primaryInstances.first().verbatimNameString
@@ -92,50 +93,50 @@ class AdminController {
     }
 
     @RequiresRoles('admin')
-    def reconstructNames() {
+    reconstructNames() {
         nameService.reconstructAllNames()
         flash.message = "reconstructing all names where changed."
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def reconstructSortNames() {
+    reconstructSortNames() {
         nameService.reconstructSortNames()
         flash.message = "reconstructing all sort names where changed."
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def reconstructCitations() {
+    reconstructCitations() {
         referenceService.reconstructAllCitations()
         flash.message = "reconstructing all reference citations."
         redirect(action: 'index')
     }
 
 
-    @RequiresRoles('admin') 
-    def constructMissingNames() {
+    @RequiresRoles('admin')
+    constructMissingNames() {
         nameService.constructMissingNames()
         flash.message = "constructing missing names."
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def replaceInstanceNoteXics() {
+    replaceInstanceNoteXics() {
         instanceService.replaceXICSinInstanceNotes()
         flash.message = "replacing XICs in instance notes."
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def replaceReferenceTitleXics() {
+    replaceReferenceTitleXics() {
         referenceService.replaceXICSinReferenceTitles()
         flash.message = "replacing XICs in reference titles."
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def makeTreePaths() {
+    makeTreePaths() {
         log.debug "make all tree paths. ${request.getRemoteAddr()}"
         nameTreePathService.makeAllTreePathsSql()
         flash.message = "Making all tree paths"
@@ -143,57 +144,58 @@ class AdminController {
     }
 
     @RequiresRoles('admin')
-    def autoDedupeAuthors() {
+    autoDedupeAuthors() {
         authorService.autoDeduplicate()
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
     def logs() {
-        List<String> processLog = logSummary(300)
-        render(template: 'log', model: [processLog: processLog])
+        try {
+            SecurityUtils.subject.checkRole('admin')
+            List<String> processLog = logSummary(300)
+            render(template: 'log', model: [processLog: processLog])
+        } catch (ignored) {
+            render(template: 'log', model: [processLog: ["You are not logged in."]])
+        }
     }
 
-    @RequiresRoles('admin') 
-    def startUpdater() {
+    @RequiresRoles('admin')
+    startUpdater() {
         log.debug "starting updater"
         nameService.startUpdatePolling()
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
-    def pauseUpdates() {
+    @RequiresRoles('admin')
+    pauseUpdates() {
         log.debug "pausing updater"
         nameService.pauseUpdates()
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
-    def resumeUpdates() {
+    @RequiresRoles('admin')
+    resumeUpdates() {
         log.debug "un-pausing updater"
         nameService.resumeUpdates()
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
-    def notifyMissingApniNames() {
+    @RequiresRoles('admin')
+    notifyMissingApniNames() {
         log.debug "adding notifications for names not in APNI"
         nameService.addNamesNotInNameTree(configService.nameTreeName)
         redirect(action: 'index')
     }
 
-    @RequiresRoles('admin') 
-    def transferApcProfileData() {
+    @RequiresRoles('admin')
+    transferApcProfileData() {
         log.debug "applying instance APC comments and distribution text to the APC tree"
-        flash.message = apcTreeService.transferApcProfileData(
-                configService.nameSpace,
-                configService.classificationTreeName
-        )
+        flash.message = apcTreeService.transferApcProfileData()
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def deduplicateMarkedReferences() {
+    deduplicateMarkedReferences() {
         String user = SecurityUtils.subject.principal.toString()
         ResultObject results = new ResultObject(referenceService.deduplicateMarked(user))
         //noinspection GroovyAssignabilityCheck
@@ -201,19 +203,19 @@ class AdminController {
     }
 
     @RequiresRoles('admin')
-    def setAdminModeOn() {
+    setAdminModeOn() {
         adminService.enableServiceMode(true)
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def setAdminModeOff() {
+    setAdminModeOff() {
         adminService.enableServiceMode(false)
         redirect(action: 'index')
     }
 
     @RequiresRoles('admin')
-    def refreshViews() {
+    refreshViews() {
         String namespaceName = configService.nameSpace.name.toLowerCase()
         flatViewService.refreshTaxonView(namespaceName)
         flatViewService.refreshNameView(namespaceName)
@@ -221,7 +223,7 @@ class AdminController {
     }
 
     @RequiresRoles('admin')
-    def recreateViews() {
+    recreateViews() {
         String namespaceName = configService.nameSpace.name.toLowerCase()
         flatViewService.createTaxonView(namespaceName)
         flatViewService.createNameView(namespaceName)
