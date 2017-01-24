@@ -14,16 +14,22 @@ import java.sql.SQLException
  * Created by ibis on 3/1/17.
  */
 class TreeServiceMessageUtil {
-    static List unpackMessage(Message m, status = "danger") {
+    final LinkService linkService;
+
+    TreeServiceMessageUtil(LinkService linkService) {
+        this.linkService = linkService;
+    }
+
+    List unpackMessage(Message m, status = "danger") {
         List msg = [];
         if (m != null) {
-            msg << [msg: m.getHumanReadableMessage(), status: status]
+            msg << [msg: m.getHumanReadableMessage(), status: status, args: unrollArgs(m)]
             unrollAllNested(msg, m)
         }
         return msg
     }
 
-    static List unpackThrowable(Throwable t, String status = 'danger') {
+    List unpackThrowable(Throwable t, String status = 'danger') {
         if (t == null) {
             return []
         } else if (t instanceof ServiceException) {
@@ -36,7 +42,7 @@ class TreeServiceMessageUtil {
 
     }
 
-    private static List unpackJDBCException(JDBCException ex, String status) {
+    private List unpackJDBCException(JDBCException ex, String status) {
         List msg = []
 
         if (ex != null) {
@@ -49,7 +55,7 @@ class TreeServiceMessageUtil {
         return msg
     }
 
-    private static List unpackServiceException(ServiceException ex, String status) {
+    private List unpackServiceException(ServiceException ex, String status) {
         List msg = []
         if (ex != null) {
             msg += unpackMessage(ex.msg, status)
@@ -60,8 +66,8 @@ class TreeServiceMessageUtil {
         return msg
     }
 
-    private static List unpackOtherException(Throwable t, String status) {
-        if(t==null) return [];
+    private List unpackOtherException(Throwable t, String status) {
+        if (t == null) return [];
 
         List msg = [
                 [msg: t.getClass().getSimpleName(), body: t.getLocalizedMessage(), status: status]
@@ -72,8 +78,8 @@ class TreeServiceMessageUtil {
         return msg;
     }
 
-    static List unpackStacktrace(Throwable t) {
-        if(t==null) return [];
+    List unpackStacktrace(Throwable t) {
+        if (t == null) return [];
         return t.getStackTrace().findAll {
             StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
         }.collect {
@@ -81,13 +87,40 @@ class TreeServiceMessageUtil {
         }
     }
 
-    private static void unrollAllNested(List msg, Message m) {
-        if(m==null) return;
+    private void unrollAllNested(List msg, Message m) {
+        if (m == null) return;
 
         for (Message mm : m.nested) {
-            msg << [msg: mm.getHumanReadableMessage(), status: 'info']
+            msg << [msg: mm.getHumanReadableMessage(), status: 'info', args: unrollArgs(m)]
             unrollAllNested(msg, mm)
         }
+    }
+
+    List unrollArgs(Message msg) {
+        List l = [];
+
+        if (msg) {
+            msg.args.each {
+                if (it instanceof Message) {
+                    l << unrollArgs((Message) it)
+                } else if (it instanceof Name
+                        || it instanceof Instance
+                        || it instanceof Reference
+                        || it instanceof Author
+                        || it instanceof InstanceNote
+                        || it instanceof Node
+                        || it instanceof Arrangement
+                        || it instanceof Event
+                ) {
+                    l << [class: it.class, uri: linkService.getPreferredLinkForObject(it)]
+                } else {
+                    l << it;
+                }
+            }
+
+        }
+
+        return l;
     }
 
 }
