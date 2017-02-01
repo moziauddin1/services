@@ -318,4 +318,11 @@ class ServiceTagLib {
         out << HTMLSanitiser.encodeInvalidMarkup(text, allowedTags).trim()
     }
 
+    def nicerDomainString = {attrs ->
+        String str = attrs.domainObj.toString()
+        int index = str.indexOf(':')
+        out << "<div><b>${str[0..index]}</b></div>"
+        out << str[index+1..-1]
+    }
+
 }

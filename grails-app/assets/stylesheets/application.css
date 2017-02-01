@@ -416,6 +416,15 @@ a:hover {
 .imageAndText h1 {
     font-size: 46px;
 }
+
+.diffBefore {
+    color: red;
+}
+.diffAfter {
+    color: green;
+}
+
+
 @media(max-width: 1500px) {
     .imageAndText h1 {
         font-size: calc(12px + 2vw);

@@ -8,6 +8,9 @@ import spock.lang.Specification
 
 import java.sql.Timestamp
 
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
+import static org.springframework.http.HttpStatus.OK
+
 /**
  * See the API for {@link grails.test.mixin.support.GrailsUnitTestMixin} for usage instructions
  */
@@ -39,16 +42,15 @@ class AuthorServiceSpec extends Specification {
         Long dupId = duplicate.id
         Long targetId = target.id
 
-        Map result = service.deduplicate(duplicate, target)
+        Map result = service.deduplicate(duplicate, target, 'admin')
 
         then: "We get a failed result with a message"
         println result
         result.success == false
         Author.get(dupId)
         Author.get(targetId)
-        result.deduplicationResults.size() == 1
-        result.deduplicationResults[0].duplicateAuthor == duplicate.id
-        result.deduplicationResults[0].error == 'Deduplication failed: (relinking [Author 2: Duplicate Author] failed: (It was meant to fail))'
+        result.duplicateAuthorId == duplicate.id
+        result.error == 'Deduplication failed: (relinking [Author 2: Duplicate Author] failed. Linker error: (It was meant to fail))'
 
         when: "link service works"
         def linkServiceMock = mockFor(LinkService)
@@ -57,17 +59,16 @@ class AuthorServiceSpec extends Specification {
         }
         service.linkService = linkServiceMock.createMock()
 
-        Map result2 = service.deduplicate(duplicate, target)
+        Map result2 = service.deduplicate(duplicate, target, 'admin')
 
         then: "We get a success and the duplicate author is deleted"
         println result2
         result2.success == true
         !Author.get(dupId)
         Author.get(targetId)
-        result2.deduplicationResults.size() == 1
-        result2.deduplicationResults[0].duplicateAuthor == duplicate.id
-        result2.deduplicationResults[0].rewired
-        result2.deduplicationResults[0].relinked
+        result2.duplicateAuthorId == duplicate.id
+        result2.rewired
+        result2.relinked
     }
 
     private Author saveAuthor(Map params) {

@@ -16,10 +16,13 @@
 
 package au.org.biodiversity.nsl
 
+import java.sql.Timestamp
+
 class DashboardController {
 
     def grailsApplication
     VocabularyTermsService vocabularyTermsService
+    def auditService
 
     def index() {
         String url = grailsApplication.config.grails.serverURL
@@ -40,10 +43,18 @@ class DashboardController {
 
         stats.instanceTypeStats = Instance.executeQuery(
                 'select t.name, count(*) as total from Instance i, InstanceType t where t = i.instanceType group by t.id order by total desc')
-        stats.recentNameUpdates = Name.executeQuery('select n from Name n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
-        stats.recentReferenceUpdates = Reference.executeQuery('select n from Reference n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
-        stats.recentAuthorUpdates = Author.executeQuery('select n from Author n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
-        stats.recentInstanceUpdates = Instance.executeQuery('select n from Instance n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
+        stats.recentNameUpdates = Name.executeQuery('select n from Name n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
+        stats.recentReferenceUpdates = Reference.executeQuery('select n from Reference n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
+        stats.recentAuthorUpdates = Author.executeQuery('select n from Author n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
+        stats.recentInstanceUpdates = Instance.executeQuery('select n from Instance n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
 
         [stats: stats]
     }
@@ -72,7 +83,7 @@ class DashboardController {
 
         int n;
 
-        while((n=is.read(buf))>0) {
+        while ((n = is.read(buf)) > 0) {
             os.write(buf, 0, n);
         }
 
@@ -82,5 +93,15 @@ class DashboardController {
         zip.delete();
 
         return null;
+    }
+
+    def audit() {
+        GregorianCalendar fromCal = new GregorianCalendar(2017, 0, 1)
+        Timestamp from = new Timestamp(fromCal.time.time)
+        fromCal.add(Calendar.MONTH, 1)
+        Timestamp to = new Timestamp(fromCal.time.time)
+        List rows = auditService.list('%', from, to)
+
+        [auditRows: rows]
     }
 }
