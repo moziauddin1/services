@@ -12,7 +12,18 @@
 <body>
 <div class="container">
 
-  <h2>Audit</h2>
+
+  <g:form name="search" role="form" controller="dashboard" action="audit" method="GET">
+    <div class="form-group">
+      <h2>Audit</h2>
+        <label>User name
+          <input type="text" name="userName" placeholder="Enter a user name" value="${params.name}"
+                 class="form-control" size="30"/>
+        </label>
+        <button type="submit" name="search" value="true" class="btn btn-primary">Search</button>
+    </div>
+  </g:form>
+
   <table class="table">
     <g:each in="${auditRows}" var="row">
       <tr>
@@ -31,7 +42,9 @@
           <g:each in="${row.fieldDiffs()}" var="diff">
             <div>
               <div><b>${diff.fieldName}</b></div>
+
               <div class="diffBefore">${diff.before}</div>
+
               <div class="diffAfter">${diff.after}</div>
             </div>
           </g:each>

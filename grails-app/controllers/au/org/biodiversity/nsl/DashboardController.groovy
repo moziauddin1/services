@@ -16,6 +16,8 @@
 
 package au.org.biodiversity.nsl
 
+import org.apache.shiro.authz.annotation.RequiresRoles
+
 import java.sql.Timestamp
 
 class DashboardController {
@@ -62,45 +64,42 @@ class DashboardController {
     def error() {
         log.debug 'In error action: throwing an error.'
         throw new Exception('This is a test error. Have a nice day :-)')
-        redirect(action: 'index')
     }
 
     def downloadVocabularyTerms() {
-        File zip = vocabularyTermsService.getVocabularyZipFile();
+        File zip = vocabularyTermsService.getVocabularyZipFile()
         // create a temp zip file
-
         // ask the service to populate it
-
         // write it to the output, with a disposition etc
 
-        response.setHeader("Content-disposition", "attachment; filename=NslVocabulary.zip");
-        response.setContentType("application/zip");
+        response.setHeader("Content-disposition", "attachment; filename=NslVocabulary.zip")
+        response.setContentType("application/zip")
 
-        byte[] buf = new byte[1024];
+        byte[] buf = new byte[1024]
 
-        OutputStream os = response.getOutputStream();
-        InputStream is = new FileInputStream(zip);
+        OutputStream os = response.getOutputStream()
+        InputStream is = new FileInputStream(zip)
 
-        int n;
-
+        int n
         while ((n = is.read(buf)) > 0) {
-            os.write(buf, 0, n);
+            os.write(buf, 0, n)
         }
 
-        is.close();
-        os.close();
+        is.close()
+        os.close()
 
-        zip.delete();
+        zip.delete()
 
-        return null;
+        return null
     }
 
-    def audit() {
+    @RequiresRoles(['QA', 'admin'])
+    audit(String userName) {
         GregorianCalendar fromCal = new GregorianCalendar(2017, 0, 1)
         Timestamp from = new Timestamp(fromCal.time.time)
         fromCal.add(Calendar.MONTH, 1)
         Timestamp to = new Timestamp(fromCal.time.time)
-        List rows = auditService.list('%', from, to)
+        List rows = auditService.list(userName, from, to)
 
         [auditRows: rows]
     }
