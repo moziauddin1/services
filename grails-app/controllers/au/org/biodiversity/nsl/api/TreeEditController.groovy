@@ -39,6 +39,7 @@ class TreeEditController {
     NameTreePathService nameTreePathService
     MessageSource messageSource
     UserWorkspaceManagerService userWorkspaceManagerService
+    LinkService linkService
 
     ///////////////////////////////////////////
     //
@@ -235,7 +236,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : TreeServiceMessageUtil.unpackMessage(msg, 'success')
+                    msg    : new TreeServiceMessageUtil(linkService).unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -261,7 +262,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : TreeServiceMessageUtil.unpackMessage(msg, 'success')
+                    msg    : new TreeServiceMessageUtil(linkService).unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -295,7 +296,7 @@ class TreeEditController {
 
             return render([
                     success: true,
-                    msg    : TreeServiceMessageUtil.unpackMessage(msg, 'success')
+                    msg    : new TreeServiceMessageUtil(linkService).unpackMessage(msg, 'success')
             ] as JSON)
         }
     }
@@ -329,10 +330,12 @@ class TreeEditController {
 
             doIt.delegate.response.status = ex instanceof ServiceException ? 400 : 500
 
+            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService);
+
             return render([
                     success   : false,
-                    msg       : TreeServiceMessageUtil.unpackThrowable(ex),
-                    stackTrace: TreeServiceMessageUtil.unpackStacktrace(ex)
+                    msg       : tsmu.unpackThrowable(ex),
+                    stackTrace: tsmu.unpackStacktrace(ex)
             ] as JSON)
         }
     }

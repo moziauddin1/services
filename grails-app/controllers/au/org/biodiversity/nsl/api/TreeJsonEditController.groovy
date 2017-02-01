@@ -976,7 +976,8 @@ class TreeJsonEditController {
                 [
                         msg   : 'ERROR',
                         body  : it.humanReadableMessage,
-                        status: 'danger'
+                        status: 'danger',
+                        args  : new TreeServiceMessageUtil(linkService).unrollArgs(it)
                 ]
             }
 
@@ -984,7 +985,8 @@ class TreeJsonEditController {
                 [
                         msg   : 'WARNING',
                         body  : it.humanReadableMessage,
-                        status: 'warning'
+                        status: 'warning',
+                        args  : new TreeServiceMessageUtil(linkService).unrollArgs(it)
                 ]
             }
 
@@ -1040,10 +1042,12 @@ class TreeJsonEditController {
 
             doIt.delegate.response.status = ex instanceof ServiceException ? 400 : 500
 
+            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService);
+
             return render([
                     success   : false,
-                    msg       : TreeServiceMessageUtil.unpackThrowable(ex),
-                    stackTrace: TreeServiceMessageUtil.unpackStacktrace(ex)
+                    msg       : tsmu.unpackThrowable(ex),
+                    stackTrace: tsmu.unpackStacktrace(ex)
             ] as JSON)
         }
     }
