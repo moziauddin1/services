@@ -59,7 +59,7 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
         }
 
         def result = Arrangement.findAll { arrangementType == ArrangementType.P && namespace.name == param.namespace }
@@ -81,7 +81,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def result = Arrangement.findAll {
@@ -176,7 +177,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def o = getObjectForLink(param.uri)
@@ -194,7 +196,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(404, result)
+
         }
 
         Arrangement a = o as Arrangement
@@ -221,7 +224,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def root = getObjectForLink(param.root)
@@ -240,7 +244,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(404, result)
+
         }
 
         List<Node> pathNodes = queryService.findPath(root, focus);
@@ -266,7 +271,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         // TODO this stuff shouldn't be being jammed here, but I;m not sure where to jam it
@@ -428,7 +434,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def searchSubtree = getObjectForLink(param.searchSubtree)
@@ -441,7 +448,8 @@ class TreeJsonViewController {
                     ],
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         log.debug("Starting findNamesInSubtree");
@@ -476,7 +484,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def searchSubtree = getObjectForLink(param.searchSubtree)
@@ -489,7 +498,8 @@ class TreeJsonViewController {
                     ],
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         log.debug("Starting findNamesDirectlyInSubtree");
@@ -534,33 +544,34 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         Object n = linkService.getObjectForLink(param.uri);
 
         if (!(n instanceof Node)) {
-            return render(status: 400) {
-                [
-                        success: false,
-                        msg    : [
-                                [msg: "${param.uri} does not appear to be a node"]
-                        ]
-                ]
-            }
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.uri} does not appear to be a node"]
+                            ]
+                    ]
+            )
         }
 
         Node node = (Node) n;
 
-        if(!node.prev) {
-            return render(status: 200) {
-                [
-                        success: true,
-                        msg    : [
-                                [msg: "This node does not have a previous version with which to compare it."]
-                        ]
-                ]
-            }
+        if (!node.prev) {
+            return renderJsonError(400,
+                    [
+                            success: true,
+                            msg    : [
+                                    [msg: "This node does not have a previous version with which to compare it."]
+                            ]
+                    ]
+            )
         }
 
         def changes = queryService.findDifferences(node.prev, node);
@@ -571,6 +582,251 @@ class TreeJsonViewController {
         ] as JSON)
     }
 
+
+    def nodeBranch(TreeParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return renderJsonError(400, result)
+        }
+
+        Object o
+        Arrangement arrangement
+        Node root
+        Node focus
+
+        o = linkService.getObjectForLink(param.arrangement);
+
+        if (!(o instanceof Arrangement)) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [param.arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        arrangement = (Arrangement) o;
+        root = DomainUtils.getSingleSubnode(arrangement.node)
+
+        if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        if (param.focus) {
+            o = linkService.getObjectForLink(param.focus);
+
+            if (!(o instanceof Node)) {
+                return renderJsonError(400,
+                        [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.focus} does not appear to be a tree or workspace node", args: [param.focus]]
+                            ]
+                    ]
+                )
+            }
+
+            focus = (Node) o;
+        } else {
+            focus = root
+        }
+
+        def paths = queryService.countPaths(root, focus)
+        if (paths != 1) {
+            return renderJsonError(400,
+                    [
+                        success: false,
+                        msg    : [
+                                [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to ${param.focus}", args: [arrangement, focus]]
+                        ]
+                ]
+            )
+
+        }
+
+        def result = [
+                success: true,
+                result : [
+                        node    : nodeDisplayJson(focus),
+                        subnodes: focus.subLink
+                                .findAll { it.subnode.internalType == NodeInternalType.T }
+                                .sort { Link a, Link b -> return (a.subnode.name?.simpleName ?: '').compareTo((b.subnode.name?.simpleName ?: '')) }
+                                .collect { linkDisplayJson(it) }
+                ]
+        ];
+
+        return render(result as JSON)
+    }
+
+    def nodePath(TreeParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return renderJsonError(400, result)
+        }
+
+        Object o
+        Arrangement arrangement
+        Node root
+        Node focus
+
+        o = linkService.getObjectForLink(param.arrangement);
+
+        if (!(o instanceof Arrangement)) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [param.arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        arrangement = (Arrangement) o;
+
+        if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        root = DomainUtils.getSingleSubnode(arrangement.node)
+
+        if (param.focus) {
+            o = linkService.getObjectForLink(param.focus);
+
+            if (!(o instanceof Node)) {
+                return renderJsonError(400,
+                        [
+                                success: false,
+                                msg    : [
+                                        [msg: "${param.focus} does not appear to be a tree or workspace node", args: [param.focus]]
+                                ]
+                        ]
+                )
+            }
+
+            focus = (Node) o;
+        } else {
+            focus = root
+        }
+
+        def paths = queryService.countPaths(root, focus)
+        if (paths != 1) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to ${param.focus}", args: [arrangement, focus]]
+                            ]
+                    ]
+            )
+
+        }
+
+        List<Link> path = queryService.findPathLinks(arrangement.node, focus)
+
+        def result = [
+                success: true,
+                result : [
+                        path: path.collect { linkDisplayJson(it) }
+                ]
+        ];
+
+        return render(result as JSON)
+    }
+
+    def linkDisplayJson(Link l) {
+        [
+                css : DomainUtils.getLinkTypeUri(l).asCssClass(),
+                node: nodeDisplayJson(l.subnode)
+        ]
+    }
+
+    def nodeDisplayJson(Node n) {
+        def json = [
+                css: DomainUtils.getNodeTypeUri(n).asCssClass(),
+                uri: linkService.getPreferredLinkForObject(n),
+                subTaxa: queryService.countImmediateSubtaxa(n)
+        ]
+
+        if (DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(n))) {
+            json.label = "${n.root.label ?: n.root.title} Classification persistent node"
+        } else if (DomainUtils.getBoatreeUri('classification-root').equals(DomainUtils.getNodeTypeUri(n))) {
+            json.label = "${n.root.label ?: n.root.title} Classification"
+        } else if (DomainUtils.getBoatreeUri('workspace-root').equals(DomainUtils.getNodeTypeUri(n))) {
+            json.label = "${n.root.baseArrangement.label ?: n.root.baseArrangement.title} Workspace ${n.root.label ?: n.root.title}"
+        } else if (n.name) {
+            json.simpleName = n.name.simpleName
+            json.simpleNameHtml = n.name.simpleNameHtml
+            json.fullName = n.name.fullName
+            json.fullNameHtml = n.name.fullNameHtml
+
+            json.nameType = n.name.nameType.name
+
+            if (n.instance) {
+                json.instanceType = n.instance.instanceType.name
+                if (n.instance.cites) {
+                    json.authYear = JsonRendererService.citationAuthYear(n.instance.cites.reference)
+                }
+            }
+        } else {
+            json.label = n.typeUriIdPart
+        }
+
+        return json
+    }
+
+    def renderJsonError(int responseCode, Object o) {
+        response.setStatus(responseCode);
+        return render(o as JSON)
+    }
+
+}
+
+@Validateable
+class TreeParam {
+    String arrangement;
+    String focus;
+
+    static constraints = {
+        arrangement nullable: false
+        focus nullable: true
+    }
 }
 
 @Validateable
