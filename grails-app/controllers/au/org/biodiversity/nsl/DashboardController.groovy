@@ -93,7 +93,7 @@ class DashboardController {
         return null
     }
 
-    @RequiresRoles(['QA', 'admin'])
+    @RequiresRoles('QA')
     audit(String userName) {
         GregorianCalendar fromCal = new GregorianCalendar(2017, 0, 1)
         Timestamp from = new Timestamp(fromCal.time.time)
