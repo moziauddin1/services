@@ -109,7 +109,7 @@ class DataExportService {
      */
     static File sqlCopyToCsvFile(String sqlStatement, File file, Sql sql) {
 
-        String statement = "SET CLIENT_ENCODING TO 'UTF8'; COPY ($sqlStatement) TO STDOUT WITH ENCODING 'UTF8' CSV HEADER"
+        String statement = "COPY ($sqlStatement) TO STDOUT WITH ENCODING 'UTF8' CSV HEADER"
         println statement
         CopyManager copyManager = ((PGConnection) sql.connection).getCopyAPI()
         PrintWriter printWriter = new PrintWriter(file,'UTF-8')
