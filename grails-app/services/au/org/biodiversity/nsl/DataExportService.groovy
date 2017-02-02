@@ -20,6 +20,7 @@ import grails.transaction.Transactional
 import groovy.sql.Sql
 import groovy.transform.Synchronized
 import groovy.xml.MarkupBuilder
+import org.codehaus.groovy.runtime.IOGroovyMethods
 import org.postgresql.PGConnection
 import org.postgresql.copy.CopyManager
 import java.util.zip.ZipEntry
@@ -111,7 +112,8 @@ class DataExportService {
         String statement = "SET CLIENT_ENCODING TO 'UTF8'; COPY ($sqlStatement) TO STDOUT WITH ENCODING 'UTF8' CSV HEADER"
         println statement
         CopyManager copyManager = ((PGConnection) sql.connection).getCopyAPI()
-        file.withWriter { writer ->
+        PrintWriter printWriter = new PrintWriter(file,'UTF-8')
+        IOGroovyMethods.withWriter(printWriter) { writer ->
             copyManager.copyOut(statement, writer)
         }
         return file
