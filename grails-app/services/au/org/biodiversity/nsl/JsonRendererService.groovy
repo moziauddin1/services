@@ -539,6 +539,7 @@ class JsonRendererService {
                 node           : brief(arrangement.node, [:]),
                 currentRoot    : arrangement.arrangementType == ArrangementType.P && arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
+                baseArrangement: brief(arrangement.baseArrangement)
         ];
         return data;
     }

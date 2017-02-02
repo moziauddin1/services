@@ -762,19 +762,20 @@ class TreeJsonViewController {
 
         def result = [
                 success: true,
-                result : [
-                        path: path.collect { linkDisplayJson(it) }
-                ]
+                result : path.collect { linkDisplayJson(it) }
         ];
 
         return render(result as JSON)
     }
 
     def linkDisplayJson(Link l) {
-        [
-                css : DomainUtils.getLinkTypeUri(l).asCssClass(),
-                node: nodeDisplayJson(l.subnode)
+        def json = [
+                linkCss : DomainUtils.getLinkTypeUri(l).asCssClass()
         ]
+
+        json << nodeDisplayJson(l.subnode)
+
+        return json
     }
 
     def nodeDisplayJson(Node n) {
@@ -785,11 +786,11 @@ class TreeJsonViewController {
         ]
 
         if (DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(n))) {
-            json.label = "${n.root.label ?: n.root.title} Classification persistent node"
+            json.label = "${n.root.label ?: n.root.title} (persistent URI)"
         } else if (DomainUtils.getBoatreeUri('classification-root').equals(DomainUtils.getNodeTypeUri(n))) {
-            json.label = "${n.root.label ?: n.root.title} Classification"
+            json.label = "${n.root.label ?: n.root.title}"
         } else if (DomainUtils.getBoatreeUri('workspace-root').equals(DomainUtils.getNodeTypeUri(n))) {
-            json.label = "${n.root.baseArrangement.label ?: n.root.baseArrangement.title} Workspace ${n.root.label ?: n.root.title}"
+            json.label = "${n.root.label ?: n.root.title} (${n.root.baseArrangement.label ?: n.root.baseArrangement.title})"
         } else if (n.name) {
             json.simpleName = n.name.simpleName
             json.simpleNameHtml = n.name.simpleNameHtml
