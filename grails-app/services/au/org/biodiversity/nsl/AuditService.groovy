@@ -1,12 +1,13 @@
 package au.org.biodiversity.nsl
 
 import groovy.sql.GroovyResultSet
-import groovy.sql.GroovyResultSetExtension
 import groovy.sql.Sql
 
 import java.sql.Timestamp
 
 class AuditService implements WithSql {
+
+    def configService
 
     def list(String userName, Timestamp from, Timestamp to) {
         List rows = []

@@ -507,4 +507,20 @@ AS exists"""
         return rowResult.exists
     }
 
+    private List<Map> executeQuery(String query, List params) {
+        log.debug "executing query: $query, $params"
+        List results = []
+        withSql { Sql sql ->
+            sql.eachRow(query, params) { GroovyResultSet row ->
+                def res = row.toRowResult()
+                Map d = new LinkedHashMap()
+                res.keySet().each { key ->
+                    d[key] = res[key] as String
+                }
+                results.add(d)
+            }
+        }
+        return results
+    }
+
 }
