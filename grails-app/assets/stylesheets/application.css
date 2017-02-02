@@ -424,6 +424,16 @@ a:hover {
     color: green;
 }
 
+hybrid {
+    visibility: hidden;
+    margin-right: -4px;
+    margin-left: -5px;
+}
+
+hybrid::after {
+    content: '×';
+    visibility: visible;
+}
 
 @media(max-width: 1500px) {
     .imageAndText h1 {
