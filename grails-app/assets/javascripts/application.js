@@ -57,7 +57,7 @@ $(function () {
     $('#productDescription').on('closed.bs.alert', function () {
         var cookieName = 'close' + $(this).data('product') + 'Description';
         $.cookie(cookieName, 'true', {expires: 30});
-    }).each(function() {
+    }).each(function () {
         var cookieName = 'close' + $(this).data('product') + 'Description';
         var closeProductDescription = $.cookie(cookieName);
         if (closeProductDescription) {
@@ -65,10 +65,14 @@ $(function () {
         }
     });
 
-    $('help').click(function(event){
+    $('help').click(function (event) {
         $(this).children('div').toggle();
         event.preventDefault();
     });
 
+    $('input.fromDate').datepicker({dateFormat: 'd/m/yy', defaultDate: '-1w', maxDate: 0});
+    $('input.toDate').datepicker({dateFormat: 'd/m/yy', maxDate: 0});
+    // $('input.fromDate').datepicker("setDate", "-1w");
+    // $('input.toDate').datepicker("setDate", "0d");
 
 });

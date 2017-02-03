@@ -25,6 +25,7 @@ class DashboardController {
     def grailsApplication
     VocabularyTermsService vocabularyTermsService
     def auditService
+    private static final WEEK_MS = 604800000l
 
     def index() {
         String url = grailsApplication.config.grails.serverURL
@@ -94,13 +95,29 @@ class DashboardController {
     }
 
     @RequiresRoles('QA')
-    audit(String userName) {
-        GregorianCalendar fromCal = new GregorianCalendar(2017, 0, 1)
-        Timestamp from = new Timestamp(fromCal.time.time)
-        fromCal.add(Calendar.MONTH, 1)
-        Timestamp to = new Timestamp(fromCal.time.time)
-        List rows = auditService.list(userName, from, to)
+    audit(String userName, String fromStr, String toStr) {
+        if (params.search) {
 
-        [auditRows: rows]
+            List<Integer> fromInts = fromStr ? fromStr.split('/').collect { it.toInteger() } : null
+            List<Integer> toInts = toStr ? toStr.split('/').collect { it.toInteger() } : null
+            Timestamp from
+            Timestamp to
+            if (fromInts?.size() == 3 && toInts?.size() == 3) {
+                GregorianCalendar fromCal = new GregorianCalendar(fromInts[2], fromInts[1] - 1, fromInts[0])
+                GregorianCalendar toCal = new GregorianCalendar(toInts[2], toInts[1] - 1, toInts[0])
+                from = new Timestamp(fromCal.time.time)
+                to = new Timestamp(toCal.time.time)
+            } else {
+                from = new Timestamp(System.currentTimeMillis() - WEEK_MS)
+                to = new Timestamp(System.currentTimeMillis())
+                flash.message = "No period set, using last 7 days."
+            }
+
+            List rows = auditService.list(userName, from, to)
+
+            [auditRows: rows, query: params]
+        } else {
+            [auditRows: null, query: [:]]
+        }
     }
 }

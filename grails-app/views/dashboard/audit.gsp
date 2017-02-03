@@ -12,18 +12,30 @@
 <body>
 <div class="container">
 
-
   <g:form name="search" role="form" controller="dashboard" action="audit" method="GET">
     <div class="form-group">
       <h2>Audit</h2>
-        <label>User name
-          <input type="text" name="userName" placeholder="Enter a user name" value="${params.name}"
-                 class="form-control" size="30"/>
-        </label>
-        <button type="submit" name="search" value="true" class="btn btn-primary">Search</button>
+      <label>User name
+        <input type="text" name="userName" placeholder="Enter a user name" value="${query.userName}"
+               class="form-control" size="30"/>
+      </label>
+
+      <label>From
+        <input type="text" name="fromStr" class="form-control fromDate" value="${query.fromStr}">
+      </label>
+      <label>To
+        <input type="text" name="toStr" class="form-control toDate" value="${query.toStr}">
+      </label>
+      <button type="submit" name="search" value="true" class="btn btn-primary">Search</button>
     </div>
   </g:form>
 
+  <g:if test="${auditRows == null}">
+    <div>
+      Your results will be here.
+    </div>
+  </g:if>
+  <g:elseif test="${auditRows.size() > 0}">
   <table class="table">
     <g:each in="${auditRows}" var="row">
       <tr>
@@ -52,6 +64,12 @@
       </tr>
     </g:each>
   </table>
+  </g:elseif>
+  <g:else>
+    <div>
+      No Results found.
+    </div>
+  </g:else>
 
 </div>
 </body>
