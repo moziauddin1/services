@@ -418,10 +418,10 @@ a:hover {
 }
 
 .diffBefore {
-    color: red;
+    background-color: rgba(235,21,31,0.1);
 }
 .diffAfter {
-    color: green;
+    background-color: rgba(12,235,2,0.1);
 }
 
 hybrid {

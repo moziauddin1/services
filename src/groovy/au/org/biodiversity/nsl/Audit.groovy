@@ -23,6 +23,7 @@ class Audit {
     final Class auditedClass
 
     private HashSet<String> relevantChangedFields
+    private HashSet<String> relevantRowData
 
     Audit(GroovyResultSet row) {
         this.eventId = row.event_id
@@ -85,6 +86,15 @@ class Audit {
         return relevantChangedFields
     }
 
+    HashSet<String> getRelevantRowData() {
+        if (!relevantRowData) {
+            relevantRowData = new HashSet(rowData.keySet())
+            relevantRowData.removeAll(['lock_version', 'updated_by', 'updated_at', 'trash', 'namespace', 'language', 'valid_record'])
+        }
+        return relevantRowData
+    }
+
+
     String diffFields() {
         diffFieldList().join(', ')
     }
@@ -99,8 +109,16 @@ class Audit {
 
     List<Diff> fieldDiffs() {
         List<Diff> diff = []
-        getRelevantChangedFields().each { String key ->
-            diff << new Diff(key, lookupField(key, rowData[key]), lookupField(key, changedFields[key]))
+        if (auditedObj) {
+            getRelevantChangedFields().each { String key ->
+                diff << new Diff(key, lookupField(key, rowData[key]), lookupField(key, changedFields[key]))
+            }
+        } else {
+            getRelevantRowData().each { String key ->
+                if (rowData[key]) {
+                    diff << new Diff(key, lookupField(key, rowData[key]), lookupField(key, changedFields[key]))
+                }
+            }
         }
         return diff
     }

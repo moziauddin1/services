@@ -44,7 +44,7 @@
         <td>${[U: 'Updated', I: 'Created', D: 'Deleted'].get(row.action)}</td>
         <td>
           <g:if test="${row.auditedObj}">
-            <st:nicerDomainString domainObj="${row.auditedObj}"/>
+            <st:diffValue value="${row.auditedObj}"/>
           </g:if>
           <g:else>
             ${"$row.table $row.rowData.id (deleted?)"}
@@ -53,11 +53,11 @@
         <td>
           <g:each in="${row.fieldDiffs()}" var="diff">
             <div>
-              <div><b>${diff.fieldName}</b></div>
+              <div><b>${diff.fieldName.replaceAll('_id','').replaceAll('_', ' ')}</b></div>
 
-              <div class="diffBefore">${diff.before}</div>
+              <div class="diffBefore"><st:diffValue value="${diff.before}"/></div>
 
-              <div class="diffAfter">${diff.after}</div>
+              <div class="diffAfter"><st:diffValue value="${diff.after}"/></div>
             </div>
           </g:each>
         </td>

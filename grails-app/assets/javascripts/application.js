@@ -72,7 +72,5 @@ $(function () {
 
     $('input.fromDate').datepicker({dateFormat: 'd/m/yy', defaultDate: '-1w', maxDate: 0});
     $('input.toDate').datepicker({dateFormat: 'd/m/yy', maxDate: 0});
-    // $('input.fromDate').datepicker("setDate", "-1w");
-    // $('input.toDate').datepicker("setDate", "0d");
 
 });

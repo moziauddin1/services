@@ -17,10 +17,19 @@
 package services
 
 import au.org.biodiversity.nsl.Arrangement
+import au.org.biodiversity.nsl.Author
+import au.org.biodiversity.nsl.Comment
 import au.org.biodiversity.nsl.HTMLSanitiser
 import au.org.biodiversity.nsl.HibernateDomainUtils
 import au.org.biodiversity.nsl.Instance
+import au.org.biodiversity.nsl.InstanceNote
+import au.org.biodiversity.nsl.InstanceType
 import au.org.biodiversity.nsl.Name
+import au.org.biodiversity.nsl.NameStatus
+import au.org.biodiversity.nsl.NameType
+import au.org.biodiversity.nsl.RefAuthorRole
+import au.org.biodiversity.nsl.RefType
+import au.org.biodiversity.nsl.Reference
 
 class ServiceTagLib {
 
@@ -318,11 +327,102 @@ class ServiceTagLib {
         out << HTMLSanitiser.encodeInvalidMarkup(text, allowedTags).trim()
     }
 
-    def nicerDomainString = {attrs ->
+    def nicerDomainString = { attrs ->
         String str = attrs.domainObj.toString()
         int index = str.indexOf(':')
         out << "<div><b>${str[0..index]}</b></div>"
-        out << str[index+1..-1]
+        out << str[index + 1..-1]
+    }
+
+    def diffValue = { attrs ->
+        def val = attrs.value
+        if(val) {
+            switch (val.class.simpleName) {
+                case 'Name':
+                    Name name = (Name) val
+                    String link = linkService.getPreferredLinkForObject(name) + '/api/apni-format'
+                    out << "<div class='title'><a href='$link' target='audit'>Name ($name.id)</a></div>"
+                    out << "<div>${name.fullNameHtml}</div>"
+                    break;
+                case 'Author':
+                    Author author = (Author) val
+                    String link = linkService.getPreferredLinkForObject(author)
+                    out << "<div class='title'><a href='$link' target='audit'>Author ($author.id)</a></div>"
+                    out << "<div>${author.name} (${author.abbrev})</div>"
+                    break;
+                case 'Reference':
+                    Reference reference = (Reference) val
+                    String link = linkService.getPreferredLinkForObject(reference)
+                    out << "<div class='title'><a href='$link' target='audit'>Reference ($reference.id)</a></div>"
+                    out << "<div>${reference.citationHtml}</div>"
+                    break;
+                case 'Instance':
+                    Instance instance = (Instance) val
+                    String link = linkService.getPreferredLinkForObject(instance)
+                    out << "<div class='title'><a href='$link' target='audit'>Instance ($instance.id)</a></div>"
+                    out << "<ul><li>${instance.instanceType.name}</li>"
+                    out << "<li>${instance.name.fullNameHtml}</li>"
+                    out << "<li>${instance.reference.citationHtml}</li></ul>"
+                    break;
+                case 'InstanceNote':
+                    InstanceNote note = (InstanceNote) val
+                    String link = linkService.getPreferredLinkForObject(note)
+                    out << "<div class='title'><a href='$link' target='audit'>Instance Note ($note.id)</a></div>"
+                    out << "<div><b>${note.instanceNoteKey.name}:</b></div>"
+                    out << "<div>${note.value}</div>"
+                    Instance instance = note.instance
+                    String instLink = linkService.getPreferredLinkForObject(instance)
+                    out << "<div><a href='$instLink'>Instance ($instance.id)</a></div>"
+                    out << "<ul><li>${instance.instanceType.name}</li>"
+                    out << "<li>${instance.name.fullNameHtml}</li>"
+                    out << "<li>${instance.reference.citationHtml}</li></ul>"
+                    break;
+                case 'Comment':
+                    Comment comment = (Comment) val
+                    out << "<div class='title'>Comment ($comment.id)</div>"
+                    out << "<div>${comment.text}</div>"
+                    out << "<div>on:</div>"
+                    if (comment.name) {
+                        out << diffValue(value: comment.name)
+                    }
+                    if (comment.author) {
+                        out << diffValue(value: comment.author)
+                    }
+                    if (comment.instance) {
+                        out << diffValue(value: comment.instance)
+                    }
+                    if (comment.reference) {
+                        out << diffValue(value: comment.reference)
+                    }
+                    break;
+
+                case 'NameType':
+                    NameType nameType = (NameType) val
+                    out << nameType.name
+                    break;
+                case 'NameStatus':
+                    NameStatus nameStatus = (NameStatus) val
+                    out << nameStatus.name
+                    break;
+                case 'RefAuthorRole':
+                    RefAuthorRole refAuthorRole = (RefAuthorRole) val
+                    out << refAuthorRole.name
+                    break;
+                case 'RefType':
+                    RefType refType = (RefType) val
+                    out << refType.name
+                    break;
+                case 'InstanceType':
+                    InstanceType instanceType = (InstanceType) val
+                    out << instanceType.name
+                    break;
+
+                default:
+                    out << val ? val.toString() : '-'
+            }
+        } else {
+            out << '-'
+        }
     }
 
 }
