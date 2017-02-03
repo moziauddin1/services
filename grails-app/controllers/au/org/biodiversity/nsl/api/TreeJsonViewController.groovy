@@ -801,7 +801,11 @@ class TreeJsonViewController {
 
             if (n.instance) {
                 json.instanceType = n.instance.instanceType.name
-                if (n.instance.cites) {
+                if (!n.instance.instanceType.relationship && n.instance.reference) {
+                    json.authYear = JsonRendererService.citationAuthYear(n.instance.reference)
+                }
+                if (n.instance.instanceType.relationship && n.instance.cites) {
+                    // instances on the tree should never be relationship instances, but if they are ...
                     json.authYear = JsonRendererService.citationAuthYear(n.instance.cites.reference)
                 }
             }
