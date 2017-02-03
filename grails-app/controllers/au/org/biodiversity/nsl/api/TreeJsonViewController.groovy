@@ -767,8 +767,33 @@ class TreeJsonViewController {
         return render(result as JSON)
     }
 
-    def nodeLink(TreeParam param) {
+    def nodeUris(TreeParam param) {
+        if(param.node == null || param.node == 0) return render( null as JSON)
 
+        Node node = Node.get(param.node)
+
+        if (!node) {
+            return renderJsonError(404,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "node ${param.node} not found", args: [param.node]]
+                            ]
+                    ]
+            )
+        }
+
+
+        def result = [
+                success: true,
+                result : [
+                    nodeUri: linkService.getPreferredLinkForObject(node),
+                    nameUri: node.name ? linkService.getPreferredLinkForObject(node.name) : null,
+                    instanceUri: node.instance ? linkService.getPreferredLinkForObject(node.instance) : null
+                ]
+        ];
+
+        return render(result as JSON)
     }
 
 
