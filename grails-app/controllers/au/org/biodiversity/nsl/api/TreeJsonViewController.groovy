@@ -584,6 +584,7 @@ class TreeJsonViewController {
 
 
     def nodeBranch(TreeParam param) {
+
         if (!param.validate()) {
             def msg = [];
 
@@ -631,21 +632,19 @@ class TreeJsonViewController {
             )
         }
 
-        if (param.focus) {
-            o = linkService.getObjectForLink(param.focus);
+        if (param.node && param.node != 0) {
+            focus = Node.get(param.node)
 
-            if (!(o instanceof Node)) {
-                return renderJsonError(400,
+            if (!focus) {
+                return renderJsonError(404,
                         [
-                            success: false,
-                            msg    : [
-                                    [msg: "${param.focus} does not appear to be a tree or workspace node", args: [param.focus]]
-                            ]
-                    ]
+                                success: false,
+                                msg    : [
+                                        [msg: "node ${param.node} not found", args: [param.node]]
+                                ]
+                        ]
                 )
             }
-
-            focus = (Node) o;
         } else {
             focus = root
         }
@@ -654,23 +653,25 @@ class TreeJsonViewController {
         if (paths != 1) {
             return renderJsonError(400,
                     [
-                        success: false,
-                        msg    : [
-                                [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to ${param.focus}", args: [arrangement, focus]]
-                        ]
-                ]
+                            success: false,
+                            msg    : [
+                                    [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to node ${param.node}", args: [arrangement, focus]]
+                            ]
+                    ]
             )
 
         }
 
+        Map<Long, Integer> subTaxaCountMap = queryService.getSubtaxaCountForAllSubtaxa(focus)
+
         def result = [
                 success: true,
                 result : [
-                        node    : nodeDisplayJson(focus),
+                        node    : nodeDisplayJson(focus, null),
                         subnodes: focus.subLink
                                 .findAll { it.subnode.internalType == NodeInternalType.T }
                                 .sort { Link a, Link b -> return (a.subnode.name?.simpleName ?: '').compareTo((b.subnode.name?.simpleName ?: '')) }
-                                .collect { linkDisplayJson(it) }
+                                .collect { linkDisplayJson(it, subTaxaCountMap) }
                 ]
         ];
 
@@ -726,21 +727,19 @@ class TreeJsonViewController {
 
         root = DomainUtils.getSingleSubnode(arrangement.node)
 
-        if (param.focus) {
-            o = linkService.getObjectForLink(param.focus);
+        if (param.node && param.node != 0) {
+            focus = Node.get(param.node)
 
-            if (!(o instanceof Node)) {
-                return renderJsonError(400,
+            if (!focus) {
+                return renderJsonError(404,
                         [
                                 success: false,
                                 msg    : [
-                                        [msg: "${param.focus} does not appear to be a tree or workspace node", args: [param.focus]]
+                                        [msg: "node ${param.node} not found", args: [param.node]]
                                 ]
                         ]
                 )
             }
-
-            focus = (Node) o;
         } else {
             focus = root
         }
@@ -751,7 +750,7 @@ class TreeJsonViewController {
                     [
                             success: false,
                             msg    : [
-                                    [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to ${param.focus}", args: [arrangement, focus]]
+                                    [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to node ${param.node}", args: [arrangement, focus]]
                             ]
                     ]
             )
@@ -762,27 +761,32 @@ class TreeJsonViewController {
 
         def result = [
                 success: true,
-                result : path.collect { linkDisplayJson(it) }
+                result : path.collect { linkDisplayJson(it, null) }
         ];
 
         return render(result as JSON)
     }
 
-    def linkDisplayJson(Link l) {
-        def json = [
+    def nodeLink(TreeParam param) {
+
+    }
+
+
+    Map linkDisplayJson(Link l, Map<Long, Integer> subTaxaCountMap) {
+        Map json = [
                 linkCss : DomainUtils.getLinkTypeUri(l).asCssClass()
         ]
 
-        json << nodeDisplayJson(l.subnode)
+        json << nodeDisplayJson(l.subnode, subTaxaCountMap)
 
         return json
     }
 
-    def nodeDisplayJson(Node n) {
-        def json = [
+    Map nodeDisplayJson(Node n, Map<Long, Integer> subTaxaCountMap) {
+        Map json = [
                 css: DomainUtils.getNodeTypeUri(n).asCssClass(),
-                uri: linkService.getPreferredLinkForObject(n),
-                subTaxa: queryService.countImmediateSubtaxa(n)
+                node: n.id,
+                subTaxa: subTaxaCountMap == null ? queryService.countImmediateSubtaxa(n) : (subTaxaCountMap.get(n.id)?:0)
         ]
 
         if (DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(n))) {
@@ -826,11 +830,11 @@ class TreeJsonViewController {
 @Validateable
 class TreeParam {
     String arrangement;
-    String focus;
+    Long node;
 
     static constraints = {
         arrangement nullable: false
-        focus nullable: true
+        node nullable: true
     }
 }
 
