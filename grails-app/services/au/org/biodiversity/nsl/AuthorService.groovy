@@ -85,27 +85,28 @@ class AuthorService {
         Map result = [:]
         Boolean success = true
         if (dupeAuthor != targetAuthor) {
-            try {
-                rewireDuplicateTo(targetAuthor, dupeAuthor, user)
-                result.rewired = true
+            Author.withTransaction { tx ->
+                try {
+                    rewireDuplicateTo(targetAuthor, dupeAuthor, user)
+                    result.rewired = true
 
-                log.debug "move links to $targetAuthor from $dupeAuthor"
+                    log.debug "move links to $targetAuthor from $dupeAuthor"
 
-                Map linkResult = linkService.moveTargetLinks(dupeAuthor, targetAuthor)
-                if (!linkResult.success) {
-                    throw new Exception("relinking [$dupeAuthor] failed. Linker error: ($linkResult.errors)")
+                    Map linkResult = linkService.moveTargetLinks(dupeAuthor, targetAuthor)
+                    if (!linkResult.success) {
+                        throw new Exception("relinking [$dupeAuthor] failed. Linker error: ($linkResult.errors)")
+                    }
+
+                    result.relinked = true
+                    log.info "About to delete $dupeAuthor"
+                    dupeAuthor.delete()
+                    targetAuthor.duplicateOf = null
+                    targetAuthor.save()
+                } catch (e) {
+                    result.error = "Deduplication failed: ($e.message)"
+                    tx.setRollbackOnly()
+                    success = false
                 }
-
-                result.relinked = true
-                log.info "About to delete $dupeAuthor"
-                dupeAuthor.delete()
-                targetAuthor.duplicateOf = null
-                targetAuthor.save()
-            } catch (e) {
-                e.printStackTrace()
-                result.error = "Deduplication failed: ($e.message)"
-                tx.setRollbackOnly()
-                success = false
             }
         } else {
             result.error = "Duplicate ($dupeAuthor) = Target ($targetAuthor)"

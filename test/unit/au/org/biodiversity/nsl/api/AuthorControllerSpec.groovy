@@ -33,7 +33,7 @@ class AuthorControllerSpec extends Specification {
         linkServiceMock.demand.getPreferredLinkForObject(0..10) { Object thing -> "Link for $thing" }
         controller.jsonRendererService.linkService = linkServiceMock.createMock()
         def authorServiceMock = mockFor(AuthorService)
-        authorServiceMock.demand.deduplicate(0..10) {Author duplicate, Author target -> }
+        authorServiceMock.demand.deduplicate(0..10) {Author duplicate, Author target, String user -> [success : true]}
         controller.authorService = (AuthorService)authorServiceMock.createMock()
     }
 
@@ -44,7 +44,7 @@ class AuthorControllerSpec extends Specification {
         when: "no parameters are passed"
         request.method = method
         response.format = 'json'
-        controller.deduplicate(1, 2)
+        controller.deduplicate(1l, 2l, 'tester')
 
         then: "? is returned"
         response.status == status
@@ -62,17 +62,17 @@ class AuthorControllerSpec extends Specification {
     void "test author deduplication"() {
         when:
         resetCallToDedupe()
-        controller.deduplicate(1, 2)
+        controller.deduplicate(1l, 2l, 'tester')
 
         then:
         response.status == 404
-        controller.response.text == '{"action":null,"error":"Target author not found.\\n Duplicate author not found."}'
+        controller.response.text == '{"action":null,"error":"Target author not found.\\n Duplicate author not found.","ok":false}'
 
         when:
         resetCallToDedupe()
         Author target = saveAuthor(abbrev: 'a1', name: 'Author One')
         Author duplicate = saveAuthor(abbrev: 'a2', name: 'Duplicate Author')
-        controller.deduplicate(duplicate.id, target.id)
+        controller.deduplicate(duplicate.id, target.id, 'tester')
 
         then:
         println controller.response.text

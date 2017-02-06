@@ -49,7 +49,6 @@ class AuthorServiceSpec extends Specification {
         result.success == false
         Author.get(dupId)
         Author.get(targetId)
-        result.duplicateAuthorId == duplicate.id
         result.error == 'Deduplication failed: (relinking [Author 2: Duplicate Author] failed. Linker error: (It was meant to fail))'
 
         when: "link service works"
@@ -66,7 +65,6 @@ class AuthorServiceSpec extends Specification {
         result2.success == true
         !Author.get(dupId)
         Author.get(targetId)
-        result2.duplicateAuthorId == duplicate.id
         result2.rewired
         result2.relinked
     }
