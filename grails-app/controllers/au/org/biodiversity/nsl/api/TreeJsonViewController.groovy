@@ -811,7 +811,8 @@ class TreeJsonViewController {
         Map json = [
                 css: DomainUtils.getNodeTypeUri(n).asCssClass(),
                 node: n.id,
-                subTaxa: subTaxaCountMap == null ? queryService.countImmediateSubtaxa(n) : (subTaxaCountMap.get(n.id)?:0)
+                subTaxa: subTaxaCountMap == null ? queryService.countImmediateSubtaxa(n) : (subTaxaCountMap.get(n.id)?:0),
+                rank: n.name?.nameRank?.major && n.name?.nameRank?.sortOrder < 120 ? n.name?.nameRank?.abbrev : null
         ]
 
         if (DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(n))) {
