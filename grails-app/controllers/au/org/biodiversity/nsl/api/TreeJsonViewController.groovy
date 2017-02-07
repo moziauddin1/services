@@ -797,7 +797,59 @@ class TreeJsonViewController {
     }
 
 
-    Map linkDisplayJson(Link l, Map<Long, Integer> subTaxaCountMap) {
+    def quickSearch(QuickSearchParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return renderJsonError(400, result)
+
+        }
+
+        def arrangement = getObjectForLink(param.arrangement)
+
+        if (!arrangement || !(arrangement instanceof Arrangement)) {
+            def result = [
+                    success: false,
+                    msg    : [
+                            [msg: 'Not found', status: 'warning', body: "Can't find tree ${param.arrangement}"]
+                    ],
+            ];
+
+            return renderJsonError(400, result)
+
+        }
+
+        List results = queryService.findNamesDirectlyInSubtree(arrangement.node, param.searchText)
+        int sz = results.size()
+
+        return render([
+                success: true,
+                msg    : [
+                        results
+                                ? [msg: "Found", status: "success", body: "Found ${results.size()} matching placements"]
+                                : [msg: "Not found", status: "success", body: "Name not found in selected subtree."]
+                ],
+                total  : sz,
+                results: results.sort { r1, r2 ->
+                    // I use a tilde because it is the last printable in ascii.
+                    "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
+                }
+                .subList(0, sz > 10 ? 10 : sz)
+                        .collect { [simpleNameHtml: it.node.name.simpleNameHtml, node: it.node.id, uri: linkService.getPreferredLinkForObject(it.node)] }
+        ] as JSON)
+
+    }
+
+    private Map linkDisplayJson(Link l, Map<Long, Integer> subTaxaCountMap) {
         Map json = [
                 linkCss : DomainUtils.getLinkTypeUri(l).asCssClass()
         ]
@@ -807,7 +859,7 @@ class TreeJsonViewController {
         return json
     }
 
-    Map nodeDisplayJson(Node n, Map<Long, Integer> subTaxaCountMap) {
+    private Map nodeDisplayJson(Node n, Map<Long, Integer> subTaxaCountMap) {
         Map json = [
                 css: DomainUtils.getNodeTypeUri(n).asCssClass(),
                 node: n.id,
@@ -921,7 +973,19 @@ class NamesInSubtreeParam {
 
     static constraints = {
         searchSubtree nullable: false
-        searchText nullable: false
+        searchText nullable: false, minSize: 3
+    }
+
+}
+
+@Validateable
+class QuickSearchParam {
+    String arrangement
+    String searchText
+
+    static constraints = {
+        arrangement nullable: false
+        searchText nullable: false, minSize: 3
     }
 
 }
