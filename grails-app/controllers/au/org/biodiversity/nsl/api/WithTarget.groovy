@@ -62,7 +62,10 @@ trait WithTarget {
         }
         if(ok) {
             work(result)
+        } else {
+            result.ok = false
         }
+
         log.debug "result status is ${result.status}"
         respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
     }

@@ -17,7 +17,10 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
-import org.springframework.transaction.TransactionStatus
+import org.apache.shiro.SecurityUtils
+import org.apache.shiro.grails.annotations.RoleRequired
+
+import java.sql.Timestamp
 
 @Transactional
 class AuthorService {
@@ -25,10 +28,11 @@ class AuthorService {
     def linkService
 
     def autoDeduplicate() {
+        String user = SecurityUtils.subject.principal.toString() ?: 'admin'
         runAsync {
             List<Author> authorsMarkedAsDuplicates = Author.findAllByDuplicateOfIsNotNull()
             authorsMarkedAsDuplicates.each { Author author ->
-                dedupe([author], author.duplicateOf)
+                dedup(author, author.duplicateOf, user)
             }
 
             List<String> namesWithDuplicates = Author.executeQuery('select distinct(a.name) from Author a where exists (select 1 from Author a2 where a2.id <> a.id and a2.name = a.name)') as List<String>
@@ -43,10 +47,10 @@ class AuthorService {
                         Author targetAuthor
                         if (abbrevs.size() == 0) {
                             targetAuthor = authors.min { it.id }
-                            dedupe(authors, targetAuthor)
+                            deduplicateAuthors(authors, targetAuthor, user)
                         } else if (abbrevs.size() == 1) {
                             targetAuthor = abbrevs.values().first().min { it.id }
-                            dedupe(authors, targetAuthor)
+                            deduplicateAuthors(authors, targetAuthor, user)
                         } else {
                             log.debug "more than one remaining abbrev for $name: $abbrevs"
                         }
@@ -56,50 +60,60 @@ class AuthorService {
         }
     }
 
-    Map deduplicate(Author duplicate, Author target) {
-        dedupe([duplicate], target)
+    @RoleRequired('admin')
+    Map deduplicate(Author duplicate, Author target, String user) {
+        if (!user) {
+            return [success: false, errors: ['You must supply a user.']]
+        }
+        Map results = dedup(duplicate, target, user)
+        return results
     }
 
-    private Map dedupe(List<Author> duplicateAuthors, Author targetAuthor) {
+    private Map deduplicateAuthors(List<Author> duplicateAuthors, Author targetAuthor, String user) {
         Map results = [success: true, target: targetAuthor, deduplicationResults: []]
         duplicateAuthors.each { Author dupeAuthor ->
-            Map result = [duplicateAuthor: dupeAuthor.id]
-            Boolean success = true
-            Author.withNewTransaction { TransactionStatus tx ->
-                if (dupeAuthor != targetAuthor) {
-                    try {
-                        rewireDuplicateTo(targetAuthor, dupeAuthor)
-                        result.rewired = true
-
-                        log.debug "move links to $targetAuthor from $dupeAuthor"
-
-                        Map linkResult = linkService.moveTargetLinks(dupeAuthor, targetAuthor)
-                        if (!linkResult.success) {
-                            throw new Exception("relinking [$dupeAuthor] failed: ($linkResult.errors)")
-                        }
-
-                        result.relinked = true
-                        log.info "About to delete $dupeAuthor"
-                        dupeAuthor.delete()
-                        targetAuthor.duplicateOf = null
-                        targetAuthor.save()
-                    } catch (e) {
-//                        e.printStackTrace()
-                        result.error = "Deduplication failed: ($e.message)"
-                        tx.setRollbackOnly()
-                        success = false
-                    }
-                } else {
-                    result.error = "Duplicate ($dupeAuthor) = Target ($targetAuthor)"
-                    success = false
-                }
-                if(!success) { //flag overall failure
-                    results.success = false
-                }
-                results.deduplicationResults << result
+            Map r = dedup(dupeAuthor, targetAuthor, user)
+            results.deduplicationResults << r
+            if (!r.success) {
+                results.success = false
             }
         }
         return results
+    }
+
+    private Map dedup(Author dupeAuthor, Author targetAuthor, String user) {
+        Map result = [:]
+        Boolean success = true
+        if (dupeAuthor != targetAuthor) {
+            Author.withTransaction { tx ->
+                try {
+                    rewireDuplicateTo(targetAuthor, dupeAuthor, user)
+                    result.rewired = true
+
+                    log.debug "move links to $targetAuthor from $dupeAuthor"
+
+                    Map linkResult = linkService.moveTargetLinks(dupeAuthor, targetAuthor)
+                    if (!linkResult.success) {
+                        throw new Exception("relinking [$dupeAuthor] failed. Linker error: ($linkResult.errors)")
+                    }
+
+                    result.relinked = true
+                    log.info "About to delete $dupeAuthor"
+                    dupeAuthor.delete()
+                    targetAuthor.duplicateOf = null
+                    targetAuthor.save()
+                } catch (e) {
+                    result.error = "Deduplication failed: ($e.message)"
+                    tx.setRollbackOnly()
+                    success = false
+                }
+            }
+        } else {
+            result.error = "Duplicate ($dupeAuthor) = Target ($targetAuthor)"
+            success = false
+        }
+        result.success = success
+        return result
     }
 
     /**
@@ -109,47 +123,67 @@ class AuthorService {
      * @return
      */
     @SuppressWarnings("GrMethodMayBeStatic")
-    private rewireDuplicateTo(Author target, Author duplicate) {
+    private rewireDuplicateTo(Author target, Author duplicate, String user) {
         log.debug "rewiring links for $duplicate to $target"
+        Timestamp now = new Timestamp(System.currentTimeMillis())
+
         duplicate.namesForAuthor.each { Name name ->
             log.debug "setting author on name $name to $target from $duplicate"
             name.author = target
+            name.updatedAt = now
+            name.updatedBy = user
             name.save()
         }
         duplicate.namesForBaseAuthor.each { Name name ->
             log.debug "setting base author on name $name to $target from $duplicate"
             name.baseAuthor = target
+            name.updatedAt = now
+            name.updatedBy = user
             name.save()
         }
         duplicate.namesForExAuthor.each { Name name ->
             log.debug "setting ex author on name $name to $target from $duplicate"
             name.exAuthor = target
+            name.updatedAt = now
+            name.updatedBy = user
             name.save()
         }
         duplicate.namesForExBaseAuthor.each { Name name ->
             log.debug "setting ex base author on name $name to $target from $duplicate"
             name.exBaseAuthor = target
+            name.updatedAt = now
+            name.updatedBy = user
             name.save()
         }
         duplicate.namesForSanctioningAuthor.each { Name name ->
             log.debug "setting sanctioning author on name $name to $target from $duplicate"
             name.sanctioningAuthor = target
+            name.updatedAt = now
+            name.updatedBy = user
             name.save()
         }
         duplicate.references.each { Reference reference ->
             log.debug "setting author on reference $reference to $target from $duplicate"
             reference.author = target
+            reference.updatedAt = now
+            reference.updatedBy = user
             reference.save()
         }
         duplicate.comments.each { Comment comment ->
             log.debug "setting author on comment $comment to $target from $duplicate"
             comment.author = target
+            comment.updatedAt = now
+            comment.updatedBy = user
             comment.save()
         }
         log.debug "setting duplicates for $duplicate to $target"
         Author.findAllByDuplicateOf(duplicate)*.duplicateOf = target
         duplicate.duplicateOf = target
+        target.updatedAt = now
+        target.updatedBy = user
         target.save()
+        duplicate.updatedAt = now
+        duplicate.updatedBy = user
         duplicate.save()
     }
 }

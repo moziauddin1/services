@@ -15,8 +15,9 @@
   <h2>Export</h2>
 
   <ul>
-    <li><a href="namesCsv">export ${ConfigService.nameTreeName} Names as CSV</a></li>
-    <li><a href="taxonCsv">export ${ConfigService.classificationTreeName} Taxon as CSV</a></li>
+    <g:each in="${exports}" var="export">
+      <li><a href="${export.url}">export ${export.label}</a></li>
+    </g:each>
   </ul>
 
 </div>

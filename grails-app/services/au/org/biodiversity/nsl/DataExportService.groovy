@@ -20,6 +20,7 @@ import grails.transaction.Transactional
 import groovy.sql.Sql
 import groovy.transform.Synchronized
 import groovy.xml.MarkupBuilder
+import org.codehaus.groovy.runtime.IOGroovyMethods
 import org.postgresql.PGConnection
 import org.postgresql.copy.CopyManager
 import java.util.zip.ZipEntry
@@ -108,10 +109,11 @@ class DataExportService {
      */
     static File sqlCopyToCsvFile(String sqlStatement, File file, Sql sql) {
 
-        String statement = "COPY ($sqlStatement) TO STDOUT WITH CSV HEADER"
+        String statement = "COPY ($sqlStatement) TO STDOUT WITH ENCODING 'UTF8' CSV HEADER"
         println statement
         CopyManager copyManager = ((PGConnection) sql.connection).getCopyAPI()
-        file.withWriter { writer ->
+        PrintWriter printWriter = new PrintWriter(file,'UTF-8')
+        IOGroovyMethods.withWriter(printWriter) { writer ->
             copyManager.copyOut(statement, writer)
         }
         return file
