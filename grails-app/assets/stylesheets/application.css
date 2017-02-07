@@ -426,8 +426,8 @@ a:hover {
 
 hybrid {
     visibility: hidden;
-    margin-right: -4px;
-    margin-left: -5px;
+    margin-right: 0;
+    margin-left: -6px;
 }
 
 hybrid::after {
