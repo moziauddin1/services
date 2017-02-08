@@ -421,7 +421,7 @@ class TreeJsonViewController {
         return render(results.nodes.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }
 
-    def searchNamesInSubtree(NamesInSubtreeParam param) {
+    def searchNamesInArrangement(QuickSearchParam param) {
         if (!param.validate()) {
             def msg = [];
 
@@ -438,13 +438,13 @@ class TreeJsonViewController {
 
         }
 
-        def searchSubtree = getObjectForLink(param.searchSubtree)
+        def a = getObjectForLink(param.arrangement)
 
-        if (!searchSubtree || !(searchSubtree instanceof Node)) {
+        if (!a || !(a instanceof Arrangement)) {
             def result = [
                     success: false,
                     msg    : [
-                            [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"]
+                            [msg: 'Not found', status: 'warning', body: "Can't find tree ${param.arrangement}"]
                     ],
             ];
 
@@ -453,7 +453,7 @@ class TreeJsonViewController {
         }
 
         log.debug("Starting findNamesInSubtree");
-        List results = queryService.findNamesInSubtree(searchSubtree, param.searchText)
+        List results = queryService.findNamesInSubtree(((Arrangement)a).node, param.searchText)
         log.debug("Done findNamesInSubtree");
 
         return render([
@@ -467,66 +467,6 @@ class TreeJsonViewController {
                     // I use a tilde because it is the last printable in ascii.
                     "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
                 }.collect { result -> [node: linkService.getPreferredLinkForObject(result.node), matched: linkService.getPreferredLinkForObject(result.matchedInstance)] }
-        ] as JSON)
-
-    }
-
-    def searchNamesDirectlyInSubtree(NamesInSubtreeParam param) {
-        if (!param.validate()) {
-            def msg = [];
-
-            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
-            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
-
-            def result = [
-                    success: false,
-                    msg    : msg,
-                    errors : param.errors,
-            ];
-
-            return renderJsonError(400, result)
-
-        }
-
-        def searchSubtree = getObjectForLink(param.searchSubtree)
-
-        if (!searchSubtree || !(searchSubtree instanceof Node)) {
-            def result = [
-                    success: false,
-                    msg    : [
-                            [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"]
-                    ],
-            ];
-
-            return renderJsonError(400, result)
-
-        }
-
-        log.debug("Starting findNamesDirectlyInSubtree");
-        List results = queryService.findNamesDirectlyInSubtree(searchSubtree, param.searchText)
-        log.debug("Done findNamesDirectlyInSubtree");
-        int sz = results.size()
-        log.debug("Done results.size()");
-
-        return render([
-                success: true,
-                msg    : [
-                        results
-                                ? [msg: "Found", status: "success", body: "Found ${results.size()} matching placements"]
-                                : [msg: "Not found", status: "success", body: "Name not found in selected subtree."]
-                ],
-                total  : sz,
-                results: results.sort { r1, r2 ->
-                    // I use a tilde because it is the last printable in ascii.
-                    "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
-                }
-                .subList(0, sz > 10 ? 10 : sz)
-                        .collect { result ->
-                    [
-                            node      : linkService.getPreferredLinkForObject(result.node),
-                            simpleName: result.matchedInstance.name.simpleName
-                    ]
-                }
         ] as JSON)
 
     }
@@ -965,18 +905,6 @@ class SearchNamesRefsParam {
     }
 }
 
-
-@Validateable
-class NamesInSubtreeParam {
-    String searchSubtree
-    String searchText
-
-    static constraints = {
-        searchSubtree nullable: false
-        searchText nullable: false, minSize: 3
-    }
-
-}
 
 @Validateable
 class QuickSearchParam {
