@@ -729,7 +729,11 @@ class TreeJsonViewController {
                 result : [
                     nodeUri: linkService.getPreferredLinkForObject(node),
                     nameUri: node.name ? linkService.getPreferredLinkForObject(node.name) : null,
-                    instanceUri: node.instance ? linkService.getPreferredLinkForObject(node.instance) : null
+                    instanceUri: node.instance ? linkService.getPreferredLinkForObject(node.instance) : null,
+                    // I need these to be able to talk to the nsl instance editor
+                    nodeId: node.id,
+                    nameId: node.name?.id,
+                    instanceId: node.instance?.id
                 ]
         ];
 
@@ -834,6 +838,9 @@ class TreeJsonViewController {
         } else {
             json.label = n.typeUriIdPart
         }
+
+        json.draft = (n.checkedInAt == null)
+        json.replaced = (n.replacedAt != null)
 
         return json
     }
