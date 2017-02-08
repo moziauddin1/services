@@ -10,9 +10,9 @@ import org.hibernate.type.StandardBasicTypes;
 public class ExtendedPostgreSQLDialect extends org.hibernate.dialect.PostgreSQL82Dialect {
     public ExtendedPostgreSQLDialect() {
         super();
-        registerFunction("regex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(?1 ~ ?2)"));
-        registerFunction("iregex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(?1 ~* ?2)"));
-        registerFunction("not_regex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(?1 !~ ?2)"));
-        registerFunction("not_iregex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(?1 !~* ?2)"));
+        registerFunction("regex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(unaccent(?1) ~ unaccent(?2))"));
+        registerFunction("iregex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(unaccent(?1) ~* unaccent(?2))"));
+        registerFunction("not_regex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(unaccent(?1) !~ unaccent(?2))"));
+        registerFunction("not_iregex", new SQLFunctionTemplate(StandardBasicTypes.BOOLEAN, "(unaccent(?1) !~* unaccent(?2))"));
     }
 }
