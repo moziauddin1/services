@@ -708,7 +708,16 @@ class TreeJsonViewController {
     }
 
     def nodeUris(TreeParam param) {
-        if(param.node == null || param.node == 0) return render( null as JSON)
+        if(param.node == null || param.node == 0) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "No node specified", ]
+                            ]
+                    ]
+            )
+        }
 
         Node node = Node.get(param.node)
 
@@ -726,20 +735,57 @@ class TreeJsonViewController {
 
         def result = [
                 success: true,
-                result : [
-                    nodeUri: linkService.getPreferredLinkForObject(node),
-                    nameUri: node.name ? linkService.getPreferredLinkForObject(node.name) : null,
-                    instanceUri: node.instance ? linkService.getPreferredLinkForObject(node.instance) : null,
-                    // I need these to be able to talk to the nsl instance editor
-                    nodeId: node.id,
-                    nameId: node.name?.id,
-                    instanceId: node.instance?.id
-                ]
+                result : _nodeUris(node)
         ];
 
         return render(result as JSON)
     }
 
+    def focusUris(UriParam param) {
+        if(!param.uri) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "No focus specified", ]
+                            ]
+                    ]
+            )
+        }
+
+        Node node = linkService.getObjectForLink(param.uri)
+
+        if (!node) {
+            return renderJsonError(404,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "node ${param.node} not found", args: [param.node]]
+                            ]
+                    ]
+            )
+        }
+
+
+        def result = [
+                success: true,
+                result : _nodeUris(node)
+        ];
+
+        return render(result as JSON)
+    }
+
+    private Map _nodeUris(Node node) {
+        [
+                nodeUri: linkService.getPreferredLinkForObject(node),
+                nameUri: node.name ? linkService.getPreferredLinkForObject(node.name) : null,
+                instanceUri: node.instance ? linkService.getPreferredLinkForObject(node.instance) : null,
+                // I need these to be able to talk to the nsl instance editor
+                nodeId: node.id,
+                nameId: node.name?.id,
+                instanceId: node.instance?.id
+        ]
+    }
 
     def quickSearch(QuickSearchParam param) {
         if (!param.validate()) {
