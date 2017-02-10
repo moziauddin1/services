@@ -1020,6 +1020,24 @@ class TreeJsonEditController {
         }
     }
 
+    def verifyRevert() {
+        return render([
+               success : true,
+                msg: [ [ msg: 'reverting this node will blah blah blah'] ]
+        ] as JSON)
+
+    }
+
+    def performRevert() {
+        return render([
+                success : true,
+                msg: [ [ msg: 'reverting this node will blah blah blah'] ],
+                nodeId: 1234
+        ] as JSON)
+    }
+
+
+
 // ==============================
 
     private renderValidationErrors(param) {
