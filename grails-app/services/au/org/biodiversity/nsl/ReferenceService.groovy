@@ -263,6 +263,7 @@ class ReferenceService {
         }
     }
 
+    @RoleRequired('admin')
     @Transactional
     Map deduplicateMarked(String user) {
         List<Map> refs = []
@@ -301,6 +302,7 @@ class ReferenceService {
  * @param target
  * @return
  */
+    @RoleRequired('admin')
     @Transactional
     Map moveReference(Reference source, Reference target, String user) {
         if (target.duplicateOf) {
@@ -465,7 +467,8 @@ class ReferenceService {
         return [ok: true]
     }
 
-    def replaceXICSinReferenceTitles() {
+    @RoleRequired('admin')
+    replaceXICSinReferenceTitles() {
 
         runAsync {
 

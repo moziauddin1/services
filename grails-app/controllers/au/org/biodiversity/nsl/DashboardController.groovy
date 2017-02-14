@@ -16,10 +16,16 @@
 
 package au.org.biodiversity.nsl
 
+import org.apache.shiro.authz.annotation.RequiresRoles
+
+import java.sql.Timestamp
+
 class DashboardController {
 
     def grailsApplication
     VocabularyTermsService vocabularyTermsService
+    def auditService
+    private static final WEEK_MS = 604800000l
 
     def index() {
         String url = grailsApplication.config.grails.serverURL
@@ -40,10 +46,18 @@ class DashboardController {
 
         stats.instanceTypeStats = Instance.executeQuery(
                 'select t.name, count(*) as total from Instance i, InstanceType t where t = i.instanceType group by t.id order by total desc')
-        stats.recentNameUpdates = Name.executeQuery('select n from Name n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
-        stats.recentReferenceUpdates = Reference.executeQuery('select n from Reference n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
-        stats.recentAuthorUpdates = Author.executeQuery('select n from Author n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
-        stats.recentInstanceUpdates = Instance.executeQuery('select n from Instance n order by n.updatedAt desc', [max: 10]).collect { [it, it.updatedAt, it.updatedBy] }
+        stats.recentNameUpdates = Name.executeQuery('select n from Name n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
+        stats.recentReferenceUpdates = Reference.executeQuery('select n from Reference n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
+        stats.recentAuthorUpdates = Author.executeQuery('select n from Author n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
+        stats.recentInstanceUpdates = Instance.executeQuery('select n from Instance n order by n.updatedAt desc', [max: 10]).collect {
+            [it, it.updatedAt, it.updatedBy]
+        }
 
         [stats: stats]
     }
@@ -51,36 +65,59 @@ class DashboardController {
     def error() {
         log.debug 'In error action: throwing an error.'
         throw new Exception('This is a test error. Have a nice day :-)')
-        redirect(action: 'index')
     }
 
     def downloadVocabularyTerms() {
-        File zip = vocabularyTermsService.getVocabularyZipFile();
+        File zip = vocabularyTermsService.getVocabularyZipFile()
         // create a temp zip file
-
         // ask the service to populate it
-
         // write it to the output, with a disposition etc
 
-        response.setHeader("Content-disposition", "attachment; filename=NslVocabulary.zip");
-        response.setContentType("application/zip");
+        response.setHeader("Content-disposition", "attachment; filename=NslVocabulary.zip")
+        response.setContentType("application/zip")
 
-        byte[] buf = new byte[1024];
+        byte[] buf = new byte[1024]
 
-        OutputStream os = response.getOutputStream();
-        InputStream is = new FileInputStream(zip);
+        OutputStream os = response.getOutputStream()
+        InputStream is = new FileInputStream(zip)
 
-        int n;
-
-        while((n=is.read(buf))>0) {
-            os.write(buf, 0, n);
+        int n
+        while ((n = is.read(buf)) > 0) {
+            os.write(buf, 0, n)
         }
 
-        is.close();
-        os.close();
+        is.close()
+        os.close()
 
-        zip.delete();
+        zip.delete()
 
-        return null;
+        return null
+    }
+
+    @RequiresRoles('QA')
+    audit(String userName, String fromStr, String toStr) {
+        if (params.search) {
+
+            List<Integer> fromInts = fromStr ? fromStr.split('/').collect { it.toInteger() } : null
+            List<Integer> toInts = toStr ? toStr.split('/').collect { it.toInteger() } : null
+            Timestamp from
+            Timestamp to
+            if (fromInts?.size() == 3 && toInts?.size() == 3) {
+                GregorianCalendar fromCal = new GregorianCalendar(fromInts[2], fromInts[1] - 1, fromInts[0])
+                GregorianCalendar toCal = new GregorianCalendar(toInts[2], toInts[1] - 1, toInts[0])
+                from = new Timestamp(fromCal.time.time)
+                to = new Timestamp(toCal.time.time)
+            } else {
+                from = new Timestamp(System.currentTimeMillis() - WEEK_MS)
+                to = new Timestamp(System.currentTimeMillis())
+                flash.message = "No period set, using last 7 days."
+            }
+
+            List rows = auditService.list(userName, from, to)
+
+            [auditRows: rows, query: params]
+        } else {
+            [auditRows: null, query: [:]]
+        }
     }
 }

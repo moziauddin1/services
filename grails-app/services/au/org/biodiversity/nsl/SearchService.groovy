@@ -74,7 +74,7 @@ class SearchService {
             queryParams.publication = "${regexTokenizeReferenceQueryString((params.publication as String).trim().toLowerCase(), true)}"
             from.add('Instance i')
             from.add('Reference r')
-            and << "regex(lower(r.citation), :publication) = true"
+            and << "iregex(r.citation, :publication) = true"
             and << "i.reference = r"
             and << "i.name = n"
         }
@@ -210,8 +210,8 @@ class SearchService {
             List<String> ors = []
             nameStrings.findAll { it }.eachWithIndex { n, i ->
                 queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                ors << "regex(lower(n.simpleName), :name${i}) = true"
-                ors << "regex(lower(n.fullName), :name${i}) = true"
+                ors << "iregex(n.simpleName, :name${i}) = true"
+                ors << "iregex(n.fullName, :name${i}) = true"
             }
             and << "(${ors.join(' or ')})"
         }
@@ -431,7 +431,7 @@ order by n.sortName asc''',
             if (rank) {
                 names = Name.executeQuery('''select n.fullName
 from Name n
-where (regex(lower(n.simpleName), :query) = true or regex(lower(n.fullName), :query) = true)
+where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
 and n.instances.size > 0
 and n.nameType.scientific = true
 and n.nameRank = :rank
@@ -439,7 +439,7 @@ order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase()
             } else {
                 names = Name.executeQuery('''select n.fullName
 from Name n
-where (regex(lower(n.simpleName), :query) = true or regex(lower(n.fullName), :query) = true)
+where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
 and n.instances.size > 0
 and n.nameType.scientific = true
 order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15]) as List<String>
@@ -453,14 +453,14 @@ order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase()
         }
 
         suggestService.addSuggestionHandler('simpleName') { String query ->
-            return Name.executeQuery('''select n from Name n where regex(lower(n.simpleName), :query) = true and n.instances.size > 0 order by n.sortName''',
+            return Name.executeQuery('''select n from Name n where iregex(n.simpleName, :query) = true and n.instances.size > 0 order by n.sortName''',
                     [query: regexTokenizeNameQueryString(query.toLowerCase())], [max: 15])
                        .collect { name -> name.simpleName }
         }
 
         suggestService.addSuggestionHandler('acceptableName') { String query ->
             List<String> status = ['legitimate', 'manuscript', 'nom. alt.', 'nom. cons.', 'nom. cons., nom. alt.', 'nom. cons., orth. cons.', 'nom. et typ. cons.', 'orth. cons.', 'typ. cons.']
-            return Name.executeQuery('''select n from Name n where (regex(lower(n.fullName), :query) = true or regex(lower(n.simpleName), :query) = true) and n.instances.size > 0 and n.nameStatus.name in (:ns) order by n.sortName asc''',
+            return Name.executeQuery('''select n from Name n where (iregex(n.fullName, :query) = true or iregex(n.simpleName, :query) = true) and n.instances.size > 0 and n.nameStatus.name in (:ns) order by n.sortName asc''',
                     [query: regexTokenizeNameQueryString(query.toLowerCase()), ns: status], [max: 15])
                        .collect { name -> [name: name.fullName, link: linkService.getPreferredLinkForObject(name)] }
         }
@@ -474,7 +474,7 @@ order by n.sortName''', [query: regexTokenizeNameQueryString(query.toLowerCase()
         suggestService.addSuggestionHandler('publication') { String query ->
             String qtokenized = regexTokenizeReferenceQueryString(query.trim().toLowerCase(), true)
             log.debug "Tokenized query: $qtokenized"
-            return Reference.executeQuery('''select r from Reference r where regex(lower(r.citation), :query) = true order by r.citation asc''',
+            return Reference.executeQuery('''select r from Reference r where iregex(r.citation, :query) = true order by r.citation asc''',
                     [query: "${qtokenized}"], [max: 15])
                             .collect { reference -> reference.citation }
         }

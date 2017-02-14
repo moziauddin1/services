@@ -416,6 +416,25 @@ a:hover {
 .imageAndText h1 {
     font-size: 46px;
 }
+
+.diffBefore {
+    background-color: rgba(235,21,31,0.1);
+}
+.diffAfter {
+    background-color: rgba(12,235,2,0.1);
+}
+
+hybrid {
+    visibility: hidden;
+    margin-right: 0;
+    margin-left: -6px;
+}
+
+hybrid::after {
+    content: '×';
+    visibility: visible;
+}
+
 @media(max-width: 1500px) {
     .imageAndText h1 {
         font-size: calc(12px + 2vw);

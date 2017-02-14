@@ -34,7 +34,7 @@ import org.apache.commons.logging.LogFactory
 @Transactional
 class ConfigService {
 
-    GrailsApplication grailsApplication
+    def grailsApplication
 
     private static String configGetOrfail(String key) {
         String value = ShardConfig.findByName(key)?.value

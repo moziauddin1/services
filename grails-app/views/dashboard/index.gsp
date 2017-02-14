@@ -23,6 +23,13 @@
   <h2>NSL Vocabulary</h2>
   <a href="${createLink(action: 'downloadVocabularyTerms')}">Download NSL RDF Vocabulary</a>
 
+  <h2>Audit</h2>
+  <ul>
+    <g:each in="${auditRows}" var="row">
+      <li>${row.toString()}</li>
+    </g:each>
+  </ul>
+
 </div>
 </body>
 </html>

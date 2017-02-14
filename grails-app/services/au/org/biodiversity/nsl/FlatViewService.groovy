@@ -29,7 +29,7 @@ import groovy.sql.Sql
 
 
 @Transactional
-class FlatViewService {
+class FlatViewService implements WithSql{
 
     def grailsApplication
     def configService
@@ -505,16 +505,6 @@ SELECT EXISTS
 AS exists"""
         def rowResult = sql.firstRow(query)
         return rowResult.exists
-    }
-
-    private withSql(Closure work) {
-        Sql sql = configService.getSqlForNSLDB()
-        try {
-            work(sql)
-        } finally {
-            sql.close()
-        }
-
     }
 
     private List<Map> executeQuery(String query, List params) {

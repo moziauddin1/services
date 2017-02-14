@@ -57,6 +57,13 @@
         </li>
 
         <shiro:isLoggedIn>
+          <shiro:hasRole name="QA">
+            <li>
+              <a class="home" href="${createLink(controller: 'dashboard', action: 'audit')}">
+                  <i class="fa fa-file-text-o"></i> audit
+              </a>
+            </li>
+          </shiro:hasRole>
           <shiro:hasRole name="admin">
             <li>
               <a class="home" href="${createLink(controller: 'admin', action: 'index')}">
