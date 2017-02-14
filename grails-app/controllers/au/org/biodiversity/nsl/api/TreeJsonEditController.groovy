@@ -1012,7 +1012,7 @@ class TreeJsonEditController {
 
             return render([
                     success       : true,
-                    msg           : [[msg: 'Ok', body: 'Checkin performed. Please refresh your browser.', status: 'success']],
+                    msg           : [[msg: 'Ok', body: 'Check-in complete.', status: 'success']],
                     refetch       : result.modified.collect { Node it2 -> linkService.getPreferredLinkForObject(it2) },
                     checkinResults: [
                     ]
