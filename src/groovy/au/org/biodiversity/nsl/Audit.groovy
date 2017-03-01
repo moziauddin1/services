@@ -67,7 +67,7 @@ class Audit {
                 rowData.updated_by
                 break
             case 'U':
-                changedFields.updated_by ?: 'Something'
+                changedFields.updated_by ?: rowData.updated_by ?: 'Something'
                 break
             default:
                 changedFields.updated_by ?: rowData.updated_by ?: 'Something'
