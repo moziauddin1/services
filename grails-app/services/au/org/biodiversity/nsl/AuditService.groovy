@@ -16,7 +16,7 @@ class AuditService implements WithSql {
 SELECT event_id, action_tstamp_tx, table_name, action, hstore_to_json(row_data) AS rd, hstore_to_json(changed_fields) AS cf FROM audit.logged_actions 
 WHERE action_tstamp_tx > :from 
  AND action_tstamp_tx < :to 
- AND row_data -> 'updated_by' LIKE :user
+ AND (row_data -> 'updated_by' LIKE :user OR changed_fields -> 'updated_by' LIKE :user)
  ORDER BY event_id DESC""", [from: from, to: to, user : userName]) { GroovyResultSet row ->
                 println row
                 rows.add(new Audit(row))
