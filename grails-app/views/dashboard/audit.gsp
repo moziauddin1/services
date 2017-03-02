@@ -36,34 +36,37 @@
     </div>
   </g:if>
   <g:elseif test="${auditRows.size() > 0}">
-  <table class="table">
-    <g:each in="${auditRows}" var="row">
-      <tr>
-        <td>${row.when()}</td>
-        <td><b>${row.updatedBy()}</b></td>
-        <td>${[U: 'Updated', I: 'Created', D: 'Deleted'].get(row.action)}</td>
-        <td>
-          <g:if test="${row.auditedObj}">
-            <st:diffValue value="${row.auditedObj}"/>
-          </g:if>
-          <g:else>
-            ${"$row.table $row.rowData.id (deleted?)"}
-          </g:else>
-        </td>
-        <td>
-          <g:each in="${row.fieldDiffs()}" var="diff">
-            <div>
-              <div><b>${diff.fieldName.replaceAll('_id','').replaceAll('_', ' ')}</b></div>
+    <table class="table">
+      <g:each in="${auditRows}" var="row">
+        <g:if test="${!row.isUpdateBeforeDelete()}">
+          <tr>
+            <td>${row.when()}</td>
+            <td><b>${row.updatedBy()}</b></td>
+            <td>${[U: 'Updated', I: 'Created', D: 'Deleted'].get(row.action)}</td>
+            <td>
+              <g:if test="${row.auditedObj}">
+                <st:diffValue value="${row.auditedObj}"/>
+              </g:if>
+              <g:else>
+                ${"$row.table $row.rowData.id ${row.action != 'D' ? '(deleted?)' : ''}"}
+              </g:else>
+            </td>
+            <td>
+              <g:each in="${row.fieldDiffs()}" var="diff">
+                <div>
+                  <div><b>${diff.fieldName.replaceAll('_id', '').replaceAll('_', ' ')}</b></div>
 
-              <div class="diffBefore"><st:diffValue value="${diff.before}"/></div>
-
-              <div class="diffAfter"><st:diffValue value="${diff.after}"/></div>
-            </div>
-          </g:each>
-        </td>
-      </tr>
-    </g:each>
-  </table>
+                  <div class="diffBefore"><st:diffValue value="${diff.before}"/></div>
+                  <g:if test="${row.action != 'D'}">
+                    <div class="diffAfter"><st:diffValue value="${diff.after}"/></div>
+                  </g:if>
+                </div>
+              </g:each>
+            </td>
+          </tr>
+        </g:if>
+      </g:each>
+    </table>
   </g:elseif>
   <g:else>
     <div>
