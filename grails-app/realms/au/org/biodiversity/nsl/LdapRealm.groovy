@@ -31,9 +31,12 @@ class LdapRealm {
     static authTokenClass = UsernamePasswordToken
 
     def grailsApplication
+    def configService
 
-    String ldapURL = null
 
+    private String ldapURL = null
+
+    @SuppressWarnings("GroovyUnusedDeclaration")
     String authenticate(UsernamePasswordToken authToken) {
         log.info "Attempting to authenticate ${authToken.username} in LDAP realm..."
         String username = authToken.username
@@ -41,12 +44,12 @@ class LdapRealm {
 
         // Get LDAP config for application. Use defaults when no config
         // is provided.
-        ConfigObject appConfig = grailsApplication.config
-        String searchBase = appConfig.ldap.search.base ?: ""
-        String usernameAttribute = appConfig.ldap.username.attribute ?: "uid"
-        Boolean skipAuthc = appConfig.ldap.skip.authentication ?: false
-        Boolean skipCredChk = appConfig.ldap.skip.credentialsCheck ?: false
-        Boolean allowEmptyPass = appConfig.ldap.allowEmptyPasswords != [:] ? appConfig.ldap.allowEmptyPasswords : true
+        Map ldapConfig = configService.ldapConfig
+        String searchBase = ldapConfig.search.base ?: ""
+        String usernameAttribute = ldapConfig.username.attribute ?: "uid"
+        Boolean skipAuthc = ldapConfig.skip.authentication ?: false
+        Boolean skipCredChk = ldapConfig.skip.credentialsCheck ?: false
+        Boolean allowEmptyPass = ldapConfig.allowEmptyPasswords != [:] ? appConfig.ldap.allowEmptyPasswords : true
 
         // Skip authentication ?
         if (skipAuthc) {
@@ -96,6 +99,7 @@ class LdapRealm {
             }
 
             //check we can log in as the user we just found using the password supplied
+            //noinspection ChangeToOperator
             SearchResult searchResult = result.next()
             try {
                 getLDAPContext(searchResult.nameInNamespace, password, ldapUrl)
@@ -108,9 +112,17 @@ class LdapRealm {
         }
     }
 
+    // Note this is currently unused consider removing
+    /**
+     * gets the CN canonical name e.g. Peter McNeil for pmcneil
+     * @param userName
+     * @return canonical name
+     */
+    @SuppressWarnings("GroovyUnusedDeclaration")
     private String getCNForUserName(String userName) {
-        String searchBase = grailsApplication.config.ldap.search.base ?: ""
-        String usernameAttribute = grailsApplication.config.ldap.username.attribute ?: "uid"
+        Map ldapConfig = configService.ldapConfig
+        String searchBase = ldapConfig.search.base ?: ""
+        String usernameAttribute = ldapConfig.username.attribute ?: "uid"
 
         ldapSearch { InitialDirContext ctx, String ldapUrl ->
 
@@ -124,6 +136,7 @@ class LdapRealm {
                 return null
             }
 
+            //noinspection ChangeToOperator
             SearchResult searchResult = result.next()
             return searchResult.nameInNamespace
         }
@@ -135,7 +148,8 @@ class LdapRealm {
             return ldapURL
         }
 
-        def configLdapUrls = grailsApplication.config.ldap.server.url ?: ["ldap://localhost:389/"]
+        Map ldapConfig = configService.ldapConfig
+        def configLdapUrls = ldapConfig.server.url ?: ["ldap://localhost:389/"]
 
         // Accept strings and GStrings for convenience, but convert to list
         List<String> ldapUrls = []
@@ -187,9 +201,10 @@ class LdapRealm {
         return env
     }
 
-    private def ldapSearch(Closure work) {
-        String searchUser = grailsApplication.config.ldap.search.user ?: ""
-        String searchPass = grailsApplication.config.ldap.search.pass ?: ""
+    private ldapSearch(Closure work) {
+        Map ldapConfig = configService.ldapConfig
+        String searchUser = ldapConfig.search.user ?: ""
+        String searchPass = ldapConfig.search.pass ?: ""
 
         String ldapUrl = findLDAPServerUrlToUse(searchUser, searchPass)
         if (ldapUrl) {
@@ -200,8 +215,9 @@ class LdapRealm {
         }
     }
 
-    def hasRole(principal, roleName) {
-        Map searchGroup = grailsApplication.config.ldap.search.group
+    def hasRole(principal, String roleName) {
+        Map ldapConfig = configService.ldapConfig
+        Map searchGroup = ldapConfig.search.group
         if(!searchGroup) {
             log.error "No LDAP search group in config."
             return false
@@ -219,6 +235,7 @@ class LdapRealm {
                 log.error "Unknown role $roleName"
                 return false
             }
+            //noinspection ChangeToOperator
             SearchResult group = result.next()
             Attribute uniqueMember = group.getAttributes().all.find { attribute ->
                 attribute.getID() == searchGroupMember
@@ -236,14 +253,16 @@ class LdapRealm {
         }
     }
 
-    def hasAllRoles(principal, roles) {
-        def role = roles.find { role ->
+    @SuppressWarnings("GroovyUnusedDeclaration")
+    hasAllRoles(principal, roles) {
+        def role = roles.find { String role ->
             !hasRole(principal, role)
         }
         return role == null
     }
 
-    def isPermitted(principal, requiredPermission) {
+    @SuppressWarnings("GroovyUnusedDeclaration")
+    isPermitted(principal, String requiredPermission) {
         String[] perms = requiredPermission.split(':')
         return perms.size() > 0 && hasRole(principal, perms[0])
 

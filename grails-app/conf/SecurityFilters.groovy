@@ -20,17 +20,24 @@
  */
 
 import au.org.biodiversity.nsl.ApiKeyToken
-import au.org.biodiversity.nsl.JsonToken
+import au.org.biodiversity.nsl.JsonWebToken
+import au.org.biodiversity.nsl.api.ResultObject
+import grails.converters.JSON
+import io.jsonwebtoken.ExpiredJwtException
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
 import org.apache.shiro.subject.SimplePrincipalCollection
 import org.codehaus.groovy.grails.web.util.WebUtils
 
+import javax.crypto.spec.SecretKeySpec
+import java.security.Key
+
 import static org.springframework.http.HttpStatus.*
 
 class SecurityFilters {
 
-def adminService
+    def adminService
+    def configService
 
     def filters = {
 
@@ -62,9 +69,9 @@ def adminService
 
                         // TODO: make a new permission "mayRunAsAnyUser"
                         String runAs = params.remove('runAs')
-                        if(runAs) {
+                        if (runAs) {
                             log.debug("${SecurityUtils.subject.principal} is running as ${runAs}")
-                            SecurityUtils.subject.runAs(new SimplePrincipalCollection(runAs, ""));
+                            SecurityUtils.subject.runAs(new SimplePrincipalCollection(runAs, ""))
                         }
 
                         log.debug "login took ${System.currentTimeMillis() - start}ms"
@@ -77,17 +84,38 @@ def adminService
                 }
 
                 // if a JSON token is set then log in with that
-                if(request.getHeader('Authorization') && request.getHeader('Authorization').startsWith("JWT ")) {
+                println "Auth header: ${request.getHeader('Authorization')}"
+                if (request.getHeader('Authorization') && request.getHeader('Authorization').startsWith("JWT ")) {
                     try {
                         String jwt = request.getHeader('Authorization').substring(4)
-                        JsonToken jsonToken = JsonToken.buildUsingCredentials(jwt)
-                        SecurityUtils.subject.login(jsonToken)
+                        Key key = new SecretKeySpec(configService.JWTSecret.getBytes('UTF-8'), 'plain text')
+                        JsonWebToken jwToken = new JsonWebToken(jwt, key) //this may throw an Authentication exception
+                        println jwToken.claims.toString()
+                        SecurityUtils.subject.login(jwToken)
                         return true
-                    } catch (AuthenticationException e) {
+                    } catch (ExpiredJwtException expiredJwtException) {
+                        log.info "Expired JWT $expiredJwtException.message"
+                        //todo somehow get the app to re-authenticate using a refresh token. This is out of band
+                        // information though which makes it tricky.
+
+//                        response.status = UNAUTHORIZED.value()
+//                        render([
+//                                success: false,
+//                                status : UNAUTHORIZED.reasonPhrase,
+//                                reason : "Your JWT has timed out."
+//                        ])
+//                        return false
+                    } catch (e) {
                         log.info e.message
-                        redirect(controller: 'auth', action: 'unauthorized', params: [format: params.format])
-                        return false
+//                        response.status = UNAUTHORIZED.value()
+//                        render([
+//                                success: false,
+//                                status : UNAUTHORIZED.reasonPhrase,
+//                                reason : "$e.message"
+//                        ])
+//                        return false
                     }
+                    return false
                 }
             }
         }

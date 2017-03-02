@@ -25,6 +25,7 @@ import au.org.biodiversity.nsl.*
 import au.org.biodiversity.nsl.tree.*
 import org.springframework.context.MessageSource
 import org.springframework.validation.FieldError
+import org.springframework.validation.ObjectError
 
 import static au.org.biodiversity.nsl.tree.DomainUtils.*
 
@@ -50,7 +51,7 @@ class TreeEditController {
     /** @deprecated */
 
     @Deprecated
-    def placeApniName(PlaceApniNameParam p) {
+    placeApniName(PlaceApniNameParam p) {
         // this should invoke the classification service
 
         return render([success         : false,
@@ -144,7 +145,7 @@ class TreeEditController {
 
     @Deprecated
     // removing support for the APC editor pane
-    def removeApcInstance(RemoveApcInstanceParam p) {
+    removeApcInstance(RemoveApcInstanceParam p) {
         // most of this code belongs in the classification service
 
         log.debug "removeAPCInstance(${p})"
@@ -188,16 +189,16 @@ class TreeEditController {
     @Deprecated
     // removing support for the APC editor pane
     private static void refetch(PlaceApcInstanceParam p) {
-        p.instance = refetchInstance(p.instance);
-        p.supername = refetchName(p.supername);
+        p.instance = refetchInstance(p.instance)
+        p.supername = refetchName(p.supername)
     }
 
     @Deprecated
     // removing support for the APC editor pane
     private static void refetch(RemoveApcInstanceParam p) {
-        p.instance = refetchInstance(p.instance);
-        p.replacementName = refetchName(p.replacementName);
-        p.replacementInstance = refetchInstance(p.replacementInstance);
+        p.instance = refetchInstance(p.instance)
+        p.replacementName = refetchName(p.replacementName)
+        p.replacementInstance = refetchInstance(p.replacementInstance)
     }
 
     ///////////////////////////////////////////
@@ -206,7 +207,7 @@ class TreeEditController {
     // component in the NSL editor
 
     @RequiresRoles('treebuilder')
-    def placeNameOnTree(PlaceNameOnTreeParam param) {
+    placeNameOnTree(PlaceNameOnTreeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
 
         if (!canEdit(param.tree)) {
@@ -223,16 +224,16 @@ class TreeEditController {
         }
 
         handleException { handleExceptionIgnore ->
-            Uri placementType = null;
+            Uri placementType = null
 
-            if ("accepted".equals(param.placementType))
-                placementType = DomainUtils.uri('apc-voc', 'ApcConcept');
-            else if ("excluded".equals(param.placementType))
-                placementType = DomainUtils.uri('apc-voc', 'ApcExcluded');
-            else if ("untreated".equals(param.placementType))
-                placementType = DomainUtils.uri('apc-voc', 'DeclaredBt');
+            if ("accepted" == param.placementType)
+                placementType = uri('apc-voc', 'ApcConcept')
+            else if ("excluded" == param.placementType)
+                placementType = uri('apc-voc', 'ApcExcluded')
+            else if ("untreated" == param.placementType)
+                placementType = uri('apc-voc', 'DeclaredBt')
 
-            Message msg = userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, placementType);
+            Message msg = userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, placementType)
 
             return render([
                     success: true,
@@ -242,7 +243,7 @@ class TreeEditController {
     }
 
     @RequiresRoles('treebuilder')
-    def removeNameFromTree(RemoveNameFromTreeParam param) {
+    removeNameFromTree(RemoveNameFromTreeParam param) {
         if (!param.validate()) return renderValidationErrors(param)
         if (!canEdit(param.tree)) {
             response.status = 403
@@ -258,7 +259,7 @@ class TreeEditController {
         }
 
         handleException { handleExceptionIgnore ->
-            Message msg = userWorkspaceManagerService.removeNameFromTree(param.tree, param.name);
+            Message msg = userWorkspaceManagerService.removeNameFromTree(param.tree, param.name)
 
             return render([
                     success: true,
@@ -268,7 +269,7 @@ class TreeEditController {
     }
 
     @RequiresRoles('treebuilder')
-    def updateValue(UpdateValueParam param) {
+    updateValue(UpdateValueParam param) {
         if (!param.validate()) return renderValidationErrors(param)
         if (!canEdit(param.tree)) {
             response.status = 403
@@ -289,10 +290,10 @@ class TreeEditController {
 
             if (uri == null) {
                 // TODO: this should be a validation exception
-                ServiceException.raise(Message.makeMsg(Msg.SIMPLE_2, ["Unknown value uri", param.valueUriLabel]));
+                ServiceException.raise(Message.makeMsg(Msg.SIMPLE_2, ["Unknown value uri", param.valueUriLabel]))
             }
 
-            Message msg = userWorkspaceManagerService.updateValue(param.tree, param.name, uri, param.value);
+            Message msg = userWorkspaceManagerService.updateValue(param.tree, param.name, uri, param.value)
 
             return render([
                     success: true,
@@ -302,14 +303,14 @@ class TreeEditController {
     }
 
     boolean canEdit(Arrangement a) {
-        return a.arrangementType == ArrangementType.U && SecurityUtils.subject.hasRole(a.baseArrangement.label);
+        return a.arrangementType == ArrangementType.U && SecurityUtils.subject.hasRole(a.baseArrangement.label)
     }
 
     // ==============================
 
     private renderValidationErrors(param) {
-        def msg = [];
-        msg += param.errors.globalErrors.collect { it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (java.util.Locale) null)] }
+        def msg = []
+        msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (java.util.Locale) null)] }
         msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, (java.util.Locale) null)] }
         response.status = 400
 
@@ -323,14 +324,14 @@ class TreeEditController {
 
     private handleException(Closure doIt) {
         try {
-            return doIt();
+            return doIt()
         }
         catch (Exception ex) {
             log.debug ex
 
             doIt.delegate.response.status = ex instanceof ServiceException ? 400 : 500
 
-            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService);
+            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService)
 
             return render([
                     success   : false,
@@ -497,9 +498,9 @@ class UpdateValueParam {
 @Deprecated
 // removing support for the APC editor pane
 class RemoveApcInstanceParam {
-    Instance instance;
-    Name replacementName;
-    Instance replacementInstance;
+    Instance instance
+    Name replacementName
+    Instance replacementInstance
 
     String toString() {
         return [instance           : instance,

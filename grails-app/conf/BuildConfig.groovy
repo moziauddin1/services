@@ -72,6 +72,7 @@ grails.project.dependency.resolution = {
         compile 'net.htmlparser.jericho:jericho-html:3.2', {
             excludes 'log4j', 'commons-logging-api','slf4j-api'
         }
+        compile "io.jsonwebtoken:jjwt:0.7.0"
         test "org.gebish:geb-spock:0.12.2"
     }
 

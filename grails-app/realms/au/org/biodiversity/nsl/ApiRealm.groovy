@@ -18,22 +18,18 @@ package au.org.biodiversity.nsl
 
 import org.apache.shiro.authc.UnknownAccountException
 
-/**
- * User: pmcneil
- * Date: 3/06/15
- *
- */
 class ApiRealm {
 
     static authTokenClass = ApiKeyToken
-    def grailsApplication
+    def configService
 
-    def authenticate(ApiKeyToken authToken) {
+    @SuppressWarnings("GroovyUnusedDeclaration")
+    List<String> authenticate(ApiKeyToken authToken) {
         log.info "trying API Realm login for ${authToken}"
-        Map details = getDetails(authToken.key)
+        Map details = configService.apiAuth?.get(authToken.key) as Map
         if (details) {
-            if(details.host) { //if host is set then ensure it matches
-                if(details.host == authToken.host){
+            if (details.host) { //if host is set then ensure it matches
+                if (details.host == authToken.host) {
                     return [details.application, 'api']
                 }
                 throw new UnknownAccountException("No account found for api user [${authToken.key}]")
@@ -43,33 +39,21 @@ class ApiRealm {
         throw new UnknownAccountException("No account found for api user [${authToken.key}]")
     }
 
-    private Map getDetails(String key) {
-        if (grailsApplication.config.api?.auth instanceof Map) {
-            Map apiAuth = (grailsApplication.config.api.auth as Map)
-            return apiAuth[key] as Map
-        }
-        return null
-    }
-
     private Map getDetailByPrincipal(String principal) {
-        if (grailsApplication.config.api?.auth instanceof Map) {
-            Map apiAuth = (grailsApplication.config.api.auth as Map)
-            Map.Entry entry = apiAuth.find { k, v -> v.application == principal }
-            return entry ? entry.value as Map : null
-        }
-        return null
+        Map.Entry entry = configService.apiAuth?.find { k, v -> v.application == principal }
+        return entry?.value as Map
     }
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     Boolean hasRole(principal, String roleName) {
-        Map details = getDetailByPrincipal(principal)
+        Map details = getDetailByPrincipal(principal.toString())
         details?.roles && details.roles.contains(roleName)
     }
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     Boolean hasAllRoles(principal, roles) {
-        Map details = getDetailByPrincipal(principal)
-        if (details?.roles) {
-            details.roles.containsAll(roles)
-        }
+        Map details = getDetailByPrincipal(principal.toString())
+        details?.roles && details.roles.containsAll(roles)
     }
 
 }

@@ -33,7 +33,7 @@ class ApiSessionStorageEvaluator implements SessionStorageEvaluator {
      */
     @Override
     boolean isSessionStorageEnabled(Subject subject) {
-        String api = subject.principals.find { it == 'api' }
+        String api = subject.principals.find { it == 'api' || it == 'jwt' }
         if (api) {
             return false
         }

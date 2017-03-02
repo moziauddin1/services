@@ -20,35 +20,30 @@ import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.AuthenticationException
-import org.apache.shiro.authc.AuthenticationInfo
-import org.apache.shiro.authc.AuthenticationToken
 import org.apache.shiro.authc.UsernamePasswordToken
 import org.apache.shiro.authz.annotation.RequiresRoles
-import org.apache.shiro.mgt.SecurityManager
-import org.apache.shiro.session.Session
-import org.apache.shiro.subject.Subject
-import org.apache.shiro.subject.PrincipalCollection
-import org.apache.shiro.subject.SimplePrincipalCollection
-import org.apache.shiro.subject.SubjectContext
-import org.apache.shiro.subject.support.DefaultSubjectContext
 import org.apache.shiro.web.util.SavedRequest
 import org.apache.shiro.web.util.WebUtils
+import org.codehaus.groovy.grails.web.json.JSONObject
 import org.springframework.http.HttpStatus
 
 import javax.crypto.spec.SecretKeySpec
+import java.security.Key
 
 class AuthController {
-    def shiroSecurityManager
     def grailsApplication
+    def configService
 
-    def index = { redirect(action: "login", params: params) }
+    def index() {
+        redirect(action: "login", params: params)
+    }
 
-    def login = {
+    def login() {
         return [username: params.username, rememberMe: (params.rememberMe != null), targetUri: params.targetUri]
     }
 
-    def signIn = {
-        def authToken = new UsernamePasswordToken(params.username, params.password as String)
+    def signIn(String username, String password) {
+        def authToken = new UsernamePasswordToken(username, password)
 
         // Support for "remember me"
         if (params.rememberMe) {
@@ -79,7 +74,7 @@ class AuthController {
         catch (AuthenticationException ex) {
             // Authentication failed, so display the appropriate message
             // on the login page.
-            log.info "Authentication failure for user '${params.username}'."
+            log.info "Authentication failure for user '${params.username}'. ($ex.message)"
             flash.message = message(code: "login.failed")
 
             // Keep the username and "remember me" setting so that the
@@ -99,82 +94,75 @@ class AuthController {
         }
     }
 
-    def signInJson = {
-        def authToken = new UsernamePasswordToken(params.username, params.password as String)
+    /**
+     * sign in and get a JSON web token back.
+     *
+     * todo At the moment this creates a useless session object which is probably not required. look at ApiSessionStorageEvaluator
+     *
+     * @param username
+     * @param password
+     * @return JSON object including the jwt
+     */
+    def signInJson(String username, String password) {
+        def authToken = new UsernamePasswordToken(username, password)
         try {
             SecurityUtils.subject.login(authToken)
 
-            JSON result = get_json_for_subject(SecurityUtils.subject)
+            Key key = new SecretKeySpec(configService.JWTSecret.getBytes('UTF-8'), 'plain text')
+            String jwt = JsonWebTokenRealm.makeJWT(username, key)
+
+            JSON result = [
+                    success  : true,
+                    principal: username,
+                    jwt      : jwt
+            ] as JSON
+
             render result
         }
         catch (AuthenticationException ex) {
+            log.info "Authentication failure for JWT user '${username}'. ($ex.message)"
             response.setStatus(401)
-            def result = [ success: false, principal: null ]
+            def result = [success: false, principal: null]
             render result as JSON
         }
     }
 
-    def signOutJson = {
+    def signOutJson() {
+        log.info "${SecurityUtils.subject.principal.toString()} logging out."
         SecurityUtils.subject?.logout()
-        def result = [
-                success: true,
-                principal: null
-        ] as JSON
+        webRequest.getCurrentRequest().session = null
+        JSONObject result = [
+                success  : true,
+                principal: ''
+        ] as JSONObject
         render result as JSON
-    }
-
-    def getInfoJson = {
-        // todo: it may be that this actually needs to call a JsonTokenRealm builder
-        // actually, it's a bit tricky. If the request comes from a user logged in with JSON,
-        // we don't want to build a whole new request. I suspect that this getInfo method does nothing
-        // and is not needed. Either that, or it should not be returning a jwt.
-
-        JSON result = get_json_for_subject(SecurityUtils.subject)
-        render result
     }
 
     /**
      * This method is used by the NSL editor. That is, the subject that calls this method is one we recognise as being
      * secure. This is setup in services-config.groovy . Note that no checking is done to see that the user actually exists.
+     * todo is this actually used???
      */
 
     @RequiresRoles('may-fetch-jwt-for-any-username')
-    def getInfoJsonForUsername() {
-        JSON result = get_json_for_principal(params.username)
+    getInfoJsonForUsername(String username) {
+        JSON result = getJsonForPrincipal(username)
         render result
     }
 
-    private JSON get_json_for_subject(Subject subject) {
-        SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
-        JsonToken jsonToken = JsonToken.buildUsingSubject(subject, signingKey)
+    private JSON getJsonForPrincipal(String principal) {
+        Key key = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text')
 
         JSON result = [
-                success: true,
-                principal: subject.principal,
-                jwt: jsonToken.getCredentials()
+                success  : true,
+                principal: principal,
+                jwt      : JsonWebTokenRealm.makeJWT(principal, key)
         ] as JSON
 
         return result
     }
 
-    // this stuff is not right - the JWT needs a proper Subject so that it can put additional claims
-    // in the token. However, at the moment the only claim is 'sub', so meh.
-
-
-    private JSON get_json_for_principal(String principal) {
-        SecretKeySpec signingKey = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text');
-        JsonToken jsonToken = JsonToken.buildUsingPrincipal(principal, signingKey)
-
-        JSON result = [
-                success: true,
-                principal:principal,
-                jwt: jsonToken.getCredentials()
-        ] as JSON
-
-        return result
-    }
-
-    def signOut = {
+    def signOut() {
         // Log the user out of the application.
         SecurityUtils.subject?.logout()
         webRequest.getCurrentRequest().session = null
@@ -183,14 +171,14 @@ class AuthController {
         redirect(url: '/')
     }
 
-    def unauthorized = {
+    def unauthorized() {
         withFormat {
             html {
                 render(status: 401, text: "You do not have permission to do that.")
             }
             json {
                 def error = mapError()
-                render(contentType: "application/json", status: 401){
+                render(contentType: "application/json", status: 401) {
                     error
                 }
             }

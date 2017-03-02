@@ -211,7 +211,7 @@ class ConstructedNameService {
     }
 
     private Map getPrecedingName(Name name, Name parent, Integer nextRank, Integer count) {
-        if (parent && (parent.nameRank.sortOrder >= nextRank)) {
+        if (parent && (parent.nameRank.sortOrder >= nextRank)) {   //parent below or equal to the next rank
             //mumble mumble
             if (parent == name || count == 5) {
                 log.error "parent $parent of name $name is recursive (count $count)"

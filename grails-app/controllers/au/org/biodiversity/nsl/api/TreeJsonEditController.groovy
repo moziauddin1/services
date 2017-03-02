@@ -26,10 +26,6 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.springframework.context.MessageSource
 import org.springframework.validation.FieldError
 
-/**
- * Created by ibis on 14/01/2016.
- */
-
 @RequiresRoles('treebuilder')
 
 class TreeJsonEditController {

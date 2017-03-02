@@ -1,4 +1,5 @@
 import grails.util.Environment
+import io.jsonwebtoken.impl.crypto.MacProvider
 import org.quartz.Scheduler
 
 /*
@@ -40,6 +41,7 @@ class BootStrap {
         if(shiroSecurityManager) {
             shiroSecurityManager.setSubjectDAO(shiroSubjectDAO)
             println "Set subject DAO on security manager."
+            println MacProvider.generateKey()
         }
     }
     def destroy = {

@@ -17,7 +17,6 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import groovy.sql.Sql
-import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.apache.commons.logging.LogFactory
 
 /**
@@ -36,7 +35,7 @@ class ConfigService {
 
     def grailsApplication
 
-    private static String configGetOrfail(String key) {
+    private static String getShardConfigOrfail(String key) {
         String value = ShardConfig.findByName(key)?.value
         if (!value) {
             throw new Exception("Config error. Add '$key' to shard_config.")
@@ -45,7 +44,7 @@ class ConfigService {
     }
 
     Namespace getNameSpace() {
-        String nameSpaceName = configGetOrfail('name space')
+        String nameSpaceName = getShardConfigOrfail('name space')
         Namespace nameSpace = Namespace.findByName(nameSpaceName)
         if (!nameSpace) {
             log.error "Namespace not correctly set in config. Add 'name space' to shard_config, and make sure Namespace exists."
@@ -54,41 +53,63 @@ class ConfigService {
     }
 
     static String getNameTreeName() {
-        return configGetOrfail('name tree label')
+        return getShardConfigOrfail('name tree label')
     }
 
     static String getClassificationTreeName() {
         try {
-            return configGetOrfail('classification tree key')
+            return getShardConfigOrfail('classification tree key')
         } catch (e) {
             LogFactory.getLog(this).error e.message
         }
-        return configGetOrfail('classification tree label')
+        return getShardConfigOrfail('classification tree label')
     }
 
     static String getShardDescriptionHtml() {
-        return configGetOrfail('description html')
+        return getShardConfigOrfail('description html')
     }
 
     static String getPageTitle() {
-        return configGetOrfail('page title')
+        return getShardConfigOrfail('page title')
     }
 
     static String getBannerText() {
-        return configGetOrfail('banner text')
+        return getShardConfigOrfail('banner text')
     }
 
     static String getBannerImage() {
-        return configGetOrfail('banner image')
+        return getShardConfigOrfail('banner image')
     }
 
     static String getCardImage() {
-        return configGetOrfail('card image')
+        return getShardConfigOrfail('card image')
     }
 
     static String getProductDescription(String productName) {
-        return configGetOrfail("$productName description")
+        return getShardConfigOrfail("$productName description")
     }
+
+    Map getLdapConfig() {
+        if(grailsApplication.config.ldap) {
+            return grailsApplication.config.ldap as Map
+        }
+        throw new Exception("Config error. Add ldap config.")
+    }
+
+    Map getApiAuth() {
+        if (grailsApplication.config.api?.auth instanceof Map) {
+            return grailsApplication.config.api?.auth as Map
+        }
+        throw new Exception("Config error. Add api config.")
+    }
+
+    String getJWTSecret() {
+        if(grailsApplication.config?.nslServices?.jwt?.secret) {
+            return grailsApplication.config.nslServices.jwt.secret
+        }
+        throw new Exception("Config error. Add JWT config.")
+    }
+
 
     Sql getSqlForNSLDB() {
         String dbUrl = grailsApplication.config.dataSource_nsl.url
