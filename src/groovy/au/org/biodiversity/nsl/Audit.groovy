@@ -123,6 +123,10 @@ class Audit {
         return diff
     }
 
+    Boolean isUpdateBeforeDelete() {
+        action == 'U' && getRelevantChangedFields().size() == 0
+    }
+
     private Object getTheAuditedObject() {
         if (action != 'D') {
             auditedClass.get(rowData.id as Long)
