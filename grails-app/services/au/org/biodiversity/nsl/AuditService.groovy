@@ -9,7 +9,7 @@ class AuditService implements WithSql {
 
     def configService
 
-    def list(String userName, Timestamp from, Timestamp to) {
+    List<Audit> list(String userName, Timestamp from, Timestamp to) {
         List rows = []
         withSql { Sql sql ->
             sql.eachRow("""
@@ -17,12 +17,16 @@ SELECT event_id, action_tstamp_tx, table_name, action, hstore_to_json(row_data) 
 WHERE action_tstamp_tx > :from 
  AND action_tstamp_tx < :to 
  AND (row_data -> 'updated_by' LIKE :user OR changed_fields -> 'updated_by' LIKE :user)
- ORDER BY event_id DESC""", [from: from, to: to, user : userName]) { GroovyResultSet row ->
+ ORDER BY event_id DESC""", [from: from, to: to, user: userName]) { GroovyResultSet row ->
                 println row
                 rows.add(new Audit(row))
             }
         }
         return rows
+    }
+
+    def stats(Timestamp from, Timestamp to) {
+        List nameStats = Name.executeQuery('select count(n), n.createdBy from Name n where createdAt > :from and createdAt < :to group by createdBy', [from: from, to: to])
     }
 
 }
