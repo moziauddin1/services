@@ -59,7 +59,7 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
         }
 
         def result = Arrangement.findAll { arrangementType == ArrangementType.P && namespace.name == param.namespace }
@@ -81,7 +81,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def result = Arrangement.findAll {
@@ -176,7 +177,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def o = getObjectForLink(param.uri)
@@ -194,7 +196,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(404, result)
+
         }
 
         Arrangement a = o as Arrangement
@@ -221,7 +224,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         def root = getObjectForLink(param.root)
@@ -240,7 +244,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(404, result)
+
         }
 
         List<Node> pathNodes = queryService.findPath(root, focus);
@@ -266,7 +271,8 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         // TODO this stuff shouldn't be being jammed here, but I;m not sure where to jam it
@@ -415,7 +421,7 @@ class TreeJsonViewController {
         return render(results.nodes.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }
 
-    def searchNamesInSubtree(NamesInSubtreeParam param) {
+    def searchNamesInArrangement(QuickSearchParam param) {
         if (!param.validate()) {
             def msg = [];
 
@@ -428,24 +434,26 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
-        def searchSubtree = getObjectForLink(param.searchSubtree)
+        def a = getObjectForLink(param.arrangement)
 
-        if (!searchSubtree || !(searchSubtree instanceof Node)) {
+        if (!a || !(a instanceof Arrangement)) {
             def result = [
                     success: false,
                     msg    : [
-                            [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"]
+                            [msg: 'Not found', status: 'warning', body: "Can't find tree ${param.arrangement}"]
                     ],
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
         log.debug("Starting findNamesInSubtree");
-        List results = queryService.findNamesInSubtree(searchSubtree, param.searchText)
+        List results = queryService.findNamesInSubtree(((Arrangement)a).node, param.searchText)
         log.debug("Done findNamesInSubtree");
 
         return render([
@@ -463,7 +471,7 @@ class TreeJsonViewController {
 
     }
 
-    def searchNamesDirectlyInSubtree(NamesInSubtreeParam param) {
+    def listChanges(UriParam param) {
         if (!param.validate()) {
             def msg = [];
 
@@ -476,27 +484,342 @@ class TreeJsonViewController {
                     errors : param.errors,
             ];
 
-            return render(status: 400) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
-        def searchSubtree = getObjectForLink(param.searchSubtree)
+        Object n = linkService.getObjectForLink(param.uri);
 
-        if (!searchSubtree || !(searchSubtree instanceof Node)) {
+        if (!(n instanceof Node)) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.uri} does not appear to be a node"]
+                            ]
+                    ]
+            )
+        }
+
+        Node node = (Node) n;
+
+        if (!node.prev) {
+            return renderJsonError(400,
+                    [
+                            success: true,
+                            msg    : [
+                                    [msg: "This node does not have a previous version with which to compare it."]
+                            ]
+                    ]
+            )
+        }
+
+        def changes = queryService.findDifferences(node.prev, node);
+
+        return render([
+                success: true,
+                changes: changes
+        ] as JSON)
+    }
+
+
+    def nodeBranch(TreeParam param) {
+
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return renderJsonError(400, result)
+        }
+
+        Object o
+        Arrangement arrangement
+        Node root
+        Node focus
+
+        o = linkService.getObjectForLink(param.arrangement);
+
+        if (!(o instanceof Arrangement)) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [param.arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        arrangement = (Arrangement) o;
+        root = DomainUtils.getSingleSubnode(arrangement.node)
+
+        if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        if (param.node && param.node != 0) {
+            focus = Node.get(param.node)
+
+            if (!focus) {
+                return renderJsonError(404,
+                        [
+                                success: false,
+                                msg    : [
+                                        [msg: "node ${param.node} not found", args: [param.node]]
+                                ]
+                        ]
+                )
+            }
+        } else {
+            focus = root
+        }
+
+        def paths = queryService.countPaths(root, focus)
+        if (paths != 1) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to node ${param.node}", args: [arrangement, focus]]
+                            ]
+                    ]
+            )
+
+        }
+
+        Map<Long, Integer> subTaxaCountMap = queryService.getSubtaxaCountForAllSubtaxa(focus)
+
+        def result = [
+                success: true,
+                result : [
+                        node    : nodeDisplayJson(focus, null),
+                        subnodes: focus.subLink
+                                .findAll { it.subnode.internalType == NodeInternalType.T }
+                                .sort { Link a, Link b -> return (a.subnode.name?.simpleName ?: '').compareTo((b.subnode.name?.simpleName ?: '')) }
+                                .collect { linkDisplayJson(it, subTaxaCountMap) }
+                ]
+        ];
+
+        return render(result as JSON)
+    }
+
+    def nodePath(TreeParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return renderJsonError(400, result)
+        }
+
+        Object o
+        Arrangement arrangement
+        Node root
+        Node focus
+
+        o = linkService.getObjectForLink(param.arrangement);
+
+        if (!(o instanceof Arrangement)) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [param.arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        arrangement = (Arrangement) o;
+
+        if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${param.arrangement} does not appear to be a workspace or tree", args: [arrangement]]
+                            ]
+                    ]
+            )
+        }
+
+        root = DomainUtils.getSingleSubnode(arrangement.node)
+
+        if (param.node && param.node != 0) {
+            focus = Node.get(param.node)
+
+            if (!focus) {
+                return renderJsonError(404,
+                        [
+                                success: false,
+                                msg    : [
+                                        [msg: "node ${param.node} not found", args: [param.node]]
+                                ]
+                        ]
+                )
+            }
+        } else {
+            focus = root
+        }
+
+        def paths = queryService.countPaths(root, focus)
+        if (paths != 1) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "${paths == 0 ? 'No path' : 'Multiple paths'} from ${param.arrangement} to node ${param.node}", args: [arrangement, focus]]
+                            ]
+                    ]
+            )
+
+        }
+
+        List<Link> path = queryService.findPathLinks(arrangement.node, focus)
+
+        def result = [
+                success: true,
+                result : path.collect { linkDisplayJson(it, null) }
+        ];
+
+        return render(result as JSON)
+    }
+
+    def nodeUris(TreeParam param) {
+        if(param.node == null || param.node == 0) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "No node specified", ]
+                            ]
+                    ]
+            )
+        }
+
+        Node node = Node.get(param.node)
+
+        if (!node) {
+            return renderJsonError(404,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "node ${param.node} not found", args: [param.node]]
+                            ]
+                    ]
+            )
+        }
+
+
+        def result = [
+                success: true,
+                result : _nodeUris(node)
+        ];
+
+        return render(result as JSON)
+    }
+
+    def focusUris(UriParam param) {
+        if(!param.uri) {
+            return renderJsonError(400,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "No focus specified", ]
+                            ]
+                    ]
+            )
+        }
+
+        Node node = linkService.getObjectForLink(param.uri)
+
+        if (!node) {
+            return renderJsonError(404,
+                    [
+                            success: false,
+                            msg    : [
+                                    [msg: "node ${param.node} not found", args: [param.node]]
+                            ]
+                    ]
+            )
+        }
+
+
+        def result = [
+                success: true,
+                result : _nodeUris(node)
+        ];
+
+        return render(result as JSON)
+    }
+
+    private Map _nodeUris(Node node) {
+        [
+                nodeUri: linkService.getPreferredLinkForObject(node),
+                nameUri: node.name ? linkService.getPreferredLinkForObject(node.name) : null,
+                instanceUri: node.instance ? linkService.getPreferredLinkForObject(node.instance) : null,
+                // I need these to be able to talk to the nsl instance editor
+                nodeId: node.id,
+                nameId: node.name?.id,
+                instanceId: node.instance?.id
+        ]
+    }
+
+    def quickSearch(QuickSearchParam param) {
+        if (!param.validate()) {
+            def msg = [];
+
+            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
+            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
+
+            def result = [
+                    success: false,
+                    msg    : msg,
+                    errors : param.errors,
+            ];
+
+            return renderJsonError(400, result)
+
+        }
+
+        def arrangement = getObjectForLink(param.arrangement)
+
+        if (!arrangement || !(arrangement instanceof Arrangement)) {
             def result = [
                     success: false,
                     msg    : [
-                            [msg: 'Not found', status: 'warning', body: "Can't find node ${param.searchSubtree}"]
+                            [msg: 'Not found', status: 'warning', body: "Can't find tree ${param.arrangement}"]
                     ],
             ];
 
-            return render(status: 404) { result as JSON }
+            return renderJsonError(400, result)
+
         }
 
-        log.debug("Starting findNamesDirectlyInSubtree");
-        List results = queryService.findNamesDirectlyInSubtree(searchSubtree, param.searchText)
-        log.debug("Done findNamesDirectlyInSubtree");
+        List results = queryService.findNamesDirectlyInSubtree(arrangement.node, param.searchText)
         int sz = results.size()
-        log.debug("Done results.size()");
 
         return render([
                 success: true,
@@ -511,66 +834,79 @@ class TreeJsonViewController {
                     "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
                 }
                 .subList(0, sz > 10 ? 10 : sz)
-                        .collect { result ->
-                    [
-                            node      : linkService.getPreferredLinkForObject(result.node),
-                            simpleName: result.matchedInstance.name.simpleName
-                    ]
+                        .collect { [simpleNameHtml: it.node.name.simpleNameHtml, node: it.node.id, uri: linkService.getPreferredLinkForObject(it.node)] }
+        ] as JSON)
+
+    }
+
+    private Map linkDisplayJson(Link l, Map<Long, Integer> subTaxaCountMap) {
+        Map json = [
+                linkCss : DomainUtils.getLinkTypeUri(l).asCssClass()
+        ]
+
+        json << nodeDisplayJson(l.subnode, subTaxaCountMap)
+
+        return json
+    }
+
+    private Map nodeDisplayJson(Node n, Map<Long, Integer> subTaxaCountMap) {
+        Map json = [
+                css: DomainUtils.getNodeTypeUri(n).asCssClass(),
+                node: n.id,
+                subTaxa: subTaxaCountMap == null ? queryService.countImmediateSubtaxa(n) : (subTaxaCountMap.get(n.id)?:0),
+                rank: n.name?.nameRank?.major && n.name?.nameRank?.sortOrder < 120 ? n.name?.nameRank?.abbrev : null
+        ]
+
+        if (DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(n))) {
+            json.label = "${n.root.label ?: n.root.title} (persistent URI)"
+        } else if (DomainUtils.getBoatreeUri('classification-root').equals(DomainUtils.getNodeTypeUri(n))) {
+            json.label = "${n.root.label ?: n.root.title}"
+        } else if (DomainUtils.getBoatreeUri('workspace-root').equals(DomainUtils.getNodeTypeUri(n))) {
+            json.label = "${n.root.label ?: n.root.title} (${n.root.baseArrangement.label ?: n.root.baseArrangement.title})"
+        } else if (n.name) {
+            json.simpleName = n.name.simpleName
+            json.simpleNameHtml = n.name.simpleNameHtml
+            json.fullName = n.name.fullName
+            json.fullNameHtml = n.name.fullNameHtml
+
+            json.nameType = n.name.nameType.name
+
+            if (n.instance) {
+                json.instanceType = n.instance.instanceType.name
+                if (!n.instance.instanceType.relationship && n.instance.reference) {
+                    json.authYear = JsonRendererService.citationAuthYear(n.instance.reference)
                 }
-        ] as JSON)
+                if (n.instance.instanceType.relationship && n.instance.cites) {
+                    // instances on the tree should never be relationship instances, but if they are ...
+                    json.authYear = JsonRendererService.citationAuthYear(n.instance.cites.reference)
+                }
+            }
+        } else {
+            json.label = n.typeUriIdPart
+        }
 
+        json.draft = (n.checkedInAt == null)
+        json.replaced = (n.replacedAt != null)
+
+        return json
     }
 
-    def listChanges(UriParam param) {
-        if (!param.validate()) {
-            def msg = [];
-
-            msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
-            msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
-
-            def result = [
-                    success: false,
-                    msg    : msg,
-                    errors : param.errors,
-            ];
-
-            return render(status: 400) { result as JSON }
-        }
-
-        Object n = linkService.getObjectForLink(param.uri);
-
-        if (!(n instanceof Node)) {
-            return render(status: 400) {
-                [
-                        success: false,
-                        msg    : [
-                                [msg: "${param.uri} does not appear to be a node"]
-                        ]
-                ]
-            }
-        }
-
-        Node node = (Node) n;
-
-        if(!node.prev) {
-            return render(status: 200) {
-                [
-                        success: true,
-                        msg    : [
-                                [msg: "This node does not have a previous version with which to compare it."]
-                        ]
-                ]
-            }
-        }
-
-        def changes = queryService.findDifferences(node.prev, node);
-
-        return render([
-                success: true,
-                changes: changes
-        ] as JSON)
+    def renderJsonError(int responseCode, Object o) {
+        response.setStatus(responseCode);
+        return render(o as JSON)
     }
 
+}
+
+@Validateable
+class TreeParam {
+    String arrangement;
+    Long node;
+
+    static constraints = {
+        arrangement nullable: false
+        node nullable: true
+    }
 }
 
 @Validateable
@@ -624,13 +960,13 @@ class SearchNamesRefsParam {
 
 
 @Validateable
-class NamesInSubtreeParam {
-    String searchSubtree
+class QuickSearchParam {
+    String arrangement
     String searchText
 
     static constraints = {
-        searchSubtree nullable: false
-        searchText nullable: false
+        arrangement nullable: false
+        searchText nullable: false, minSize: 3
     }
 
 }

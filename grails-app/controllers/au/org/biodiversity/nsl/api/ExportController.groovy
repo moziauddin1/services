@@ -39,6 +39,7 @@ class ExportController implements UnauthenticatedHandler {
             render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
         } finally {
             exportFile.delete()
+
         }
     }
 

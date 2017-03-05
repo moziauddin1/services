@@ -1012,12 +1012,97 @@ class TreeJsonEditController {
 
             return render([
                     success       : true,
-                    msg           : [[msg: 'Ok', body: 'Checkin performed. Please refresh your browser.', status: 'success']],
+                    msg           : [[msg: 'Ok', body: 'Check-in complete.', status: 'success']],
                     refetch       : result.modified.collect { Node it2 -> linkService.getPreferredLinkForObject(it2) },
                     checkinResults: [
                     ]
             ] as JSON)
         }
+    }
+
+    def verifyRevert(CheckinNodeParam param) {
+        handleException {
+            if (!param.validate()) return renderValidationErrors(param)
+
+            Node node = linkService.getObjectForLink(param.uri)
+
+            List errors = revertErrors(node)
+
+            if (!errors.isEmpty()) {
+                return render([
+                        success: false,
+                        msg    : errors
+                ] as JSON)
+            }
+
+
+            int draftNodeCount = queryService.countDraftNodes(node)
+
+            return render([
+                    success: true,
+                    msg    : [[msg   : 'Confirm',
+                               body  : "Are you sure you want to revert edits to ${draftNodeCount} draft placement${draftNodeCount > 1 ? 's' : ''}? This operation cannot be undone",
+                               status: 'warning',
+                              ]]
+            ] as JSON)
+        }
+    }
+
+    def performRevert(CheckinNodeParam param) {
+        handleException {
+            if (!param.validate()) return renderValidationErrors(param)
+
+            Node node = linkService.getObjectForLink(param.uri)
+
+            List errors = revertErrors(node)
+
+            if (!errors.isEmpty()) {
+                // we should not get here if the revert has been veriufied correctly
+                response.status = 400;
+                return render([
+                        success: false,
+                        msg    : errors
+                ] as JSON)
+            }
+
+            Node prev = node.prev;
+
+            userWorkspaceManagerService.replaceDraftNodeWith(node, prev);
+
+            return render([
+                    success       : true,
+                    msg           : [msg: "Ok", body: "Revert was successful", status: "success"],
+                    revertedNodeId: prev.id
+            ] as JSON)
+        }
+    }
+
+    private List revertErrors(Node n) {
+        List errors = []
+
+        if (n.root.arrangementType != ArrangementType.U) {
+            errors.add([msg: "Illegal Argument", body: "Node is not a workspace node", status: 'danger'])
+        } else if (!canEditWorkspace(n.root)) {
+            errors.add([msg: 'Authorisation', body: "You do not have permission to alter this workspace", status: 'danger'])
+        }
+
+        if (DomainUtils.isCheckedIn(n)) {
+            errors.add([msg: "Not draft", body: "${param.wsNode} is not a draft node", status: 'danger'])
+        }
+
+        if (!n.prev) {
+            errors.add([msg: "Not an edited node", body: "Node is not an edited version of some previous persistent node", status: 'info'])
+        } else if (!DomainUtils.isCurrent(n.prev)) {
+            errors.add(
+                    [
+                            msg   : "Previous node is not current",
+                            body  : "node is an edited version of a node that is no longer current (this should never happen)",
+                            status: 'warning'
+                    ]
+            )
+        }
+
+        return errors
     }
 
 // ==============================

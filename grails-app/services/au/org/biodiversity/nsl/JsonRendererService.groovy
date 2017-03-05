@@ -71,7 +71,7 @@ class JsonRendererService {
     }
 
     // we need this anywhere that citation and citationHtml appear as fields
-    private static String citationAuthYear(Reference reference) {
+    public static String citationAuthYear(Reference reference) {
         if (reference) {
             return "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}";
         } else {
@@ -539,6 +539,7 @@ class JsonRendererService {
                 node           : brief(arrangement.node, [:]),
                 currentRoot    : arrangement.arrangementType == ArrangementType.P && arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
+                baseArrangement: brief(arrangement.baseArrangement)
         ];
         return data;
     }
