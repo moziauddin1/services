@@ -34,13 +34,21 @@ class ExportController implements UnauthenticatedHandler {
 
     @Timed()
     namesCsv() {
-        File exportFile = flatViewService.exportNamesToCSV()
-        render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
+        try {
+            File exportFile = flatViewService.exportNamesToCSV()
+            render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
+        } finally {
+            exportFile.delete()
+        }
     }
 
     @Timed()
     taxonCsv() {
-        File exportFile = flatViewService.exportTaxonToCSV()
-        render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
+        try {
+            File exportFile = flatViewService.exportTaxonToCSV()
+            render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
+        } finally {
+            exportFile.delete()
+        }
     }
 }
