@@ -35,13 +35,14 @@
       <tr>
         <th>Editors</th>
         <g:each in="${stats[stats.keySet()[0]]?.keySet()}" var="thing">
-          <th colspan="2">${thing}</th>
+          <th colspan="3">${thing}</th>
         </g:each>
       </tr>
       <tr>
         <th></th>
         <g:each in="${stats[stats.keySet()[0]]?.keySet()}" var="thing">
           <th><i class="fa fa-plus"></i></th>
+          <th><i class="fa fa-minus"></i></th>
           <th><i class="fa fa-edit"></i></th>
         </g:each>
       </tr>
@@ -51,6 +52,9 @@
           <g:each in="${stats[user]}" var="thing">
             <td class="data">
                ${thing.value.created}
+            </td>
+            <td class="data">
+              ${thing.value.deleted}
             </td>
             <td class="data">
                ${thing.value.updated}
