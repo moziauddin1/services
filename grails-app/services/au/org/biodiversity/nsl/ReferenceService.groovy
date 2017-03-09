@@ -17,7 +17,6 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
-import org.apache.shiro.grails.annotations.RoleRequired
 import org.springframework.transaction.TransactionStatus
 
 import java.sql.Timestamp
@@ -263,7 +262,6 @@ class ReferenceService {
         }
     }
 
-    @RoleRequired('admin')
     @Transactional
     Map deduplicateMarked(String user) {
         List<Map> refs = []
@@ -302,7 +300,6 @@ class ReferenceService {
  * @param target
  * @return
  */
-    @RoleRequired('admin')
     @Transactional
     Map moveReference(Reference source, Reference target, String user) {
         if (target.duplicateOf) {
@@ -403,7 +400,6 @@ class ReferenceService {
         }
     }
 
-    @RoleRequired('admin')
     @Transactional
     Map deleteReference(Reference reference, String reason) {
         Map canWeDelete = canDelete(reference, reason)
@@ -467,8 +463,7 @@ class ReferenceService {
         return [ok: true]
     }
 
-    @RoleRequired('admin')
-    replaceXICSinReferenceTitles() {
+    def replaceXICSinReferenceTitles() {
 
         runAsync {
 
