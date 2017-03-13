@@ -145,7 +145,7 @@ class AdminController {
 
     @RequiresRoles('admin')
     autoDedupeAuthors() {
-        authorService.autoDeduplicate()
+        authorService.autoDeduplicate(SecurityUtils.subject.principal.toString())
         redirect(action: 'index')
     }
 

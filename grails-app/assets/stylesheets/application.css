@@ -435,6 +435,16 @@ hybrid::after {
     visibility: visible;
 }
 
+
+table.audit-report th {
+    text-align: center;
+}
+
+table.audit-report td.data {
+    text-align: center;
+}
+
+
 @media(max-width: 1500px) {
     .imageAndText h1 {
         font-size: calc(12px + 2vw);

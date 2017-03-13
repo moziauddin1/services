@@ -17,7 +17,6 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
-import org.apache.shiro.SecurityUtils
 import org.apache.shiro.grails.annotations.RoleRequired
 
 import java.sql.Timestamp
@@ -27,8 +26,7 @@ class AuthorService {
 
     def linkService
 
-    def autoDeduplicate() {
-        String user = SecurityUtils.subject.principal.toString() ?: 'admin'
+    def autoDeduplicate(String user) {
         runAsync {
             List<Author> authorsMarkedAsDuplicates = Author.findAllByDuplicateOfIsNotNull()
             authorsMarkedAsDuplicates.each { Author author ->
