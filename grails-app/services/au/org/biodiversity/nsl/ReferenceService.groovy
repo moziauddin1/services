@@ -26,6 +26,7 @@ class ReferenceService {
     def instanceService
     def linkService
     def nameService
+    def configService
 
     private List<Long> seen = []
 
@@ -165,7 +166,7 @@ class ReferenceService {
         if (reference.volume) {
             return reference.volume.trim()
         }
-        if (reference.parent) {
+        if (reference.refType.useParentDetails && reference.parent) {
             return volume(reference.parent)
         }
         return ''
@@ -179,7 +180,7 @@ class ReferenceService {
             if (reference.publicationDate) {
                 return "(${reference.publicationDate.clean()})"
             }
-            if (reference.parent) {
+            if (reference.refType.useParentDetails && reference.parent) {
                 return pubDate(reference.parent)
             }
             return ''
@@ -325,6 +326,7 @@ class ReferenceService {
                             InstanceNote note = new InstanceNote(
                                     value: source.notes,
                                     instanceNoteKey: refNote,
+                                    namespace: configService.nameSpace,
                                     updatedBy: user,
                                     updatedAt: now,
                                     createdBy: user,
@@ -346,8 +348,9 @@ class ReferenceService {
                             }
                         }
                     }
-
-                    Instance.executeQuery('select i from Instance i where reference = :ref', [ref: source]).each { instance ->
+                    List<Instance> instances = Instance.executeQuery('select i from Instance i where reference = :ref', [ref: source])
+                    log.debug "${instances.size()} instance found..."
+                    instances.each { instance ->
                         log.info "Moving instance $instance to $target"
                         instance.reference = target
                         instance.updatedAt = now
@@ -382,15 +385,20 @@ class ReferenceService {
                         t.setRollbackOnly()
                         return [ok: false, errors: errors]
                     }
+                    target.refresh()
+                    source.refresh()
                     target.updatedAt = now
                     target.updatedBy = user
                     target.save(flush: true)
                     source.save(flush: true)
+                    log.debug "instances on reference ${source.instances.size()}"
                     source.delete(flush: true)
+                    session.flush()
                     return [ok: true]
                 }
             }
         } catch (e) {
+            log.error e.getLocalizedMessage()
             List<String> errors = [e.message]
             while (e.cause) {
                 e = e.cause
