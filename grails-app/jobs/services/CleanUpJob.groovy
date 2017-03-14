@@ -18,7 +18,7 @@ class CleanUpJob {
     def execute() {
         Name.withTransaction {
             println "Running cleanup."
-            authorService.autoDeduplicate()
+            authorService.autoDeduplicate('cleanUpJob')
             referenceService.deduplicateMarked('cleanUpJob')
         }
     }
