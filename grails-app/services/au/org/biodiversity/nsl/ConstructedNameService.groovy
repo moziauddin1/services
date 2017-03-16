@@ -22,7 +22,7 @@ class ConstructedNameService {
     static transactional = false
 
     static String stripMarkUp(String string) {
-        string?.replaceAll(/<[^>]*>/, '')?.replaceAll(/(&lsquo;|&rsquo;)/, "'")?.trim()
+        string?.replaceAll(/<[^>]*>/, '')?.replaceAll(/(&lsquo;|&rsquo;)/, "'")?.decodeHTML()?.trim()
     }
 
     /**
@@ -70,10 +70,11 @@ class ConstructedNameService {
             return constructInformalName(name, parent)
         }
         if (name.nameType?.name == 'common') {
-            String markedUpName = "<common><name id='$name.id'><element>$name.nameElement</element></name></common>"
+            String htmlNameElement = name.nameElement.encodeAsHTML()
+            String markedUpName = "<common><name id='$name.id'><element class='${htmlNameElement}'>${htmlNameElement}</element></name></common>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
-        return [fullMarkedUpName: (name.nameElement ?: '?'), simpleMarkedUpName: (name.nameElement ?: '?')]
+        return [fullMarkedUpName: (name.nameElement?.encodeAsHTML() ?: '?'), simpleMarkedUpName: (name.nameElement.encodeAsHTML() ?: '?')]
     }
 
     //join only non null bits with spaces note findAll finds all non null bits.
@@ -83,6 +84,8 @@ class ConstructedNameService {
 
     private Map constructInformalName(Name name, Name parent) {
         List<String> bits = []
+        String htmlNameElement = name.nameElement.encodeAsHTML()
+
         if (parent) {
             if (parent == name) {
                 bits << '[recursive]'
@@ -90,7 +93,7 @@ class ConstructedNameService {
                 bits << filterPrecedingName(constructName(parent).simpleMarkedUpName)
             }
         }
-        bits << "<element>${name.nameElement}</element>"
+        bits << "<element class='$htmlNameElement'>${htmlNameElement}</element>"
         bits << constructAuthor(name)
         String markedUpName = "<informal><name id='$name.id'>${join(bits)}</name></informal>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
@@ -98,6 +101,7 @@ class ConstructedNameService {
 
     private Map constructCultivarName(Name name, Name parent) {
         List<String> bits = []
+        String htmlNameElement = name.nameElement.encodeAsHTML()
         if (parent) {
             if (parent == name) {
                 bits << '[recursive]'
@@ -114,10 +118,10 @@ class ConstructedNameService {
                     bits << filterPrecedingName(constructName(secondParent).simpleMarkedUpName)
                 }
             } else {
-                bits << "<element>&lsquo;${name.nameElement}&rsquo;</element>"
+                bits << "<element class='$htmlNameElement'>&lsquo;${htmlNameElement}&rsquo;</element>"
             }
         } else {
-            bits << "'<element>$name.nameElement</element>"
+            bits << "'<element class='$htmlNameElement'>${htmlNameElement}</element>"
         }
         String markedUpName = "<cultivar><name id='$name.id'>${join(bits)}</name></cultivar>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
@@ -138,7 +142,9 @@ class ConstructedNameService {
 
         String connector = makeConnectorString(name, rank)
 
-        String el = "<element class='${name.nameElement}'>${name.nameElement}</element>"
+        String htmlNameElement = name.nameElement.encodeAsHTML()
+
+        String el = "<element class='${htmlNameElement}'>${htmlNameElement}</element>"
         Map nameElement = [fullMarkedUpName: el, simpleMarkedUpName: el]
 
         if (parent && name.nameType.formula) {
