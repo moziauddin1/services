@@ -13,7 +13,6 @@ import org.springframework.context.MessageSource
 import org.springframework.validation.FieldError
 import org.springframework.validation.ObjectError
 
-import java.security.Principal
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -48,7 +47,7 @@ class TreeJsonViewController {
 
     def listClassifications(NamespaceParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -57,20 +56,20 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
         }
 
         def result = Arrangement.findAll { arrangementType == ArrangementType.P && namespace.name == param.namespace }
-                .sort { Arrangement a, Arrangement b -> a.label <=> b.label }
-                .collect { linkService.getPreferredLinkForObject(it) }
+                                .sort { Arrangement a, Arrangement b -> a.label <=> b.label }
+                                .collect { linkService.getPreferredLinkForObject(it) }
         render result as JSON
     }
 
     def listWorkspaces(NamespaceParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -79,19 +78,18 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
 
         }
 
-        def result = Arrangement.findAll {
-            arrangementType == ArrangementType.U &&
-                    namespace.name == param.namespace
+        List<String> result = Arrangement.findAll {
+            arrangementType == ArrangementType.U && namespace.name == param.namespace
         }
-        .sort { Arrangement a, Arrangement b -> a.title <=> b.title }
-                .findAll { Arrangement it -> it.shared || it.owner == SecurityUtils.subject.principal }
-                .collect { linkService.getPreferredLinkForObject(it) }
+                                         .sort { Arrangement a, Arrangement b -> a.title <=> b.title }
+                                         .findAll { Arrangement it -> it.shared || it.owner == SecurityUtils.subject.principal }
+                                         .collect { linkService.getPreferredLinkForObject(it) }
         render result as JSON
     }
 
@@ -102,13 +100,13 @@ class TreeJsonViewController {
 
     def permissions(String uri) {
 
-        String principal = SecurityUtils.subject.principal as String;
+        String principal = SecurityUtils.subject.principal as String
 
-        def userPermissions = [canCreateWorkspaces: SecurityUtils.subject.hasRole('treebuilder')];
-        def uriPermissions = [:];
+        def userPermissions = [canCreateWorkspaces: SecurityUtils.subject.hasRole('treebuilder')]
+        def uriPermissions = [:]
 
         if (!uri) {
-            uriPermissions.uriType = null;
+            uriPermissions.uriType = null
         } else {
             def o = getObjectForLink(uri)
 
@@ -118,38 +116,38 @@ class TreeJsonViewController {
                         uri      : uri,
                         principal: principal,
                         error    : 'uri not found'
-                ] as JSON);
+                ] as JSON)
             }
 
 
-            Arrangement a = null;
-            Node n = null;
+            Arrangement a = null
+            Node n = null
 
             if (o instanceof Arrangement) {
-                a = (Arrangement) o;
-                uriPermissions.uriType = 'tree';
+                a = (Arrangement) o
+                uriPermissions.uriType = 'tree'
             } else if (o instanceof Node) {
-                uriPermissions.uriType = 'node';
-                n = (Node) o;
-                a = n.root;
+                uriPermissions.uriType = 'node'
+                n = (Node) o
+                a = n.root
             } else {
                 return render([
                         success  : false,
                         uri      : uri,
                         principal: principal,
                         error    : 'unrecognised type'
-                ] as JSON);
+                ] as JSON)
             }
 
             if (n) {
-                uriPermissions.isDraftNode = n.checkedInAt == null;
+                uriPermissions.isDraftNode = n.checkedInAt == null
             }
 
-            uriPermissions.isClassification = a.arrangementType == ArrangementType.P;
-            uriPermissions.isWorkspace = a.arrangementType == ArrangementType.U;
+            uriPermissions.isClassification = a.arrangementType == ArrangementType.P
+            uriPermissions.isWorkspace = a.arrangementType == ArrangementType.U
             uriPermissions.canEdit = (uriPermissions.isClassification && SecurityUtils.subject.hasRole(a.label)) ||
                     (uriPermissions.isWorkspace && SecurityUtils.subject.hasRole(a.baseArrangement.label))
-            ;
+
         }
 
         def result = [
@@ -160,13 +158,13 @@ class TreeJsonViewController {
                 uriPermissions : uriPermissions
         ]
 
-        return render(result as JSON);
+        return render(result as JSON)
 
     }
 
     def getTreeHistory(UriParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -175,7 +173,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
 
@@ -184,7 +182,7 @@ class TreeJsonViewController {
         def o = getObjectForLink(param.uri)
 
         if (!o || !(o instanceof Arrangement)) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -194,7 +192,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(404, result)
 
@@ -202,7 +200,7 @@ class TreeJsonViewController {
 
         Arrangement a = o as Arrangement
 
-        def result = [];
+        def result = []
         for (Node n = DomainUtils.getSingleSubnode(a.node); n; n = n.prev) {
             result.add([date: n.checkedInAt?.timeStamp, note: n.checkedInAt?.note, uri: linkService.getPreferredLinkForObject(n)])
         }
@@ -213,7 +211,7 @@ class TreeJsonViewController {
 
     def findPath(FindPathParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -222,7 +220,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
 
@@ -232,7 +230,7 @@ class TreeJsonViewController {
         def focus = getObjectForLink(param.focus)
 
         if (!root || !(root instanceof Node) || !focus || !(focus instanceof Node)) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -242,16 +240,16 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(404, result)
 
         }
 
-        List<Node> pathNodes = queryService.findPath(root, focus);
+        List<Node> pathNodes = queryService.findPath(root, focus)
 
         if (pathNodes.size() > 0 && DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(pathNodes.get(0)))) {
-            pathNodes.remove(0);
+            pathNodes.remove(0)
         }
 
         def result = pathNodes.collect { linkService.getPreferredLinkForObject(it) }
@@ -260,7 +258,7 @@ class TreeJsonViewController {
 
     def searchNamesRefs(final SearchNamesRefsParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -269,7 +267,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
 
@@ -277,11 +275,11 @@ class TreeJsonViewController {
 
         // TODO this stuff shouldn't be being jammed here, but I;m not sure where to jam it
 
-        final List<?> result = [];
+        final List<?> result = []
         sessionFactory_nsl.currentSession.doWork(new Work() {
             void execute(Connection connection) throws SQLException {
 
-                String names_subq;
+                String names_subq
 
                 if (param.includeSubnames) {
                     names_subq = """
@@ -314,14 +312,14 @@ class TreeJsonViewController {
                         order by name.simple_name
                     """
                     )
-                    ps.setString(1, param.name);
-                    ps.setString(2, param.namespace);
-                    ResultSet rs = ps.executeQuery();
+                    ps.setString(1, param.name)
+                    ps.setString(2, param.namespace)
+                    ResultSet rs = ps.executeQuery()
                     while (rs.next()) {
-                        result.add(Name.get(rs.getLong(1)));
+                        result.add(Name.get(rs.getLong(1)))
                     }
-                    rs.close();
-                    ps.close();
+                    rs.close()
+                    ps.close()
                 } else if (param.allReferences) {
                     PreparedStatement ps = connection.prepareStatement("""
                         select instance.id
@@ -335,14 +333,14 @@ class TreeJsonViewController {
                         order by name.full_name, reference.citation
                         limit 200
                     """)
-                    ps.setString(1, param.name);
-                    ps.setString(2, param.namespace);
-                    ResultSet rs = ps.executeQuery();
+                    ps.setString(1, param.name)
+                    ps.setString(2, param.namespace)
+                    ResultSet rs = ps.executeQuery()
                     while (rs.next()) {
-                        result.add(Instance.get(rs.getLong(1)));
+                        result.add(Instance.get(rs.getLong(1)))
                     }
-                    rs.close();
-                    ps.close();
+                    rs.close()
+                    ps.close()
                 } else {
                     String references_subq
 
@@ -380,21 +378,21 @@ class TreeJsonViewController {
                         limit 200
                     """
 
-                    PreparedStatement ps = connection.prepareStatement(sql);
-                    ps.setString(1, param.name);
-                    ps.setString(2, param.reference);
-                    ps.setString(3, param.namespace);
+                    PreparedStatement ps = connection.prepareStatement(sql)
+                    ps.setString(1, param.name)
+                    ps.setString(2, param.reference)
+                    ps.setString(3, param.namespace)
 
-                    ResultSet rs = ps.executeQuery();
+                    ResultSet rs = ps.executeQuery()
                     while (rs.next()) {
-                        result.add(Instance.get(rs.getLong(1)));
+                        result.add(Instance.get(rs.getLong(1)))
                     }
-                    rs.close();
-                    ps.close();
+                    rs.close()
+                    ps.close()
                 }
             } // execute
         } // Work
-        ); // doWork
+        ) // doWork
 
         return render(result.collect { linkService.getPreferredLinkForObject(it) } as JSON)
     }
@@ -409,9 +407,9 @@ class TreeJsonViewController {
         log.fatal "searchNamesInTree params tree_uri ${params.tree_uri}"
 
         def pp = [:]
-        pp << params;
+        pp << params
 
-        pp.tree = getObjectForLink(params.tree_uri) as Arrangement;
+        pp.tree = getObjectForLink(params.tree_uri) as Arrangement
 
         log.fatal "searchNamesInTree params tree ${pp.tree}"
 
@@ -423,7 +421,7 @@ class TreeJsonViewController {
 
     def searchNamesInArrangement(QuickSearchParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -432,7 +430,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
 
@@ -446,15 +444,15 @@ class TreeJsonViewController {
                     msg    : [
                             [msg: 'Not found', status: 'warning', body: "Can't find tree ${param.arrangement}"]
                     ],
-            ];
+            ]
 
             return renderJsonError(400, result)
 
         }
 
-        log.debug("Starting findNamesInSubtree");
-        List results = queryService.findNamesInSubtree(((Arrangement)a).node, param.searchText)
-        log.debug("Done findNamesInSubtree");
+        log.debug("Starting findNamesInSubtree")
+        List results = queryService.findNamesInSubtree(((Arrangement) a).node, param.searchText)
+        log.debug("Done findNamesInSubtree")
 
         return render([
                 success: true,
@@ -473,7 +471,7 @@ class TreeJsonViewController {
 
     def listChanges(UriParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -482,13 +480,13 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
 
         }
 
-        Object n = linkService.getObjectForLink(param.uri);
+        Object n = linkService.getObjectForLink(param.uri)
 
         if (!(n instanceof Node)) {
             return renderJsonError(400,
@@ -501,7 +499,7 @@ class TreeJsonViewController {
             )
         }
 
-        Node node = (Node) n;
+        Node node = (Node) n
 
         if (!node.prev) {
             return renderJsonError(400,
@@ -514,7 +512,7 @@ class TreeJsonViewController {
             )
         }
 
-        def changes = queryService.findDifferences(node.prev, node);
+        def changes = queryService.findDifferences(node.prev, node)
 
         return render([
                 success: true,
@@ -526,7 +524,7 @@ class TreeJsonViewController {
     def nodeBranch(TreeParam param) {
 
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -535,7 +533,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
         }
@@ -545,7 +543,7 @@ class TreeJsonViewController {
         Node root
         Node focus
 
-        o = linkService.getObjectForLink(param.arrangement);
+        o = linkService.getObjectForLink(param.arrangement)
 
         if (!(o instanceof Arrangement)) {
             return renderJsonError(400,
@@ -558,7 +556,7 @@ class TreeJsonViewController {
             )
         }
 
-        arrangement = (Arrangement) o;
+        arrangement = (Arrangement) o
         root = DomainUtils.getSingleSubnode(arrangement.node)
 
         if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
@@ -609,18 +607,18 @@ class TreeJsonViewController {
                 result : [
                         node    : nodeDisplayJson(focus, null),
                         subnodes: focus.subLink
-                                .findAll { it.subnode.internalType == NodeInternalType.T }
-                                .sort { Link a, Link b -> return (a.subnode.name?.simpleName ?: '').compareTo((b.subnode.name?.simpleName ?: '')) }
-                                .collect { linkDisplayJson(it, subTaxaCountMap) }
+                                       .findAll { it.subnode.internalType == NodeInternalType.T }
+                                       .sort { Link a, Link b -> return (a.subnode.name?.simpleName ?: '').compareTo((b.subnode.name?.simpleName ?: '')) }
+                                       .collect { linkDisplayJson(it, subTaxaCountMap) }
                 ]
-        ];
+        ]
 
         return render(result as JSON)
     }
 
     def nodePath(TreeParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -629,7 +627,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
         }
@@ -639,7 +637,7 @@ class TreeJsonViewController {
         Node root
         Node focus
 
-        o = linkService.getObjectForLink(param.arrangement);
+        o = linkService.getObjectForLink(param.arrangement)
 
         if (!(o instanceof Arrangement)) {
             return renderJsonError(400,
@@ -652,7 +650,7 @@ class TreeJsonViewController {
             )
         }
 
-        arrangement = (Arrangement) o;
+        arrangement = (Arrangement) o
 
         if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
             return renderJsonError(400,
@@ -702,18 +700,18 @@ class TreeJsonViewController {
         def result = [
                 success: true,
                 result : path.collect { linkDisplayJson(it, null) }
-        ];
+        ]
 
         return render(result as JSON)
     }
 
     def nodeUris(TreeParam param) {
-        if(param.node == null || param.node == 0) {
+        if (param.node == null || param.node == 0) {
             return renderJsonError(400,
                     [
                             success: false,
                             msg    : [
-                                    [msg: "No node specified", ]
+                                    [msg: "No node specified",]
                             ]
                     ]
             )
@@ -736,18 +734,18 @@ class TreeJsonViewController {
         def result = [
                 success: true,
                 result : _nodeUris(node)
-        ];
+        ]
 
         return render(result as JSON)
     }
 
     def focusUris(UriParam param) {
-        if(!param.uri) {
+        if (!param.uri) {
             return renderJsonError(400,
                     [
                             success: false,
                             msg    : [
-                                    [msg: "No focus specified", ]
+                                    [msg: "No focus specified",]
                             ]
                     ]
             )
@@ -770,26 +768,26 @@ class TreeJsonViewController {
         def result = [
                 success: true,
                 result : _nodeUris(node)
-        ];
+        ]
 
         return render(result as JSON)
     }
 
     private Map _nodeUris(Node node) {
         [
-                nodeUri: linkService.getPreferredLinkForObject(node),
-                nameUri: node.name ? linkService.getPreferredLinkForObject(node.name) : null,
+                nodeUri    : linkService.getPreferredLinkForObject(node),
+                nameUri    : node.name ? linkService.getPreferredLinkForObject(node.name) : null,
                 instanceUri: node.instance ? linkService.getPreferredLinkForObject(node.instance) : null,
                 // I need these to be able to talk to the nsl instance editor
-                nodeId: node.id,
-                nameId: node.name?.id,
-                instanceId: node.instance?.id
+                nodeId     : node.id,
+                nameId     : node.name?.id,
+                instanceId : node.instance?.id
         ]
     }
 
     def quickSearch(QuickSearchParam param) {
         if (!param.validate()) {
-            def msg = [];
+            def msg = []
 
             msg += param.errors.globalErrors.collect { ObjectError it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, null)] }
             msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, null)] }
@@ -798,7 +796,7 @@ class TreeJsonViewController {
                     success: false,
                     msg    : msg,
                     errors : param.errors,
-            ];
+            ]
 
             return renderJsonError(400, result)
 
@@ -812,7 +810,7 @@ class TreeJsonViewController {
                     msg    : [
                             [msg: 'Not found', status: 'warning', body: "Can't find tree ${param.arrangement}"]
                     ],
-            ];
+            ]
 
             return renderJsonError(400, result)
 
@@ -833,15 +831,17 @@ class TreeJsonViewController {
                     // I use a tilde because it is the last printable in ascii.
                     "${(r1.matchedInstance as Instance)?.name?.simpleName}~${(r1.node as Node)?.instance?.name?.simpleName}" <=> "${(r2.matchedInstance as Instance)?.name?.simpleName}~${(r2.node as Node)?.instance?.name?.simpleName}"
                 }
-                .subList(0, sz > 10 ? 10 : sz)
-                        .collect { [simpleNameHtml: it.node.name.simpleNameHtml, node: it.node.id, uri: linkService.getPreferredLinkForObject(it.node)] }
+                                .subList(0, sz > 10 ? 10 : sz)
+                                .collect {
+                    [simpleNameHtml: it.node.name.simpleNameHtml, node: it.node.id, uri: linkService.getPreferredLinkForObject(it.node)]
+                }
         ] as JSON)
 
     }
 
     private Map linkDisplayJson(Link l, Map<Long, Integer> subTaxaCountMap) {
         Map json = [
-                linkCss : DomainUtils.getLinkTypeUri(l).asCssClass()
+                linkCss: DomainUtils.getLinkTypeUri(l).asCssClass()
         ]
 
         json << nodeDisplayJson(l.subnode, subTaxaCountMap)
@@ -851,10 +851,10 @@ class TreeJsonViewController {
 
     private Map nodeDisplayJson(Node n, Map<Long, Integer> subTaxaCountMap) {
         Map json = [
-                css: DomainUtils.getNodeTypeUri(n).asCssClass(),
-                node: n.id,
-                subTaxa: subTaxaCountMap == null ? queryService.countImmediateSubtaxa(n) : (subTaxaCountMap.get(n.id)?:0),
-                rank: n.name?.nameRank?.major && n.name?.nameRank?.sortOrder < 120 ? n.name?.nameRank?.abbrev : null
+                css    : DomainUtils.getNodeTypeUri(n).asCssClass(),
+                node   : n.id,
+                subTaxa: subTaxaCountMap == null ? queryService.countImmediateSubtaxa(n) : (subTaxaCountMap.get(n.id) ?: 0),
+                rank   : n.name?.nameRank?.major && n.name?.nameRank?.sortOrder < 120 ? n.name?.nameRank?.abbrev : null
         ]
 
         if (DomainUtils.getBoatreeUri('classification-node').equals(DomainUtils.getNodeTypeUri(n))) {
@@ -892,7 +892,7 @@ class TreeJsonViewController {
     }
 
     def renderJsonError(int responseCode, Object o) {
-        response.setStatus(responseCode);
+        response.setStatus(responseCode)
         return render(o as JSON)
     }
 
@@ -900,8 +900,8 @@ class TreeJsonViewController {
 
 @Validateable
 class TreeParam {
-    String arrangement;
-    Long node;
+    String arrangement
+    Long node
 
     static constraints = {
         arrangement nullable: false

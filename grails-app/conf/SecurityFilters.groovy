@@ -84,7 +84,6 @@ class SecurityFilters {
                 }
 
                 // if a JSON token is set then log in with that
-                println "Auth header: ${request.getHeader('Authorization')}"
                 if (request.getHeader('Authorization') && request.getHeader('Authorization').startsWith("JWT ")) {
                     try {
                         String jwt = request.getHeader('Authorization').substring(4)
@@ -97,23 +96,8 @@ class SecurityFilters {
                         log.info "Expired JWT $expiredJwtException.message"
                         //todo somehow get the app to re-authenticate using a refresh token. This is out of band
                         // information though which makes it tricky.
-
-//                        response.status = UNAUTHORIZED.value()
-//                        render([
-//                                success: false,
-//                                status : UNAUTHORIZED.reasonPhrase,
-//                                reason : "Your JWT has timed out."
-//                        ])
-//                        return false
                     } catch (e) {
                         log.info e.message
-//                        response.status = UNAUTHORIZED.value()
-//                        render([
-//                                success: false,
-//                                status : UNAUTHORIZED.reasonPhrase,
-//                                reason : "$e.message"
-//                        ])
-//                        return false
                     }
                     return false
                 }
