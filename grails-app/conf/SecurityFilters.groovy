@@ -96,6 +96,7 @@ class SecurityFilters {
                         log.info "Expired JWT $expiredJwtException.message"
                         //todo somehow get the app to re-authenticate using a refresh token. This is out of band
                         // information though which makes it tricky.
+                        render(status: UNAUTHORIZED)
                     } catch (e) {
                         log.info e.message
                     }

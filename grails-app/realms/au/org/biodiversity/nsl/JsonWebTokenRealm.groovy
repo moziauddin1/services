@@ -10,11 +10,12 @@ class JsonWebTokenRealm {
     static authTokenClass = JsonWebToken
     def configService
     private static final long FIVE_MINUTES = 500000
+    private static final long THIRTY_MINUTES = 1800000
 
     @SuppressWarnings("GroovyUnusedDeclaration")
     List<String> authenticate(JsonWebToken authToken) {
         //if they created an authToken, then it's already parsed the JWT and verified the signature
-        return [(String)authToken.principal, 'jwt']
+        return [(String) authToken.principal, 'jwt']
     }
 
     static String makeJWT(String principal, Key key) {
@@ -23,6 +24,17 @@ class JsonWebTokenRealm {
             .setIssuer('nsl-services')
             .setIssuedAt(new Date())
             .setExpiration(new Date(System.currentTimeMillis() + FIVE_MINUTES))
+            .signWith(SignatureAlgorithm.HS512, key)
+            .compact()
+    }
+
+    static String makeRefreshJWT(String principal, Key key) {
+        Jwts.builder()
+            .setSubject(principal)
+            .setIssuer('nsl-services')
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + THIRTY_MINUTES))
+            .setPayload('refresh')
             .signWith(SignatureAlgorithm.HS512, key)
             .compact()
     }
