@@ -34,7 +34,6 @@ class JsonWebTokenRealm {
             .setIssuer('nsl-services')
             .setIssuedAt(new Date())
             .setExpiration(new Date(System.currentTimeMillis() + THIRTY_MINUTES))
-            .setPayload('refresh')
             .signWith(SignatureAlgorithm.HS512, key)
             .compact()
     }

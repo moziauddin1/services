@@ -110,11 +110,13 @@ class AuthController {
 
             Key key = new SecretKeySpec(configService.JWTSecret.getBytes('UTF-8'), 'plain text')
             String jwt = JsonWebTokenRealm.makeJWT(username, key)
+            String refreshToken = JsonWebTokenRealm.makeRefreshJWT(username, key)
 
             JSON result = [
-                    success  : true,
-                    principal: username,
-                    jwt      : jwt
+                    success     : true,
+                    principal   : username,
+                    jwt         : jwt,
+                    refreshToken: refreshToken
             ] as JSON
 
             render result
@@ -124,6 +126,28 @@ class AuthController {
             response.setStatus(401)
             def result = [success: false, principal: null]
             render result as JSON
+        }
+    }
+
+    def reauth() {
+        if (SecurityUtils.subject.authenticated) {
+            String username = SecurityUtils.subject.principal.toString()
+            log.info "${username} re-authenticating."
+            Key key = new SecretKeySpec(configService.JWTSecret.getBytes('UTF-8'), 'plain text')
+            String jwt = JsonWebTokenRealm.makeJWT(username, key)
+            String refreshToken = JsonWebTokenRealm.makeRefreshJWT(username, key)
+
+            JSON result = [
+                    success     : true,
+                    principal   : username,
+                    jwt         : jwt,
+                    refreshToken: refreshToken
+            ] as JSON
+
+            render result
+        } else {
+            log.info "Some unauthenticated dude called reauth!"
+            render (status: HttpStatus.UNAUTHORIZED)
         }
     }
 
