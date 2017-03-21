@@ -68,12 +68,6 @@ class NameService {
                 if (currentNode) {
                     log.debug "Checking NTP"
                     NameTreePath updatedNtp = nameTreePathService.updateNameTreePathFromNode(currentNode)
-                    if (updatedNtp) {
-                        log.debug "updated NTP updating the branch of NTPs"
-                        nameTreePathService.getCurrentNodesInBranch(updatedNtp).each { Node n ->
-                            nameTreePathService.updateNameTreePathFromNode(n)
-                        }
-                    }
                 } else {
                     log.error "No current tree node for updated name $name, which should have one."
                 }
@@ -105,13 +99,7 @@ class NameService {
                 Node node = updateAPNITree(name)
                 if (node) {
                     name = Name.get(name.id) //reload or it'll die with no session
-                    NameTreePath ntp = nameTreePathService.updateNameTreePathFromNode(node)
-                    //check all upstream nodes that may have changed
-                    if (ntp) {
-                        nameTreePathService.getCurrentNodesInBranch(ntp).each { Node n ->
-                            nameTreePathService.updateNameTreePathFromNode(n)
-                        }
-                    }
+                    nameTreePathService.updateNameTreePathFromNode(node)
                 } else {
                     log.error "error updating APNI tree with name $name"
                 }

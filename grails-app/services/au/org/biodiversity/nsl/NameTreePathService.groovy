@@ -39,10 +39,10 @@ class NameTreePathService {
     def classificationService
 
     /**
-     * update or create a NameTreePath for a Node.
+     * update or create a NameTreePath and it's children for a Node.
      *
      * @param currentNode
-     * @return
+     * @return currentNTP
      */
     NameTreePath updateNameTreePathFromNode(Node currentNode) {
         if (currentNode) {
@@ -274,7 +274,7 @@ class NameTreePathService {
 
         try {
             sql.execute('''
-ALTER TABLE name_tree_path DROP CONSTRAINT fk_sfj3hoevcuni3ak7no6byjp3;
+ALTER TABLE name_tree_path DROP CONSTRAINT IF EXISTS fk_sfj3hoevcuni3ak7no6byjp3;
 
 WITH RECURSIVE level(node_id, tree_id, parent_id, name_id_path, name_path, rank_path, name_id, family_id)
 AS (
