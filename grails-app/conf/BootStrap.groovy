@@ -41,7 +41,9 @@ class BootStrap {
         if(shiroSecurityManager) {
             shiroSecurityManager.setSubjectDAO(shiroSubjectDAO)
             println "Set subject DAO on security manager."
-            println MacProvider.generateKey()
+            //this is just a random key generator - it does nothing :-)
+            String keyString = MacProvider.generateKey().encodeAsBase64()
+            println "key: $keyString"
         }
     }
     def destroy = {

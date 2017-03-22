@@ -39,6 +39,6 @@ class JsonWebTokenRealm {
     }
 
     static Key makeASecretKey() {
-        Key key = MacProvider.generateKey()
+        MacProvider.generateKey()
     }
 }
