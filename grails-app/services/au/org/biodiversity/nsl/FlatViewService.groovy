@@ -42,154 +42,220 @@ class FlatViewService implements WithSql{
         String classificationTreeName = ConfigService.classificationTreeName
         return """
 CREATE MATERIALIZED VIEW ${NAME_VIEW} AS
+WITH RECURSIVE
 
-  SELECT
-    'ICNAFP' :: TEXT                                         AS "nomenclaturalCode",
-    'APNI' :: TEXT                                           AS "datasetName",
-    nt.name                                                  AS "nameType",
-    CASE WHEN apc_inst.id IS NULL
-      THEN
-        (SELECT '[unplaced ' || CASE WHEN i.cited_by_id IS NULL
-          THEN 'name'
-                                ELSE 'relationship' END || '?]'
-         FROM INSTANCE i
-           JOIN REFERENCE r ON r.id = i.reference_id
-         WHERE i.name_id = n.id
-         ORDER BY r.year DESC
-         LIMIT 1
-        )
-    ELSE
-      CASE WHEN apc_inst.id = apcn.instance_id
-        THEN
-          apcn.type_uri_id_part
-      ELSE
-        apc_inst_type.name
-      END
-    END                                                      AS "taxonomicStatus",
-    'http://id.biodiversity.org.au/name/${namespace}/' || n.id       AS "scientificNameID",
-    n.full_name                                              AS "scientificName",
-    CASE WHEN ns.name NOT IN ('legitimate', '[default]')
-      THEN ns.name
-    ELSE NULL END                                            AS "nomenclaturalStatus",
-    n.simple_name                                            AS "canonicalName",
-    CASE WHEN nt.autonym
-      THEN
-        NULL
-    ELSE
-      regexp_replace(substring(n.full_name_html FROM '<authors>(.*)</authors>'), '<[^>]*>', '', 'g')
-    END                                                      AS "scientificNameAuthorship",
-    'http://creativecommons.org/licenses/by/3.0/' :: TEXT    AS "ccLicense",
-    'http://id.biodiversity.org.au/name/${namespace}/' || n.id       AS "ccAttributionIRI",
+    kingdom AS (
+      SELECT
+        tree_node.id,
+        name.id        AS name_id,
+        name.simple_name,
+        name_rank.name AS rank
+      FROM tree_arrangement t
+        -- get current top node
+        JOIN tree_link AS top_link ON t.node_id = top_link.supernode_id
+        -- get first layer of names
+        JOIN tree_link AS top_names ON top_link.subnode_id = top_names.supernode_id
+        -- get the name on that top  link
+        JOIN tree_node ON top_names.subnode_id = tree_node.id
+        JOIN name
+        JOIN name_rank ON name.name_rank_id = name_rank.id
+                          AND name_rank.name = 'Regnum'
+          ON tree_node.name_id = name.id
+      WHERE t.label = '${classificationTreeName}'
+  ),
+    tree AS (
+    SELECT
+      cast(NULL AS BIGINT)                      AS supernode_id,
+      id                                        AS subnode_id,
+      name_id,
+      hstore(kingdom.rank, kingdom.simple_name) AS htree
+    FROM kingdom
+    UNION ALL
+    SELECT
+      l.supernode_id,
+      l.subnode_id,
+      name.id                                           AS name_id,
+      htree || hstore(name_rank.name, name.simple_name) AS htree
+    FROM tree
+      JOIN tree_link l ON tree.subnode_id = l.supernode_id
+      JOIN tree_node n ON l.subnode_id = n.id
+      LEFT OUTER JOIN name
+      JOIN name_rank ON name.name_rank_id = name_rank.id
+        ON n.name_id = name.id
+  ),
+  /*all scientificNameIDs */
+    names AS ( SELECT DISTINCT ON ("scientificNameID")
 
-    CASE WHEN nt.cultivar = TRUE
-      THEN n.name_element
-    ELSE NULL END                                            AS "cultivarEpithet",
-    n.simple_name_html                                       AS "canonicalNameHTML",
-    n.full_name_html                                         AS "scientificNameHTML",
+                 'ICNAFP' :: TEXT                                           AS "nomenclaturalCode",
+                 'APNI' :: TEXT                                             AS "datasetName",
+                 nt.name                                                    AS "nameType",
+                 CASE WHEN apc_inst.id IS NULL
+                   THEN
+                     'unplaced' :: TEXT
+                 ELSE
+                   CASE WHEN apc_inst.id = apcn.instance_id
+                     THEN
+                       CASE apcn.type_uri_id_part
+                       WHEN 'ApcConcept'
+                         THEN 'accepted'
+                       WHEN 'ApcExcluded'
+                         THEN 'excluded'
+                       ELSE apcn.type_uri_id_part
+                       END
+                   ELSE
+                     'included' :: TEXT
+                   END
+                 END                                                        AS "taxonomicStatus",
 
-    nt.autonym                                               AS "autonym",
-    nt.hybrid                                                AS "hybrid",
-    nt.cultivar                                              AS "cultivar",
-    nt.formula                                               AS "formula",
-    nt.scientific                                            AS "scientific",
-    ns.nom_inval                                             AS "nomInval",
-    ns.nom_illeg                                             AS "nomIlleg",
+                 'http://id.biodiversity.org.au/name/${namespace}/' || n.id :: TEXT AS "scientificNameID",
+                 n.full_name                                                AS "scientificName",
+                 CASE WHEN ns.name NOT IN ('legitimate', '[default]')
+                   THEN ns.name
+                 ELSE NULL END                                              AS "nomenclaturalStatus",
+                 n.simple_name                                              AS "canonicalName",
+                 CASE WHEN nt.autonym
+                   THEN
+                     NULL
+                 ELSE
+                   regexp_replace(substring(n.full_name_html FROM '<authors>(.*)</authors>'), '<[^>]*>', '', 'g')
+                 END                                                        AS "scientificNameAuthorship",
+                 'http://creativecommons.org/licenses/by/3.0/' :: TEXT      AS "ccLicense",
+                 'http://id.biodiversity.org.au/name/${namespace}/' || n.id :: TEXT AS "ccAttributionIRI",
+                 CASE WHEN nt.cultivar = TRUE
+                   THEN n.name_element
+                 ELSE NULL END                                              AS "cultivarEpithet",
+                 n.simple_name_html                                         AS "canonicalNameHTML",
+                 n.full_name_html                                           AS "scientificNameHTML",
 
-    pro_ref.citation                                         AS "namePublishedIn",
-    pro_ref.year                                             AS "namePublishedInYear",
-    pit.name                                                 AS "nameInstanceType",
-    bnm.full_name                                            AS "originalNameUsage",
-    CASE WHEN bin.id IS NOT NULL
-      THEN 'http://id.biodiversity.org.au/instance/${namespace}/' || bin.id
-    ELSE
-      CASE WHEN pro.id IS NOT NULL
-        THEN 'http://id.biodiversity.org.au/instance/${namespace}/' || pro.id
-      ELSE NULL END
-    END                                                      AS "originalNameUsageID",
-    /*apc_comment.value */
-    (SELECT string_agg(regexp_replace(VALUE, E'[\\n\\r\\u2028]+', ' ', 'g'), ' ')
-     FROM instance_note nt
-       JOIN instance_note_key key1
-         ON key1.id = nt.instance_note_key_id
-            AND key1.name = 'Type'
-     WHERE nt.instance_id = apcn.instance_id)                AS "typeCitation",
+                 nt.autonym                                                 AS "autonym",
+                 nt.hybrid                                                  AS "hybrid",
+                 nt.cultivar                                                AS "cultivar",
+                 nt.formula                                                 AS "formula",
+                 nt.scientific                                              AS "scientific",
+                 ns.nom_inval                                               AS "nomInval",
+                 ns.nom_illeg                                               AS "nomIlleg",
+                 coalesce(pro_ref.citation, sec_ref.citation)               AS "namePublishedIn",
+                 coalesce(pro_ref.year, sec_ref.year)                       AS "namePublishedInYear",
+                 pit.name                                                   AS "nameInstanceType",
+                 bnm.full_name                                              AS "originalNameUsage",
+                 CASE WHEN bin.id IS NOT NULL
+                   THEN 'http://id.biodiversity.org.au/instance/${namespace}/' || bin.cites_id :: TEXT
+                 ELSE
+                   CASE WHEN pro.id IS NOT NULL
+                     THEN 'http://id.biodiversity.org.au/instance/${namespace}/' || pro.id :: TEXT
+                   ELSE NULL END
+                 END                                                        AS "originalNameUsageID",
+                 /*apc_comment.value */
+                 CASE WHEN nt.autonym = TRUE
+                   THEN p.full_name
+                 ELSE
+                   (SELECT string_agg(regexp_replace(VALUE, E'[\\n\\r\\u2028]+', ' ', 'g'), ' ')
+                    FROM instance_note nt
+                      JOIN instance_note_key key1
+                        ON key1.id = nt.instance_note_key_id
+                           AND key1.name = 'Type'
+                    WHERE nt.instance_id = coalesce(bin.cites_id, pro.id))
+                 END                                                        AS "typeCitation",
 
-    rank.name                                                AS "taxonRank",
-    rank.sort_order                                          AS "taxonRankSortOrder",
-    rank.abbrev                                              AS "taxonRankAbbreviation",
+                 coalesce(f.htree -> 'Regnum', 'Plantae')                   AS "kingdom",
+                 f.htree -> 'Familia'                                       AS "family",
 
-    substring(ntp.rank_path FROM 'Regnum:([^>]*)')           AS "kingdom",
-    substring(ntp.rank_path FROM 'Classis:([^>]*)')          AS "class",
-    substring(ntp.rank_path FROM 'Subclassis:([^>]*)')       AS "subclass",
-    substring(ntp.rank_path FROM 'Familia:([^>]*)')          AS "family",
-    substring(ntp.rank_path FROM 'Genus:([^>]*)')            AS "genericName",
-    substring(ntp.rank_path FROM 'Species:([^>]*)')          AS "specificEpithet",
-    substring(ntp.rank_path FROM 'Species:[^>]*>.*:(.*)\$') AS "infraspecificEpithet",
+                 substring(ntp.rank_path FROM 'Genus:([^>]*)')              AS "genericName",
+                 substring(ntp.rank_path FROM 'Species:([^>]*)')            AS "specificEpithet",
+                 substring(ntp.rank_path FROM 'Species:[^>]*>.*:(.*)\$')     AS "infraspecificEpithet",
 
-    n.created_at                                             AS "created",
-    n.updated_at                                             AS "modified",
+                 rank.name                                                  AS "taxonRank",
+                 rank.sort_order                                            AS "taxonRankSortOrder",
+                 rank.abbrev                                                AS "taxonRankAbbreviation",
 
-    n.name_element                                           AS "nameElement",
+                 n.created_at                                               AS "created",
+                 n.updated_at                                               AS "modified",
 
-    CASE WHEN firstHybridParent.id IS NOT NULL
-      THEN
-        firstHybridParent.full_name
-    ELSE NULL END                                            AS "firstHybridParentName",
+                 n.name_element                                             AS "nameElement",
 
-    CASE WHEN firstHybridParent.id IS NOT NULL
-      THEN
-        'http://id.biodiversity.org.au/name/${namespace}/' || firstHybridParent.id
-    ELSE NULL END                                            AS "firstHybridParentNameID",
+                 CASE WHEN firstHybridParent.id IS NOT NULL
+                   THEN
+                     firstHybridParent.full_name
+                 ELSE NULL END                                              AS "firstHybridParentName",
 
-    CASE WHEN secondHybridParent.id IS NOT NULL
-      THEN
-        secondHybridParent.full_name
-    ELSE NULL END                                            AS "secondHybridParentName",
+                 CASE WHEN firstHybridParent.id IS NOT NULL
+                   THEN
+                     'http://id.biodiversity.org.au/name/${namespace}/' || firstHybridParent.id :: TEXT
+                 ELSE NULL END                                              AS "firstHybridParentNameID",
 
-    CASE WHEN secondHybridParent.id IS NOT NULL
-      THEN
-        'http://id.biodiversity.org.au/name/${namespace}/' || secondHybridParent.id
-    ELSE NULL END                                            AS "secondHybridParentNameID"
+                 CASE WHEN secondHybridParent.id IS NOT NULL
+                   THEN
+                     secondHybridParent.full_name
+                 ELSE NULL END                                              AS "secondHybridParentName",
 
-  FROM NAME n
-    JOIN name_type nt ON n.name_type_id = nt.id
-    JOIN name_status ns ON n.name_status_id = ns.id
-    JOIN name_rank rank ON n.name_rank_id = rank.id
+                 CASE WHEN secondHybridParent.id IS NOT NULL
+                   THEN
+                     'http://id.biodiversity.org.au/name/${namespace}/' || secondHybridParent.id :: TEXT
+                 ELSE NULL END                                              AS "secondHybridParentNameID"
 
-    LEFT OUTER JOIN author combination_author ON combination_author.id = n.author_id
-    LEFT OUTER JOIN author basionym_author ON n.base_author_id = basionym_author.id
-    LEFT OUTER JOIN author ex_basionym_author ON n.ex_base_author_id = ex_basionym_author.id
-    LEFT OUTER JOIN author ex_combination_author ON n.ex_author_id = ex_combination_author.id
-    LEFT OUTER JOIN author sanctioning_work ON n.sanctioning_author_id = sanctioning_work.id
+               FROM NAME n
+                 JOIN name_type nt ON n.name_type_id = nt.id
+                 JOIN name_status ns ON n.name_status_id = ns.id
+                 JOIN name_rank rank ON n.name_rank_id = rank.id
 
-    LEFT OUTER JOIN INSTANCE pro /* ON pro.name_id = n.id */
-    JOIN instance_type pit ON pit.id = pro.instance_type_id AND pit.primary_instance = TRUE
-    JOIN REFERENCE pro_ref ON pro.reference_id = pro_ref.id
-      ON pro.name_id = n.id
+                 LEFT OUTER JOIN name_tree_path ntp
+                 JOIN tree_arrangement tr ON ntp.tree_id = tr.id AND tr.label = 'APNI'
+                   ON ntp.name_id = n.id
 
-    LEFT OUTER JOIN INSTANCE bin
-    JOIN instance_type bit ON bit.id = bin.instance_type_id AND bit.name = 'basionym'
-    JOIN NAME bnm ON bnm.id = bin.name_id
-      ON bin.id = pro.cites_id
+                 /*LEFT OUTER JOIN name_walk ON name_walk.name_id = n.id*/
 
-    LEFT OUTER JOIN INSTANCE apc_inst
-    JOIN instance_type apc_inst_type ON apc_inst.instance_type_id = apc_inst_type.id
-    JOIN REFERENCE apc_ref ON apc_ref.id = apc_inst.reference_id
-    JOIN tree_node apcn
-    JOIN tree_arrangement tree ON tree.id = apcn.tree_arrangement_id AND tree.label = '$classificationTreeName'
-    JOIN name_tree_path ntp ON ntp.name_id = apcn.name_id and ntp.tree_id = tree.id
-      ON (apcn.instance_id = apc_inst.id OR apcn.instance_id = apc_inst.cited_by_id)
-         AND apcn.checked_in_at_id IS NOT NULL
-         AND apcn.next_node_id IS NULL
-         AND apcn.type_uri_id_part != 'DeclaredBt'
-      ON apc_inst.name_id = n.id
+                 LEFT OUTER JOIN name_part np
+                 JOIN name p ON p.id = np.preceding_name_id
+                   ON np.name_id = n.id
 
-    LEFT OUTER JOIN NAME firstHybridParent ON n.parent_id = firstHybridParent.id AND nt.hybrid
-    LEFT OUTER JOIN NAME secondHybridParent ON n.second_parent_id = secondHybridParent.id AND nt.hybrid
-  WHERE EXISTS(SELECT 1
-               FROM INSTANCE
-               WHERE name_id = n.id)
-        AND n.duplicate_of_id IS NULL;
+                 LEFT OUTER JOIN INSTANCE pro
+                 JOIN instance_type pit ON pit.id = pro.instance_type_id AND pit.primary_instance = TRUE
+                 JOIN REFERENCE pro_ref ON pro.reference_id = pro_ref.id
+                 LEFT OUTER JOIN INSTANCE bin
+                 JOIN instance_type bit ON bit.id = bin.instance_type_id AND bit.name = 'basionym'
+                 JOIN NAME bnm ON bnm.id = bin.name_id
+                   ON bin.cited_by_id = pro.id
+                   ON pro.name_id = n.id
+
+                 LEFT OUTER JOIN INSTANCE sec
+                 JOIN instance_type sit ON sit.id = sec.instance_type_id AND sit.secondary_instance = TRUE
+                 JOIN
+                 REFERENCE sec_ref ON sec.reference_id = sec_ref.id
+                   ON sec.name_id = n.id
+
+                 LEFT OUTER JOIN INSTANCE apc_inst
+                 JOIN instance_type apc_inst_type ON apc_inst.instance_type_id = apc_inst_type.id
+                 JOIN tree_node apcn
+                 JOIN tree_arrangement t
+                   ON t.id = apcn.tree_arrangement_id AND t.label = '${classificationTreeName}'
+                   ON (apcn.instance_id = apc_inst.id OR apcn.instance_id = apc_inst.cited_by_id)
+                      AND apcn.checked_in_at_id IS NOT NULL
+                      AND apcn.next_node_id IS NULL
+                      AND apcn.type_uri_id_part != 'DeclaredBt'
+                 LEFT OUTER JOIN tree f ON f.subnode_id = apcn.id
+                   ON apc_inst.name_id = n.id
+
+                 LEFT OUTER JOIN NAME firstHybridParent ON n.parent_id = firstHybridParent.id AND nt.hybrid
+                 LEFT OUTER JOIN NAME secondHybridParent ON n.second_parent_id = secondHybridParent.id AND nt.hybrid
+               WHERE EXISTS(SELECT 1
+                            FROM INSTANCE
+                            WHERE name_id = n.id)
+                     AND n.duplicate_of_id IS NULL
+               ORDER BY "scientificNameID", "taxonomicStatus", "namePublishedInYear"
+  ),
+  /* Deduplicate 'unplaced' names */
+    apni_names AS (
+    SELECT *
+    FROM names
+    WHERE "taxonomicStatus" != 'unplaced'
+    UNION
+    SELECT DISTINCT ON ("scientificName") *
+    FROM names
+    WHERE "taxonomicStatus" = 'unplaced'
+    ORDER BY "scientificName"
+  )
+SELECT *
+FROM apni_names
 """
     }
 
