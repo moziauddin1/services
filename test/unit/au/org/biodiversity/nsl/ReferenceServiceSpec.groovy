@@ -20,6 +20,7 @@ import grails.test.mixin.Mock
 import grails.test.mixin.TestFor
 import grails.test.mixin.TestMixin
 import grails.test.mixin.domain.DomainClassUnitTestMixin
+import org.codehaus.groovy.grails.plugins.codecs.HTMLCodec
 import spock.lang.Specification
 
 import java.sql.Timestamp
@@ -49,6 +50,13 @@ class ReferenceServiceSpec extends Specification {
         editorRole = saveRefAuthorRole('Editor')
         language = saveLanguage('au')
         paper = saveRefType('Paper')
+        String.metaClass.encodeAsHTML = {
+            HTMLCodec.xml_encoder.encode(delegate)
+        }
+        String.metaClass.decodeHTML = {
+            HTMLCodec.decoder.decode(delegate)
+        }
+
     }
 
     def cleanup() {
@@ -124,7 +132,7 @@ class ReferenceServiceSpec extends Specification {
         "A string (1984 )" | "A string 1984"
     }
 
-    void "test authorUpdated updates the authors references"(){
+    void "test authorUpdated updates the authors references"() {
         when:
         Author author = saveAuthor(abbrev: 'a1', name: 'Author One')
         Reference r1 = saveReference(title: "reference one", author: author)
@@ -159,16 +167,16 @@ class ReferenceServiceSpec extends Specification {
 
     private Reference saveReference(Map params) {
         Map base = [
-                refType: paper,
-                published: true,
+                refType      : paper,
+                published    : true,
                 refAuthorRole: authorRole,
-                language: language,
-                displayTitle: 'Not set',
-                updatedAt: new Timestamp(System.currentTimeMillis()),
-                updatedBy: 'test',
-                createdAt: new Timestamp(System.currentTimeMillis()),
-                createdBy: 'test',
-                namespace: namespace
+                language     : language,
+                displayTitle : 'Not set',
+                updatedAt    : new Timestamp(System.currentTimeMillis()),
+                updatedBy    : 'test',
+                createdAt    : new Timestamp(System.currentTimeMillis()),
+                createdBy    : 'test',
+                namespace    : namespace
         ] << params
         Reference reference = new Reference(base)
         reference.save()
@@ -179,7 +187,7 @@ class ReferenceServiceSpec extends Specification {
     }
 
     private saveRefAuthorRole(String name) {
-        RefAuthorRole role = new RefAuthorRole(name: name, rdfId : name,
+        RefAuthorRole role = new RefAuthorRole(name: name, rdfId: name,
                 descriptionHtml: name)
         role.save()
         return role
@@ -193,11 +201,11 @@ class ReferenceServiceSpec extends Specification {
 
     private saveRefType(String name) {
         RefType t = new RefType(
-                name : name,
-                parentOptional : true,
-                parent : null,
-                rdfId : 'blah',
-                descriptionHtml : 'blah',
+                name: name,
+                parentOptional: true,
+                parent: null,
+                rdfId: 'blah',
+                descriptionHtml: 'blah',
                 useParentDetails: false
         )
         t.save()
