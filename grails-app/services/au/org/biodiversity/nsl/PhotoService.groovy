@@ -15,46 +15,43 @@ class PhotoService {
     private AtomicBoolean updating = new AtomicBoolean(false)
 
     boolean hasPhoto(String simpleName) {
-        while (updating.get()) {
-            Thread.sleep(1000)
-            log.debug "waiting for update..."
+        if (!updating.get() && photoNames) {
+            return photoNames.contains(simpleName)
         }
-        if (!updating.get() && !photoNames) {
-            log.debug "updating photo list"
-            photoNames = getPhotoMatchList()
-        }
-        return photoNames.contains(simpleName)
+        return false
     }
 
     def refresh() {
-        if (!updating.get()) {
+        if (updating.compareAndSet(false, false)) {
             photoNames = getPhotoMatchList()
         }
     }
 
     private List getPhotoMatchList() {
-        updating.compareAndSet(false, true)
-        List<String> photoNames = []
-        String url = configService.getPhotoServiceUri()
-        if (url) { //no photo service so no photos
-            log.debug(url)
-            RestResponse response = restCallService.nakedGet(url)
-            if (response.status == 200) {
-                String csvText = response.text
-                if (csvText) {
-                    csvText.eachLine { String line ->
-                        String name = line.replaceAll(/^"([^"]*).*$/, '$1')
-                        photoNames.add(name.trim())
+        if (updating.compareAndSet(false, true)) {
+            List<String> photoNames = []
+            String url = configService.getPhotoServiceUri()
+            if (url) { //no photo service so no photos
+                log.debug(url)
+                RestResponse response = restCallService.nakedGet(url)
+                if (response.status == 200) {
+                    String csvText = response.text
+                    if (csvText) {
+                        csvText.eachLine { String line ->
+                            String name = line.replaceAll(/^"([^"]*).*$/, '$1')
+                            photoNames.add(name.trim())
+                        }
+                    } else {
+                        log.error "No data from $url"
                     }
                 } else {
-                    log.error "No data from $url"
+                    log.error "Error from $url ${response.status}"
                 }
-            } else {
-                log.error "Error from $url ${response.status}"
             }
+            log.debug photoNames
+            updating.compareAndSet(true, false)
+            return photoNames
         }
-        log.debug photoNames
-        updating.compareAndSet(true, false)
-        return photoNames
+        return []
     }
 }

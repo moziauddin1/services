@@ -90,9 +90,11 @@ class ConfigService {
     }
 
     String getPhotoServiceUri() {
-        return "http://www.anbg.gov.au/cgi-bin/apiiDigital?name=%&FORMAT=CSV"
+        if(grailsApplication.config?.services?.photoService?.url) {
+            return grailsApplication.config.services.photoService.url
+        }
+        return null
     }
-
 
     Map getLdapConfig() {
         if(grailsApplication.config.ldap) {
