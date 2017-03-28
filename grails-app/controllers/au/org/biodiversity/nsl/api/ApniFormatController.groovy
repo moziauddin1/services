@@ -29,6 +29,7 @@ class ApniFormatController {
 
     def apniFormatService
     def jsonRendererService
+    def photoService
 
     static responseFormats = [
             display: ['html'],
@@ -54,7 +55,12 @@ class ApniFormatController {
                 params.inc = [scientific: 'on']
             }
 
-            apniFormatService.getNameModel(name) << [query: [name: "$name.fullName", product: ConfigService.nameTreeName, inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
+            apniFormatService.getNameModel(name) << [
+                    query: [name: "$name.fullName", product: ConfigService.nameTreeName, inc: params.inc],
+                    stats: [:],
+                    names: [name],
+                    photo: photoService.hasPhoto(name.simpleName),
+                    count: 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')
@@ -65,7 +71,7 @@ class ApniFormatController {
     name(Name name) {
         if (name) {
             log.info "getting ${ConfigService.nameTreeName} name $name"
-            ResultObject model = new ResultObject(apniFormatService.getNameModel(name))
+            ResultObject model = new ResultObject(apniFormatService.getNameModel(name) << [photo: photoService.hasPhoto(name.simpleName)])
             render(view: '_name', model: model)
         } else {
             render(status: 404, text: 'Name not found.')

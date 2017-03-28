@@ -89,6 +89,11 @@ class ConfigService {
         return getShardConfigOrfail("$productName description")
     }
 
+    String getPhotoServiceUri() {
+        return "http://www.anbg.gov.au/cgi-bin/apiiDigital?name=%&FORMAT=CSV"
+    }
+
+
     Map getLdapConfig() {
         if(grailsApplication.config.ldap) {
             return grailsApplication.config.ldap as Map
