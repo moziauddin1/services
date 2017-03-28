@@ -23,7 +23,8 @@ import spock.lang.Specification
 
 @TestFor(NameController)
 class NameControllerSpec extends Specification {
-    static transactional = false
+    @SuppressWarnings("GroovyUnusedDeclaration")
+    static transactional = true
 
     def setup() {
         def linkServiceMock = mockFor(LinkService)

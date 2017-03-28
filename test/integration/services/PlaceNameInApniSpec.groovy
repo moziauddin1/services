@@ -55,11 +55,11 @@ class PlaceNameInApniSpec extends Specification {
 
         then: "path looks like I expect"
         currentLocation.size() >= 1
-        currentLocation.get(currentLocation.size() - 1) == doodiaAsperaVarMedia
+        currentLocation.get(currentLocation.size() - 1)?.id == doodiaAsperaVarMedia.id
         currentLocation.size() >= 2
-        currentLocation.get(currentLocation.size() - 2) == doodiaAspera
+        currentLocation.get(currentLocation.size() - 2)?.id == doodiaAspera.id
         currentLocation.size() >= 3
-        currentLocation.get(currentLocation.size() - 3) == doodia
+        currentLocation.get(currentLocation.size() - 3)?.id == doodia.id
 
     }
 
@@ -84,7 +84,7 @@ class PlaceNameInApniSpec extends Specification {
 
         then: "check D. aspera var media is currently under D. aspera"
         currentLocation.size() >= 2
-        currentLocation.get(currentLocation.size() - 2).equals(doodiaAspera)
+        currentLocation.get(currentLocation.size() - 2)?.id == doodiaAspera.id
 
         when: "put D. aspera var media under D. maxima"
         classificationService.placeNameInNameTree(doodiaMaxima, doodiaAsperaVarMedia)
@@ -92,46 +92,7 @@ class PlaceNameInApniSpec extends Specification {
 
         then: "check D. aspera var media is currently under D. maxima"
         currentLocation.size() >= 2
-        currentLocation.get(currentLocation.size() - 2).equals(doodiaMaxima)
-    }
-
-    def "test place name and subname in APNI using controller"() {
-        when:
-        Name doodiaMaxima = Name.findByFullName('Doodia maxima J.Sm.')
-        Name doodiaAspera = Name.findByFullName('Doodia aspera R.Br.')
-        Name doodiaAsperaVarMedia = Name.findByFullName('Doodia aspera var. media F.M.Bailey')
-
-        def controller = new au.org.biodiversity.nsl.api.NameController()
-
-        controller.request.contentType = "application/json"
-        controller.request.content = "{ nameId:${doodiaAsperaVarMedia.id}, supernameId: ${doodiaMaxima.id} }".bytes
-        controller.request.method = 'POST'
-        controller.placeNameInApni()
-        List<Name> currentLocation = classificationService.getPathFromNameTree(doodiaAsperaVarMedia)
-
-        then:
-        currentLocation.size() >= 2
-        currentLocation.get(currentLocation.size() - 2).equals(doodiaMaxima)
-    }
-
-    def "test place name at APNI root using controller"() {
-        when:
-        Name doodiaMaxima = Name.findByFullName('Doodia maxima J.Sm.')
-        Name doodiaAspera = Name.findByFullName('Doodia aspera R.Br.')
-        Name doodiaAsperaVarMedia = Name.findByFullName('Doodia aspera var. media F.M.Bailey')
-
-        def controller = new au.org.biodiversity.nsl.api.NameController()
-
-        controller.request.contentType = "application/json"
-        controller.request.content = "{ nameId:${doodiaAsperaVarMedia.id} }".bytes
-        controller.request.method = 'POST'
-        controller.placeNameInApni()
-        List<Name> currentLocation = classificationService.getPathFromNameTree(doodiaAsperaVarMedia)
-
-        then:
-        currentLocation.size() == 2
-        currentLocation.get(0) == null
-        currentLocation.get(1).equals(doodiaAsperaVarMedia)
+        currentLocation.get(currentLocation.size() - 2)?.id == doodiaMaxima.id
     }
 
 }
