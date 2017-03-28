@@ -19,7 +19,7 @@ class PhotoService {
             Thread.sleep(1000)
             log.debug "waiting for update..."
         }
-        if (!updating.getAndSet(false) && !photoNames) {
+        if (!updating.get() && !photoNames) {
             log.debug "updating photo list"
             photoNames = getPhotoMatchList()
         }
