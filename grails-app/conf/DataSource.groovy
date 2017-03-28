@@ -67,13 +67,14 @@ environments {
             password = "nsldev"
             dialect = "au.org.biodiversity.nsl.ExtendedPostgreSQLDialect"
 //            dbCreate = "update"
-            url = "jdbc:postgresql://localhost:5432/nsl"
+            url = "jdbc:postgresql://localhost:5432/nsl-test"
 //            formatSql = true
 //            logSql = true
             //noinspection GroovyAssignabilityCheck
             properties {
                 defaultTransactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED
                 initialSize = 2
+                minIdle = 5
                 maxActive = 5
                 minEvictableIdleTimeMillis = 1800000
                 timeBetweenEvictionRunsMillis = 1800000
