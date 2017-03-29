@@ -1,11 +1,9 @@
 package au.org.biodiversity.nsl
 
 import grails.plugins.rest.client.RestResponse
-import grails.transaction.Transactional
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-@Transactional
 class PhotoService {
 
     def restCallService
@@ -19,6 +17,10 @@ class PhotoService {
             return photoNames.contains(simpleName)
         }
         return false
+    }
+
+    String searchUrl(String simpleName) {
+        configService.getPhotoSearch(simpleName)
     }
 
     def refresh() {

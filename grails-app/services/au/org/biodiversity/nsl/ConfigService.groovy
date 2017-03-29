@@ -96,6 +96,13 @@ class ConfigService {
         return null
     }
 
+    String getPhotoSearch(String name) {
+        if(grailsApplication.config?.services?.photoService?.search) {
+            return grailsApplication.config.services.photoService.search(name)
+        }
+        return null
+    }
+
     Map getLdapConfig() {
         if(grailsApplication.config.ldap) {
             return grailsApplication.config.ldap as Map

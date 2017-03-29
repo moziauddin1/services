@@ -43,7 +43,7 @@
       <div class="btn-group hidden-print">
         <g:if test="${photo}">
           <span class="small" title="photos in APII">
-            <a href="http://www.anbg.gov.au/cgi-bin/apiiName?name=${name.simpleName}">
+            <a href="${photo}">
               <span class="fa-stack">
                 <i class="fa fa-picture-o fa-stack-2x"></i>
               </span>
