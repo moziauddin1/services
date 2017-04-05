@@ -1199,14 +1199,15 @@ ORDER BY name.full_name
                         ResultSet rs = qry.executeQuery()
                         log.debug("got the resultset")
                         try {
+                            //noinspection ChangeToOperator
                             while (rs.next()) {
                                 Long nameId = rs.getLong('name_id') ?: null
-                                Long subNode1Id = rs.getLong('subnode_1')
-                                Long subNode2Id = rs.getLong('subnode_2')
-                                Long link1Id = rs.getLong('link_1')
-                                Long link2Id = rs.getLong('link_2')
-                                Long superName1 = rs.getLong('super_name_1')
-                                Long superName2 = rs.getLong('super_name_2')
+                                Long subNode1Id = rs.getLong('subnode_1') ?: null
+                                Long subNode2Id = rs.getLong('subnode_2') ?: null
+                                Long link1Id = rs.getLong('link_1') ?: null
+                                Long link2Id = rs.getLong('link_2') ?: null
+                                Long superName1 = rs.getLong('super_name_1') ?: null
+                                Long superName2 = rs.getLong('super_name_2') ?: null
 
                                 log.debug("${nameId} (${subNode1Id} ${link1Id}) (${subNode2Id} ${link2Id}) $superName1, $superName2")
 
@@ -1220,6 +1221,7 @@ ORDER BY name.full_name
                                         ((subNode1Id == null) != (subNode2Id == null)) ||
                                                 ((link1Id == null) != (link2Id == null)) ||
                                                 (link1Id != null && link2Id != null && superName1 != superName2)
+
                                 log.debug "Placement changed: $placementChanged"
 
                                 if (!placementChanged && subNode1Id == subNode2Id) {
@@ -1290,23 +1292,28 @@ ORDER BY name.full_name
     }
 
     private static String decodePlacementChange(Node subNode1, Node subNode2, Link link2, Link link1) {
-        if (subNode1 == null && subNode2 != null) {
-            if (link2 == null)
-                 return "New placement"
-            else
-                return "New placement under ${link2.supernode.name.fullName}"
-        } else if (subNode1 != null && subNode2 == null) {
-            if (link2 == null)
-                return "Name removed"
-            else
-                return "Name removed from ${link1.supernode.name.fullName}"
-        } else if (link1 == null && link2 != null) {
-            return "Name moved from root to ${link2.supernode.name.fullName}"
-        } else if (link1 != null && link2 == null) {
-            return "Name moved from ${link1.supernode.name.fullName} to root"
-        } else {
-            return "Name moved from ${link1.supernode.name.fullName} to ${link2.supernode.name.fullName} "
+        if (subNode1 == null && subNode2 != null && link2 == null) {
+            return "New placement"
         }
+        if (subNode1 == null && subNode2 != null && link2 != null) {
+            return "New placement under ${link2.supernode.name.fullName}"
+        }
+
+        if (subNode1 != null && subNode2 == null && link2 == null) {
+            return "Name removed"
+        }
+        if (subNode1 != null && subNode2 == null && link2 != null) {
+            return "Name removed from ${link1.supernode.name.fullName}"
+        }
+
+        if (link1 == null && link2 != null) {
+            return "Name moved from root to ${link2.supernode.name.fullName}"
+        }
+
+        if (link1 != null && link2 == null) {
+            return "Name moved from ${link1.supernode.name.fullName} to root"
+        }
+        return "Name moved from ${link1.supernode.name.fullName} to ${link2.supernode.name.fullName} "
     }
 
     static Name resolveName(Node node) {
