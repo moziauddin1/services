@@ -374,6 +374,7 @@ class QueryService {
     // find the latest parent node for the given node up to the root of
     // the tree that is belongs to
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     List<Link> getLatestPathForNode(Node n) {
         Collection<Link> path = new ArrayList<Link>()
         for (; ;) {
@@ -1122,57 +1123,74 @@ select distinct start_id from ll where supernode_id = ?
      * @return
      */
 
-    @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])
-    List findDifferences(Node n1, Node n2) {
+    List<Map> findDifferences(Node n1, Node n2) {
         log.debug("differences between ${n1} and ${n2}")
 
-        List l = []
+        List<Map> changesByName = []
 
         doWork(sessionFactory_nsl) { Connection cnct ->
             withQ cnct, '''
-        with recursive tree_1 as (
-                select cast (null as bigint) as link_id,
-                       n.id as subnode_id,
-                       n.name_id as name_id
-                    from tree_node n
-                    where n.id = ?
-                union all
-                select  l.id as link_id,
-                l.subnode_id as subnode_id,
-                n.name_id as name_id
-                from tree_1
-                join tree_link l on tree_1.subnode_id = l.supernode_id
-                join tree_node n on l.subnode_id = n.id
-                where n.internal_type = 'T'
-        ),
-        tree_2 as (
-                select cast (null as bigint) as link_id,
-                       n.id as subnode_id,
-                       n.name_id as name_id
-                    from tree_node n
-                    where n.id = ?
-                union all
-                select  l.id as link_id,
-                l.subnode_id as subnode_id,
-                n.name_id as name_id
-                from tree_2
-                join tree_link l on tree_2.subnode_id = l.supernode_id
-                join tree_node n on l.subnode_id = n.id
-                where n.internal_type = 'T'
-        ),
-        names as ( select name_id from tree_1 union select name_id from tree_2)
-        select
-          names.name_id,
-          tree_1.link_id as link_1,
-          tree_2.link_id as link_2,
-          tree_1.subnode_id as subnode_1,
-          tree_2.subnode_id as subnode_2
-          from
-            names
-              join name on names.name_id = name.id
-                left outer join tree_1 on names.name_id = tree_1.name_id
-                left outer join tree_2 on names.name_id = tree_2.name_id
-            order by name.full_name
+WITH RECURSIVE tree_1 AS (
+  SELECT
+    cast(NULL AS BIGINT) AS link_id,
+    n.id                 AS subnode_id,
+    n.name_id            AS name_id
+  FROM tree_node n
+  WHERE n.id = ?
+  UNION ALL
+  SELECT
+    l.id         AS link_id,
+    l.subnode_id AS subnode_id,
+    n.name_id    AS name_id
+  FROM tree_1
+    JOIN tree_link l ON tree_1.subnode_id = l.supernode_id
+    JOIN tree_node n ON l.subnode_id = n.id
+  WHERE n.internal_type = 'T\'
+),
+    tree_2 AS (
+    SELECT
+      cast(NULL AS BIGINT) AS link_id,
+      n.id                 AS subnode_id,
+      n.name_id            AS name_id
+    FROM tree_node n
+    WHERE n.id = ?
+    UNION ALL
+    SELECT
+      l.id         AS link_id,
+      l.subnode_id AS subnode_id,
+      n.name_id    AS name_id
+    FROM tree_2
+      JOIN tree_link l ON tree_2.subnode_id = l.supernode_id
+      JOIN tree_node n ON l.subnode_id = n.id
+    WHERE n.internal_type = 'T\'
+  ),
+    names AS ( SELECT name_id
+               FROM tree_1
+               UNION SELECT name_id
+                     FROM tree_2)
+SELECT
+  names.name_id,
+  tree_1.link_id       AS link_1,
+  tree_2.link_id       AS link_2,
+  tree_1.subnode_id    AS subnode_1,
+  tree_2.subnode_id    AS subnode_2,
+  super_node_1.name_id AS super_name_1,
+  super_node_2.name_id AS super_name_2
+FROM
+  names
+  JOIN name ON names.name_id = name.id
+  LEFT OUTER JOIN tree_1 ON names.name_id = tree_1.name_id
+  LEFT OUTER JOIN tree_2 ON names.name_id = tree_2.name_id
+  LEFT OUTER JOIN tree_link l1 ON l1.id = tree_1.link_id
+  LEFT OUTER JOIN tree_link l2 ON l2.id = tree_2.link_id
+  LEFT OUTER JOIN tree_node super_node_1 ON l1.supernode_id = super_node_1.id
+  LEFT OUTER JOIN tree_node super_node_2 ON l2.supernode_id = super_node_2.id
+WHERE tree_1.link_id ISNULL
+      OR tree_2.link_id ISNULL
+      OR tree_1.link_id <> tree_2.link_id
+      OR tree_1.subnode_id <> tree_2.subnode_id
+      OR super_node_1.name_id <> super_node_2.name_id
+ORDER BY name.full_name
 				''',
                     { PreparedStatement qry ->
                         qry.setLong(1, n1.id)
@@ -1182,67 +1200,58 @@ select distinct start_id from ll where supernode_id = ?
                         log.debug("got the resultset")
                         try {
                             while (rs.next()) {
-                                Name n = Name.get(rs.getLong('name_id'))
-                                Node nn1 = Node.get(rs.getLong('subnode_1'))
-                                if (rs.wasNull()) nn1 = null
-                                Node nn2 = Node.get(rs.getLong('subnode_2'))
-                                if (rs.wasNull()) nn2 = null
-                                Link l1 = Link.get(rs.getLong('link_1'))
-                                if (rs.wasNull()) l1 = null
-                                Link l2 = Link.get(rs.getLong('link_2'))
-                                if (rs.wasNull()) l2 = null
+                                Long nameId = rs.getLong('name_id') ?: null
+                                Long subNode1Id = rs.getLong('subnode_1')
+                                Long subNode2Id = rs.getLong('subnode_2')
+                                Long link1Id = rs.getLong('link_1')
+                                Long link2Id = rs.getLong('link_2')
+                                Long superName1 = rs.getLong('super_name_1')
+                                Long superName2 = rs.getLong('super_name_2')
 
-                                log.debug("${n.fullName} ${nn1} ${l1} ${nn2} ${l2}")
+                                log.debug("${nameId} (${subNode1Id} ${link1Id}) (${subNode2Id} ${link2Id}) $superName1, $superName2")
 
-                                if (l1 != null && l2 != null && l1.id == l2.id) {
-                                    log.debug("just part of a common subtree")
+                                if (link1Id && link2Id && link1Id == link2Id) {
+                                    log.debug("* just part of a common subtree")
                                 }
 
-                                assert nn1 != null || nn2 != null
+                                assert subNode1Id || subNode2Id
 
-                                boolean placement_changed =
-                                        ((nn1 == null) != (nn2 == null)) ||
-                                                ((l1 == null) != (l2 == null)) ||
-                                                (l1 != null && l2 != null && l1.supernode.name?.id != l2.supernode.name?.id)
+                                boolean placementChanged =
+                                        ((subNode1Id == null) != (subNode2Id == null)) ||
+                                                ((link1Id == null) != (link2Id == null)) ||
+                                                (link1Id != null && link2Id != null && superName1 != superName2)
+                                log.debug "Placement changed: $placementChanged"
 
-                                if (!placement_changed && nn1.id == nn2.id) {
-                                    log.debug("same node under same name name. Continuing.")
+                                if (!placementChanged && subNode1Id == subNode2Id) {
+                                    log.debug("* same node under same name. Continuing.")
                                     continue
                                 }
 
+                                Name name = Name.get(nameId)
+                                Node subNode1 = Node.get(subNode1Id)
+                                Node subNode2 = Node.get(subNode2Id)
+                                Link link1 = Link.get(link1Id)
+                                Link link2 = Link.get(link2Id)
+
+                                log.debug("${name.fullName} ${subNode1} ${link1} ${subNode2} ${link2}")
+
                                 List<String> changes = new ArrayList<String>()
 
-                                if (placement_changed) {
-                                    if (nn1 == null && nn2 != null) {
-                                        if (l2 == null)
-                                            changes.add("New placement")
-                                        else
-                                            changes.add("New placement under ${l2.supernode.name.fullName}")
-                                    } else if (nn1 != null && nn2 == null) {
-                                        if (l2 == null)
-                                            changes.add("Name removed")
-                                        else
-                                            changes.add("Name removed from ${l1.supernode.name.fullName}")
-                                    } else if (l1 == null && l2 != null) {
-                                        changes.add("Name moved from root to ${l2.supernode.name.fullName}")
-                                    } else if (l1 != null && l == null) {
-                                        changes.add("Name moved from ${l1.supernode.name.fullName} to root")
-                                    } else {
-                                        changes.add("Name moved from ${l1.supernode.name.fullName} to ${l2.supernode.name.fullName} ")
-                                    }
+                                if (placementChanged) {
+                                    changes.add(decodePlacementChange(subNode1, subNode2, link2, link1))
                                 }
 
-                                if (nn1 != null && nn2 != null && nn1.id != nn2.id) {
-                                    if (nn1.instance?.id != nn2.instance?.id) {
-                                        changes.add("reference changed from ${nn1.instance?.reference?.citation} to ${nn2.instance?.reference?.citation}")
+                                if (subNode1 != null && subNode2 != null && subNode1.id != subNode2.id) {
+                                    if (subNode1.instance?.id != subNode2.instance?.id) {
+                                        changes.add("reference changed from ${subNode1.instance?.reference?.citation} to ${subNode2.instance?.reference?.citation}")
                                     }
 
-                                    if (nn1.typeUriIdPart != nn2.typeUriIdPart) {
-                                        changes.add("type changed from ${nn1.typeUriIdPart} to ${nn2.typeUriIdPart}")
+                                    if (subNode1.typeUriIdPart != subNode2.typeUriIdPart) {
+                                        changes.add("type changed from ${subNode1.typeUriIdPart} to ${subNode2.typeUriIdPart}")
                                     }
 
-                                    Map<Uri, Link> pp1 = DomainUtils.getProfileItemsAsMap(nn1)
-                                    Map<Uri, Link> pp2 = DomainUtils.getProfileItemsAsMap(nn2)
+                                    Map<Uri, Link> pp1 = DomainUtils.getProfileItemsAsMap(subNode1)
+                                    Map<Uri, Link> pp2 = DomainUtils.getProfileItemsAsMap(subNode2)
 
                                     Set<Uri> items = new HashSet<Uri>()
                                     items.addAll(pp1.keySet())
@@ -1256,21 +1265,18 @@ select distinct start_id from ll where supernode_id = ?
                                         } else if (!pp1.containsKey(u)) {
                                             changes.add("Profile item ${DomainUtils.vnuForItem(pp2.get(u))?.title ?: u} added")
                                         } else if (!pp2.containsKey(u)) {
-                                            changes.add("Profile item ${DomainUtils.vnuForItem(pp2.get(u))?.title ?: u} removed")
-
+                                            changes.add("Profile item ${(DomainUtils.vnuForItem(pp2.get(u))?.title) ?: u} removed")
                                         }
                                     }
-
-
                                 }
 
                                 // no filtering yet
 
                                 if (!changes.isEmpty()) {
-                                    l.add([name: n.fullName, changes: changes])
+                                    changesByName.add([name: name.fullName, changes: changes])
                                 }
                             }
-                            log.debug("done iterating though the resultset")
+                            log.debug("done finding changes.")
 
                         }
                         finally {
@@ -1280,7 +1286,27 @@ select distinct start_id from ll where supernode_id = ?
                     }
         }
 
-        return l
+        return changesByName
+    }
+
+    private static String decodePlacementChange(Node subNode1, Node subNode2, Link link2, Link link1) {
+        if (subNode1 == null && subNode2 != null) {
+            if (link2 == null)
+                 return "New placement"
+            else
+                return "New placement under ${link2.supernode.name.fullName}"
+        } else if (subNode1 != null && subNode2 == null) {
+            if (link2 == null)
+                return "Name removed"
+            else
+                return "Name removed from ${link1.supernode.name.fullName}"
+        } else if (link1 == null && link2 != null) {
+            return "Name moved from root to ${link2.supernode.name.fullName}"
+        } else if (link1 != null && link2 == null) {
+            return "Name moved from ${link1.supernode.name.fullName} to root"
+        } else {
+            return "Name moved from ${link1.supernode.name.fullName} to ${link2.supernode.name.fullName} "
+        }
     }
 
     static Name resolveName(Node node) {

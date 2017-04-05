@@ -299,7 +299,7 @@ class NameService {
         name.save()
     }
 
-    private AtomicBoolean paused = new AtomicBoolean(false)
+    private Boolean paused = false
 
     def startUpdatePolling() {
         quartzScheduler.start()
@@ -308,7 +308,7 @@ class NameService {
     def pauseUpdates() {
         if (quartzScheduler.isStarted()) {
             quartzScheduler.pauseAll()
-            paused.set(true)
+            paused = true
         }
     }
 
@@ -318,12 +318,12 @@ class NameService {
         } else {
             quartzScheduler.start()
         }
-        paused.set(false)
+        paused = false
     }
 
     String pollingStatus() {
         if (quartzScheduler.isStarted()) {
-            return paused.get() ? 'paused' : 'running'
+            return paused ? 'paused' : 'running'
         } else {
             return 'stopped'
         }
