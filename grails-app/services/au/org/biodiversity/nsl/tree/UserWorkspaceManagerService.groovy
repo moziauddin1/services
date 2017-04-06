@@ -527,8 +527,9 @@ class UserWorkspaceManagerService {
         msg.nested.addAll(getCheckinErrors(node))
         if (!msg.nested.empty) ServiceException.raise(msg)
     }
-    //todo refactor: too long, repeaded code, it(true) used as code blocks - this is smelly as prawns in the sun
-    public Collection<Message> getCheckinErrors(Node node) {
+
+    //todo refactor: too long, repeated code - this is smelly as prawns in the sun
+    Collection<Message> getCheckinErrors(Node node) {
 
         Node checkin_target = DomainUtils.isCheckedIn(node) ? node : node.prev
 
@@ -537,160 +538,19 @@ class UserWorkspaceManagerService {
         sessionFactory_nsl.getCurrentSession().doWork(new Work() {
 
             void execute(Connection connection) throws SQLException {
-                if (true) {
-                    // check for name rank issues
-                    String rankIssuesSql = '''
-WITH RECURSIVE
-links_being_checked_in AS (
-    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
-    FROM tree_link
-      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE
-      tree_link.supernode_id = ?
-      AND subnode.internal_type <> 'V'
-UNION ALL
-    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
-    FROM links_being_checked_in
-      JOIN tree_link ON links_being_checked_in.subnode_id = tree_link.supernode_id
-      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V'
-)SELECT
-    l.link_id
-FROM
-  links_being_checked_in l
-  JOIN tree_node supernode ON l.supernode_id = supernode.id
-  JOIN name supername ON supernode.name_id = supername.id
-  JOIN name_rank superrank ON supername.name_rank_id = superrank.id
-  JOIN tree_node subnode ON l.subnode_id = subnode.id
-  JOIN name subname ON subnode.name_id = subname.id
-  JOIN name_rank subrank ON subname.name_rank_id = subrank.id
-WHERE superrank.sort_order > subrank.sort_order
-				'''
+                checkNameRankIssues(connection)
 
-                    PreparedStatement stmt = connection.prepareStatement(rankIssuesSql)
+                checkForDiamonds(connection)
 
-                    stmt.setLong(1, node.id)
+                // Check for duplicate names inside the checkin
+                checkForDuplicateNamesInCheckin(connection)
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Link l = Link.get(rs.getInt('link_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${l.subnode.name.simpleName} with rank ${l.subnode.name.nameRank.name}
-is placed under
-${l.supernode.name.simpleName} with rank ${l.supernode.name.nameRank.name}
-.
-""", l.subnode, l.supernode])
-                        messages.add(submsg)
-                    }
-                }
+                // Check for duplicate names between the checkin and the destination
+                checkForDuplicateNamesOnDestination(connection)  //, node, checkin_target
+            }
 
-                if (true) {
-                    // check for diamonds
-                    String sql = '''
-WITH RECURSIVE
-nodes_being_checked_in AS (
-    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
-UNION ALL
-    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
-    FROM nodes_being_checked_in
-      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
-        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V'
-),
-problems AS (
-SELECT
-    node_id
-FROM
-nodes_being_checked_in
-    GROUP BY node_id
-    HAVING count(*) > 1
-),
-distinct_supers AS (
-    SELECT DISTINCT *
-    FROM nodes_being_checked_in
-    WHERE node_id IN (SELECT node_id FROM problems)
-),
-one_distinct_super AS (
-    SELECT node_id, max(supernode_id) AS supernode_id
-    FROM distinct_supers
-    GROUP BY node_id
-    HAVING count(*) = 1
-),
-one_distinct_problem_super AS (
-    SELECT * FROM one_distinct_super
-    WHERE supernode_id IN (SELECT node_id FROM problems)
-)
-SELECT * FROM problems
-WHERE node_id NOT IN (SELECT node_id FROM one_distinct_problem_super)
-
-				'''
-
-                    PreparedStatement stmt = connection.prepareStatement(sql)
-
-                    stmt.setLong(1, node.id)
-
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node n = Node.get(rs.getInt('node_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${node.name.simpleName} from "${node.root.title}"
-contains a node ${n.name.simpleName}
-which is attached in multiple places (graph diamond).
-""", n.name])
-
-                        messages.add(submsg)
-                    }
-                }
-
-                if (true) {
-                    // Check for duplicate names inside the checkin
-
-                    String sql = '''
-WITH RECURSIVE
-nodes_being_checked_in AS (
-    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
-UNION ALL
-    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
-    FROM nodes_being_checked_in
-      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
-        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V'
-),
-problems AS (
-SELECT
-    name_id, count(*) AS ct
-    FROM nodes_being_checked_in
-    JOIN tree_node ON nodes_being_checked_in.node_id = tree_node.id
-    GROUP BY name_id
-    HAVING count(*) > 1
-)
-SELECT problems.* FROM problems
-JOIN name ON problems.name_id = name.id
-WHERE name.parent_id NOT IN (SELECT name_id FROM problems)
-
-				'''
-
-                    PreparedStatement stmt = connection.prepareStatement(sql)
-
-                    stmt.setLong(1, node.id)
-
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Name n = Name.get(rs.getInt('name_id'))
-                        int ct = rs.getInt('ct')
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${node.name.simpleName} from "${node.root.title}"
-contains ${n.simpleName} ${ct} times
-""", n])
-                        messages.add(submsg)
-                    }
-
-                }
-
-
-                if (true) {
-                    // Check for duplicate names bewtween the chekin and the destination
-                    String sql = '''
+            private void checkForDuplicateNamesOnDestination(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -731,60 +591,144 @@ LEFT OUTER JOIN problems AS sup ON problems.checkin_supernode_id = sup.checkin_n
 WHERE sup.checkin_node_id IS NULL
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    log.debug("nodes being checked in are the tree from ${node} ${node.root}")
-                    log.debug("nodes being replaced are the tree from ${checkin_target.root.node}  ${checkin_target.root}")
-                    log.debug("nodes being replaced will be clipped at  ${checkin_target}")
+                log.debug("nodes being checked in are the tree from ${node} ${node.root}")
+                log.debug("nodes being replaced are the tree from ${checkin_target.root.node}  ${checkin_target.root}")
+                log.debug("nodes being replaced will be clipped at  ${checkin_target}")
 
-                    stmt.setLong(1, node.id)
-                    stmt.setLong(2, checkin_target.root.node.id)
-                    stmt.setLong(3, checkin_target.id)
-                    stmt.setLong(4, checkin_target.id)
+                stmt.setLong(1, node.id)
+                stmt.setLong(2, checkin_target.root.node.id)
+                stmt.setLong(3, checkin_target.id)
+                stmt.setLong(4, checkin_target.id)
 
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
-                        Node n = Node.get(rs.getInt('checkin_node_id'))
-                        Link l = Link.get(rs.getInt('being_enddated_link_id'))
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+                    Node n = Node.get(rs.getInt('checkin_node_id'))
+                    Link l = Link.get(rs.getInt('being_enddated_link_id'))
 
-                        Message submsg = Message.makeMsg(Msg.EMPTY, [
-                                (node != checkin_target) ?
-"""
+                    Message submsg = Message.makeMsg(Msg.EMPTY, [
+                            (node != checkin_target) ?
+                                    """
 Checking in ${node.name.simpleName} from "${node.root.title}"
 into ${checkin_target.root.label}
 will result in a duplicate placement of ${n.name.simpleName}, which is currently placed in ${checkin_target.root.label}.
 """
-                        :
-                        """
+                                    :
+                                    """
 ${n.name.simpleName}
 has a duplicate placement in ${node.root.label}.
 """, checkin_supernode, n])
 
-                        messages.add(submsg)
+                    messages.add(submsg)
 
-                        log.debug "CONFLICT - node ${n} with name ${n.name} and supernode ${checkin_supernode} has the same name as the subnode of link ${l} nodes ${l.supernode}->${l.subnode} names ${l.supernode.name}->${l.subnode.name} "
-                    }
+                    log.debug "CONFLICT - node ${n} with name ${n.name} and supernode ${checkin_supernode} has the same name as the subnode of link ${l} nodes ${l.supernode}->${l.subnode} names ${l.supernode.name}->${l.subnode.name} "
                 }
             }
-        })
 
-        return messages
-    }
+            private void checkForDuplicateNamesInCheckin(Connection connection) {
+                String sql = '''
+WITH RECURSIVE
+nodes_being_checked_in AS (
+    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
+UNION ALL
+    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
+    FROM nodes_being_checked_in
+      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
+        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE subnode.internal_type <> 'V'
+),
+problems AS (
+SELECT
+    name_id, count(*) AS ct
+    FROM nodes_being_checked_in
+    JOIN tree_node ON nodes_being_checked_in.node_id = tree_node.id
+    GROUP BY name_id
+    HAVING count(*) > 1
+)
+SELECT problems.* FROM problems
+JOIN name ON problems.name_id = name.id
+WHERE name.parent_id NOT IN (SELECT name_id FROM problems)
 
-    private Collection<Message> getCheckinWarnings(Node node) {
-        Node checkin_target = DomainUtils.isCheckedIn(node) ? node : node.prev
+				'''
 
-        Collection<Message> messages = []
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-        sessionFactory_nsl.getCurrentSession().doWork(new Work() {
+                stmt.setLong(1, node.id)
 
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Name n = Name.get(rs.getInt('name_id'))
+                    int ct = rs.getInt('ct')
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${node.name.simpleName} from "${node.root.title}"
+contains ${n.simpleName} ${ct} times
+""", n])
+                    messages.add(submsg)
+                }
+            }
 
-            void execute(Connection connection) throws SQLException {
-                if (true) {
-                    // check for name prefix issues
-                    String sql = '''
+            private void checkForDiamonds(Connection connection) {
+                String sql = '''
+WITH RECURSIVE
+nodes_being_checked_in AS (
+    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
+UNION ALL
+    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
+    FROM nodes_being_checked_in
+      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
+        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE subnode.internal_type <> 'V'
+),
+problems AS (
+SELECT
+    node_id
+FROM
+nodes_being_checked_in
+    GROUP BY node_id
+    HAVING count(*) > 1
+),
+distinct_supers AS (
+    SELECT DISTINCT *
+    FROM nodes_being_checked_in
+    WHERE node_id IN (SELECT node_id FROM problems)
+),
+one_distinct_super AS (
+    SELECT node_id, max(supernode_id) AS supernode_id
+    FROM distinct_supers
+    GROUP BY node_id
+    HAVING count(*) = 1
+),
+one_distinct_problem_super AS (
+    SELECT * FROM one_distinct_super
+    WHERE supernode_id IN (SELECT node_id FROM problems)
+)
+SELECT * FROM problems
+WHERE node_id NOT IN (SELECT node_id FROM one_distinct_problem_super)
+
+				'''
+
+                PreparedStatement stmt = connection.prepareStatement(sql)
+
+                stmt.setLong(1, node.id)
+
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node n = Node.get(rs.getInt('node_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${node.name.simpleName} from "${node.root.title}"
+contains a node ${n.name.simpleName}
+which is attached in multiple places (graph diamond).
+""", n.name])
+
+                    messages.add(submsg)
+                }
+            }
+
+            private void checkNameRankIssues(Connection connection) {
+                String rankIssuesSql = '''
 WITH RECURSIVE
 links_being_checked_in AS (
     SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
@@ -804,59 +748,56 @@ UNION ALL
 FROM
   links_being_checked_in l
   JOIN tree_node supernode ON l.supernode_id = supernode.id
+  JOIN name supername ON supernode.name_id = supername.id
+  JOIN name_rank superrank ON supername.name_rank_id = superrank.id
   JOIN tree_node subnode ON l.subnode_id = subnode.id
   JOIN name subname ON subnode.name_id = subname.id
-  JOIN name_rank subname_rank ON subname.name_rank_id = subname_rank.id
-  join name_type subname_type on subname.name_type_id = subname_type.id
-  left outer join name subname_parent on subname.parent_id = subname_parent.id
-WHERE
-  subnode.type_uri_id_part = 'ApcConcept'
-  AND supernode.name_id IS NOT NULL
-  AND (
-      (
-        not subname_type.hybrid
-        AND subname.parent_id IS NOT NULL
-        AND subname.parent_id <> supernode.name_id
-      )
-      OR
-      (
-        subname_type.hybrid
-        AND subname_parent.parent_id IS NOT NULL
-        AND subname_parent.parent_id <> supernode.name_id
-      )
-  )
-
-  AND subname_rank.sort_order > 120
+  JOIN name_rank subrank ON subname.name_rank_id = subrank.id
+WHERE superrank.sort_order > subrank.sort_order
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(rankIssuesSql)
 
-                    stmt.setLong(1, node.id)
+                stmt.setLong(1, node.id)
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Link l = Link.get(rs.getInt('link_id'))
-
-                        Name parentIs = l.supernode.name
-                        Name parentShouldBe = l.subnode.name.nameType.hybrid ? l.subnode.name.parent.parent : l.subnode.name.parent
-
-                        Closure display = (parentIs.simpleName==parentShouldBe.simpleName) ? { Name it -> it.fullName } : { Name it -> it.simpleName }
-
-                        Message submsg = Message.makeMsg(Msg.EMPTY, [
-"""
-${l.subnode.name.simpleName}
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Link l = Link.get(rs.getInt('link_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${l.subnode.name.simpleName} with rank ${l.subnode.name.nameRank.name}
 is placed under
-${display(parentIs)}
-rather than
-${display(parentShouldBe)}
-"""
-                        , l.subnode, parentIs, parentShouldBe])
-                        messages.add(submsg)
-                    }
+${l.supernode.name.simpleName} with rank ${l.supernode.name.nameRank.name}
+.
+""", l.subnode, l.supernode])
+                    messages.add(submsg)
                 }
+            }
+        })
 
-                if (true) {
-                    String sql = '''
+        return messages
+    }
+
+    Collection<Message> getCheckinWarnings(Node node) {
+        Node checkin_target = DomainUtils.isCheckedIn(node) ? node : node.prev
+
+        Collection<Message> messages = []
+
+        sessionFactory_nsl.getCurrentSession().doWork(new Work() {
+
+
+            void execute(Connection connection) throws SQLException {
+
+                checkNamePrefix(connection)
+
+                checkForSynonymsOnTree(connection)
+
+                checkAppearsElsewhere(connection) //, node, checkin_target
+
+                checkReplacedSynonym(connection) //, node, checkin_target
+            }
+
+            private void checkReplacedSynonym(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -867,46 +808,73 @@ UNION ALL
         JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
     WHERE subnode.internal_type <> 'V'
 ),
+links_being_replaced AS (
+    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
+    tree_link
+    WHERE
+      tree_link.supernode_id = ?
+      AND tree_link.subnode_id <> ? -- clip search
+UNION ALL
+    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
+    links_being_replaced JOIN tree_link ON links_being_replaced.subnode_id = tree_link.supernode_id
+    JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE tree_link.subnode_id <> ? -- clip search
+    AND subnode.internal_type <> 'V'
+),
 problems AS (
 SELECT
-    a.node_id AS a_node_id, a_synonym.id AS a_synonym_id, b.node_id AS b_node_id
-    FROM
-    nodes_being_checked_in a
-    JOIN tree_node a_node ON a.node_id = a_node.id
-    JOIN instance a_synonym ON a_node.instance_id = a_synonym.cited_by_id
-    JOIN instance_type ON a_synonym.instance_type_id = instance_type.id,
-    nodes_being_checked_in b
-    JOIN tree_node b_node ON b.node_id = b_node.id
-    WHERE a_synonym.name_id = b_node.name_id
-    AND a.node_id <> b.node_id
+  nodes_being_checked_in.supernode_id AS checkin_supernode_id,
+  nodes_being_checked_in.node_id AS checkin_node_id,
+  links_being_replaced.link_id AS being_enddated_link_id,
+  replaced_synonym.id AS replaced_synonym_id
+FROM
+nodes_being_checked_in
+  JOIN tree_node checkin_node ON nodes_being_checked_in.node_id = checkin_node.id
+    ,
+links_being_replaced
+  JOIN tree_node replaced_node ON links_being_replaced.subnode_id = replaced_node.id
+    JOIN instance replaced_synonym ON replaced_node.instance_id = replaced_synonym.cited_by_id
+  JOIN instance_type ON replaced_synonym.instance_type_id = instance_type.id
+WHERE replaced_synonym.name_id = checkin_node.name_id
     AND NOT instance_type.misapplied
     AND NOT instance_type.pro_parte
 )
-SELECT * FROM problems
+SELECT problems.* FROM problems
+-- we do all synonymy issues, not just the top level
+--LEFT OUTER JOIN problems AS sup ON problems.checkin_supernode_id = sup.checkin_node_id
+--WHERE sup.checkin_node_id IS NULL
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    stmt.setLong(1, node.id)
+                log.debug("nodes being checked in are the tree from ${node}")
+                log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
+                log.debug("nodes being replaced will be clipped at  ${checkin_target}")
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node a_node = Node.get(rs.getInt('a_node_id'))
-                        Instance a_synonym = Instance.get(rs.getInt('a_synonym_id'))
-                        Node b_node = Node.get(rs.getInt('b_node_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${a_node.name.simpleName} in ${a_node.instance.reference.citation}
-has a ${a_synonym.instanceType.hasLabel} ${a_synonym.name.simpleName}
-which appears elsewhere in the check-in.
-""", a_node, a_synonym, b_node])
-                        messages.add(submsg)
-                    }
+                stmt.setLong(1, node.id)
+                stmt.setLong(2, checkin_target.root.node.id)
+                stmt.setLong(3, checkin_target.id)
+                stmt.setLong(4, checkin_target.id)
+
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+                    Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
+                    Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
+                    Instance replaced_synonym = Instance.get(rs.getInt('replaced_synonym_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+                    ${checkin_node.name.simpleName}
+                    is ${replaced_synonym.instanceType.ofLabel} ${
+                        replaced_link.subnode.name.simpleName
+                    } in ${replaced_synonym.reference.citation},
+                    which appears elsewhere in ${checkin_target.root.label}.
+""", checkin_node, replaced_link.subnode])
+                    messages.add(submsg)
                 }
+            }
 
-
-                if (true) {
-                    // OK!
-                    String sql = '''
+            private void checkAppearsElsewhere(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -955,38 +923,36 @@ SELECT problems.* FROM problems
 --WHERE sup.checkin_node_id IS NULL
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    log.debug("nodes being checked in are the tree from ${node}")
-                    log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
-                    log.debug("nodes being replaced will be clipped at  ${checkin_target}")
+                log.debug("nodes being checked in are the tree from ${node}")
+                log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
+                log.debug("nodes being replaced will be clipped at  ${checkin_target}")
 
-                    stmt.setLong(1, node.id)
-                    stmt.setLong(2, checkin_target.root.node.id)
-                    stmt.setLong(3, checkin_target.id)
-                    stmt.setLong(4, checkin_target.id)
+                stmt.setLong(1, node.id)
+                stmt.setLong(2, checkin_target.root.node.id)
+                stmt.setLong(3, checkin_target.id)
+                stmt.setLong(4, checkin_target.id)
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
-                        Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
-                        Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
-                        Instance checkin_synonym = Instance.get(rs.getInt('checkin_synonym_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+                    Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
+                    Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
+                    Instance checkin_synonym = Instance.get(rs.getInt('checkin_synonym_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
                     ${checkin_node.name.simpleName} in ${checkin_node.instance.reference.citation}
                     has a ${checkin_synonym.instanceType.hasLabel} ${
-                            checkin_synonym.name.simpleName
-                        },
+                        checkin_synonym.name.simpleName
+                    },
                     which appears elsewhere in ${checkin_target.root.label}.
 """, checkin_node, checkin_synonym])
-                        messages.add(submsg)
-                    }
-
+                    messages.add(submsg)
                 }
+            }
 
-                if (true) {
-                    // OK!
-                    String sql = '''
+            private void checkForSynonymsOnTree(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -997,70 +963,111 @@ UNION ALL
         JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
     WHERE subnode.internal_type <> 'V'
 ),
-links_being_replaced AS (
-    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
-    tree_link
-    WHERE
-      tree_link.supernode_id = ?
-      AND tree_link.subnode_id <> ? -- clip search
-UNION ALL
-    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
-    links_being_replaced JOIN tree_link ON links_being_replaced.subnode_id = tree_link.supernode_id
-    JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE tree_link.subnode_id <> ? -- clip search
-    AND subnode.internal_type <> 'V'
-),
 problems AS (
 SELECT
-  nodes_being_checked_in.supernode_id AS checkin_supernode_id,
-  nodes_being_checked_in.node_id AS checkin_node_id,
-  links_being_replaced.link_id AS being_enddated_link_id,
-  replaced_synonym.id AS replaced_synonym_id
-FROM
-nodes_being_checked_in
-  JOIN tree_node checkin_node ON nodes_being_checked_in.node_id = checkin_node.id
-    ,
-links_being_replaced
-  JOIN tree_node replaced_node ON links_being_replaced.subnode_id = replaced_node.id
-    JOIN instance replaced_synonym ON replaced_node.instance_id = replaced_synonym.cited_by_id
-  JOIN instance_type ON replaced_synonym.instance_type_id = instance_type.id
-WHERE replaced_synonym.name_id = checkin_node.name_id
+    a.node_id AS a_node_id, a_synonym.id AS a_synonym_id, b.node_id AS b_node_id
+    FROM
+    nodes_being_checked_in a
+    JOIN tree_node a_node ON a.node_id = a_node.id
+    JOIN instance a_synonym ON a_node.instance_id = a_synonym.cited_by_id
+    JOIN instance_type ON a_synonym.instance_type_id = instance_type.id,
+    nodes_being_checked_in b
+    JOIN tree_node b_node ON b.node_id = b_node.id
+    WHERE a_synonym.name_id = b_node.name_id
+    AND a.node_id <> b.node_id
     AND NOT instance_type.misapplied
     AND NOT instance_type.pro_parte
 )
-SELECT problems.* FROM problems
--- we do all synonymy issues, not just the top level
---LEFT OUTER JOIN problems AS sup ON problems.checkin_supernode_id = sup.checkin_node_id
---WHERE sup.checkin_node_id IS NULL
+SELECT * FROM problems
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    log.debug("nodes being checked in are the tree from ${node}")
-                    log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
-                    log.debug("nodes being replaced will be clipped at  ${checkin_target}")
+                stmt.setLong(1, node.id)
 
-                    stmt.setLong(1, node.id)
-                    stmt.setLong(2, checkin_target.root.node.id)
-                    stmt.setLong(3, checkin_target.id)
-                    stmt.setLong(4, checkin_target.id)
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node a_node = Node.get(rs.getInt('a_node_id'))
+                    Instance a_synonym = Instance.get(rs.getInt('a_synonym_id'))
+                    Node b_node = Node.get(rs.getInt('b_node_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${a_node.name.simpleName} in ${a_node.instance.reference.citation}
+has a ${a_synonym.instanceType.hasLabel} ${a_synonym.name.simpleName}
+which appears elsewhere in the check-in.
+""", a_node, a_synonym, b_node])
+                    messages.add(submsg)
+                }
+            }
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
-                        Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
-                        Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
-                        Instance replaced_synonym = Instance.get(rs.getInt('replaced_synonym_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-                    ${checkin_node.name.simpleName}
-                    is ${replaced_synonym.instanceType.ofLabel} ${
-                            replaced_link.subnode.name.simpleName
-                        } in ${replaced_synonym.reference.citation},
-                    which appears elsewhere in ${checkin_target.root.label}.
-""",checkin_node, replaced_link.subnode])
-                        messages.add(submsg)
-                    }
+            private void checkNamePrefix(Connection connection) {
+                String sql = '''
+WITH RECURSIVE
+links_being_checked_in AS (
+    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
+    FROM tree_link
+      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE
+      tree_link.supernode_id = ?
+      AND subnode.internal_type <> 'V'
+UNION ALL
+    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
+    FROM links_being_checked_in
+      JOIN tree_link ON links_being_checked_in.subnode_id = tree_link.supernode_id
+      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE subnode.internal_type <> 'V'
+)SELECT
+    l.link_id
+FROM
+  links_being_checked_in l
+  JOIN tree_node supernode ON l.supernode_id = supernode.id
+  JOIN tree_node subnode ON l.subnode_id = subnode.id
+  JOIN name subname ON subnode.name_id = subname.id
+  JOIN name_rank subname_rank ON subname.name_rank_id = subname_rank.id
+  JOIN name_type subname_type ON subname.name_type_id = subname_type.id
+  LEFT OUTER JOIN name subname_parent ON subname.parent_id = subname_parent.id
+WHERE
+  subnode.type_uri_id_part = 'ApcConcept'
+  AND supernode.name_id IS NOT NULL
+  AND (
+      (
+        NOT subname_type.hybrid
+        AND subname.parent_id IS NOT NULL
+        AND subname.parent_id <> supernode.name_id
+      )
+      OR
+      (
+        subname_type.hybrid
+        AND subname_parent.parent_id IS NOT NULL
+        AND subname_parent.parent_id <> supernode.name_id
+      )
+  )
 
+  AND subname_rank.sort_order > 120
+				'''
+
+                PreparedStatement stmt = connection.prepareStatement(sql)
+
+                stmt.setLong(1, node.id)
+
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Link l = Link.get(rs.getInt('link_id'))
+
+                    Name parentIs = l.supernode.name
+                    Name parentShouldBe = l.subnode.name.nameType.hybrid ? l.subnode.name.parent.parent : l.subnode.name.parent
+
+                    Closure display = (parentIs.simpleName == parentShouldBe.simpleName) ? { Name it -> it.fullName } : { Name it -> it.simpleName }
+
+                    Message submsg = Message.makeMsg(Msg.EMPTY, [
+                            """
+${l.subnode.name.simpleName}
+is placed under
+${display(parentIs)}
+rather than
+${display(parentShouldBe)}
+"""
+                            , l.subnode, parentIs, parentShouldBe])
+                    messages.add(submsg)
                 }
             }
         })
@@ -1296,7 +1303,7 @@ SELECT problems.* FROM problems
         catch (Throwable t) {
             for (Throwable tt = t; tt != null; tt = tt.getCause()) {
                 log.error(tt.toString())
-                for (StackTraceElement e: tt.getStackTrace()) {
+                for (StackTraceElement e : tt.getStackTrace()) {
                     if (e.getClassName().startsWith("au.org.bio") && e.getLineNumber() >= 0) {
                         log.error("  " + e.toString())
                     }
@@ -1343,7 +1350,7 @@ SELECT problems.* FROM problems
                 ServiceException.raise(error)
             }
 
-            if(currentLink.subnode.subLink.find { Link l -> l.subnode.internalType == NodeInternalType.T } ) {
+            if (currentLink.subnode.subLink.find { Link l -> l.subnode.internalType == NodeInternalType.T }) {
                 error.nested.add(Message.makeMsg(Msg.NODE_HAS_SUBTAXA, [currentLink.subnode]))
                 ServiceException.raise(error)
             }
