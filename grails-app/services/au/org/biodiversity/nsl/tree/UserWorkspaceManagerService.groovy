@@ -111,7 +111,6 @@ class UserWorkspaceManagerService {
 
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
     def moveWorkspaceSubnodes(Arrangement ws, Node target, Node node) {
         if (target == node) throw new IllegalArgumentException("node == target")
 
@@ -206,9 +205,7 @@ class UserWorkspaceManagerService {
         ]
     }
 
-
-    @SuppressWarnings("GroovyUnusedDeclaration")
-    def addNamesToNode(Arrangement ws, Node focus, List<?> names) {
+    Map addNamesToNode(Arrangement ws, Node focus, List<?> names) {
         log.debug('addNamesToNode')
         if (!ws) throw new IllegalArgumentException("root may not be null")
         if (!focus) throw new IllegalArgumentException("focus may not be null")
@@ -228,32 +225,19 @@ class UserWorkspaceManagerService {
         }
 
         names.each {
-            log.debug('refetch root')
             ws = DomainUtils.refetchArrangement(ws)
-            log.debug('refetch focus')
             focus = DomainUtils.refetchNode(focus)
-
-            log.debug('check type of it')
-            log.debug(it.class)
 
             if (it instanceof Name) {
                 // TODO: DO NOT IGNORE THIS TODO
                 // TODO: find if this name is already in the tree. If it is, check out the supernode and delete the link.
-                log.debug('its a name. refetch it')
                 Name n = DomainUtils.refetchName((Name) it)
-                log.debug('name refetched. create the node')
-                log.debug("oh by the way - now I have refethed it, it liks like this: ${n}")
                 basicOperationsService.createDraftNode(focus, VersioningMethod.V, NodeInternalType.T, nslName: n)
-                log.debug('all ok')
             } else if (it instanceof Instance) {
                 // TODO: DO NOT IGNORE THIS TODO
                 // TODO: find if this name is already in the tree. If it is, check out the supernode and delete the link.
-                log.debug('its an instance. refetch it')
                 Instance inst = DomainUtils.refetchInstance((Instance) it)
-                log.debug('instance refetched. create the node')
-                log.debug("oh by the way - now I have refethed it, it liks like this: ${inst}")
                 basicOperationsService.createDraftNode(focus, VersioningMethod.V, NodeInternalType.T, nslInstance: inst)
-                log.debug('all ok')
             } else {
                 log.debug('I don\'t know what this is. throw an exception')
                 throw new IllegalArgumentException("dont know how to add a ${it.class} to a node")
@@ -263,12 +247,10 @@ class UserWorkspaceManagerService {
         }
         log.debug('added all elements ok')
 
-        return {
-            target:
-            focus
-            modified:
-            []
-        }
+        return [
+            target: focus,
+            modified: []
+        ]
     }
 
     def replaceDraftNodeWith(Node target, Node replacement) {
@@ -858,7 +840,7 @@ SELECT problems.* FROM problems
 
                 ResultSet rs = stmt.executeQuery()
                 while (rs.next()) {
-                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+//                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
                     Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
                     Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
                     Instance replaced_synonym = Instance.get(rs.getInt('replaced_synonym_id'))
@@ -936,9 +918,9 @@ SELECT problems.* FROM problems
 
                 ResultSet rs = stmt.executeQuery()
                 while (rs.next()) {
-                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+//                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
                     Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
-                    Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
+//                    Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
                     Instance checkin_synonym = Instance.get(rs.getInt('checkin_synonym_id'))
                     Message submsg = Message.makeMsg(Msg.EMPTY, ["""
                     ${checkin_node.name.simpleName} in ${checkin_node.instance.reference.citation}
@@ -999,51 +981,61 @@ which appears elsewhere in the check-in.
                 }
             }
 
+            /**
+             * produces warnings like "thing is placed under thingeae rather than thinga"
+             * @param connection
+             */
             private void checkNamePrefix(Connection connection) {
                 String sql = '''
 WITH RECURSIVE
-links_being_checked_in AS (
-    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
+    links_being_checked_in AS (
+    SELECT
+      tree_link.id link_id,
+      tree_link.supernode_id,
+      tree_link.subnode_id
     FROM tree_link
       JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
     WHERE
       tree_link.supernode_id = ?
-      AND subnode.internal_type <> 'V'
-UNION ALL
-    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
+      AND subnode.internal_type <> 'V\'
+    UNION ALL
+    SELECT
+      tree_link.id link_id,
+      tree_link.supernode_id,
+      tree_link.subnode_id
     FROM links_being_checked_in
       JOIN tree_link ON links_being_checked_in.subnode_id = tree_link.supernode_id
       JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V'
-)SELECT
-    l.link_id
-FROM
-  links_being_checked_in l
-  JOIN tree_node supernode ON l.supernode_id = supernode.id
-  JOIN tree_node subnode ON l.subnode_id = subnode.id
-  JOIN name subname ON subnode.name_id = subname.id
-  JOIN name_rank subname_rank ON subname.name_rank_id = subname_rank.id
-  JOIN name_type subname_type ON subname.name_type_id = subname_type.id
-  LEFT OUTER JOIN name subname_parent ON subname.parent_id = subname_parent.id
-WHERE
-  subnode.type_uri_id_part = 'ApcConcept'
-  AND supernode.name_id IS NOT NULL
-  AND (
-      (
-        NOT subname_type.hybrid
-        AND subname.parent_id IS NOT NULL
-        AND subname.parent_id <> supernode.name_id
+    WHERE subnode.internal_type <> 'V\'
+  ) SELECT l.link_id
+    FROM
+      name_rank genus,
+      links_being_checked_in l
+      JOIN tree_node supernode ON l.supernode_id = supernode.id
+      JOIN tree_node subnode ON l.subnode_id = subnode.id
+      JOIN name subname ON subnode.name_id = subname.id
+      JOIN name_rank subname_rank ON subname.name_rank_id = subname_rank.id
+      JOIN name_type subname_type ON subname.name_type_id = subname_type.id
+      LEFT OUTER JOIN name subname_parent ON subname.parent_id = subname_parent.id
+    WHERE
+      genus.name = 'Genus\'
+      AND subnode.type_uri_id_part = 'ApcConcept\'
+      AND supernode.name_id IS NOT NULL
+      AND (
+        (
+          NOT subname_type.hybrid
+          AND subname.parent_id IS NOT NULL
+          AND subname.parent_id <> supernode.name_id
+        )
+        OR
+        (
+          subname_type.hybrid
+          AND subname_parent.parent_id IS NOT NULL
+          AND subname_parent.parent_id <> supernode.name_id
+        )
       )
-      OR
-      (
-        subname_type.hybrid
-        AND subname_parent.parent_id IS NOT NULL
-        AND subname_parent.parent_id <> supernode.name_id
-      )
-  )
-
-  AND subname_rank.sort_order > 120
-				'''
+      AND subname_rank.sort_order > genus.sort_order;
+'''
 
                 PreparedStatement stmt = connection.prepareStatement(sql)
 
@@ -1163,7 +1155,7 @@ ${display(parentShouldBe)}
                 }
             }
 
-            Link newParentLink = null
+            Link newParentLink
             if (parentName != null) {
                 newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, parentName)
                 if (newParentLink == null) {
@@ -1383,7 +1375,7 @@ ${display(parentShouldBe)}
         return null
     }
 
-    Message updateValue(Arrangement ws, Name name, ValueNodeUri valueUri, String value) {
+    void updateValue(Arrangement ws, Name name, ValueNodeUri valueUri, String value) {
         if (!ws) throw new IllegalArgumentException("null tree")
         if (!name) throw new IllegalArgumentException("null name")
         if (!valueUri) throw new IllegalArgumentException("null value uri")
@@ -1428,7 +1420,7 @@ ${display(parentShouldBe)}
                 }
             }
 
-            // ok! now use the basic opearions service to update/add values on the node
+            // ok! now use the basic operations service to update/add values on the node
 
             if (currentValueLink && !DomainUtils.isCheckedIn(currentValueLink.subnode)) {
                 // update the existing draft subnode
@@ -1444,12 +1436,11 @@ ${display(parentShouldBe)}
                 }
             } else {
                 // unlink existing persistent subnode (if necessary),
-                // crate new draft subnode (if necesary)
+                // crate new draft subnode (if necessary)
                 if (currentValueLink) {
                     log.debug("deleting ")
                     basicOperationsService.deleteLink(currentNameNode, currentValueLink.linkSeq)
                     currentNameNode = DomainUtils.refetchNode(currentNameNode)
-                    currentValueLink = null
                 }
 
 
@@ -1474,25 +1465,6 @@ ${display(parentShouldBe)}
                 ServiceException.raise(error)
             }
         }
-        return null
     }
 
-    Message addMultiValue(Arrangement ws, Name name, ValueNodeUri valueUri, String value) {
-        if (!ws) throw new IllegalArgumentException("null tree")
-        if (!name) throw new IllegalArgumentException("null name")
-        if (!valueUri) throw new IllegalArgumentException("null value uri")
-        if (ws.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
-
-        if (!valueUri.isMultiValued) throw new IllegalArgumentException("${valueUri} is not multivalued")
-
-        ServiceException.raise(Message.makeMsg(Msg.TODO, ['Implement addMultiValue']))
-    }
-
-    Message removeMultiValue(Arrangement ws, Name name, int linkSeq) {
-        if (!ws) throw new IllegalArgumentException("null tree")
-        if (!name) throw new IllegalArgumentException("null name")
-        if (ws.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
-
-        ServiceException.raise(Message.makeMsg(Msg.TODO, ['Implement removeMultiValue']))
-    }
 }

@@ -293,11 +293,11 @@ class TreeEditController {
                 ServiceException.raise(Message.makeMsg(Msg.SIMPLE_2, ["Unknown value uri", param.valueUriLabel]))
             }
 
-            Message msg = userWorkspaceManagerService.updateValue(param.tree, param.name, uri, param.value)
+            userWorkspaceManagerService.updateValue(param.tree, param.name, uri, param.value)
 
             return render([
                     success: true,
-                    msg    : new TreeServiceMessageUtil(linkService).unpackMessage(msg, 'success')
+                    msg    : null
             ] as JSON)
         }
     }
