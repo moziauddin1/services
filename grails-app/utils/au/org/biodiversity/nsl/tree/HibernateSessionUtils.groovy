@@ -35,7 +35,7 @@ final class HibernateSessionUtils {
             this.exec = exec
         }
 
-        public void execute(Connection connection) throws SQLException {
+        void execute(Connection connection) throws SQLException {
             result = exec(connection)
         }
     }
@@ -47,52 +47,52 @@ final class HibernateSessionUtils {
         return w.result
     }
 
-    static void create_tree_temp_id(Connection cnct) {
-        withQ cnct,
+    static void create_tree_temp_id(Connection connection) {
+        withQ connection,
                 '''create temporary table if not exists tree_temp_id (
 					id bigint primary key,
 					id2 bigint
 				)
 				on commit delete rows''', { PreparedStatement qry -> qry.executeUpdate() }
 
-        withQ cnct, '''delete from tree_temp_id''', { PreparedStatement qry -> qry.executeUpdate() }
+        withQ connection, '''delete from tree_temp_id''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_temp_id2(Connection cnct) {
-        withQ cnct,
+    static void create_tree_temp_id2(Connection connection) {
+        withQ connection,
                 '''create temporary table if not exists tree_temp_id2 (
 					id bigint primary key,
 					id2 bigint
 				)
 				on commit delete rows''', { PreparedStatement qry -> qry.executeUpdate() }
 
-        withQ cnct, '''delete from tree_temp_id2''', { PreparedStatement qry -> qry.executeUpdate() }
+        withQ connection, '''delete from tree_temp_id2''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_temp_id3(Connection cnct) {
-        withQ cnct,
+    static void create_tree_temp_id3(Connection connection) {
+        withQ connection,
                 '''create temporary table if not exists tree_temp_id3 (
 					id bigint primary key,
 					id2 bigint
 				)
 				on commit delete rows''', { PreparedStatement qry -> qry.executeUpdate() }
 
-        withQ cnct, '''delete from tree_temp_id3''', { PreparedStatement qry -> qry.executeUpdate() }
+        withQ connection, '''delete from tree_temp_id3''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_replacements(Connection cnct) {
-        withQ cnct,
+    static void create_tree_replacements(Connection connection) {
+        withQ connection,
                 '''create temporary table if not exists tree_replacements (
 			id bigint primary key,
 			id2 bigint
 		)
 		on commit delete rows''', { PreparedStatement qry -> qry.executeUpdate() }
 
-        withQ cnct, '''delete from tree_replacements''', { PreparedStatement qry -> qry.executeUpdate() }
+        withQ connection, '''delete from tree_replacements''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_link_treewalk(Connection cnct) {
-        withQ cnct,
+    static void create_link_treewalk(Connection connection) {
+        withQ connection,
                 '''create temporary table if not exists link_treewalk (
 			id bigint primary key,
 			supernode_id bigint,
@@ -100,11 +100,11 @@ final class HibernateSessionUtils {
 		)
 		on commit delete rows''', { PreparedStatement qry -> qry.executeUpdate() }
 
-        withQ cnct, '''delete from link_treewalk''', { PreparedStatement qry -> qry.executeUpdate() }
+        withQ connection, '''delete from link_treewalk''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_syn_replacements(Connection cnct) {
-        withQ cnct,
+    static void create_tree_syn_replacements(Connection connection) {
+        withQ connection,
                 '''create temporary table if not exists tree_syn_replacements (
 			id bigint primary key,
 			id2 bigint,
@@ -112,32 +112,31 @@ final class HibernateSessionUtils {
 		)
 		on commit delete rows''', { PreparedStatement qry -> qry.executeUpdate() }
 
-        withQ cnct, '''delete from tree_syn_replacements''', { PreparedStatement qry -> qry.executeUpdate() }
+        withQ connection, '''delete from tree_syn_replacements''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static Object withQ(Connection cnct, sql, Closure c) throws SQLException {
+    static Object withQ(Connection connection, String sql, Closure c) throws SQLException {
         SimpleProfiler.start(sql)
-        PreparedStatement stmt = cnct.prepareStatement(sql.toString())
+        PreparedStatement preparedStatement = connection.prepareStatement(sql)
         try {
-            return c(stmt)
+            return c(preparedStatement)
         }
         finally {
-            stmt.close()
+            preparedStatement.close()
             SimpleProfiler.end(sql)
         }
     }
 
-    static Object withQresult(Connection cnct, sql, Closure c = null) throws SQLException {
+    static Object withQResult(Connection connection, String sql, Closure c = null) throws SQLException {
         SimpleProfiler.start(sql)
 
-        PreparedStatement stmt = cnct.prepareStatement(sql.toString())
+        PreparedStatement preparedStatement = connection.prepareStatement(sql)
         try {
             if (c != null) {
-                c(stmt)
+                c(preparedStatement)
             }
-            ResultSet rs = stmt.executeQuery()
+            ResultSet rs = preparedStatement.executeQuery()
             try {
-                Object r
                 if (!rs.next()) {
                     return null
                 } else {
@@ -153,7 +152,7 @@ final class HibernateSessionUtils {
             }
         }
         finally {
-            stmt.close()
+            preparedStatement.close()
             SimpleProfiler.end(sql)
         }
     }

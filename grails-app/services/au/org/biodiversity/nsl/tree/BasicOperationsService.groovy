@@ -22,7 +22,6 @@ import org.apache.shiro.UnavailableSecurityManagerException
 import org.hibernate.SessionFactory
 import org.apache.shiro.SecurityUtils
 
-import java.security.Principal
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -57,7 +56,7 @@ import static au.org.biodiversity.nsl.tree.HibernateSessionUtils.*
  *
  * It's horrible, but its the only way.
  *
- * @author ibis
+ * @author pmurray
  */
 
 /*
@@ -108,39 +107,6 @@ class BasicOperationsService {
 
     UriNs nslInstanceNs() {
         return UriNs.findByLabel(grailsApplication.config.nslTreePlugin.nslInstanceNamespace as String)
-    }
-
-    /**
-     * @deprecated moved to QueryService
-     */
-
-    Long getNextval() {
-        return queryService.getNextval()
-    }
-
-    /**
-     * @deprecated moved to QueryService
-     */
-
-    Timestamp getTimestamp() {
-        return queryService.getTimestamp()
-    }
-
-    def checkAndSave(thing, List errors) {
-        if (thing.validate()) {
-            thing.save()
-        } else {
-            log.error "Error adding ${thing.dump()}"
-            def locale = java.util.Locale.getDefault()
-            for (fieldErrors in thing.errors) {
-                for (error in fieldErrors.allErrors) {
-                    String message = messageSource.getMessage(error, locale)
-                    log.error message
-                    errors.add(message)
-                }
-            }
-        }
-        return thing
     }
 
     private static String getPrincipal() {
@@ -884,7 +850,7 @@ class BasicOperationsService {
             l.save()
 
             return l
-        }
+        } as Link
     }
 
 /**
@@ -1590,7 +1556,7 @@ class BasicOperationsService {
                     // make a note of the node id that was created for the target node. We need this now because if the target is directly
                     // beneath the bottom draft node, then that link will get updated later on and we will lose track of the id
 
-                    newTargetId = withQresult(cnct, '''
+                    newTargetId = withQResult(cnct, '''
 						select id2 from tree_link join tree_temp_id  on tree_temp_id.id = tree_link.id 
 						where tree_link.subnode_id = ?''')
                             { PreparedStatement qry ->

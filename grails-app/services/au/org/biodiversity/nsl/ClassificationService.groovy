@@ -115,7 +115,7 @@ class ClassificationService {
     }
 
     /**
-     * todo move to Query Service in the tree services plugin
+     * todo move to Query Service
      * @param classification
      * @param name
      * @return
