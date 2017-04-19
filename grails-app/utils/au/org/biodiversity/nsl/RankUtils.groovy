@@ -39,7 +39,7 @@ class RankUtils {
      * @param rankName
      * @return true if rank is higher than the rank with the name rankName
      */
-    public static Boolean rankHigherThan(NameRank rank, String rankName) {
+    static Boolean rankHigherThan(NameRank rank, String rankName) {
         return rankOrder(rankName) > rank.sortOrder
     }
 
@@ -57,27 +57,35 @@ class RankUtils {
      * @param rankName
      * @return true if rank is lower than the rank with the name rankName
      */
-    public static Boolean rankLowerThan(NameRank rank, String rankName) {
+    static Boolean rankLowerThan(NameRank rank, String rankName) {
         return rank.sortOrder < 500 && rankOrder(rankName) < rank.sortOrder
     }
 
-    public static Boolean nameAtRankOrHigher(Name name, String rankName) {
+    static Boolean nameAtRankOrHigher(Name name, String rankName) {
         return rankOrder(rankName) >= name.nameRank.sortOrder
     }
 
-    public static Boolean nameAtRankOrLower(Name name, String rankName) {
+    static Boolean nameAtRankOrLower(Name name, String rankName) {
         return rankOrder(rankName) <= name.nameRank.sortOrder
     }
 
-    public static Integer getRankOrder(String rankName) {
+    static Boolean nameLowerThanRank(Name name, String rankName) {
+        return rankOrder(rankName) < name.nameRank.sortOrder
+    }
+
+    static Boolean nameHigherThanRank(Name name, String rankName) {
+        return rankOrder(rankName) > name.nameRank.sortOrder
+    }
+
+    static Integer getRankOrder(String rankName) {
         rankOrder(rankName)
     }
 
-    public static Name getParentOfRank(Name name, String rank) {
+    static Name getParentOfRank(Name name, String rank) {
         getParentOfRank(name, rank, 'APNI')
     }
 
-    public static Name getParentOfRank(Name name, String rank, String treeName) {
+    static Name getParentOfRank(Name name, String rank, String treeName) {
         if(name.parent?.nameRank?.name == rank) {
             return name.parent
         }
@@ -89,12 +97,12 @@ class RankUtils {
         return null
     }
 
-    public static Name getFamily(Name name, String treeName) {
+    static Name getFamily(Name name, String treeName) {
         NameTreePath nameTreePath = NameTreePathService.findCurrentNameTreePath(name, treeName)
         return nameTreePath.family
     }
 
-    public static Map<String, Name> getFamilyByTrees(Name name) {
+    static Map<String, Name> getFamilyByTrees(Name name) {
         List<NameTreePath> paths = NameTreePath.findAllByName(name)
         Map familyTreeMap = [:]
         paths.each {NameTreePath nameTreePath ->
@@ -103,20 +111,32 @@ class RankUtils {
         return familyTreeMap
     }
 
-    public static previousRank(NameRank rank) {
+    static previousRank(NameRank rank) {
         return NameRank.findBySortOrderLessThan(rank.sortOrder, [sort: 'sortOrder', order: 'desc'])
     }
 
-    public static nextMajorRank(NameRank rank, Boolean up = true) {
+    static nextMajorRank(NameRank rank, Boolean up = true) {
         return NameRank.findBySortOrderLessThanAndMajor(rank.sortOrder, true, [sort: 'sortOrder', order: up ? 'desc' : 'asc'])
     }
 
-    public static parentOrHigher(NameRank rank) {
+    static parentOrHigher(NameRank rank) {
         rank.parentRank ?: previousRank(rank)
     }
 
-    public static parentOrMajor(NameRank rank) {
+    static parentOrMajor(NameRank rank) {
         rank.parentRank ?: nextMajorRank(rank, true)
+    }
+
+    static isRankedHigherThan(Name a, Name b) {
+        a.nameRank.sortOrder < b.nameRank.sortOrder
+    }
+
+    static isRankedLowerThan(Name a, Name b) {
+        !isRankedHigherThan(a, b)
+    }
+
+    static isRankedEqualTo(Name a, Name b) {
+        a.nameRank.sortOrder == b.nameRank.sortOrder
     }
 
 }

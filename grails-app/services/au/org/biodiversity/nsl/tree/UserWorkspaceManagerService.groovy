@@ -58,7 +58,6 @@ class UserWorkspaceManagerService {
         basicOperationsService.updateWorkspace(arrangement, shared, title, description)
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
     def moveWorkspaceNode(Arrangement ws, Node target, Node node) {
         if (target == node) throw new IllegalArgumentException("node == target")
 
@@ -248,8 +247,8 @@ class UserWorkspaceManagerService {
         log.debug('added all elements ok')
 
         return [
-            target: focus,
-            modified: []
+                target  : focus,
+                modified: []
         ]
     }
 
@@ -394,7 +393,6 @@ class UserWorkspaceManagerService {
                 modified: [n]
         ]
     }
-
 
     def changeNodeInstance(Arrangement ws, Node target, Instance instance) {
         if (!ws) throw new IllegalArgumentException("null ws")
@@ -1070,14 +1068,14 @@ ${display(parentShouldBe)}
     ////////////////////////////////////////////
     // these operations are the two operations required for the NSL-Editor. Yes, we are re-inventing the wheel here.
 
-    String nn(Node n) {
+    String nodeSummary(Node n) {
         if (n == null) return 'null'
         else return "${n.id} ${n.name?.simpleName} ${n.checkedInAt ? "" : " (DRAFT)"}"
     }
 
-    String ll(Link l) {
+    String linkSummary(Link l) {
         if (l == null) return 'null'
-        else return "${nn(l.supernode)} -> [${l.id}] -> ${nn(l.subnode)}"
+        else return "${nodeSummary(l.supernode)} -> [${l.id}] -> ${nodeSummary(l.subnode)}"
     }
 
     Message placeNameOnTree(Arrangement ws, Name name, Instance instance, Name parentName, Uri placementType) {
@@ -1093,25 +1091,28 @@ ${display(parentShouldBe)}
             Message error = Message.makeMsg(Msg.placeNameOnTree, [name, ws])
 
             /**
-             * Ok, to place a name on the tree, that name must not have any synonyms elsewhere on the tree,
+             * To place a name on the tree, that name must not have any synonyms elsewhere on the tree,
              * nor should it have synonyms that are elsewhere on the tree.
              *
              * If the name is placed under some other name, the the other name it is to be placed under
              * must be of higher rank.
              *
              * If the name is being placed under a name that is is generic or below then,
-             * then the common part of the names must match unless the name being placed under it is an excluded name.
+             * then the common part of the names must match unless the name being placed
+             * under it is an excluded name. NSL-464
              *
              * If the name is already on the tree as an accepted name, then this operation is a move of that node.
              *
              * If the name is already on the tree as an accepted name, and the parent name of that placement is the same
              * as the required parent name, then this is simply an update of the node.
+             *
+             * https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+             *
              */
-
 
             Link currentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, name)
 
-            log.debug("current link is ${ll(currentLink)}")
+            log.debug("current link is ${linkSummary(currentLink)}")
 
             // CHECK FOR SYNONYMS
             // this query returns the relationship instance
@@ -1144,14 +1145,19 @@ ${display(parentShouldBe)}
             }
 
             // CHECK FOR NAME COMPATIBILITY
-
             if (parentName) {
+                // If the name is placed under some other name, the the other name it is to be placed under
+                // must be of higher rank.
                 if (parentName.nameRank.sortOrder >= name.nameRank.sortOrder) {
                     error.nested.add(Message.makeMsg(Msg.CANNOT_PLACE_NAME_UNDER_HIGHER_RANK, [name.nameRank.abbrev, parentName.nameRank.abbrev]))
                 }
 
-                if (parentName && "ApcConcept".equals(placementType.idPart)) {
-                    check_name_compatibility(error.nested, parentName, name)
+                // If the name is being placed under a name that is is generic or below then,
+                // then the common part of the names must match unless the name being placed under it is an excluded name.
+                if (parentName &&
+                        "ApcConcept".equals(placementType.idPart) &&
+                        !isNameCompatible(parentName, name)) {
+                    error.nested.add(Message.makeMsg(Msg.CANNOT_PLACE_NAME_UNDER_HIGHER_RANK, [name.nameRank.abbrev, parentName.nameRank.abbrev]))
                 }
             }
 
@@ -1173,7 +1179,7 @@ ${display(parentShouldBe)}
             // First, if the node needs to be updated, then check it out and update it.
 
             if (currentLink != null) {
-                log.debug("the name is currently in the tree at ${ll(currentLink)}")
+                log.debug("the name is currently in the tree at ${linkSummary(currentLink)}")
                 Node currentNode = currentLink.subnode
                 if (currentNode.name != name) throw new IllegalStateException()
 
@@ -1182,11 +1188,11 @@ ${display(parentShouldBe)}
                     // needs to be possibly checked out and then saved.
 
                     if (DomainUtils.isCheckedIn(currentNode)) {
-                        log.debug("checking out ${nn(currentNode)}")
+                        log.debug("checking out ${nodeSummary(currentNode)}")
                         currentNode = basicOperationsService.checkoutNode(ws.node, currentNode)
-                        log.debug("checked out node is now ${nn(currentNode)}")
+                        log.debug("checked out node is now ${nodeSummary(currentNode)}")
                         currentLink = DomainUtils.getDraftNodeSuperlink(currentNode)
-                        log.debug("currentLink ${ll(currentLink)}")
+                        log.debug("currentLink ${linkSummary(currentLink)}")
                     }
 
                     basicOperationsService.updateDraftNode(currentNode, nslInstance: instance, nodeType: placementType)
@@ -1209,8 +1215,8 @@ ${display(parentShouldBe)}
             }
 
 
-            log.debug("current link is now ${ll(currentLink)}")
-            log.debug("link to the new parent is now ${ll(newParentLink)}")
+            log.debug("current link is now ${linkSummary(currentLink)}")
+            log.debug("link to the new parent is now ${linkSummary(newParentLink)}")
 
             // next - the placement. If there is going to be a move, then the node's current parent must be checked out
             // and the destination parent must be checked out.
@@ -1270,8 +1276,8 @@ ${display(parentShouldBe)}
                 currentLink = DomainUtils.refetchLink(currentLink)
                 newParentLink = DomainUtils.refetchLink(newParentLink)
 
-                log.debug("currentLink ${ll(currentLink)}")
-                log.debug("newParentLink ${ll(newParentLink)}")
+                log.debug("currentLink ${linkSummary(currentLink)}")
+                log.debug("newParentLink ${linkSummary(newParentLink)}")
 
                 if (currentLink == null) {
                     log.debug("name is not in the tree. creating a new draft node")
@@ -1307,25 +1313,56 @@ ${display(parentShouldBe)}
         }
     }
 
-    private static void check_name_compatibility(List errors, Name supername, Name subname) {
-        Name a = supername
-        Name b = subname
-
-        for (; ;) {
-            // genus has a sort order of 120
-            // TODO: move this important magic number into Name Rank,
-            // TODO: perhaps provide "is uninomial" functionality
-            if (!a || !b || a.nameRank.sortOrder < 120 || b.nameRank.sortOrder < 120) return
-            if (a.nameRank.sortOrder == b.nameRank.sortOrder) {
-                if (a != b) {
-                    errors.add(Message.makeMsg(Msg.NAME_CANNOT_BE_PLACED_UNDER_NAME, [supername, subname]))
-                }
-                return
-            }
-            if (a.nameRank.sortOrder > b.nameRank.sortOrder) a = a.parent
-            else b = b.parent
+    /**
+     * If the name is being placed under a name that is is generic or below then,
+     * then the common part of the names must match unless the name it is being placed under
+     * it is an excluded name. NSL-464
+     *
+     * @param superName
+     * @param subName
+     * @return true if compatible
+     */
+    protected static Boolean isNameCompatible(Name superName, Name subName) {
+        if(!superName || !subName) {
+            throw new NullPointerException("Supername and subname cannot be null.")
         }
 
+        use(RankUtils) {
+            //sub name should always be below super name
+            if(subName.isRankedHigherThan(superName)) {
+                return false
+            }
+            //check only applies for sub genus sub names
+            if (subName.nameAtRankOrHigher('Genus')) {
+                return true
+            }
+            //can't place sub Genus name below name higher than genus
+            if (superName.nameHigherThanRank('Genus')) {
+                return false
+            }
+            // subspecies names should be placed below species
+            if(subName.nameLowerThanRank('Species') &&
+                    superName.nameHigherThanRank('Species')) {
+                return false
+            }
+
+            //given the above the super name should be in the *name* parent path of the sub name
+            //if the super name is a major rank
+            Name majorSuperName = majorParentOf(superName)
+            Name parent = subName.parent
+            while(majorSuperName && majorSuperName != parent && !parent.isRankedHigherThan(majorSuperName)) {
+                parent = parent.parent
+            }
+            return parent == majorSuperName //if equal we found it
+        }
+    }
+
+    private static Name majorParentOf(Name name) {
+        Name majorName = name
+        while(majorName && !majorName.nameRank.major) {
+            majorName = name.parent
+        }
+        return majorName.nameRank.major ? majorName : null
     }
 
     Message removeNameFromTree(Arrangement ws, Name name) {
