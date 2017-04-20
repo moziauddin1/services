@@ -26,6 +26,7 @@ class BootStrap {
     def shiroSecurityManager
     def shiroSubjectDAO
     def configService
+    def photoService
 
     def init = { servletContext ->
         if(!nslDomainService.checkUpToDate()) {
@@ -45,6 +46,7 @@ class BootStrap {
             String keyString = MacProvider.generateKey().encodeAsBase64()
             println "key: $keyString"
         }
+        photoService.refresh()
     }
     def destroy = {
     }

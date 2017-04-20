@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.ConfigService
 import au.org.biodiversity.nsl.Name
+import au.org.biodiversity.nsl.RankUtils
 import grails.converters.JSON
 import org.grails.plugins.metrics.groovy.Timed
 
@@ -29,6 +30,7 @@ class ApniFormatController {
 
     def apniFormatService
     def jsonRendererService
+    def photoService
 
     static responseFormats = [
             display: ['html'],
@@ -54,7 +56,17 @@ class ApniFormatController {
                 params.inc = [scientific: 'on']
             }
 
-            apniFormatService.getNameModel(name) << [query: [name: "$name.fullName", product: ConfigService.nameTreeName, inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
+            String photoSearch = null
+            if (RankUtils.nameAtRankOrLower(name, 'Species') && photoService.hasPhoto(name.simpleName)) {
+                photoSearch = photoService.searchUrl(name.simpleName)
+            }
+
+            apniFormatService.getNameModel(name) << [
+                    query: [name: "$name.fullName", product: ConfigService.nameTreeName, inc: params.inc],
+                    stats: [:],
+                    names: [name],
+                    photo: photoSearch,
+                    count: 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')
@@ -66,6 +78,11 @@ class ApniFormatController {
         if (name) {
             log.info "getting ${ConfigService.nameTreeName} name $name"
             ResultObject model = new ResultObject(apniFormatService.getNameModel(name))
+            String photoSearch = null
+            if (RankUtils.nameAtRankOrLower(name, 'Species') && photoService.hasPhoto(name.simpleName)) {
+                photoSearch = photoService.searchUrl(name.simpleName)
+            }
+            model << [photo: photoSearch]
             render(view: '_name', model: model)
         } else {
             render(status: 404, text: 'Name not found.')

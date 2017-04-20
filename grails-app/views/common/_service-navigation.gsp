@@ -4,7 +4,7 @@
   <asset:image src="${ConfigService.bannerImage}" class="align-right"/>
   <div class="col">
     <div class="col-sm-12">
-      <h1>${ConfigService.bannerText}
+    <h1>${ConfigService.bannerText}
       <g:if test="${params?.product}">
         <span class="small">${params.product} - <st:productBrief product="${params.product}"/></span></h1>
       </g:if>
@@ -60,7 +60,7 @@
           <shiro:hasRole name="QA">
             <li>
               <a class="home" href="${createLink(controller: 'dashboard', action: 'audit')}">
-                  <i class="fa fa-file-text-o"></i> audit
+                <i class="fa fa-file-text-o"></i> audit
               </a>
             </li>
           </shiro:hasRole>
@@ -90,29 +90,18 @@
             </a>
             <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
               <li>
+                <div class="navbar-form">
                 <g:form controller="auth" action="signIn">
                   <input type="hidden" name="targetUri" value="${request.forwardURI - request.contextPath}"/>
-                  <table>
-                    <tbody>
-                    <tr>
-                      <td>Username:</td>
-                      <td><input type="text" name="username" value=""/></td>
-                    </tr>
-                    <tr>
-                      <td>Password:</td>
-                      <td><input type="password" name="password" value=""/></td>
-                    </tr>
-                    <tr>
-                      <td>Remember me?:</td>
-                      <td><g:checkBox name="rememberMe" value=""/></td>
-                    </tr>
-                    <tr>
-                      <td/>
-                      <td><input class="btn btn-default" type="submit" value="Login"/></td>
-                    </tr>
-                    </tbody>
-                  </table>
+                  <label>Username:
+                    <input class="form-control" type="text" name="username" value=""/>
+                  </label>
+                  <label>Password:
+                    <input class="form-control" type="password" name="password" value=""/>
+                  </label>
+                  <input class="btn btn-default" type="submit" value="Login"/>
                 </g:form>
+                </div>
               </li>
             </ul>
           </li>

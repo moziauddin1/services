@@ -6,6 +6,7 @@ class RefreshViewsJob {
 
     def configService
     def flatViewService
+    def photoService
 
     static triggers = {
         //update at 7AM every day
@@ -17,6 +18,7 @@ class RefreshViewsJob {
             String namespaceName = configService.nameSpace.name.toLowerCase()
             flatViewService.refreshNameView(namespaceName)
             flatViewService.refreshTaxonView(namespaceName)
+            photoService.refresh()
         }
     }
 }
