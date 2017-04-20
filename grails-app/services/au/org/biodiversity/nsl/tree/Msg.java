@@ -105,7 +105,7 @@ public enum Msg {
 	CANNOT_REPLACE_NODE_WITH_NODE_ABOVE_A_TRACKING_LINK_ETC,
 	NODE_WOULD_BE_ORPHANED,
 
-	// USerWorkspaceManagerService
+	// UserWorkspaceManagerService
 
 	placeNameOnTree,
 	removeNameFromTree,

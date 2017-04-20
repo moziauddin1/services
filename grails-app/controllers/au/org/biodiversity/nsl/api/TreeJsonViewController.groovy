@@ -557,7 +557,6 @@ class TreeJsonViewController {
         }
 
         arrangement = (Arrangement) o
-        root = DomainUtils.getSingleSubnode(arrangement.node)
 
         if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
             return renderJsonError(400,
@@ -569,6 +568,8 @@ class TreeJsonViewController {
                     ]
             )
         }
+
+        root = DomainUtils.getSingleSubnode(arrangement.node)
 
         if (param.node && param.node != 0) {
             focus = Node.get(param.node)
@@ -608,7 +609,7 @@ class TreeJsonViewController {
                         node    : nodeDisplayJson(focus, null),
                         subnodes: focus.subLink
                                        .findAll { it.subnode.internalType == NodeInternalType.T }
-                                       .sort { Link a, Link b -> return (a.subnode.name?.simpleName ?: '').compareTo((b.subnode.name?.simpleName ?: '')) }
+                                       .sort { Link a, Link b -> return (a.subnode.name?.sortName ?: '') <=> ((b.subnode.name?.sortName ?: '')) }
                                        .collect { linkDisplayJson(it, subTaxaCountMap) }
                 ]
         ]

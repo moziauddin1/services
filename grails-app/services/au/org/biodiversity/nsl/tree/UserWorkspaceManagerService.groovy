@@ -1,6 +1,7 @@
 package au.org.biodiversity.nsl.tree
 
 import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import org.hibernate.SessionFactory
 import org.hibernate.jdbc.Work
@@ -12,7 +13,7 @@ import java.sql.ResultSet
 import java.sql.SQLException
 
 @Transactional(rollbackFor = [ServiceException])
-class UserWorkspaceManagerService {
+class UserWorkspaceManagerService implements ValidationUtils {
     QueryService queryService
     BasicOperationsService basicOperationsService
     VersioningService versioningService
@@ -21,28 +22,27 @@ class UserWorkspaceManagerService {
 
 
     Arrangement createWorkspace(Namespace namespace, Arrangement baseTree, String owner, boolean shared, String title, String description) {
-        if (!owner) throw new IllegalArgumentException("owner may not be null")
-        if (!title) throw new IllegalArgumentException("title may not be null")
-        if (!baseTree) throw new IllegalArgumentException("baseTree may not be null")
+        mustHave(owner: owner, title: title, baseTree: baseTree) {
 
-        if (baseTree.arrangementType != ArrangementType.P) {
-            throw new IllegalArgumentException("baseTree must be a classifcation")
-        }
+            if (baseTree.arrangementType != ArrangementType.P) {
+                throw new IllegalArgumentException("baseTree must be a classifcation")
+            }
 
-        Event e = basicOperationsService.newEvent(namespace, "Create workspace on ${baseTree.label} for ${owner}", owner)
-        baseTree = DomainUtils.refetchArrangement(baseTree)
+            Event e = basicOperationsService.newEvent(namespace, "Create workspace on ${baseTree.label} for ${owner}", owner)
+            baseTree = DomainUtils.refetchArrangement(baseTree)
 
-        Arrangement ws = basicOperationsService.createWorkspace(e, baseTree, owner, shared, title, description)
+            Arrangement ws = basicOperationsService.createWorkspace(e, baseTree, owner, shared, title, description)
 
-        baseTree = DomainUtils.refetchArrangement(baseTree)
+            baseTree = DomainUtils.refetchArrangement(baseTree)
 
-        Node checkout = DomainUtils.getSingleSubnode(baseTree.node)
+            Node checkout = DomainUtils.getSingleSubnode(baseTree.node)
 
-        basicOperationsService.adoptNode(ws.node, checkout, VersioningMethod.V, linkType: DomainUtils.getBoatreeUri('workspace-top-node'))
+            basicOperationsService.adoptNode(ws.node, checkout, VersioningMethod.V, linkType: DomainUtils.getBoatreeUri('workspace-top-node'))
 
-        ws = DomainUtils.refetchArrangement(ws)
+            ws = DomainUtils.refetchArrangement(ws)
 
-        return ws
+            return ws
+        } as Arrangement
     }
 
     void deleteWorkspace(Arrangement arrangement) {
@@ -1148,16 +1148,16 @@ ${display(parentShouldBe)}
             if (parentName) {
                 // If the name is placed under some other name, the the other name it is to be placed under
                 // must be of higher rank.
-                if (parentName.nameRank.sortOrder >= name.nameRank.sortOrder) {
-                    error.nested.add(Message.makeMsg(Msg.CANNOT_PLACE_NAME_UNDER_HIGHER_RANK, [name.nameRank.abbrev, parentName.nameRank.abbrev]))
+                use(RankUtils) {
+                    if (parentName.isRankedLowerThan(name)) {
+                        error.nested.add(Message.makeMsg(Msg.CANNOT_PLACE_NAME_UNDER_HIGHER_RANK, [name.nameRank.abbrev, parentName.nameRank.abbrev]))
+                    }
                 }
 
                 // If the name is being placed under a name that is is generic or below then,
                 // then the common part of the names must match unless the name being placed under it is an excluded name.
-                if (parentName &&
-                        "ApcConcept".equals(placementType.idPart) &&
-                        !isNameCompatible(parentName, name)) {
-                    error.nested.add(Message.makeMsg(Msg.CANNOT_PLACE_NAME_UNDER_HIGHER_RANK, [name.nameRank.abbrev, parentName.nameRank.abbrev]))
+                if ( "ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
+                    error.nested.add(Message.makeMsg(Msg.NAME_CANNOT_BE_PLACED_UNDER_NAME, [parentName, name]))
                 }
             }
 
@@ -1201,8 +1201,8 @@ ${display(parentShouldBe)}
                 }
             }
 
-            // at this point, the tree may have been disturbed and we need to re-fetch things - copy/paste the code. Note that at this stage
-            // the current node may or may not be a draft node
+            // at this point, the tree may have been disturbed and we need to re-fetch things - copy/paste the code.
+            // Note that at this stage the current node may or may not be a draft node
 
             if (parentName != null) {
                 newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, parentName)
@@ -1323,13 +1323,13 @@ ${display(parentShouldBe)}
      * @return true if compatible
      */
     protected static Boolean isNameCompatible(Name superName, Name subName) {
-        if(!superName || !subName) {
+        if (!superName || !subName) {
             throw new NullPointerException("Supername and subname cannot be null.")
         }
 
         use(RankUtils) {
             //sub name should always be below super name
-            if(subName.isRankedHigherThan(superName)) {
+            if (subName.isRankedHigherThan(superName)) {
                 return false
             }
             //check only applies for sub genus sub names
@@ -1341,7 +1341,7 @@ ${display(parentShouldBe)}
                 return false
             }
             // subspecies names should be placed below species
-            if(subName.nameLowerThanRank('Species') &&
+            if (subName.nameLowerThanRank('Species') &&
                     superName.nameHigherThanRank('Species')) {
                 return false
             }
@@ -1350,7 +1350,7 @@ ${display(parentShouldBe)}
             //if the super name is a major rank
             Name majorSuperName = majorParentOf(superName)
             Name parent = subName.parent
-            while(majorSuperName && majorSuperName != parent && !parent.isRankedHigherThan(majorSuperName)) {
+            while (majorSuperName && majorSuperName != parent && !parent.isRankedHigherThan(majorSuperName)) {
                 parent = parent.parent
             }
             return parent == majorSuperName //if equal we found it
@@ -1359,7 +1359,7 @@ ${display(parentShouldBe)}
 
     private static Name majorParentOf(Name name) {
         Name majorName = name
-        while(majorName && !majorName.nameRank.major) {
+        while (majorName && !majorName.nameRank.major) {
             majorName = name.parent
         }
         return majorName.nameRank.major ? majorName : null

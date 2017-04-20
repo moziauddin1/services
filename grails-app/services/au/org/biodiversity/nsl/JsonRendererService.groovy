@@ -71,7 +71,7 @@ class JsonRendererService {
     }
 
     // we need this anywhere that citation and citationHtml appear as fields
-    public static String citationAuthYear(Reference reference) {
+    static String citationAuthYear(Reference reference) {
         if (reference) {
             return "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}";
         } else {

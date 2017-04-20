@@ -30,16 +30,15 @@ import javax.sql.DataSource
 
 @Transactional(rollbackFor = [ServiceException])
 class ClassificationManagerService {
-    QueryService queryService;
-    TreeOperationsService treeOperationsService;
-    BasicOperationsService basicOperationsService;
-    VersioningService versioningService;
-    DataSource dataSource_nsl;
+    QueryService queryService
+    BasicOperationsService basicOperationsService
+    VersioningService versioningService
+    DataSource dataSource_nsl
 
     /**
      * Possible resultEnums returned by the validation result.
      */
-    public static enum ValidationResult {
+    static enum ValidationResult {
         /** param bundle will be [namespace, classification, nodeId] */
         BAD_REPLACEDAT,
         /** param bundle will be [namespace, classification, nodeId] */
@@ -54,61 +53,61 @@ class ClassificationManagerService {
 
     void createClassification(Map params = [:], Namespace namespace) throws ServiceException {
         // todo - use Peter's "must have" thing
-        if (!namespace) throw new IllegalArgumentException("namespace must be specified");
-        if (!params.label) throw new IllegalArgumentException("label must be specified");
-        if (!params.description) throw new IllegalArgumentException("description must be specified");
+        if (!namespace) throw new IllegalArgumentException("namespace must be specified")
+        if (!params.label) throw new IllegalArgumentException("label must be specified")
+        if (!params.description) throw new IllegalArgumentException("description must be specified")
 
-        if (Arrangement.findByNamespaceAndLabel(namespace, params.label)) {
-            ServiceException.raise(Message.makeMsg(Msg.createClassification, [params.label, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]));
+        if (Arrangement.findByNamespaceAndLabel(namespace, params.label as String)) {
+            ServiceException.raise(Message.makeMsg(Msg.createClassification, [params.label, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]))
         }
 
-        List copyNodes;
+        List copyNodes
 
         if (params.copyName) {
-            if (!params.copyNameIn) throw new IllegalArgumentException("if copyName is specified, then copyNAmeIn must be specified");
+            if (!params.copyNameIn) throw new IllegalArgumentException("if copyName is specified, then copyNAmeIn must be specified")
 
-            String copyName = params.copyName as String;
-            Arrangement copyNameIn = params.copyNameIn as Arrangement;
+            String copyName = params.copyName as String
+            Arrangement copyNameIn = params.copyNameIn as Arrangement
 
             copyNodes = Node.findAll {
                 root == copyNameIn && (name.simpleName == copyName || name.fullName == copyName) && checkedInAt != null && replacedAt == null
             }
-            int count = copyNodes.size();
+            int count = copyNodes.size()
 
             if (count == 0) {
                 ServiceException.raise(Message.makeMsg(Msg.createClassification, [
                         params.label,
                         Message.makeMsg(Msg.THING_NOT_FOUND_IN_ARRANGEMENT, [
-                                copyNameIn, copyName, 'Name'])]));
+                                copyNameIn, copyName, 'Name'])]))
             }
 
             // ok. Although it should never happen, we need to handle the case where a name matches two nodes and one is a subnode of another
 
-            Set<Node> mightHaveOtherNamesBelowIt = new HashSet<Node>();
+            Set<Node> mightHaveOtherNamesBelowIt = new HashSet<Node>()
             mightHaveOtherNamesBelowIt.addAll(copyNodes)
 
             rescan_copy_nodes:
             for (; ;) {
                 for (Iterator<Node> n1_it = mightHaveOtherNamesBelowIt.iterator(); n1_it.hasNext();) {
-                    Node n1 = n1_it.next();
+                    Node n1 = n1_it.next()
                     for (Node n2 : copyNodes) {
                         if (n1 != n2 && higherThan(n1, n2)) {
-                            copyNodes.remove(n2);
+                            copyNodes.remove(n2)
                             // this gets rid of "collection has changed wile I was iterating through it" issues.
-                            continue rescan_copy_nodes;
+                            continue rescan_copy_nodes
                         }
                     }
-                    n1_it.remove();
+                    n1_it.remove()
 
                 }
-                break rescan_copy_nodes;
+                break rescan_copy_nodes
             }
 
         } else if (params.copyNameIn) {
-            Arrangement copyNameIn = params.copyNameIn as Arrangement;
-            copyNodes = [DomainUtils.getSingleSubnode(copyNameIn.node)];
+            Arrangement copyNameIn = params.copyNameIn as Arrangement
+            copyNodes = [DomainUtils.getSingleSubnode(copyNameIn.node)]
         } else {
-            copyNodes = null;
+            copyNodes = null
         }
 
         Event e = basicOperationsService.newEvent(namespace, "Creating classification ${params.label}")
@@ -119,11 +118,11 @@ class ClassificationManagerService {
             Arrangement tempSpace = basicOperationsService.createTemporaryArrangement(namespace)
             newClass = DomainUtils.refetchArrangement(newClass)
             tempSpace = DomainUtils.refetchArrangement(tempSpace)
-            Node oldRootNode = DomainUtils.getSingleSubnode(newClass.node);
-            Link newRootLink = basicOperationsService.adoptNode(tempSpace.node, oldRootNode, VersioningMethod.F);
-            basicOperationsService.checkoutLink(newRootLink);
-            newRootLink = DomainUtils.refetchLink(newRootLink);
-            Node newRootNode = newRootLink.subnode;
+            Node oldRootNode = DomainUtils.getSingleSubnode(newClass.node)
+            Link newRootLink = basicOperationsService.adoptNode(tempSpace.node, oldRootNode, VersioningMethod.F)
+            basicOperationsService.checkoutLink(newRootLink)
+            newRootLink = DomainUtils.refetchLink(newRootLink)
+            Node newRootNode = newRootLink.subnode
 
             copyNodes.each { Node copyNode ->
                 log.debug "adopt"
@@ -135,26 +134,26 @@ class ClassificationManagerService {
             }
 
             log.debug "checkout"
-            basicOperationsService.massCheckoutWithSubnodes(newRootNode, copyNodes);
+            basicOperationsService.massCheckoutWithSubnodes(newRootNode, copyNodes)
 
             log.debug "persist"
             newRootNode = DomainUtils.refetchNode(newRootNode)
             basicOperationsService.persistNode(e, newRootNode)
 
             log.debug "version"
-            newClass = DomainUtils.refetchArrangement(newClass);
+            newClass = DomainUtils.refetchArrangement(newClass)
             oldRootNode = DomainUtils.refetchNode(oldRootNode)
             newRootNode = DomainUtils.refetchNode(newRootNode)
             Map<Node, Node> replacementMap = new HashMap<Node, Node>()
-            replacementMap.put(oldRootNode, newRootNode);
+            replacementMap.put(oldRootNode, newRootNode)
             versioningService.performVersioning(e, replacementMap, newClass)
 
             log.debug "cleanup"
-            tempSpace = DomainUtils.refetchArrangement(tempSpace);
-            newClass = DomainUtils.refetchArrangement(newClass);
+            tempSpace = DomainUtils.refetchArrangement(tempSpace)
+            newClass = DomainUtils.refetchArrangement(newClass)
             basicOperationsService.moveFinalNodesFromTreeToTree(tempSpace, newClass)
 
-            tempSpace = DomainUtils.refetchArrangement(tempSpace);
+            tempSpace = DomainUtils.refetchArrangement(tempSpace)
             basicOperationsService.deleteArrangement(tempSpace)
         }
     }
@@ -162,18 +161,18 @@ class ClassificationManagerService {
     void updateClassification(Map params = [:], Arrangement a) throws ServiceException {
         // todo - use Peter's "must have" thing
         if (!a) throw new IllegalArgumentException("Arrangement must be specified")
-        if (!params.label) throw new IllegalArgumentException("label must be specified");
-        if (!params.description) throw new IllegalArgumentException("description must be specified");
+        if (!params.label) throw new IllegalArgumentException("label must be specified")
+        if (!params.description) throw new IllegalArgumentException("description must be specified")
 
         if (params['label'] != a.label && Arrangement.findByNamespaceAndLabel(a.namespace, params.label)) {
-            ServiceException.raise(Message.makeMsg(Msg.updateClassification, [a, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]));
+            ServiceException.raise(Message.makeMsg(Msg.updateClassification, [a, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]))
         }
 
-        if (params['label']) a.label = params.label;
-        if (params.containsKey('description')) a.description = params.description;
+        if (params['label']) a.label = params.label
+        if (params.containsKey('description')) a.description = params.description
 
-        if(params.containsKey('shared')) a.shared = params.shared;
-        a.save();
+        if (params.containsKey('shared')) a.shared = params.shared
+        a.save()
     }
 
     void deleteClassification(Arrangement a) throws ServiceException {
@@ -200,10 +199,10 @@ class ClassificationManagerService {
     }
 
     def validateClassifications() {
-        def validationResults = [:];
-        validationResults.time = new Date();
+        def validationResults = [:]
+        validationResults.time = new Date()
 
-        validationResults.c = [:];
+        validationResults.c = [:]
 
         Arrangement.findAll { arrangementType == ArrangementType.P }.each {
             if (!validationResults.c[it.namespace.name]) validationResults.c[it.namespace.name] = [:]
@@ -214,15 +213,15 @@ class ClassificationManagerService {
     }
 
     private validate(Arrangement classification) {
-        def results = [];
+        def results = []
 
-        results.addAll(validate_replacedat_matches_nextnode(classification));
-        results.addAll(validate_current_nodes_child_of_current_node(classification));
-        results.addAll(validate_names_appear_once(classification));
-        results.addAll(validate_instances_appear_once(classification));
-        results.addAll(validate_current_nodes_have_one_curent_parent_node(classification));
+        results.addAll(validate_replacedat_matches_nextnode(classification))
+        results.addAll(validate_current_nodes_child_of_current_node(classification))
+        results.addAll(validate_names_appear_once(classification))
+        results.addAll(validate_instances_appear_once(classification))
+        results.addAll(validate_current_nodes_have_one_curent_parent_node(classification))
 
-        return results ?: [[msg: "No errors", level: 'success', nested: []]];
+        return results ?: [[msg: "No errors", level: 'success', nested: []]]
     }
 
     // TODO: namespace checks
@@ -230,7 +229,7 @@ class ClassificationManagerService {
     private validate_replacedat_matches_nextnode(Arrangement classification) {
         def result = []
 
-        Sql sql = Sql.newInstance(dataSource_nsl);
+        Sql sql = Sql.newInstance(dataSource_nsl)
         try {
             def ct = sql.firstRow("""
 SELECT count(*) AS ct
@@ -275,7 +274,7 @@ LIMIT 5
             }
         }
         finally {
-            sql.close();
+            sql.close()
         }
 
         return result
@@ -284,7 +283,7 @@ LIMIT 5
     private validate_current_nodes_child_of_current_node(Arrangement classification) {
         def result = []
 
-        Sql sql = Sql.newInstance(dataSource_nsl);
+        Sql sql = Sql.newInstance(dataSource_nsl)
         try {
             def ct = sql.firstRow("""
 SELECT count(*) AS ct
@@ -341,7 +340,7 @@ LIMIT 5
             }
         }
         finally {
-            sql.close();
+            sql.close()
         }
 
         return result
@@ -350,7 +349,7 @@ LIMIT 5
     private validate_names_appear_once(Arrangement classification) {
         def result = []
 
-        Sql sql = Sql.newInstance(dataSource_nsl);
+        Sql sql = Sql.newInstance(dataSource_nsl)
         try {
             def ct = sql.firstRow("""
 SELECT count(*) AS ct FROM (
@@ -394,7 +393,7 @@ SELECT count(*) AS ct FROM (
             }
         }
         finally {
-            sql.close();
+            sql.close()
         }
 
         return result
@@ -403,7 +402,7 @@ SELECT count(*) AS ct FROM (
     private validate_instances_appear_once(Arrangement classification) {
         def result = []
 
-        Sql sql = Sql.newInstance(dataSource_nsl);
+        Sql sql = Sql.newInstance(dataSource_nsl)
         try {
             def ct = sql.firstRow("""
 SELECT count(*) AS ct FROM (
@@ -449,7 +448,7 @@ SELECT count(*) AS ct FROM (
             }
         }
         finally {
-            sql.close();
+            sql.close()
         }
 
         return result
@@ -459,7 +458,7 @@ SELECT count(*) AS ct FROM (
     private validate_current_nodes_have_one_curent_parent_node(Arrangement classification) {
         def result = []
 
-        Sql sql = Sql.newInstance(dataSource_nsl);
+        Sql sql = Sql.newInstance(dataSource_nsl)
         try {
             def ct = sql.firstRow("""
 SELECT count(*) AS ct
@@ -524,7 +523,7 @@ SELECT n.id AS node_id, count(nsup.id) AS ct
             }
         }
         finally {
-            sql.close();
+            sql.close()
         }
 
         return result
@@ -532,38 +531,38 @@ SELECT n.id AS node_id, count(nsup.id) AS ct
 
 
     void fixClassificationUseNodeForName(Arrangement classification, Name name, Node node) {
-        if (!classification) throw new IllegalArgumentException('classification cannot be null');
-        if (!name) throw new IllegalArgumentException('name cannot be null');
-        if (!node) throw new IllegalArgumentException('node cannot be null');
-        if (node.root != classification) throw new IllegalArgumentException('node root must match classification');
-        if (node.name != name) throw new IllegalArgumentException('node name must match name');
+        if (!classification) throw new IllegalArgumentException('classification cannot be null')
+        if (!name) throw new IllegalArgumentException('name cannot be null')
+        if (!node) throw new IllegalArgumentException('node cannot be null')
+        if (node.root != classification) throw new IllegalArgumentException('node root must match classification')
+        if (node.name != name) throw new IllegalArgumentException('node name must match name')
 
         // right! Find all the other nodes in this classification for this name
         // I'll store the ID because grails and hibernate and native sql play together so badly
 
         Collection<Long> nodesToZap = new HashSet<Long>(Node.findAllByRootAndNameAndReplacedAt(classification, name, null).findAll {
             it.id != node.id
-        }*.id);
+        }*.id)
 
         log.debug "temp arrangement"
         Arrangement tempSpace = basicOperationsService.createTemporaryArrangement(classification.namespace)
 
-        Link rootLink = basicOperationsService.adoptNode(Node.get(tempSpace.node.id), DomainUtils.getSingleSubnode(Arrangement.get(classification.id).node), VersioningMethod.F);
-        basicOperationsService.checkoutLink(Link.get(rootLink.id));
-        rootLink = DomainUtils.refetchLink(rootLink);
+        Link rootLink = basicOperationsService.adoptNode(Node.get(tempSpace.node.id), DomainUtils.getSingleSubnode(Arrangement.get(classification.id).node), VersioningMethod.F)
+        basicOperationsService.checkoutLink(Link.get(rootLink.id))
+        rootLink = DomainUtils.refetchLink(rootLink)
 
         // ok. checkout the target node
         log.debug "checkout ${node}"
-        Node checkedOutNode = basicOperationsService.checkoutNode(Node.get(tempSpace.node.id), Node.get(node.id));
+        Node checkedOutNode = basicOperationsService.checkoutNode(Node.get(tempSpace.node.id), Node.get(node.id))
 
         nodesToZap.each {
             log.debug "zapping node ${Node.get(it)}"
 
-            Link currentLink = DomainUtils.getSingleCurrentSuperlinkInTree(Node.get(it));
-            Link parentLink = queryService.findNodeCurrentOrCheckedout(Node.get(tempSpace.node.id), Node.get(currentLink.supernode.id));
-            Node parentNode = parentLink.subnode;
+            Link currentLink = DomainUtils.getSingleCurrentSuperlinkInTree(Node.get(it))
+            Link parentLink = queryService.findNodeCurrentOrCheckedout(Node.get(tempSpace.node.id), Node.get(currentLink.supernode.id))
+            Node parentNode = parentLink.subnode
             if (parentNode.root.id != tempSpace.id) {
-                parentNode = basicOperationsService.checkoutNode(Node.get(tempSpace.node.id), Node.get(parentNode.id));
+                parentNode = basicOperationsService.checkoutNode(Node.get(tempSpace.node.id), Node.get(parentNode.id))
             }
 
             // remove node from the checked out parent
@@ -583,7 +582,7 @@ SELECT n.id AS node_id, count(nsup.id) AS ct
         log.debug "version"
         tempSpace = DomainUtils.refetchArrangement(tempSpace)
         classification = DomainUtils.refetchArrangement(classification)
-        Map<Node, Node> versioning = versioningService.getStandardVersioningMap(tempSpace, classification);
+        Map<Node, Node> versioning = versioningService.getStandardVersioningMap(tempSpace, classification)
         nodesToZap.each { Long it ->
             versioning.put(Node.get(it), Node.get(0))
         }
@@ -591,11 +590,11 @@ SELECT n.id AS node_id, count(nsup.id) AS ct
         versioningService.performVersioning(e, versioning, tempSpace)
 
         log.debug "cleanup"
-        tempSpace = DomainUtils.refetchArrangement(tempSpace);
-        classification = DomainUtils.refetchArrangement(classification);
+        tempSpace = DomainUtils.refetchArrangement(tempSpace)
+        classification = DomainUtils.refetchArrangement(classification)
         basicOperationsService.moveFinalNodesFromTreeToTree(tempSpace, classification)
 
-        tempSpace = DomainUtils.refetchArrangement(tempSpace);
+        tempSpace = DomainUtils.refetchArrangement(tempSpace)
         basicOperationsService.deleteArrangement(tempSpace)
 
         log.debug "done"
@@ -605,7 +604,7 @@ SELECT n.id AS node_id, count(nsup.id) AS ct
         def result = [:]
         result.nodes = []
 
-        Sql sql = Sql.newInstance(dataSource_nsl);
+        Sql sql = Sql.newInstance(dataSource_nsl)
 
         String subq = """
 WITH RECURSIVE
@@ -630,8 +629,7 @@ AND n.id NOT IN (SELECT id FROM nodes)
                 sql.eachRow(subq, [classification.id, classification.id]) {
                     result.nodes << Node.get(it.id)
                 }
-            }
-            else {
+            } else {
                 Event e = basicOperationsService.newEvent(classification.namespace, "fixClassificationEndDates(${classification.id})")
                 sql.execute("""
   update tree_node set replaced_at_id = ?, next_node_id = 0
@@ -643,62 +641,63 @@ AND n.id NOT IN (SELECT id FROM nodes)
             }
         }
         finally {
-            sql.close();
+            sql.close()
         }
 
         return result
     }
 
     Arrangement rebuildNameTree(Namespace namespace, String label, String description) {
-        if(!label) throw IllegalArgumentException("label cannot be null");
+        if (!label) throw IllegalArgumentException("label cannot be null")
 
         Arrangement tree = Arrangement.findByNamespaceAndLabel(namespace, label)
 
-        if(tree) {
-            basicOperationsService.deleteArrangement(tree);
-            tree = null;
+        if (tree) {
+            basicOperationsService.deleteArrangement(tree)
+            tree = null
         }
 
         Event e = basicOperationsService.newEvent(namespace, "rebuild name tree ${label}")
         tree = basicOperationsService.createClassification(e, label, description, true)
 
-        Node topNode = DomainUtils.getSingleSubnode(tree.node);
+        Node topNode = DomainUtils.getSingleSubnode(tree.node)
 
         UriNs nslName = UriNs.findByLabel('nsl-name')
 
-        Sql sql = Sql.newInstance(dataSource_nsl);
+        Sql sql = Sql.newInstance(dataSource_nsl)
 
         sql.execute """
-insert into tree_node(
+INSERT INTO tree_node(
   id, lock_version,
   tree_arrangement_id, checked_in_at_id, internal_type,
   is_synthetic, type_uri_ns_part_id, type_uri_id_part,
   name_id, name_uri_ns_part_id, name_uri_id_part
 )
-select
-nextval('nsl_global_seq'),  -- id,
-1,   -- lock_version,
-?,  -- tree_arrangement_id,
-?,   -- checked_in_at_id,
-'T',  -- internal_type,
-'Y',  -- is_synthetic,
-1,  -- type_uri_ns_part_id,
-'placement',  -- type_uri_id_part
-n.id,  -- name_id,
-?,  -- name_uri_ns_part_id,
-n.id  -- name_uri_id_part
-from name n join name_type nt on n.name_type_id = nt.id and nt.name <> 'common'
-where n.namespace_id = ?
+SELECT
+  nextval('nsl_global_seq'),  -- id,
+  1,    -- lock_version,
+  ?,    -- tree_arrangement_id,
+  ?,    -- checked_in_at_id,
+  'T',  -- internal_type,
+  'Y',  -- is_synthetic,
+  1,    -- type_uri_ns_part_id,
+  'placement',  -- type_uri_id_part
+  n.id, -- name_id,
+  ?,    -- name_uri_ns_part_id,
+  n.id  -- name_uri_id_part
+FROM name n
+  JOIN name_type nt ON n.name_type_id = nt.id AND nt.name <> 'common'
+WHERE n.namespace_id = ?
 """, [
                 tree.id,        // tree_arrangement_id,
                 e.id,           // checked_in_at_id,
                 nslName.id,     // name_uri_ns_part_id,
                 namespace.id    // where n.namespace_id = ?
-    ]
+        ]
 
 
         sql.execute """
-insert into tree_link (id, lock_version, link_seq, supernode_id, subnode_id, is_synthetic, type_uri_ns_part_id, type_uri_id_part, versioning_method)
+INSERT INTO tree_link (id, lock_version, link_seq, supernode_id, subnode_id, is_synthetic, type_uri_ns_part_id, type_uri_id_part, versioning_method)
 SELECT
 nextval('nsl_global_seq'), -- id,
 1, -- lock_version,
@@ -709,30 +708,30 @@ n.id, -- subnode_id,
 0, -- type_uri_ns_part_id,
 NULL, -- type_uri_id_part,
 'V' -- versioning_method
-from tree_node n
-join name on n.name_id = name.id
-left outer join tree_node n2 on n2.name_id = name.parent_id and n2.tree_arrangement_id = ?
-where n.tree_arrangement_id = ?
+FROM tree_node n
+JOIN name ON n.name_id = name.id
+LEFT OUTER JOIN tree_node n2 ON n2.name_id = name.parent_id AND n2.tree_arrangement_id = ?
+WHERE n.tree_arrangement_id = ?
 """, [
-        topNode.id,        // coalesce(n2.id, ?),-- supernode_id,
-        tree.id,         // n2.tree_arrangement_id = ?
-        tree.id        // n.tree_arrangement_id = ?
-     ]
+                topNode.id,        // coalesce(n2.id, ?),-- supernode_id,
+                tree.id,         // n2.tree_arrangement_id = ?
+                tree.id        // n.tree_arrangement_id = ?
+        ]
 
         return tree
     }
 
 
     void dump(Node n, int d = 0, Arrangement tree = null) {
-        n = Node.get(n.id);
-        if (tree == null) tree = n.root;
-        String indent = '*   *   *   *   *   *   *   *   *   *   *   *   *   *   '.substring(0, d * 4);
+        n = Node.get(n.id)
+        if (tree == null) tree = n.root
+        String indent = '*   *   *   *   *   *   *   *   *   *   *   *   *   *   '.substring(0, d * 4)
         log.debug "${indent} ${n} ${n.internalType} P:${n.prev?.id} N:${n.next?.id} R:${n.root?.id} NAME:${n.name} INST:${n.instance?.id} ${n.typeUriIdPart} ${n.resourceUriIdPart} ${n.literal}"
 
         if (n.root == tree) {
             n.subLink.each { Link l ->
                 if (l.subnode.internalType != NodeInternalType.V)
-                    dump(l.subnode, d + 1, tree);
+                    dump(l.subnode, d + 1, tree)
             }
         }
     }

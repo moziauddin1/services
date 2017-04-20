@@ -31,7 +31,7 @@ class Message implements MessageSourceResolvable {
     public final List args = []
     public final List nested = []
 
-    public Message(Msg msg, args = null) {
+    Message(Msg msg, args = null) {
         this.msg = msg
         if (!msg) throw new IllegalArgumentException('null msg')
         if (args) {
@@ -44,26 +44,26 @@ class Message implements MessageSourceResolvable {
         }
     }
 
-    public static Message makeMsg(Msg msg, args = null) {
+    static Message makeMsg(Msg msg, args = null) {
         return new Message(msg, args)
     }
 
     // this is for loggers, etc. The web pages should use a template to render these objects.
 
-    public String toString() {
+    String toString() {
         return getLocalisedString()
     }
 
-    public String getLocalisedString() {
+    String getLocalisedString() {
         StringBuilder sb = new StringBuilder()
         buildNestedString(sb, 0)
         return sb.toString()
     }
 
     String[] getCodes() {
-        String[] codes = new String[1];
-        codes[0] = msg.key;
-        return codes;
+        String[] codes = new String[1]
+        codes[0] = msg.key
+        return codes
     }
 
     /**
@@ -73,9 +73,9 @@ class Message implements MessageSourceResolvable {
      * @see java.text.MessageFormat
      */
     Object[] getArguments() {
-        Object[] av = new Object[args.size()];
-        for(int i = 0; i<args.size(); i++) av[i] = args.get(i);
-        return av;
+        Object[] av = new Object[args.size()]
+        for(int i = 0; i<args.size(); i++) av[i] = args.get(i)
+        return av
     }
 
     /**
@@ -83,16 +83,16 @@ class Message implements MessageSourceResolvable {
      * @return the default message, or {@code null} if no default
      */
     String getDefaultMessage() {
-        StringBuilder s = new StringBuilder();
-        s.append(msg.name());
+        StringBuilder s = new StringBuilder()
+        s.append(msg.name())
         if(args && args.size() > 0) {
             for(int i = 0; i<args.size(); i++) {
-                s.append(i==0? ": {" : ", {");
-                s.append(i);
-                s.append("}");
-            };
+                s.append(i==0? ": {" : ", {")
+                s.append(i)
+                s.append("}")
+            }
         }
-        return s.toString();
+        return s.toString()
     }
 
     protected void buildNestedString(StringBuilder sb, int depth) {
@@ -106,15 +106,15 @@ class Message implements MessageSourceResolvable {
 
             if (o instanceof Message) {
                 if(depth > 10) {
-                    sb.append("(Depth exceeded)");
+                    sb.append("(Depth exceeded)")
                 }
                 else {
-                    ((Message) o).buildNestedString(sb, depth + 1);
+                    ((Message) o).buildNestedString(sb, depth + 1)
                 }
             } else if (o instanceof ServiceException) {
-                sb.append(o.getClass().getSimpleName());
-                sb.append(": ");
-                ((ServiceException) o).msg.buildNestedString(sb, depth + 1);
+                sb.append(o.getClass().getSimpleName())
+                sb.append(": ")
+                ((ServiceException) o).msg.buildNestedString(sb, depth + 1)
             } else {
                 for (int i = 0; i < depth + 1; i++) {
                     sb.append('\t')
@@ -125,27 +125,27 @@ class Message implements MessageSourceResolvable {
     }
 
     private static String prefTitle(Name name) {
-        return name.simpleName ?: name.fullName;
+        return name.simpleName ?: name.fullName
     }
 
     private static String prefTitle(Reference reference) {
-        return reference.abbrevTitle ?: reference.displayTitle ?: reference.title ?: reference.citation;
+        return reference.abbrevTitle ?: reference.displayTitle ?: reference.title ?: reference.citation
     }
 
     private static String prefTitle(Instance instance) {
-        String p = instance.page ? " p. ${instance.page}" : '';
-        String pq = instance.pageQualifier ? " [${instance.pageQualifier}]" : '';
-        return "${prefTitle(instance.name)} s. ${prefTitle(instance.reference)}${p}${pq}";
+        String p = instance.page ? " p. ${instance.page}" : ''
+        String pq = instance.pageQualifier ? " [${instance.pageQualifier}]" : ''
+        return "${prefTitle(instance.name)} s. ${prefTitle(instance.reference)}${p}${pq}"
     }
 
     private static String prefTitle(Arrangement arrangement) {
         switch(arrangement.arrangementType) {
-            case ArrangementType.U: return arrangement.title;
-            case ArrangementType.P: return arrangement.label;
+            case ArrangementType.U: return arrangement.title
+            case ArrangementType.P: return arrangement.label
             default: "(${arrangement.arrangementType.name()}${arrangement.id})" // users should never see this
         }
 
-        arrangement.label ?: arrangement.arrangementType.uriId;
+        arrangement.label ?: arrangement.arrangementType.uriId
     }
 
     private static String prefTitle(Node node) {
@@ -161,31 +161,18 @@ class Message implements MessageSourceResolvable {
         }
     }
 
-    public String getSpringMessage() {
+    private static String prefTitle(Message message) {
+        message.toString()
+    }
+
+    private static String prefTitle(Object thing) {
+        thing.toString()
+    }
+
+    String getSpringMessage() {
         // this does the job of deciding what our domain objects ought to look like when they appear in
-        def args2 = args.collect { Object it ->
-            if (it instanceof Message) {
-                // in general, the args of a message should not contain nested messages.
-                // Only nested messages ought to contain nested messages.
-                // If a message is created with an arg that is a message with nested messages,
-                // then the formatting (tabs and newlines) will be messed up.
-                Message message = it as Message;
-                return message.toString();
-            } else if (it instanceof Arrangement) {
-                return "${prefTitle((Arrangement) it)}|${it.id}";
-            } else if (it instanceof Name) {
-                return "${prefTitle(it as Name)}|${it.id}";
-            } else if (it instanceof Reference) {
-                return "${prefTitle(it as Reference)}|${it.id}";
-            } else if (it instanceof Instance) {
-                return "${prefTitle(it as Instance)}|${it.id}";
-            } else if (it instanceof Node) {
-                return "${prefTitle(it as Node)}|${it.id}";
-            } else if (it.hasProperty('id')) {
-                return "${it.getClass().getSimpleName()}|${it.id}";
-            } else {
-                return it;
-            }
+        def args2 = args.collect { arg ->
+            arg.hasProperty('id') ? prefTitle(arg) + " (${arg.id})" : prefTitle(arg)
         }
 
         return Holders.applicationContext.getMessage(
@@ -195,29 +182,10 @@ class Message implements MessageSourceResolvable {
                 LocaleContextHolder.getLocale())
     }
 
-    public String getHumanReadableMessage() {
+    String getHumanReadableMessage() {
         // this does the job of deciding what our domain objects ought to look like when they appear in
-        def args2 = args.collect { Object it ->
-            if (it instanceof Message) {
-                // in general, the args of a message should not contain nested messages.
-                // Only nested messages ought to contain nested messages.
-                // If a message is created with an arg that is a message with nested messages,
-                // then the formatting (tabs and newlines) will be messed up.
-                Message message = it as Message;
-                return message.toString();
-            } else if (it instanceof Arrangement) {
-                return "${prefTitle((Arrangement) it)}";
-            } else if (it instanceof Name) {
-                return "${prefTitle(it as Name)}";
-            } else if (it instanceof Reference) {
-                return "${prefTitle(it as Reference)}";
-            } else if (it instanceof Instance) {
-                return "${prefTitle(it as Instance)}";
-            } else if (it.hasProperty('id')) {
-                return "${it.getClass().getSimpleName()}]${it.id}]";
-            } else {
-                return it;
-            }
+        def args2 = args.collect { Object arg ->
+            prefTitle(arg)
         }
 
         return Holders.applicationContext.getMessage(

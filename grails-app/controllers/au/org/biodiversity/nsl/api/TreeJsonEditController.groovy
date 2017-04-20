@@ -968,21 +968,24 @@ class TreeJsonEditController {
 
          */
 
-            def problems = userWorkspaceManagerService.getCheckinErrors(node).collect { Message it ->
+            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService)
+            Collection<Message> errors =  userWorkspaceManagerService.getCheckinErrors(node)
+            def problems = errors.collect { Message it ->
                 [
                         msg   : 'ERROR',
                         body  : it.humanReadableMessage,
                         status: 'danger',
-                        args  : new TreeServiceMessageUtil(linkService).unrollArgs(it)
+                        args  : tsmu.unrollArgs(it)
                 ]
             }
 
-            def warnings = userWorkspaceManagerService.getCheckinWarnings(node).collect { Message it ->
+            Collection<Message> warningMessages = userWorkspaceManagerService.getCheckinWarnings(node)
+            def warnings = warningMessages.collect { Message message ->
                 [
                         msg   : 'WARNING',
-                        body  : it.humanReadableMessage,
+                        body  : message.humanReadableMessage,
                         status: 'warning',
-                        args  : new TreeServiceMessageUtil(linkService).unrollArgs(it)
+                        args  : tsmu.unrollArgs(message)
                 ]
             }
 
