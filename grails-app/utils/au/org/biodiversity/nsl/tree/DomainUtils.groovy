@@ -267,19 +267,13 @@ class DomainUtils {
         return l
     }
 
-    static Link getSingleSuperlink(Node n) {
-        if (n == null) return null
-        Link sup = null
-        n.supLink.each {
-            if (isCurrent(it.supernode)) {
-                if (sup) {
-                    throw new IllegalStateException("multiple current superlinks on ${this}")
-                } else {
-                    sup = it
-                }
-            }
+    static Link getSingleSuperlink(Node node) {
+        if (node == null) return null
+        Set<Link> superNodeLinks = node.supLink.findAll{ isCurrent(it.supernode) }
+        if(superNodeLinks.size() > 1) {
+            throw new IllegalStateException("multiple current superlinks on ${this}")
         }
-        return sup
+        return superNodeLinks.empty ? null : superNodeLinks.first()
     }
 
     static Link getSingleSublink(Node n) {
@@ -304,10 +298,16 @@ class DomainUtils {
         if (n == null) return null
         return getSingleSublink(n)?.subnode
     }
-
-    // note that element zero is always null.
-
+    /**
+     * gets the sub links as a sparse array
+     * @depecated as you should really just use find, and the DB guarantees uniqueness of sequence.
+     * Still here for unit tests
+     * @param n
+     * @return sparse list of a nodes sub links ordered by link sequence.
+     */
+    @Deprecated
     static Link[] getSublinksAsArray(Node n) {
+        // note that element zero is always null.
         if (n == null) return null
         int maxIdx = 0
         for (Link l : n.subLink) {
@@ -316,12 +316,12 @@ class DomainUtils {
             }
         }
 
-        Link[] v = new Link[maxIdx + 1]
+        Link[] links = new Link[maxIdx + 1]
         for (Link l : n.subLink) {
-            assert v[l.linkSeq] == null
-            v[l.linkSeq] = l
+            assert links[l.linkSeq] == null
+            links[l.linkSeq] = l
         }
-        return v
+        return links
     }
 
     static Collection<Link> getSubtaxaAsList(Node n) {

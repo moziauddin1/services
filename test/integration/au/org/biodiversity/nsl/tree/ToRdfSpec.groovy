@@ -53,7 +53,7 @@ class ToRdfSpec extends Specification {
 		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'test simple tree')
 		SomeStuff s = makeSampleTree()
 		s.reload()
-		RdfRenderable.Top rdf = asRdfRenderableService.getNodeRdf s.root, all: true
+		RdfRenderable.Top rdf = asRdfRenderableService.getNodeRdf s.rootNode, all: true
 
 		then:
 		rdf
@@ -64,7 +64,7 @@ class ToRdfSpec extends Specification {
 		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'test simple arrangement')
 		SomeStuff s = makeSampleTree()
 		s.reload()
-		RdfRenderable.Top rdf = asRdfRenderableService.getArrangementRdf s.t, all: true
+		RdfRenderable.Top rdf = asRdfRenderableService.getArrangementRdf s.tree, all: true
 
 		then:
 		rdf

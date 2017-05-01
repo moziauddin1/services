@@ -1081,7 +1081,7 @@ select distinct start_id from ll where supernode_id = ?
         if (!root) throw new IllegalArgumentException("root is null")
         if (!focus) throw new IllegalArgumentException("focus is null")
 
-        List<Link> l = new ArrayList<Link>()
+        List<Link> links = new ArrayList<Link>()
 
         doWork(sessionFactory_nsl) { Connection cnct ->
             withQ cnct, '''
@@ -1106,7 +1106,7 @@ select distinct start_id from ll where supernode_id = ?
 
                         try {
                             while (rs.next()) {
-                                l.add(Link.get(rs.getLong('id')))
+                                links.add(Link.get(rs.getLong('id')))
                             }
                         }
                         finally {
@@ -1115,7 +1115,7 @@ select distinct start_id from ll where supernode_id = ?
                     }
         }
 
-        return l
+        return links
     }
 
     @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])

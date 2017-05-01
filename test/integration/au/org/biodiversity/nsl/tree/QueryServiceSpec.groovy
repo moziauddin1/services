@@ -60,7 +60,7 @@ class QueryServiceSpec extends Specification {
 
         SomeStuff s1 = makeSampleTree()
 
-        QueryService.Statistics s = queryService.getStatistics(s1.t)
+        QueryService.Statistics s = queryService.getStatistics(s1.tree)
         println s.dump()
 
         then: "some statics are returned"
@@ -83,7 +83,7 @@ class QueryServiceSpec extends Specification {
 
         SomeStuff s1 = makeSampleTree()
 
-        QueryService.Statistics s = queryService.getDependencies(s1.t)
+        QueryService.Statistics s = queryService.getDependencies(s1.tree)
         println s.dump()
 
         then:

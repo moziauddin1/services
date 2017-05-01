@@ -47,7 +47,7 @@ final class HibernateSessionUtils {
         return w.result
     }
 
-    static void create_tree_temp_id(Connection connection) {
+    static void createTreeTempIdTable(Connection connection) {
         withQ connection,
                 '''create temporary table if not exists tree_temp_id (
 					id bigint primary key,
@@ -58,7 +58,7 @@ final class HibernateSessionUtils {
         withQ connection, '''delete from tree_temp_id''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_temp_id2(Connection connection) {
+    static void createTreeTempId2Table(Connection connection) {
         withQ connection,
                 '''create temporary table if not exists tree_temp_id2 (
 					id bigint primary key,
@@ -69,7 +69,7 @@ final class HibernateSessionUtils {
         withQ connection, '''delete from tree_temp_id2''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_temp_id3(Connection connection) {
+    static void createTreeTempId3Table(Connection connection) {
         withQ connection,
                 '''create temporary table if not exists tree_temp_id3 (
 					id bigint primary key,
@@ -80,18 +80,18 @@ final class HibernateSessionUtils {
         withQ connection, '''delete from tree_temp_id3''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_replacements(Connection connection) {
-        withQ connection,
-                '''create temporary table if not exists tree_replacements (
+    static void createTempTreeReplacementsTable(Connection connection) {
+        withQ (connection,
+'''create temporary table if not exists tree_replacements (
 			id bigint primary key,
 			id2 bigint
 		)
-		on commit delete rows''', { PreparedStatement qry -> qry.executeUpdate() }
+		on commit delete rows''') { PreparedStatement qry -> qry.executeUpdate() }
 
         withQ connection, '''delete from tree_replacements''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_link_treewalk(Connection connection) {
+    static void createTempLinkTreewalkTable(Connection connection) {
         withQ connection,
                 '''create temporary table if not exists link_treewalk (
 			id bigint primary key,
@@ -103,7 +103,7 @@ final class HibernateSessionUtils {
         withQ connection, '''delete from link_treewalk''', { PreparedStatement qry -> qry.executeUpdate() }
     }
 
-    static void create_tree_syn_replacements(Connection connection) {
+    static void createTempTreeSynReplacementsTable(Connection connection) {
         withQ connection,
                 '''create temporary table if not exists tree_syn_replacements (
 			id bigint primary key,

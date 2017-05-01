@@ -743,8 +743,7 @@ public class TreeOperationsService {
     private Link changeLinkCheckOut(Arrangement tempSpace, Node existingMoveFrom, Node existingNode) {
         // we need to checkout the supernode, but there is no moving around involved
         Node moveFromCheckout = adoptAndCheckOut(tempSpace, existingMoveFrom)
-        Link checkedOutSupernodeLink = DomainUtils.getSublinksAsArray(moveFromCheckout)[DomainUtils.getSingleSuperlink(existingNode).linkSeq]
-        return checkedOutSupernodeLink
+        return moveFromCheckout.subLink.find{ it.linkSeq == DomainUtils.getSingleSuperlink(existingNode).linkSeq }
     }
 
     private Link moveNodeCheckOut(Node existingMoveFrom, Node existingMoveTo, Arrangement tempSpace, Node existingNode) {
@@ -775,7 +774,7 @@ public class TreeOperationsService {
         moveFromCheckout = DomainUtils.refetchNode(moveFromCheckout)
         moveToCheckout = DomainUtils.refetchNode(moveToCheckout)
 
-        Link checkedOutSupernodeLink = DomainUtils.getSublinksAsArray(moveFromCheckout)[DomainUtils.getSingleSuperlink(existingNode).linkSeq]
+        Link checkedOutSupernodeLink = moveFromCheckout.subLink.find{ it.linkSeq == DomainUtils.getSingleSuperlink(existingNode).linkSeq }
 
         basicOperationsService.updateDraftNodeLink(checkedOutSupernodeLink.supernode, checkedOutSupernodeLink.linkSeq, supernode: moveToCheckout)
 

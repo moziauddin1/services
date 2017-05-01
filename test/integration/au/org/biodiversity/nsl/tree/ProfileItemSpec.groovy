@@ -65,7 +65,7 @@ class ProfileItemSpec  extends Specification {
 		s
 		
 		when:
-		Node n = basicOperationsService.createDraftNode s.a, VersioningMethod.F, NodeInternalType.V, literal: 'test1'
+		Node n = basicOperationsService.createDraftNode s.nodeA, VersioningMethod.F, NodeInternalType.V, literal: 'test1'
 		s.reload()
 
 		then:

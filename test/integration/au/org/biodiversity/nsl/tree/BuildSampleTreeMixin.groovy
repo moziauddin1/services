@@ -72,7 +72,7 @@ class BuildSampleTreeUtil {
             log.debug("----")
             log.debug("digraph {")
             stuff.each { SomeStuffEmptyTree s ->
-                Long arrId = s.tid
+                Long arrId = s.treeId
                 log.debug("subgraph cluster${arrId} {")
                 log.debug("label=\"${arrId}\";")
 
@@ -104,7 +104,7 @@ class BuildSampleTreeUtil {
 
                 SomeStuffEmptyTree s = (SomeStuffEmptyTree) ss
 
-                Long arrId = s.tid
+                Long arrId = s.treeId
 
                 HibernateSessionUtils.withQ cnct, "select l.supernode_id, l.subnode_id, l.link_seq, l.id from tree_link l, tree_node n where n.id = l.supernode_id and n.tree_arrangement_id = ${arrId}", { PreparedStatement qry ->
                     ResultSet rs = qry.executeQuery()
@@ -143,10 +143,10 @@ class BuildSampleTreeUtil {
 }
 
 class SomeStuffEmptyTree {
-    long tid
-    Arrangement t
+    long treeId
+    Arrangement tree
     long rootid
-    Node root
+    Node rootNode
 
     final SessionFactory sessionFactory_nsl
     final BasicOperationsService basicOperationsService
@@ -157,10 +157,10 @@ class SomeStuffEmptyTree {
     }
 
     void makeTree() {
-        t = basicOperationsService.createTemporaryArrangement(TreeTestUtil.getTestNamespace())
-        tid = t.id
-        root = t.node
-        rootid = root.id
+        tree = basicOperationsService.createTemporaryArrangement(TreeTestUtil.getTestNamespace())
+        treeId = tree.id
+        rootNode = tree.node
+        rootid = rootNode.id
     }
 
     void reload() {
@@ -169,25 +169,25 @@ class SomeStuffEmptyTree {
     }
 
     void reloadWithoutClear() {
-        t = Arrangement.get(tid)
-        root = Node.get(rootid)
+        tree = Arrangement.get(treeId)
+        rootNode = Node.get(rootid)
     }
 }
 
 class SomeStuff extends SomeStuffEmptyTree {
-    long aid
-    long aaid
-    long abid
-    long bid
-    long baid
-    long bbid
+    long nodeAId
+    long nodeAAId
+    long nodeABId
+    long nodeBId
+    long nodeBAId
+    long nodeBBId
 
-    Node a
-    Node aa
-    Node ab
-    Node b
-    Node ba
-    Node bb
+    Node nodeA
+    Node nodeAA
+    Node nodeAB
+    Node nodeB
+    Node nodeBA
+    Node nodeBB
 
 
     SomeStuff(SessionFactory sessionFactory_nsl, BasicOperationsService basicOperationsService) {
@@ -195,27 +195,27 @@ class SomeStuff extends SomeStuffEmptyTree {
     }
 
     void makeTree() {
-        t = basicOperationsService.createTemporaryArrangement(TreeTestUtil.getTestNamespace())
-        tid = t.id
-        root = t.node
-        rootid = root.id
+        tree = basicOperationsService.createTemporaryArrangement(TreeTestUtil.getTestNamespace())
+        treeId = tree.id
+        rootNode = tree.node
+        rootid = rootNode.id
 
-        a = basicOperationsService.createDraftNode(t.node, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'A'), taxon: DomainUtils.uri('afd-taxon', 'A'))
-        aa = basicOperationsService.createDraftNode(a, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'AA'), taxon: DomainUtils.uri('afd-taxon', 'AA'))
-        ab = basicOperationsService.createDraftNode(a, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'AB'), taxon: DomainUtils.uri('afd-taxon', 'AB'))
-        b = basicOperationsService.createDraftNode(t.node, VersioningMethod.V, NodeInternalType.T, Seq: 2, name: DomainUtils.uri('afd-name', 'B'), taxon: DomainUtils.uri('afd-taxon', 'B'))
-        ba = basicOperationsService.createDraftNode(b, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'BA'), taxon: DomainUtils.uri('afd-taxon', 'BA'))
-        bb = basicOperationsService.createDraftNode(b, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'BB'), taxon: DomainUtils.uri('afd-taxon', 'BB'))
+        nodeA = basicOperationsService.createDraftNode(tree.node, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'A'), taxon: DomainUtils.uri('afd-taxon', 'A'))
+        nodeAA = basicOperationsService.createDraftNode(nodeA, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'AA'), taxon: DomainUtils.uri('afd-taxon', 'AA'))
+        nodeAB = basicOperationsService.createDraftNode(nodeA, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'AB'), taxon: DomainUtils.uri('afd-taxon', 'AB'))
+        nodeB = basicOperationsService.createDraftNode(tree.node, VersioningMethod.V, NodeInternalType.T, Seq: 2, name: DomainUtils.uri('afd-name', 'B'), taxon: DomainUtils.uri('afd-taxon', 'B'))
+        nodeBA = basicOperationsService.createDraftNode(nodeB, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'BA'), taxon: DomainUtils.uri('afd-taxon', 'BA'))
+        nodeBB = basicOperationsService.createDraftNode(nodeB, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'BB'), taxon: DomainUtils.uri('afd-taxon', 'BB'))
 
-        t.refresh()     //needed because these are loaded by createTemp once createDraft is hibernate based remove
-        root.refresh()
+        tree.refresh()     //needed because these are loaded by createTemp once createDraft is hibernate based remove
+        rootNode.refresh()
 
-        aid = a.id
-        aaid = aa.id
-        abid = ab.id
-        bid = b.id
-        baid = ba.id
-        bbid = bb.id
+        nodeAId = nodeA.id
+        nodeAAId = nodeAA.id
+        nodeABId = nodeAB.id
+        nodeBId = nodeB.id
+        nodeBAId = nodeBA.id
+        nodeBBId = nodeBB.id
 
         reloadWithoutClear()
     }
@@ -223,12 +223,12 @@ class SomeStuff extends SomeStuffEmptyTree {
 
     void reloadWithoutClear() {
         super.reloadWithoutClear()
-        a = Node.get(aid)
-        aa = Node.get(aaid)
-        ab = Node.get(abid)
-        b = Node.get(bid)
-        ba = Node.get(baid)
-        bb = Node.get(bbid)
+        nodeA = Node.get(nodeAId)
+        nodeAA = Node.get(nodeAAId)
+        nodeAB = Node.get(nodeABId)
+        nodeB = Node.get(nodeBId)
+        nodeBA = Node.get(nodeBAId)
+        nodeBB = Node.get(nodeBBId)
 
 //		// this should not be necessary - the clear session should do the job
 //		[a,aa,ab,b,ba,bb].each {
@@ -246,27 +246,27 @@ class SomeStuffWithHistory extends SomeStuff {
     }
 
     void makeTree() {
-        t = basicOperationsService.createTemporaryArrangement(TreeTestUtil.getTestNamespace(), )
-        tid = t.id
-        root = t.node
-        rootid = root.id
+        tree = basicOperationsService.createTemporaryArrangement(TreeTestUtil.getTestNamespace(), )
+        treeId = tree.id
+        rootNode = tree.node
+        rootid = rootNode.id
 
-        startRoot = basicOperationsService.createDraftNode t.node, VersioningMethod.T, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'ROOT')
+        startRoot = basicOperationsService.createDraftNode tree.node, VersioningMethod.T, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'ROOT')
         startRootId = startRoot.id
 
-        a = basicOperationsService.createDraftNode startRoot, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'A')
-        aa = basicOperationsService.createDraftNode a, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'AA')
-        ab = basicOperationsService.createDraftNode a, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'AB')
-        b = basicOperationsService.createDraftNode startRoot, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'B')
-        ba = basicOperationsService.createDraftNode b, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'BA')
-        bb = basicOperationsService.createDraftNode b, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'BB')
+        nodeA = basicOperationsService.createDraftNode startRoot, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'A')
+        nodeAA = basicOperationsService.createDraftNode nodeA, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'AA')
+        nodeAB = basicOperationsService.createDraftNode nodeA, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'AB')
+        nodeB = basicOperationsService.createDraftNode startRoot, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'B')
+        nodeBA = basicOperationsService.createDraftNode nodeB, VersioningMethod.V, NodeInternalType.T, seq: 1, name: DomainUtils.uri('afd-name', 'BA')
+        nodeBB = basicOperationsService.createDraftNode nodeB, VersioningMethod.V, NodeInternalType.T, seq: 2, name: DomainUtils.uri('afd-name', 'BB')
 
-        aid = a.id
-        aaid = aa.id
-        abid = ab.id
-        bid = b.id
-        baid = ba.id
-        bbid = bb.id
+        nodeAId = nodeA.id
+        nodeAAId = nodeAA.id
+        nodeABId = nodeAB.id
+        nodeBId = nodeB.id
+        nodeBAId = nodeBA.id
+        nodeBBId = nodeBB.id
 
         reloadWithoutClear()
     }

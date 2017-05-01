@@ -995,7 +995,7 @@ WITH RECURSIVE
       JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
     WHERE
       tree_link.supernode_id = ?
-      AND subnode.internal_type <> 'V\'
+      AND subnode.internal_type <> 'V'
     UNION ALL
     SELECT
       tree_link.id link_id,
@@ -1004,7 +1004,7 @@ WITH RECURSIVE
     FROM links_being_checked_in
       JOIN tree_link ON links_being_checked_in.subnode_id = tree_link.supernode_id
       JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V\'
+    WHERE subnode.internal_type <> 'V'
   ) SELECT l.link_id
     FROM
       name_rank genus,
@@ -1016,8 +1016,8 @@ WITH RECURSIVE
       JOIN name_type subname_type ON subname.name_type_id = subname_type.id
       LEFT OUTER JOIN name subname_parent ON subname.parent_id = subname_parent.id
     WHERE
-      genus.name = 'Genus\'
-      AND subnode.type_uri_id_part = 'ApcConcept\'
+      genus.name = 'Genus'
+      AND subnode.type_uri_id_part = 'ApcConcept'
       AND supernode.name_id IS NOT NULL
       AND (
         (
@@ -1156,7 +1156,7 @@ ${display(parentShouldBe)}
 
                 // If the name is being placed under a name that is is generic or below then,
                 // then the common part of the names must match unless the name being placed under it is an excluded name.
-                if ( "ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
+                if ("ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
                     error.nested.add(Message.makeMsg(Msg.NAME_CANNOT_BE_PLACED_UNDER_NAME, [parentName, name]))
                 }
             }
@@ -1467,7 +1467,8 @@ ${display(parentShouldBe)}
                             literal: value
                     )
                     currentNameNode = DomainUtils.refetchNode(currentNameNode)
-                    basicOperationsService.updateDraftNodeLink(currentNameNode, currentValueLink.linkSeq, linkType: DomainUtils.getValueLinkTypeUri(valueUri))
+                    basicOperationsService.updateDraftNodeLink(currentNameNode, currentValueLink.linkSeq,
+                            linkType: DomainUtils.getValueLinkTypeUri(valueUri))
                 } else {
                     basicOperationsService.deleteDraftNode(currentValueLink.subnode)
                 }

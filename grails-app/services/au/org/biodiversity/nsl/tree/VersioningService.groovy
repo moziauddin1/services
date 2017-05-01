@@ -58,169 +58,42 @@ class VersioningService implements ValidationUtils {
     /**
      * Execute a versioning operation
      * @param params ignoreOrphans: boolean - skip the check for orphans
-     * @param replace - replace each of the key nodes with each of the values, as a single operation
+     * @param replacementMap - replace each of the key nodes with each of the values, as a single operation
      *
      */
 
-    void performVersioning(Map params = [:], Event e, Map<Node, Node> replace, Arrangement homeArrangement) {
-        if(!replace) return;
+    void performVersioning(Map params = [:], Event event, Map<Node, Node> replacementMap, Arrangement homeArrangement) {
+        if (!replacementMap) return
 
-        mustHave(event: e, homeArrangement: homeArrangement) {
+        mustHave(event: event, homeArrangement: homeArrangement) {
             clearAndFlush {
-                e = DomainUtils.refetchEvent(e)
+                event = DomainUtils.refetchEvent(event)
                 homeArrangement = DomainUtils.refetchArrangement(homeArrangement)
-                replace = DomainUtils.refetchMap(replace)
+                replacementMap = DomainUtils.refetchMap(replacementMap)
                 params = DomainUtils.refetchMap(params)
 
                 if (DomainUtils.isEndTree(homeArrangement)) {
                     throw new IllegalArgumentException('cannot use end tree as home arrangment')
                 }
 
-                if (homeArrangement.namespace != e.namespace) {
+                if (homeArrangement.namespace != event.namespace) {
                     throw new IllegalArgumentException('home arranagement namespace must match event namespace')
                 }
 
-                replace.keySet.each { Node n ->
-                    if (!n) throw new IllegalArgumentException('cannot replace a null node')
-                    if (DomainUtils.isEndNode(n)) {
-                        throw new IllegalArgumentException('cannot replace the end node')
-                    }
-                    if (n == n.root.node) {
-                        throw new IllegalArgumentException('cannot replace the root node of a classification')
-                    }
-                    if (!DomainUtils.isCheckedIn(n)) {
-                        throw new IllegalArgumentException('cannot replace a draft node')
-                    }
-                    if(e.namespace != n.root.namespace) {
-                        throw new IllegalArgumentException('event namespace must match replaced node namespace')
-                    }
-                }
+                //throws IllegalArgumentException
+                checkNodesToBeReplaced(replacementMap.keySet(), event)
 
-                replace.values.each { Node n ->
-                    if (!n) throw new IllegalArgumentException('cannot use null as a replacement')
-                    if (n == n.root.node) {
-                        throw new IllegalArgumentException('cannot use the root node of a classification as a replacement')
-                    }
-                    if (!DomainUtils.isCheckedIn(n)) {
-                        throw new IllegalArgumentException('cannot use a draft node as a replacement')
-                    }
-                    if (replace.containsKey(n)) {
-                        throw new IllegalArgumentException('cannot replace a node with a node that is itself being replaced')
-                    }
-                    if(n.root.namespace != null && e.namespace != n.root.namespace) {
-                        throw new IllegalArgumentException('event namespace must match replaced node namespace')
-                    }
-                }
+                //throws IllegalArgumentException
+                checkReplacementNodes(replacementMap, event)
 
-                // and now, things become interesting.
-
-                doWork sessionFactory_nsl, { Connection cnct ->
-                    create_tree_replacements cnct
-                    create_tree_syn_replacements cnct
-
-                    log.debug "putting ${replace.size} keys into tree_replacements"
-
-                    withQ cnct, 'insert into tree_replacements values (?,?)',
-                            { PreparedStatement qry ->
-                                replace.each { k, v ->
-                                    qry.setLong(1, k.id)
-                                    qry.setLong(2, v.id)
-                                    qry.executeUpdate()
-                                }
-                            }
-
-                    if (log.isDebugEnabled()) {
-                        log.debug('tree replacements ---------------------')
-                        withQ cnct, "select id, id2 from tree_replacements",
-                                { PreparedStatement qry ->
-                                    ResultSet rs = qry.executeQuery()
-                                    while (rs.next()) {
-                                        log.debug("replacing ${rs.getObject(1)} with ${rs.getObject(2)}")
-                                    }
-                                    rs.close()
-                                }
-
-                        log.debug('---------------------------------------')
-                    }
-
+                doWork(sessionFactory_nsl) { Connection cnct ->
                     // basic argument checks.
-
-                    boolean versioningValidityCheckFailed = false // just because I don't trust you
-                    List<Message> versioningValidityCheckFailures = []
-
-                    log.debug "looking for non-current nodes being replaced"
-
-                    withQ cnct, '''select r.id, r.id2 from tree_replacements r, tree_node n
-					where r.id = n.id
-					and (n.next_node_id is not null or n.CHECKED_IN_AT_ID is null) ''',
-                            { PreparedStatement qry ->
-                                ResultSet rs = qry.executeQuery()
-                                try {
-                                    while (rs.next()) {
-                                        versioningValidityCheckFailed = true
-                                        Node r = Node.get(rs.getLong('id')).refresh()
-                                        Node r2 = Node.get(rs.getLong('id2')).refresh()
-                                        if (r.next) {
-                                            versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE, [r, r2, makeMsg(Msg.OLD_NODE_NOT_PERMITTED, [r])])
-                                        }
-                                        if (!DomainUtils.isCheckedIn(r)) {
-                                            versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE, [r, r2, makeMsg(Msg.DRAFT_NODE_NOT_PERMITTED, [r])])
-                                        }
-                                    }
-                                }
-                                finally {
-                                    rs.close()
-                                }
-                            }
-
-                    log.debug "looking for non-current replacement nodes"
-
-                    withQ cnct, '''select r.id, r.id2 from tree_replacements r, tree_node n where r.id2 = n.id
-					and (n.next_node_id is not null or n.CHECKED_IN_AT_ID is null) ''',
-                            { PreparedStatement qry ->
-                                ResultSet rs = qry.executeQuery()
-                                try {
-                                    while (rs.next()) {
-                                        versioningValidityCheckFailed = true
-                                        Node r = Node.get(rs.getLong('id')).refresh()
-                                        Node r2 = Node.get(rs.getLong('id2')).refresh()
-                                        if (r2.next) {
-                                            versioningValidityCheckFailures << makeMsg(Msg.CANNOT_USE_NODE_AS_A_REPLACEMENT, [r, r2, makeMsg(Msg.OLD_NODE_NOT_PERMITTED, [r2])])
-                                        }
-                                        if (!DomainUtils.isCheckedIn(r2)) {
-                                            versioningValidityCheckFailures << makeMsg(Msg.CANNOT_USE_NODE_AS_A_REPLACEMENT, [r, r2, makeMsg(Msg.DRAFT_NODE_NOT_PERMITTED, [r2])])
-                                        }
-                                    }
-                                }
-                                finally {
-                                    rs.close()
-                                }
-                            }
-
-                    // first check - you cannot replace a node with a node being replaced
-
-                    log.debug "looking for replacement nodes being replaced"
-
-                    withQ cnct, 'select a.id, a.id2 from tree_replacements a, tree_replacements b where a.id2 = b.id',
-                            { PreparedStatement qry ->
-                                ResultSet rs = qry.executeQuery()
-                                try {
-                                    while (rs.next()) {
-                                        versioningValidityCheckFailed = true
-                                        Node a1 = Node.get(rs.getLong(1))
-                                        Node a2 = Node.get(rs.getLong(2))
-                                        versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE_WITH_NODE_BEING_REPLACED, [a1, a2])
-                                    }
-                                }
-                                finally {
-                                    rs.close()
-                                }
-                            }
+                    List<Message> versioningValidityCheckFailures = checkReplacementMapNodes(replacementMap)
 
                     // we exit at this point before doing other checks, because the work that we have to do to do the other checks makes
-                    // no sense if there is a problem at this layer.
+                    // no sense if there is a problem.
 
-                    if (versioningValidityCheckFailed) {
+                    if (!versioningValidityCheckFailures.empty) {
                         Message m = makeMsg(Msg.performVersioning)
                         m.nested << versioningValidityCheckFailures
                         raise m
@@ -228,31 +101,21 @@ class VersioningService implements ValidationUtils {
 
                     // ok tree walk to get all the nodes that we will need to replace
 
+                    createTempTreeReplacementsTable(cnct)
+                    createTempTreeSynReplacementsTable(cnct)
+
+                    log.debug "putting ${replacementMap.size()} keys into tree_replacements"
+
+                    withQ(cnct, 'insert into tree_replacements values (?,?)') { PreparedStatement qry ->
+                        replacementMap.each { k, v ->
+                            qry.setLong(1, k.id)
+                            qry.setLong(2, v.id)
+                            qry.executeUpdate()
+                        }
+                    }
+
                     log.debug "finding synthetic replacements"
-
-                    // this recursive query is converted into an interative one
-
-//            withQ cnct, '''
-//				insert into tree_syn_replacements(id)
-//				select id
-//				from (
-//					with recursive all_current_supernodes(id) as (
-//						select id from tree_replacements
-//					union all
-//						select n.id
-//						from all_current_supernodes cc
-//							join tree_link l on cc.id = l.subnode_id
-//							join tree_node n on l.supernode_id = n.id
-//						where 
-//						    l.versioning_method = 'V'
-//						and n.next_node_id is null
-//						and n.CHECKED_IN_AT_ID is not null
-//					)
-//					select distinct id from all_current_supernodes
-//				) distinct_current_supernodes
-//				''',
-//			                    { PreparedStatement qry -> qry.executeUpdate() }
-
+                    Boolean versioningValidityCheckFailed = false
                     int numberOfNewSyntheticNodesFound
 
                     numberOfNewSyntheticNodesFound = withQ(cnct, '''
@@ -440,7 +303,7 @@ class VersioningService implements ValidationUtils {
                     // We have now done some rather complex and subtle validity checks. exit now if eany of them failed.
 
                     if (versioningValidityCheckFailed) {
-                        Message m = makeMsg(Msg.performVersioning, [ versioningValidityCheckFailures.size() ])
+                        Message m = makeMsg(Msg.performVersioning, [versioningValidityCheckFailures.size()])
                         m.nested.addAll(versioningValidityCheckFailures)
                         raise m
                     }
@@ -500,7 +363,6 @@ class VersioningService implements ValidationUtils {
 				''',
                             { PreparedStatement qry -> qry.executeUpdate() }
 
-
                     // NSL-2137
                     // Before creating the synthetic nodes we need to replace the existing nodes, because if
                     // ths isn't done then when the new synthetic nodes are inserted, they will be current and
@@ -520,7 +382,7 @@ class VersioningService implements ValidationUtils {
 				where id in (select r.id from tree_syn_replacements r where r.id = n.id)
 				''',
                             { PreparedStatement qry ->
-                                qry.setLong(1, e.id)
+                                qry.setLong(1, event.id)
                                 qry.executeUpdate()
                             }
 
@@ -574,7 +436,7 @@ class VersioningService implements ValidationUtils {
 				''',
                             { PreparedStatement qry ->
                                 qry.setLong(1, homeArrangement.id)
-                                qry.setLong(2, e.id)
+                                qry.setLong(2, event.id)
                                 qry.executeUpdate()
                             }
 
@@ -620,7 +482,7 @@ class VersioningService implements ValidationUtils {
 				where id in (select r.id from tree_replacements r where r.id = n.id)
 				''',
                             { PreparedStatement qry ->
-                                qry.setLong(1, e.id)
+                                qry.setLong(1, event.id)
                                 qry.executeUpdate()
                             }
 
@@ -633,7 +495,7 @@ class VersioningService implements ValidationUtils {
 				where id in (select r.id from tree_syn_replacements r where r.id = n.id)
 				''',
                             { PreparedStatement qry ->
-                                qry.setLong(1, e.id)
+                                qry.setLong(1, event.id)
                                 qry.executeUpdate()
                             }
 
@@ -696,6 +558,70 @@ class VersioningService implements ValidationUtils {
                     log.debug "versioning complete."
 
                 }
+            }
+        }
+    }
+
+    private static List<Message> checkReplacementMapNodes(Map<Node, Node> replacementMap) {
+        List<Message> versioningValidityCheckFailures = []
+
+        log.debug "looking for non-current nodes and replacement nodes being replaced"
+
+        replacementMap.each { Map.Entry entry ->
+            Node node = entry.key as Node
+            Node replacement = entry.value as Node
+            if (node.next) {
+                versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE, [node, replacement, makeMsg(Msg.OLD_NODE_NOT_PERMITTED, [node])])
+            }
+            if (!node.checkedInAt) {
+                versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE, [node, replacement, makeMsg(Msg.DRAFT_NODE_NOT_PERMITTED, [node])])
+            }
+            if (replacement.next) {
+                versioningValidityCheckFailures << makeMsg(Msg.CANNOT_USE_NODE_AS_A_REPLACEMENT, [node, replacement, makeMsg(Msg.OLD_NODE_NOT_PERMITTED, [replacement])])
+            }
+            if (!replacement.checkedInAt) {
+                versioningValidityCheckFailures << makeMsg(Msg.CANNOT_USE_NODE_AS_A_REPLACEMENT, [node, replacement, makeMsg(Msg.DRAFT_NODE_NOT_PERMITTED, [replacement])])
+            }
+            //looking for replacement nodes being replaced
+            if (replacementMap.containsKey(replacement)) {
+                versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE_WITH_NODE_BEING_REPLACED, [node, replacement])
+            }
+        }
+        return versioningValidityCheckFailures
+    }
+
+    private static void checkReplacementNodes(Map<Node, Node> replacementMap, event) {
+        replacementMap.values.each { Node n ->
+            if (!n) throw new IllegalArgumentException('cannot use null as a replacement')
+            if (n == n.root.node) {
+                throw new IllegalArgumentException('cannot use the root node of a classification as a replacement')
+            }
+            if (!DomainUtils.isCheckedIn(n)) {
+                throw new IllegalArgumentException('cannot use a draft node as a replacement')
+            }
+            if (replacementMap.containsKey(n)) {
+                throw new IllegalArgumentException('cannot replace a node with a node that is itself being replaced')
+            }
+            if (n.root.namespace != null && event.namespace != n.root.namespace) {
+                throw new IllegalArgumentException('event namespace must match replaced node namespace')
+            }
+        }
+    }
+
+    private static void checkNodesToBeReplaced(Set<Node> nodes, event) {
+        nodes.each { Node node ->
+            if (!node) throw new IllegalArgumentException('cannot replace a null node')
+            if (DomainUtils.isEndNode(node)) {
+                throw new IllegalArgumentException('cannot replace the end node')
+            }
+            if (node == node.root.node) {
+                throw new IllegalArgumentException('cannot replace the root node of a classification')
+            }
+            if (!DomainUtils.isCheckedIn(node)) {
+                throw new IllegalArgumentException('cannot replace a draft node')
+            }
+            if (event.namespace != node.root.namespace) {
+                throw new IllegalArgumentException('event namespace must match replaced node namespace')
             }
         }
     }
@@ -1002,13 +928,13 @@ select id, coalesce((select n.id
 
     private clearAndFlush(Closure work) {
         if (sessionFactory_nsl.getCurrentSession().isDirty()) {
-            throw new IllegalStateException("Changes to the classification trees may only be done via BasicOperationsService");
+            throw new IllegalStateException("Changes to the classification trees may only be done via BasicOperationsService")
         }
-        sessionFactory_nsl.getCurrentSession().clear();
+        sessionFactory_nsl.getCurrentSession().clear()
         // I don't use a try/catch because if an exception is thrown then meh
-        Object ret = work();
-        sessionFactory_nsl.getCurrentSession().flush();
-        sessionFactory_nsl.getCurrentSession().clear();
-        return DomainUtils.refetchObject(ret);
+        Object ret = work()
+        sessionFactory_nsl.getCurrentSession().flush()
+        sessionFactory_nsl.getCurrentSession().clear()
+        return DomainUtils.refetchObject(ret)
     }
 }
