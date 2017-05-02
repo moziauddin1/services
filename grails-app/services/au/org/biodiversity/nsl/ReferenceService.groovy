@@ -287,7 +287,6 @@ class ReferenceService {
 /**
  * Move all the
  * - instances
- * - externalRefs
  * - referencesForParent
  * - comments
  * - move reference note to the instances of the source.
@@ -356,11 +355,6 @@ class ReferenceService {
                         instance.updatedAt = now
                         instance.updatedBy = user
                         instance.save(flush: true)
-                    }
-                    source.externalRefs.each { extRef ->
-                        log.info "Moving external reference $extRef to $target"
-                        extRef.reference = target
-                        extRef.save(flush: true)
                     }
                     source.referencesForParent.each { ref ->
                         log.info "Moving parent of $ref to $target"
@@ -447,10 +441,6 @@ class ReferenceService {
 
         if (reference.instances.size() > 0) {
             errors << "There are ${reference.instances.size()} instances for this reference."
-        }
-
-        if (reference.externalRefs.size() > 0) {
-            errors << "There are ${reference.externalRefs.size()} external refs for this reference."
         }
 
         if (reference.referencesForParent.size() > 0) {

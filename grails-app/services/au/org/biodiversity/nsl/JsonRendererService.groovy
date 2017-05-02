@@ -253,15 +253,6 @@ class JsonRendererService {
         ]
     }
 
-    Map externalRef(ExternalRef externalRef) {
-        [
-                objectType        : externalRef.objectType,
-                externalIdSupplier: externalRef.externalIdSupplier,
-                externalId        : externalRef.externalId,
-                originalProvider  : externalRef.originalProvider
-        ]
-    }
-
 /** ********************/
 
     Map marshallName(Name name) {
@@ -278,7 +269,6 @@ class JsonRendererService {
                 parent         : getBriefName(name.parent),
                 secondParent   : getBriefName(name.secondParent),
                 instances      : name.instances.collect { getBriefInstance(it) },
-                externalRefs   : name.externalRefs.collect { externalRef(it) },
                 author         : getBriefAuthor(name.author),
                 baseAuthor     : getBriefAuthor(name.baseAuthor),
                 exAuthor       : getBriefAuthor(name.exAuthor),
@@ -303,7 +293,6 @@ class JsonRendererService {
                 parent             : getBriefInstance(instance.parent),
                 cites              : getBriefInstance(instance.cites),
                 citedBy            : getBriefInstance(instance.citedBy),
-                externalRefs       : instance.externalRefs.collect { externalRef(it) },
                 instancesForCitedBy: instance.instancesForCitedBy.sort {
                     Instance a, Instance b ->
                         a.instanceType.sortOrder != b.instanceType.sortOrder ?
@@ -362,7 +351,6 @@ class JsonRendererService {
                 refAuthorRole    : reference.refAuthorRole.name,
                 duplicateOf      : getBriefReference(reference.duplicateOf),
                 language         : language(reference.language),
-                externalRefs     : reference.externalRefs.collect { externalRef(it) },
                 instances        : reference.instances.collect { getBriefInstance(it) },
                 parentOf         : reference.referencesForParent.collect { getBriefReference(it) }
         ]
