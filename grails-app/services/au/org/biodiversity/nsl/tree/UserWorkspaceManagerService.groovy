@@ -169,10 +169,10 @@ class UserWorkspaceManagerService implements ValidationUtils {
 
     }
 
-    def adoptNode(Arrangement ws, Node target, Node node) {
+    Map adoptNode(Arrangement workSpace, Node target, Node node) {
         if (target == node) throw new IllegalArgumentException("node == target")
 
-        if (node == ws.node) throw new IllegalArgumentException("node == ws.node")
+        if (node == workSpace.node) throw new IllegalArgumentException("node == workSpace.node")
 
         if (!DomainUtils.isCheckedIn(node)) throw new IllegalArgumentException("cannot adopt draft node")
         if (DomainUtils.isReplaced(node)) throw new IllegalArgumentException("cannot adopt outdated node")
@@ -182,17 +182,17 @@ class UserWorkspaceManagerService implements ValidationUtils {
         if (reversePath && !reversePath.isEmpty()) throw new IllegalArgumentException("node is supernode of target")
 
         if (DomainUtils.isCheckedIn(target)) {
-            List<Node> pathToTarget = queryService.findPath(ws.node, target)
+            List<Node> pathToTarget = queryService.findPath(workSpace.node, target)
             if (pathToTarget.isEmpty()) throw new IllegalArgumentException("target not in workspace")
 
-            target = basicOperationsService.checkoutNode(ws.node, target)
+            target = basicOperationsService.checkoutNode(workSpace.node, target)
 
-            ws = DomainUtils.refetchArrangement(ws)
+            workSpace = DomainUtils.refetchArrangement(workSpace)
             target = DomainUtils.refetchNode(target)
             node = DomainUtils.refetchNode(node)
         }
 
-        List<Link> pathToNode = queryService.findPathLinks(ws.node, node)
+        List<Link> pathToNode = queryService.findPathLinks(workSpace.node, node)
 
         if (!pathToNode.isEmpty()) throw new IllegalArgumentException("node already in workspace")
 
