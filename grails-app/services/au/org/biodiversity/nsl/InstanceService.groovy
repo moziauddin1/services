@@ -102,11 +102,11 @@ class InstanceService {
         if (instance.instanceNotes) {
             errors << "There are ${instance.instanceNotes.size()} instances notes on this."
         }
-        if (instance.externalRefs) {
-            errors << "There are ${instance.externalRefs.size()} external references."
-        }
         if (instance.comments) {
             errors << "There are ${instance.comments.size()} comments for this instance."
+        }
+        if (instance.resources) {
+            errors << "There are ${instance.resources.size()} resources for this instance."
         }
 
         if (errors.size() > 0) {
