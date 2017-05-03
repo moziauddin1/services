@@ -148,22 +148,21 @@ class BasicOperationsService {
 
     Arrangement createTemporaryArrangement(Namespace namespace) {
         if (!namespace) throw new IllegalArgumentException("null namespace")
-        clearAndFlush {
-            // temporary arangments do not belong to any shard
-            Arrangement tempArrangement = new Arrangement(arrangementType: ArrangementType.Z, synthetic: 'Y', namespace: namespace, owner: 'INTERNAL')
-            tempArrangement.save()
-            Node tempNode = new Node(
-                    root: tempArrangement,
-                    internalType: NodeInternalType.Z,
-                    typeUriNsPart: UriNs.get(1),
-                    typeUriIdPart: 'temp-arrangement-root',
-                    synthetic: true
-            )
-            tempNode.save()
-            tempArrangement.node = tempNode
-            tempArrangement.save()
-            return tempArrangement
-        } as Arrangement
+        // temporary arrangements do not belong to any shard
+        Arrangement tempArrangement = new Arrangement(arrangementType: ArrangementType.Z, synthetic: 'Y', namespace: namespace, owner: 'INTERNAL')
+
+        Node tempNode = new Node(
+                root: tempArrangement,
+                internalType: NodeInternalType.Z,
+                typeUriNsPart: UriNs.get(1),
+                typeUriIdPart: 'temp-arrangement-root',
+                synthetic: true
+        )
+        tempArrangement.addToNodes(tempNode)
+        tempArrangement.node = tempNode
+        tempArrangement.save(flush: true)
+        tempNode.refresh()
+        return tempArrangement
     }
 
     /**
@@ -349,69 +348,70 @@ class BasicOperationsService {
      * @param supernode
      * @param versioningMethod
      * @param linkSeq
-     * @return
+     * @return a draft Node
      */
 
     Node createDraftNode(Map params = [:], Node supernode, VersioningMethod versioningMethod, NodeInternalType internalType) {
         mustHave(supernode: supernode, versioningMethod: versioningMethod, internalType: internalType) {
-            clearAndFlush {
-                supernode = DomainUtils.refetchNode(supernode)
-                params = DomainUtils.refetchMap(params)
+            Uri nodeType = params.nodeType as Uri
+            Uri linkType = params.linkType as Uri
+            Uri name = params.name as Uri
+            Uri taxon = params.taxon as Uri
+            Uri resource = params.resource as Uri
+            String literal = params.literal as String
+            Integer linkSeq = params.seq as Integer
+            Name nslName = params.nslName as Name
+            Instance nslInstance = params.nslInstance as Instance
 
-                Uri nodeType = params.nodeType as Uri
-                Uri linkType = params.linkType as Uri
-                Uri name = params.name as Uri
-                Uri taxon = params.taxon as Uri
-                Uri resource = params.resource as Uri
-                String literal = params.literal as String
-                Integer linkSeq = params.seq as Integer
-                Name nslName = params.nslName as Name
-                Instance nslInstance = params.nslInstance as Instance
+            if (nslName && name == null) {
+                name = new Uri(nslNameNs(), nslName.id)
+            }
+            if (nslInstance && taxon == null) {
+                taxon = new Uri(nslInstanceNs(), nslInstance.id)
+            }
 
-                if (nslName && name == null) {
-                    name = new Uri(nslNameNs(), nslName.id)
-                }
-                if (nslInstance && taxon == null) {
-                    taxon = new Uri(nslInstanceNs(), nslInstance.id)
-                }
+            checkWeCanCreateThisHere(supernode, versioningMethod, internalType, literal, name, nslName, taxon, nslInstance, resource, linkSeq)
 
-                checkWeCanCreateThisHere(supernode, versioningMethod, internalType, literal, name, nslName, taxon, nslInstance, resource, linkSeq)
+            Node node = new Node(
+                    internalType: internalType,
+                    typeUriNsPart: nodeType?.nsPart ?: UriNs.get(0),
+                    typeUriIdPart: nodeType?.idPart,
+                    name: nslName,
+                    nameUriNsPart: name?.nsPart,
+                    nameUriIdPart: name?.idPart,
+                    instance: nslInstance,
+                    taxonUriNsPart: taxon?.nsPart,
+                    taxonUriIdPart: taxon?.idPart,
+                    resourceUriNsPart: resource?.nsPart,
+                    resourceUriIdPart: resource?.idPart,
+                    literal: literal,
+                    synthetic: false
+            )
+            supernode.root.addToNodes(node)
+            supernode.root.save()
 
-                Node node = new Node(
-                        internalType: internalType,
-                        typeUriNsPart: nodeType?.nsPart ?: UriNs.get(0),
-                        typeUriIdPart: nodeType?.idPart,
-                        name: nslName,
-                        nameUriNsPart: name?.nsPart,
-                        nameUriIdPart: name?.idPart,
-                        instance: nslInstance,
-                        taxonUriNsPart: taxon?.nsPart,
-                        taxonUriIdPart: taxon?.idPart,
-                        resourceUriNsPart: resource?.nsPart,
-                        resourceUriIdPart: resource?.idPart,
-                        literal: literal,
-                        synthetic: false
-                )
-                node.root = supernode.root
-                node.save()
+            Integer nextSeq = linkSeq ?: nextLinkSequence(supernode.subLink)
 
-                Link maxSeqLink = supernode.subLink.max { it.linkSeq }
-                Integer nextSeq = linkSeq ?: (maxSeqLink ? maxSeqLink.linkSeq + 1 : 1)
+            Link appendLink = new Link(
+                    subnode: node,
+                    typeUriNsPart: linkType?.nsPart ?: UriNs.get(0),
+                    typeUriIdPart: linkType?.idPart ?: null,
+                    linkSeq: nextSeq,
+                    versioningMethod: versioningMethod,
+                    synthetic: false
+            )
 
-                Link appendLink = new Link(
-                        subnode: node,
-                        typeUriNsPart: linkType?.nsPart ?: UriNs.get(0),
-                        typeUriIdPart: linkType?.idPart ?: null,
-                        linkSeq: nextSeq,
-                        versioningMethod: versioningMethod,
-                        synthetic: false
-                )
-
-                supernode.addToSubLink(appendLink)
-                supernode.save()
-                return node
-            } as Node
+            supernode.addToSubLink(appendLink)
+            supernode.save(flush: true)
+            return node.refresh()
         } as Node
+    }
+
+    private static Integer nextLinkSequence(Set<Link> links) {
+        if (links) {
+            return (links.collect { it.linkSeq }?.max { it } ?: 0) + 1
+        }
+        return 1
     }
 
     private void checkWeCanCreateThisHere(Node supernode, VersioningMethod versioningMethod, NodeInternalType internalType,

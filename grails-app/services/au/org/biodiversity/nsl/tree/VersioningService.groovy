@@ -562,7 +562,8 @@ class VersioningService implements ValidationUtils {
         }
     }
 
-    private static List<Message> checkReplacementMapNodes(Map<Node, Node> replacementMap) {
+    @SuppressWarnings("GrMethodMayBeStatic")
+    private List<Message> checkReplacementMapNodes(Map<Node, Node> replacementMap) {
         List<Message> versioningValidityCheckFailures = []
 
         log.debug "looking for non-current nodes and replacement nodes being replaced"
