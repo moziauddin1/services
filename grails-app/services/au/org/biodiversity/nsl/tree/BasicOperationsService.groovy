@@ -17,6 +17,8 @@
 package au.org.biodiversity.nsl.tree
 
 import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.api.SessionTrait
+import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import org.apache.shiro.UnavailableSecurityManagerException
 import org.hibernate.SessionFactory
@@ -93,11 +95,10 @@ import static au.org.biodiversity.nsl.tree.HibernateSessionUtils.*
  */
 
 @Transactional(rollbackFor = [ServiceException])
-class BasicOperationsService {
+class BasicOperationsService  implements ValidationUtils, SessionTrait{
     static datasource = 'nsl'
 
     def messageSource
-    SessionFactory sessionFactory_nsl
     QueryService queryService
     def grailsApplication
 
@@ -1696,7 +1697,6 @@ class BasicOperationsService {
                 if (DomainUtils.isCheckedIn(supernode)) {
                     ServiceException.raise ServiceException.makeMsg(Msg.checkoutNode, [
                             supernode,
-                            targetnode,
                             ServiceException.makeMsg(Msg.PERSISTENT_NODE_NOT_PERMITTED, supernode)
                     ])
                 }
@@ -2585,31 +2585,6 @@ where tree_node.id in (
             withQ cnct, 'delete from tree_link where subnode_id in (select id from tree_temp_id)', { PreparedStatement qry -> qry.executeUpdate() }
             withQ cnct, 'delete from tree_node where id in (select id from tree_temp_id)', { PreparedStatement qry -> qry.executeUpdate() }
         }
-    }
-
-/*
- * This code is copy/pasted from tree operations controller and probably should be in a utility class
- */
-
-    private static mustHave(Map things, Closure work) {
-        things.each { k, v ->
-            if (!v) {
-                throw new IllegalArgumentException("$k must not be null")
-            }
-        }
-        return work()
-    }
-
-    private clearAndFlush(Closure work) {
-        if (sessionFactory_nsl.getCurrentSession().isDirty()) {
-            throw new IllegalStateException("Changes to the classification trees may only be done via BasicOperationsService")
-        }
-        sessionFactory_nsl.getCurrentSession().clear()
-        // I don't use a try/catch because if an exception is thrown then meh
-        Object ret = work()
-        sessionFactory_nsl.getCurrentSession().flush()
-        sessionFactory_nsl.getCurrentSession().clear()
-        return DomainUtils.refetchObject(ret)
     }
 
     void checkClassificationIntegrity(Arrangement a) throws ServiceException {

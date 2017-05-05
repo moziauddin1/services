@@ -284,7 +284,7 @@ class DomainUtils {
             return null
         }
         if (n.subLink.size() == 1) { //noinspection ChangeToOperator
-            return n.subLink.iterator().next()
+            return n.subLink.first()
         }
         throw new IllegalStateException("${n.subLink.size()} sublinks")
     }

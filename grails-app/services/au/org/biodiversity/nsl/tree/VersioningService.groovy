@@ -19,9 +19,9 @@ package au.org.biodiversity.nsl.tree
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Event
 import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.api.SessionTrait
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
-import org.hibernate.SessionFactory
 
 import java.sql.Connection
 import java.sql.PreparedStatement
@@ -38,7 +38,6 @@ import static au.org.biodiversity.nsl.tree.HibernateSessionUtils.*
  * so before calling anything here all hibernate entities should be in good order.
  * Most of the methods here leave hibernate in an incorrect state. Be sure to evict and refresh everything. After
  * you are done working with the data using these methods.
- * @author ibis
  */
 
 /*
@@ -47,12 +46,9 @@ import static au.org.biodiversity.nsl.tree.HibernateSessionUtils.*
  */
 
 @Transactional(rollbackFor = [ServiceException])
-class VersioningService implements ValidationUtils {
+class VersioningService implements ValidationUtils, SessionTrait {
     static datasource = 'nsl'
 
-    //private static final  Log log = LogFactory.getLog(VersioningService.class)
-
-    SessionFactory sessionFactory_nsl
     BasicOperationsService basicOperationsService
 
     /**
@@ -925,17 +921,5 @@ select id, coalesce((select n.id
                 return v
             } as Map<Node, Node>
         } as Map<Node, Node>
-    }
-
-    private clearAndFlush(Closure work) {
-        if (sessionFactory_nsl.getCurrentSession().isDirty()) {
-            throw new IllegalStateException("Changes to the classification trees may only be done via BasicOperationsService")
-        }
-        sessionFactory_nsl.getCurrentSession().clear()
-        // I don't use a try/catch because if an exception is thrown then meh
-        Object ret = work()
-        sessionFactory_nsl.getCurrentSession().flush()
-        sessionFactory_nsl.getCurrentSession().clear()
-        return DomainUtils.refetchObject(ret)
     }
 }

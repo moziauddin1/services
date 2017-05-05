@@ -23,13 +23,14 @@ import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.Instance
+import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import groovy.sql.Sql
 
 import javax.sql.DataSource
 
 @Transactional(rollbackFor = [ServiceException])
-class ClassificationManagerService {
+class ClassificationManagerService implements ValidationUtils {
     QueryService queryService
     BasicOperationsService basicOperationsService
     VersioningService versioningService
@@ -52,133 +53,132 @@ class ClassificationManagerService {
     }
 
     void createClassification(Map params = [:], Namespace namespace) throws ServiceException {
-        // todo - use Peter's "must have" thing
-        if (!namespace) throw new IllegalArgumentException("namespace must be specified")
-        if (!params.label) throw new IllegalArgumentException("label must be specified")
-        if (!params.description) throw new IllegalArgumentException("description must be specified")
+        mustHave(namespace: namespace, label: params.label, description: params.description) {
 
-        if (Arrangement.findByNamespaceAndLabel(namespace, params.label as String)) {
-            ServiceException.raise(Message.makeMsg(Msg.createClassification, [params.label, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]))
-        }
-
-        List copyNodes
-
-        if (params.copyName) {
-            if (!params.copyNameIn) throw new IllegalArgumentException("if copyName is specified, then copyNAmeIn must be specified")
-
-            String copyName = params.copyName as String
-            Arrangement copyNameIn = params.copyNameIn as Arrangement
-
-            copyNodes = Node.findAll {
-                root == copyNameIn && (name.simpleName == copyName || name.fullName == copyName) && checkedInAt != null && replacedAt == null
-            }
-            int count = copyNodes.size()
-
-            if (count == 0) {
-                ServiceException.raise(Message.makeMsg(Msg.createClassification, [
-                        params.label,
-                        Message.makeMsg(Msg.THING_NOT_FOUND_IN_ARRANGEMENT, [
-                                copyNameIn, copyName, 'Name'])]))
+            if (Arrangement.findByNamespaceAndLabel(namespace, params.label as String)) {
+                ServiceException.raise(Message.makeMsg(Msg.createClassification, [params.label, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]))
             }
 
-            // ok. Although it should never happen, we need to handle the case where a name matches two nodes and one is a subnode of another
+            List copyNodes
 
-            Set<Node> mightHaveOtherNamesBelowIt = new HashSet<Node>()
-            mightHaveOtherNamesBelowIt.addAll(copyNodes)
+            if (params.copyName) {
+                if (!params.copyNameIn) throw new IllegalArgumentException("if copyName is specified, then copyNameIn must be specified")
 
-            rescan_copy_nodes:
-            for (; ;) {
-                for (Iterator<Node> n1_it = mightHaveOtherNamesBelowIt.iterator(); n1_it.hasNext();) {
-                    Node n1 = n1_it.next()
-                    for (Node n2 : copyNodes) {
-                        if (n1 != n2 && higherThan(n1, n2)) {
-                            copyNodes.remove(n2)
-                            // this gets rid of "collection has changed wile I was iterating through it" issues.
-                            continue rescan_copy_nodes
-                        }
-                    }
-                    n1_it.remove()
+                String copyName = params.copyName as String
+                Arrangement copyNameIn = params.copyNameIn as Arrangement
 
+                copyNodes = Node.findAll {
+                    root == copyNameIn &&
+                            (name.simpleName == copyName || name.fullName == copyName) &&
+                            checkedInAt != null &&
+                            replacedAt == null
                 }
-                break rescan_copy_nodes
+                int count = copyNodes.size()
+
+                if (count == 0) {
+                    ServiceException.raise(Message.makeMsg(Msg.createClassification, [
+                            params.label,
+                            Message.makeMsg(Msg.THING_NOT_FOUND_IN_ARRANGEMENT, [
+                                    copyNameIn, copyName, 'Name'])]))
+                }
+
+                // ok. Although it should never happen, we need to handle the case where a name matches two nodes and one is a subnode of another
+
+                Set<Node> mightHaveOtherNamesBelowIt = new HashSet<Node>()
+                mightHaveOtherNamesBelowIt.addAll(copyNodes)
+
+                rescan_copy_nodes:
+                for (; ;) {
+                    for (Iterator<Node> n1_it = mightHaveOtherNamesBelowIt.iterator(); n1_it.hasNext();) {
+                        Node n1 = n1_it.next()
+                        for (Node n2 : copyNodes) {
+                            if (n1 != n2 && higherThan(n1, n2)) {
+                                copyNodes.remove(n2)
+                                // this gets rid of "collection has changed wile I was iterating through it" issues.
+                                continue rescan_copy_nodes
+                            }
+                        }
+                        n1_it.remove()
+
+                    }
+                    break rescan_copy_nodes
+                }
+
+            } else if (params.copyNameIn) {
+                Arrangement copyNameIn = params.copyNameIn as Arrangement
+                copyNodes = [DomainUtils.getSingleSubnode(copyNameIn.node)]
+            } else {
+                copyNodes = null
             }
 
-        } else if (params.copyNameIn) {
-            Arrangement copyNameIn = params.copyNameIn as Arrangement
-            copyNodes = [DomainUtils.getSingleSubnode(copyNameIn.node)]
-        } else {
-            copyNodes = null
-        }
+            Event e = basicOperationsService.newEvent(namespace, "Creating classification ${params.label}")
+            Arrangement newClass = basicOperationsService.createClassification(e, params.label, params.description, params.shared)
 
-        Event e = basicOperationsService.newEvent(namespace, "Creating classification ${params.label}")
-        Arrangement newClass = basicOperationsService.createClassification(e, params.label, params.description, params.shared)
+            if (copyNodes) {
+                log.debug "temp arrangement"
+                Arrangement tempSpace = basicOperationsService.createTemporaryArrangement(namespace)
+                newClass = DomainUtils.refetchArrangement(newClass)
+                tempSpace = DomainUtils.refetchArrangement(tempSpace)
+                Node oldRootNode = DomainUtils.getSingleSubnode(newClass.node)
+                Link newRootLink = basicOperationsService.adoptNode(tempSpace.node, oldRootNode, VersioningMethod.F)
+                basicOperationsService.checkoutLink(newRootLink)
+                newRootLink = DomainUtils.refetchLink(newRootLink)
+                Node newRootNode = newRootLink.subnode
 
-        if (copyNodes) {
-            log.debug "temp arrangement"
-            Arrangement tempSpace = basicOperationsService.createTemporaryArrangement(namespace)
-            newClass = DomainUtils.refetchArrangement(newClass)
-            tempSpace = DomainUtils.refetchArrangement(tempSpace)
-            Node oldRootNode = DomainUtils.getSingleSubnode(newClass.node)
-            Link newRootLink = basicOperationsService.adoptNode(tempSpace.node, oldRootNode, VersioningMethod.F)
-            basicOperationsService.checkoutLink(newRootLink)
-            newRootLink = DomainUtils.refetchLink(newRootLink)
-            Node newRootNode = newRootLink.subnode
+                copyNodes.each { Node copyNode ->
+                    log.debug "adopt"
+                    newRootNode = DomainUtils.refetchNode(newRootNode)
+                    copyNode = DomainUtils.refetchNode(copyNode)
+                    Link link = basicOperationsService.adoptNode(newRootNode, copyNode, VersioningMethod.V,
+                            linkType: DomainUtils.getBoatreeUri('classification-top-node')
+                    )
+                }
 
-            copyNodes.each { Node copyNode ->
-                log.debug "adopt"
+                log.debug "checkout"
+                basicOperationsService.massCheckoutWithSubnodes(newRootNode, copyNodes)
+
+                log.debug "persist"
                 newRootNode = DomainUtils.refetchNode(newRootNode)
-                copyNode = DomainUtils.refetchNode(copyNode)
-                Link link = basicOperationsService.adoptNode(newRootNode, copyNode, VersioningMethod.V,
-                        linkType: DomainUtils.getBoatreeUri('classification-top-node')
-                )
+                basicOperationsService.persistNode(e, newRootNode)
+
+                log.debug "version"
+                newClass = DomainUtils.refetchArrangement(newClass)
+                oldRootNode = DomainUtils.refetchNode(oldRootNode)
+                newRootNode = DomainUtils.refetchNode(newRootNode)
+                Map<Node, Node> replacementMap = new HashMap<Node, Node>()
+                replacementMap.put(oldRootNode, newRootNode)
+                versioningService.performVersioning(e, replacementMap, newClass)
+
+                log.debug "cleanup"
+                tempSpace = DomainUtils.refetchArrangement(tempSpace)
+                newClass = DomainUtils.refetchArrangement(newClass)
+                basicOperationsService.moveFinalNodesFromTreeToTree(tempSpace, newClass)
+
+                tempSpace = DomainUtils.refetchArrangement(tempSpace)
+                basicOperationsService.deleteArrangement(tempSpace)
             }
-
-            log.debug "checkout"
-            basicOperationsService.massCheckoutWithSubnodes(newRootNode, copyNodes)
-
-            log.debug "persist"
-            newRootNode = DomainUtils.refetchNode(newRootNode)
-            basicOperationsService.persistNode(e, newRootNode)
-
-            log.debug "version"
-            newClass = DomainUtils.refetchArrangement(newClass)
-            oldRootNode = DomainUtils.refetchNode(oldRootNode)
-            newRootNode = DomainUtils.refetchNode(newRootNode)
-            Map<Node, Node> replacementMap = new HashMap<Node, Node>()
-            replacementMap.put(oldRootNode, newRootNode)
-            versioningService.performVersioning(e, replacementMap, newClass)
-
-            log.debug "cleanup"
-            tempSpace = DomainUtils.refetchArrangement(tempSpace)
-            newClass = DomainUtils.refetchArrangement(newClass)
-            basicOperationsService.moveFinalNodesFromTreeToTree(tempSpace, newClass)
-
-            tempSpace = DomainUtils.refetchArrangement(tempSpace)
-            basicOperationsService.deleteArrangement(tempSpace)
         }
     }
 
     void updateClassification(Map params = [:], Arrangement a) throws ServiceException {
-        // todo - use Peter's "must have" thing
-        if (!a) throw new IllegalArgumentException("Arrangement must be specified")
-        if (!params.label) throw new IllegalArgumentException("label must be specified")
-        if (!params.description) throw new IllegalArgumentException("description must be specified")
+        mustHave(arrangement: a, label: params.label, description: params.description) {
 
-        if (params['label'] != a.label && Arrangement.findByNamespaceAndLabel(a.namespace, params.label)) {
-            ServiceException.raise(Message.makeMsg(Msg.updateClassification, [a, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]))
+            if (params['label'] != a.label && Arrangement.findByNamespaceAndLabel(a.namespace, params.label)) {
+                ServiceException.raise(Message.makeMsg(Msg.updateClassification, [a, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]))
+            }
+
+            if (params['label']) a.label = params.label
+            if (params.containsKey('description')) a.description = params.description
+
+            if (params.containsKey('shared')) a.shared = params.shared
+            a.save()
         }
-
-        if (params['label']) a.label = params.label
-        if (params.containsKey('description')) a.description = params.description
-
-        if (params.containsKey('shared')) a.shared = params.shared
-        a.save()
     }
 
     void deleteClassification(Arrangement a) throws ServiceException {
-        // todo - use Peter's "must have" thing
-        if (!a) throw new IllegalArgumentException("Arrangement must be specified")
-        basicOperationsService.deleteArrangement(a)
+        mustHave(arrangement: a) {
+            basicOperationsService.deleteArrangement(a)
+        }
     }
 
     /**
