@@ -59,7 +59,7 @@ class ClassificationManagerService implements ValidationUtils {
                 ServiceException.raise(Message.makeMsg(Msg.createClassification, [params.label, Message.makeMsg(Msg.LABEL_ALREADY_EXISTS, [params.label])]))
             }
 
-            List copyNodes
+            List<Node> copyNodes
 
             if (params.copyName) {
                 if (!params.copyNameIn) throw new IllegalArgumentException("if copyName is specified, then copyNameIn must be specified")
@@ -106,7 +106,9 @@ class ClassificationManagerService implements ValidationUtils {
 
             } else if (params.copyNameIn) {
                 Arrangement copyNameIn = params.copyNameIn as Arrangement
-                copyNodes = [DomainUtils.getSingleSubnode(copyNameIn.node)]
+                Node classificationRootNode = DomainUtils.getSingleSubnode(copyNameIn.node)
+                List<Node> topNodes = classificationRootNode.subLink.collect { it.subnode }
+                copyNodes = topNodes
             } else {
                 copyNodes = null
             }
