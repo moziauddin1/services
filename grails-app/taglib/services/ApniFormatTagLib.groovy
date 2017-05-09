@@ -211,7 +211,7 @@ class ApniFormatTagLib {
 
     def apniLink = { attrs ->
         String link = attrs.link
-        if(!link) {
+        if (!link) {
             Name name = attrs.name
             link = linkService.getPreferredLinkForObject(name) + '/api/apni-format'
         }
@@ -233,14 +233,14 @@ class ApniFormatTagLib {
         }
     }
 
-    def apc = {attrs ->
+    def apc = { attrs ->
         Node apcNode = attrs.apc
         Instance instance = attrs.instance ?: apcNode.instance
-        if(apcNode && instance && apcNode.instance.id == instance.id) {
+        if (apcNode && instance && apcNode.instance.id == instance.id) {
             String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: apcNode.name.id)
             String tree = ConfigService.classificationTreeName
             out << """<a href="${link}">"""
-            switch(apcNode.typeUriIdPart) {
+            switch (apcNode.typeUriIdPart) {
                 case 'ApcConcept':
                     out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>"""
                     break

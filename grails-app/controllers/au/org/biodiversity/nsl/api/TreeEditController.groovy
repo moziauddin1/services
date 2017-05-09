@@ -119,7 +119,7 @@ class TreeEditController {
         log.debug "treeViewService.getInstancePlacementInTree"
         Node currentNode = classificationService.isNameInClassification(p.instance.name, apc)
 
-// if the instance is draft currentNode will be null and updateNameTreePathFromNode will do nothing and return null
+        // if the instance is draft currentNode will be null and updateNameTreePathFromNode will do nothing and return null
         nameTreePathService.updateNameTreePathFromNode(currentNode)
 
         Map nodePlacementInTree = treeViewService.getInstancePlacementInTree(apc, p.instance)

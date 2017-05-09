@@ -332,7 +332,7 @@ FROM n''') { PreparedStatement stmt ->
         out.toString()
     }
 
-    @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])
+    @SuppressWarnings(["ChangeToOperator"])
     List<Link> getPathForNode(Arrangement a, Node n) {
         if (!a) throw new IllegalArgumentException("Arrangement not specified")
         if (!n) throw new IllegalArgumentException("Node not specified")

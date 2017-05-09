@@ -228,6 +228,10 @@ class NameTreePathService {
         (NameTreePath.executeQuery("select distinct ntp.tree.label from NameTreePath ntp where ntp.name = :name", [name: name]) as List<String>)
     }
 
+    static List<NameTreePath> findCurrentNameTreePathsForAllTrees(Name name) {
+        NameTreePath.findAllByNameAndNextIsNull(name)
+    }
+
     Integer treePathReport(String treeLabel) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
                 configService.nameSpace,

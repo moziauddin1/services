@@ -18,7 +18,10 @@ package au.org.biodiversity.nsl.tree
 
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Event
+import au.org.biodiversity.nsl.Link
 import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.NodeInternalType
+import au.org.biodiversity.nsl.VersioningMethod
 import au.org.biodiversity.nsl.api.SessionTrait
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
@@ -95,7 +98,27 @@ class VersioningService implements ValidationUtils, SessionTrait {
                         raise m
                     }
 
-                    // ok tree walk to get all the nodes that we will need to replace
+                    // (paul) ok tree walk to get all the nodes that we will need to replace
+
+                    //(pmc)
+                    // synthetic replacements are the nodes above the nodes being replaced that aren't already being
+                    // replaced.
+
+                    Set<Node> nodesToReplace = replacementMap.keySet() //just to make this readable
+                    Set<Node> superNodes = []
+                    nodesToReplace.each { Node nodeToBeReplaced ->
+                        Node superNode = nodeToBeReplaced
+                        while (superNode = getCurentSuperNode(superNode)) {
+                            superNodes.add(superNode)
+                        }
+                    }
+                    superNodes.removeAll(nodesToReplace)
+
+                    Node illegalReplacement = replacementMap.values().find { superNodes.contains(it) }
+                    if (illegalReplacement) {
+                        Node nodeToBeReplaced = replacementMap.find { entry -> entry.value = illegalReplacement }.key
+                        versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE_WITH_NODE_BEING_SYNTHETICALLY_REPLACED, [nodeToBeReplaced, illegalReplacement])
+                    }
 
                     createTempTreeReplacementsTable(cnct)
                     createTempTreeSynReplacementsTable(cnct)
@@ -110,76 +133,17 @@ class VersioningService implements ValidationUtils, SessionTrait {
                         }
                     }
 
-                    log.debug "finding synthetic replacements"
-                    Boolean versioningValidityCheckFailed = false
-                    int numberOfNewSyntheticNodesFound
-
-                    numberOfNewSyntheticNodesFound = withQ(cnct, '''
-				insert into tree_syn_replacements(id, pass_indicator)
-				select id, 'P' from tree_replacements
-				''',
-                            { PreparedStatement qry -> qry.executeUpdate() }
-                    ) as Integer
-
-                    log.debug("starting with ${numberOfNewSyntheticNodesFound} nodes")
-
-                    while (numberOfNewSyntheticNodesFound > 0) {
-                        numberOfNewSyntheticNodesFound = withQ(cnct, '''
-					insert into tree_syn_replacements(id, pass_indicator)
-					select distinct n.id, 'N'
-					from tree_syn_replacements cc
-						join tree_link l on cc.id = l.subnode_id
-						join tree_node n on l.supernode_id = n.id
-					where
-					cc.pass_indicator = 'P'
-					and l.versioning_method = 'V'
-					and n.id not in (select id from tree_syn_replacements)
-					and n.next_node_id is null
-					and n.CHECKED_IN_AT_ID is not null
-				''', { PreparedStatement qry -> qry.executeUpdate() }) as Integer
-
-                        log.debug("found ${numberOfNewSyntheticNodesFound} possible synthetic nodes")
-
-                        withQ(cnct, '''
-					update tree_syn_replacements set pass_indicator = 
-						case 
-							when pass_indicator = 'P' then null
-							when pass_indicator = 'N' then 'P'
-						end
-				''', { PreparedStatement qry -> qry.executeUpdate() })
-
+                    // temporarily recreate the try_syn_replacements table
+                    withQ(cnct, 'insert into tree_syn_replacements(id) values (?)') { PreparedStatement qry ->
+                        superNodes.each { node ->
+                            qry.setLong(1, node.id)
+                            qry.executeUpdate()
+                        }
                     }
 
-                    // zap all supernodes that we have an explicit replacement for
+//TODO (pmc) optimise below
 
-                    log.debug "filtering synthetic replacements"
-
-                    withQ cnct, """
-				delete from tree_syn_replacements where id in (
-					select id from tree_replacements
-				)
-				""",
-                            { PreparedStatement qry -> qry.executeUpdate() }
-
-                    // second check - you cannot replace a node with a node being synthetically replaced
-
-                    log.debug "looking for replacement nodes being synthetically replaced"
-
-                    withQ cnct, 'select a.id, a.id2 from tree_replacements a join tree_syn_replacements b on a.id2 = b.id',
-                            { PreparedStatement qry ->
-                                ResultSet rs = qry.executeQuery()
-                                try {
-                                    while (rs.next()) {
-                                        versioningValidityCheckFailed = true
-                                        Node a1 = Node.get(rs.getLong(1))
-                                        Node a2 = Node.get(rs.getLong(2))
-                                        versioningValidityCheckFailures << makeMsg(Msg.CANNOT_REPLACE_NODE_WITH_NODE_BEING_SYNTHETICALLY_REPLACED, [a1, a2])
-                                    }
-                                }
-                                finally {
-                                    rs.close()
-                                }
-                            }
+                    Boolean versioningValidityCheckFailed = false
 
                     // third check - you cannot replace a node with any node that is above a tracking link that has a subnode being replaced,
                     // ether directly or synthetically
@@ -197,6 +161,10 @@ class VersioningService implements ValidationUtils, SessionTrait {
                     // TODO: get my head around what this means in terms of versioning
 
                     log.debug "checking for possibly entangled tracking links"
+
+                    // (pmc) find all the super nodes above nodes being replaced that are linked by a tracking link to the
+                    // nodes being replaced. Check that none of those super nodes are replacement nodes.
+
 
                     withQ cnct, '''
 				with recursive all_being_replaced as (
@@ -558,6 +526,21 @@ class VersioningService implements ValidationUtils, SessionTrait {
         }
     }
 
+    private static Node getCurentSuperNode(Node node) {
+        node.supLink.find {
+            it.supernode.internalType == NodeInternalType.T &&
+                    it.supernode.next == null &&
+                    it.supernode.checkedInAt != null
+        }?.supernode
+    }
+
+    private static List<Node> getTrackingLinkSuperNodes(Node node) {
+        node.supLink.findAll { Link link ->
+            link.versioningMethod == VersioningMethod.T
+        }.collect { it.supernode }
+    }
+
+
     @SuppressWarnings("GrMethodMayBeStatic")
     private List<Message> checkReplacementMapNodes(Map<Node, Node> replacementMap) {
         List<Message> versioningValidityCheckFailures = []
@@ -827,7 +810,16 @@ class VersioningService implements ValidationUtils, SessionTrait {
             return v
         } as Map<Node, Node>
     }
-
+    /**
+     * take a node in a workspace tree and map it to the previous node in a source tree
+     *
+     * pmc TODO this *really* should just take the node as it's parameter
+     *
+     * @param from the nodes (workspace) tree
+     * @param to the source tree this node (and subtended nodes) will be checked into
+     * @param node
+     * @return A Map of nodes being replaced to replacement nodes
+     */
     Map<Node, Node> getCheckinVersioningMap(Arrangement from, Arrangement to, Node node) {
         mustHave(from: from, to: to, node: node) {
             clearAndFlush {
@@ -853,20 +845,24 @@ class VersioningService implements ValidationUtils, SessionTrait {
 
                 Map<Node, Node> v = new HashMap<Node, Node>()
 
+// (pmurray - edited to add punctuation)
+// OK! This is going to be complicated.
+// First, find all nodes that we are going to be moving;
+// this means anything below the node that is in the same tree.
+// Next, find all nodes that will be replaced;
+// this means anything beneath the prev of the node being checked in.
+// Next, disregard any replaced nodes that are visible from the node being
+// checked in, because they are not going away anyway.
+// This becomes part of the search query - might not need another step
+// all the remaining nodes are either being replaced with a node being checked in
+// or with the end node.
+
                 doWork sessionFactory_nsl, { Connection cnct ->
                     withQ cnct, '''
--- OK! This is going to be complicated
--- first, find all nodes that we are going to be moving
---   this means anything below the node node that is in the same tree
--- next, find all nodes that will be replaced
---  this means anything beneath the prev of the node being checked in
--- next, disregard any replaced nodes that are visible from the node being
---  checked in, because they are not going away anyway
---  this becomdes part of the search query - might not need another step
--- all the remaining nodes are either being replaced eith a node being checked in
---   or with the end node
 with recursive
 replacement_nodes as (
+-- all the non value sub nodes of 'node' on tree 'from'
+
     select nn.id from tree_node nn where nn.id = ? and nn.tree_arrangement_id = ? and nn.internal_type != 'V'
     union all
     select nn.id
@@ -876,6 +872,8 @@ replacement_nodes as (
       where nn.tree_arrangement_id = ? and nn.internal_type != 'V'
 ),
 visible_branches as (
+-- find nodes *not* on the tree 'from', linked to replacement nodes
+
   select nn.id
     from replacement_nodes
       join tree_link l on replacement_nodes.id = l.supernode_id
@@ -883,6 +881,9 @@ visible_branches as (
       where nn.tree_arrangement_id <> ? and nn.internal_type != 'V'
  ),
 nodes_being_replaced as (
+-- get the previous node (on the 'to' tree) of 'node', and it's sub nodes on the 'to' tree
+-- so long as they're not in 'visible_branches'
+
   select nn.id from tree_node nnxx join tree_node nn on nnxx.prev_node_id = nn.id
     where nnxx.id = ? and nn.tree_arrangement_id = ? and nn.internal_type != 'V'
     and nn.id not in (select id from visible_branches)
@@ -894,6 +895,8 @@ nodes_being_replaced as (
       where nn.tree_arrangement_id = ? and nn.internal_type != 'V'
       and nn.id not in (select id from visible_branches)
 )
+-- map the nodes being replaced to replacement nodes by previous node id OR the end node if none.
+
 select id, coalesce((select n.id
   from tree_node n join replacement_nodes nn on n.id = nn.id
   where n.prev_node_id = nodes_being_replaced.id
