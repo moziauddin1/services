@@ -1169,7 +1169,7 @@ ${display(parentShouldBe)}
 
                 if (!error.nested.isEmpty()) ServiceException.raise(error)
 
-                // oh well. Let's write this dog. At ewqch step we may nned to re-search/re-fetch stuff
+                // oh well. Let's write this dog. At each step we may need to re-search/re-fetch stuff
 
                 // First, if the node needs to be updated, then check it out and update it.
 
@@ -1291,7 +1291,6 @@ ${display(parentShouldBe)}
                 }
 
                 return null
-
             }
             catch (Throwable t) {
                 for (Throwable tt = t; tt != null; tt = tt.getCause()) {

@@ -21,7 +21,6 @@ import au.org.biodiversity.nsl.api.SessionTrait
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import org.apache.shiro.UnavailableSecurityManagerException
-import org.hibernate.SessionFactory
 import org.apache.shiro.SecurityUtils
 
 import java.sql.Connection
@@ -95,10 +94,9 @@ import static au.org.biodiversity.nsl.tree.HibernateSessionUtils.*
  */
 
 @Transactional(rollbackFor = [ServiceException])
-class BasicOperationsService  implements ValidationUtils, SessionTrait{
+class BasicOperationsService implements ValidationUtils, SessionTrait {
     static datasource = 'nsl'
 
-    def messageSource
     QueryService queryService
     def grailsApplication
 
@@ -354,6 +352,7 @@ class BasicOperationsService  implements ValidationUtils, SessionTrait{
 
     Node createDraftNode(Map params = [:], Node supernode, VersioningMethod versioningMethod, NodeInternalType internalType) {
         mustHave(supernode: supernode, versioningMethod: versioningMethod, internalType: internalType) {
+            mapAttach(params)
             Uri nodeType = params.nodeType as Uri
             Uri linkType = params.linkType as Uri
             Uri name = params.name as Uri
@@ -406,6 +405,23 @@ class BasicOperationsService  implements ValidationUtils, SessionTrait{
             supernode.save(flush: true)
             return node.refresh()
         } as Node
+    }
+
+    /**
+     * This checks for domain objects and if they've become detatched from the session it re-attaches them.
+     * This can happen for a couple of reasons, but here it is most likely because of the cleanAndFlush ing that goes on
+     * all over the place. We'll slowly remove these things and then we may not need this.
+     *
+     * This simply looks at the collection of values, it doesn't recurse at all.
+     *
+     * @param things - A map of things.
+     */
+    private mapAttach(Map things) {
+        for (thing in things.values()) {
+            if (grailsApplication.isDomainClass(thing.getClass()) && !thing.isAttached()) {
+                thing.attach()
+            }
+        }
     }
 
     private static Integer nextLinkSequence(Set<Link> links) {

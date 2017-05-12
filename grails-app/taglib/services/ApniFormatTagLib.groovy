@@ -137,12 +137,13 @@ class ApniFormatTagLib {
         String treeName = attrs.tree ?: configService.classificationTreeName
         NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, treeName)
         if (nameTreePath) {
-            out << '<branch title="click to see branch.">'
+            out << "<branch title=\"click to see branch in $treeName.\">"
             out << body()
 
             List<Node> nodesInBranch = nameTreePathService.getCurrentNodesInBranch(nameTreePath)
 
             out << '<ul>'
+            out << "<li>$treeName</li>"
             nodesInBranch.each { Node n ->
                 String link = linkService.getPreferredLinkForObject(n)
                 if (link) {
