@@ -73,9 +73,9 @@ class JsonRendererService {
     // we need this anywhere that citation and citationHtml appear as fields
     static String citationAuthYear(Reference reference) {
         if (reference) {
-            return "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}";
+            return "${reference.author?.abbrev ?: reference.author?.name ?: reference.author?.fullName}, ${reference.year}"
         } else {
-            return null;
+            return null
         }
     }
 
@@ -402,7 +402,7 @@ class JsonRendererService {
                 namespace: getBriefNamespace(link.supernode.root.namespace),
         ]
 
-        return data;
+        return data
     }
 
     Map getBriefLinkNoSupernode(Link link) {
@@ -413,7 +413,7 @@ class JsonRendererService {
                 id     : link.subnodeId,
                 type   : link.subnode.internalType.name(),
                 typeUri: getBriefTreeUri(DomainUtils.getNodeTypeUri(link.subnode)),
-        ]);
+        ])
 
         Map data = [
                 class           : link.class.name,
@@ -422,9 +422,9 @@ class JsonRendererService {
                 linkSeq         : link.linkSeq,
                 versioningMethod: link.versioningMethod,
                 isSynthetic     : link.synthetic,
-        ];
+        ]
 
-        return data;
+        return data
     }
 
     Map getBriefLiteralLinkNoSupernode(Link link) {
@@ -447,7 +447,7 @@ class JsonRendererService {
                 title      : uri?.title
         ]
 
-        return data;
+        return data
     }
 
     Map marshallNode(Node node) {
@@ -472,11 +472,11 @@ class JsonRendererService {
 
                 subnodes   : node.subLink.sort { Link a, Link b ->
                     if (a.subnode.internalType != b.subnode.internalType) {
-                        return a.subnode.internalType <=> b.subnode.internalType;
+                        return a.subnode.internalType <=> b.subnode.internalType
                     } else if (a.subnode.internalType == NodeInternalType.T) {
-                        return (a.subnode.name?.fullName ?: '') <=> (b.subnode.name?.fullName ?: '');
+                        return (a.subnode.name?.fullName ?: '') <=> (b.subnode.name?.fullName ?: '')
                     } else {
-                        return a <=> b;
+                        return a <=> b
                     }
                 }.findAll { it.subnode.internalType != NodeInternalType.V }.collect { getBriefLinkNoSupernode(it) },
 
@@ -489,17 +489,17 @@ class JsonRendererService {
         switch (node.internalType) {
             case NodeInternalType.S:
             case NodeInternalType.Z:
-                break;
+                break
 
             case NodeInternalType.T:
-                if (DomainUtils.hasName(node)) data.nameUri = getBriefTreeUri(DomainUtils.getNameUri(node));
-                if (DomainUtils.hasTaxon(node)) data.taxonUri = getBriefTreeUri(DomainUtils.getTaxonUri(node));
-                if (node.instance) data.instance = getBriefInstance(node.instance);
-                if (node.name) data.name = getBriefName(node.name);
+                if (DomainUtils.hasName(node)) data.nameUri = getBriefTreeUri(DomainUtils.getNameUri(node))
+                if (DomainUtils.hasTaxon(node)) data.taxonUri = getBriefTreeUri(DomainUtils.getTaxonUri(node))
+                if (node.instance) data.instance = getBriefInstance(node.instance)
+                if (node.name) data.name = getBriefName(node.name)
         // fall through
             case NodeInternalType.D:
-                if (DomainUtils.hasResource(node)) data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node));
-                break;
+                if (DomainUtils.hasResource(node)) data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node))
+                break
 
         // this should never happen. Value nodes are not directly used by anything, they appear as values on the
         // supernode. However, we will handle the case here.
@@ -507,16 +507,16 @@ class JsonRendererService {
                 if (DomainUtils.hasResource(node)) {
                     data.resourceUri = getBriefTreeUri(DomainUtils.getResourceUri(node))
                 } else {
-                    data.literal = node.literal;
+                    data.literal = node.literal
                 }
-                break;
+                break
         }
 
-        return data;
+        return data
     }
 
     Map marshallArrangement(Arrangement arrangement) {
-        Map data = brief arrangement, [
+        Map data = brief(arrangement, [
                 arrangementType: arrangement.arrangementType,
                 label          : arrangement.label,
                 title          : arrangement.title,
@@ -527,9 +527,12 @@ class JsonRendererService {
                 node           : brief(arrangement.node, [:]),
                 currentRoot    : arrangement.arrangementType == ArrangementType.P && arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
-                baseArrangement: brief(arrangement.baseArrangement)
-        ];
-        return data;
+                baseArrangement: (brief(arrangement.baseArrangement, [
+                        label: arrangement.baseArrangement?.label,
+                        title: arrangement.baseArrangement?.title
+                ]))
+        ])
+        return data
     }
 
     Map marshallEvent(Event event) {
@@ -537,8 +540,8 @@ class JsonRendererService {
                 timeStamp: event.timeStamp,
                 note     : event.note,
                 namespace: getBriefNamespace(event.namespace),
-        ];
-        return data;
+        ]
+        return data
     }
 
     Map marshallTreeServiceException(ServiceException exception) {
@@ -551,26 +554,26 @@ class JsonRendererService {
     }
 
     Map marshallTreeServiceMessage(Message msg) {
-        String message;
-        String rawMessage;
-        String plainText;
+        String message
+        String rawMessage
+        String plainText
 
         try {
-            message = messageSource.getMessage(msg, (Locale) null);
+            message = messageSource.getMessage(msg, (Locale) null)
         }
         catch (NoSuchMessageException ex) {
             message = msg.msg.key
         }
 
         try {
-            rawMessage = messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null);
+            rawMessage = messageSource.getMessage(msg.msg.getKey(), (Object[]) null, (Locale) null)
         }
         catch (NoSuchMessageException ex) {
             rawMessage = msg.msg.key
         }
 
         try {
-            plainText = msg.getHumanReadableMessage();
+            plainText = msg.getHumanReadableMessage()
         }
         catch (NoSuchMessageException ex) {
             plainText = msg.getLocalisedString()
@@ -597,17 +600,17 @@ class JsonRendererService {
     }
 
     @SuppressWarnings("GroovyAssignabilityCheck")
-    public static <T> T initializeAndUnproxy(T entity) {
+    static <T> T initializeAndUnproxy(T entity) {
         if (entity == null) {
-            throw new NullPointerException("Entity passed for initialization is null");
+            throw new NullPointerException("Entity passed for initialization is null")
         }
 
-        Hibernate.initialize(entity);
+        Hibernate.initialize(entity)
         if (entity instanceof HibernateProxy) {
             entity = (T) ((HibernateProxy) entity).getHibernateLazyInitializer()
-                                                  .getImplementation();
+                                                  .getImplementation()
         }
-        return entity;
+        return entity
     }
 }
 
