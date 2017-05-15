@@ -867,6 +867,7 @@ class TreeJsonViewController {
         } else if (DomainUtils.getBoatreeUri('workspace-root').equals(DomainUtils.getNodeTypeUri(n))) {
             json.label = "${n.root.label ?: n.root.title} (${n.root.baseArrangement.label ?: n.root.baseArrangement.title})"
         } else if (n.name) {
+            json.nameId = n.nameId
             json.simpleName = n.name.simpleName
             json.simpleNameHtml = n.name.simpleNameHtml
             json.fullName = n.name.fullName
@@ -875,6 +876,7 @@ class TreeJsonViewController {
             json.nameType = n.name.nameType.name
 
             if (n.instance) {
+                json.instanceId = n.instanceId
                 json.instanceType = n.instance.instanceType.name
                 if (!n.instance.instanceType.relationship && n.instance.reference) {
                     json.authYear = JsonRendererService.citationAuthYear(n.instance.reference)
