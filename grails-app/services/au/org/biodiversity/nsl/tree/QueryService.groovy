@@ -596,6 +596,9 @@ WHERE
     List<Instance> findSynonymsOfInstanceInTree(Arrangement tree, Instance instance) {
         List<Instance> l = new ArrayList<Instance>()
 
+        //find instances that cite this instance and check if they are on this tree or the base tree
+
+
         doWork(sessionFactory_nsl) { Connection cnct ->
             withQ(cnct, '''
 WITH RECURSIVE
@@ -646,54 +649,59 @@ WHERE tree_arrangement_id = ?''') { PreparedStatement qry ->
 
     @SuppressWarnings("ChangeToOperator")
     List<Instance> findInstancesHavingSynonymInTree(Arrangement tree, Instance instance) {
-        List<Instance> l = new ArrayList<Instance>()
+//        List<Instance> l = new ArrayList<Instance>()
+        List<Instance> potential = Instance.executeQuery('select i.citedBy from Instance i where i.cites = :instance', [instance: instance])
+        List<Instance> synonyms = Instance.executeQuery('''
+select n.instance 
+from Node n 
+where n.next is null and n.root = :tree 
+and n.instance in (:potential)''', [tree: tree, potential: potential])
+//        doWork(sessionFactory_nsl) { Connection cnct ->
+//            withQ(cnct, '''
+//WITH RECURSIVE
+//    walk AS (
+//    SELECT
+//      instance.id AS relationship_instance_id,
+//      tree_node.id   node_id,
+//      tree_node.tree_arrangement_id
+//    FROM instance
+//      JOIN tree_node ON tree_node.instance_id = instance.cited_by_id
+//    WHERE instance.cites_id = ?
+//          AND tree_node.internal_type = 'T'
+//          AND tree_node.tree_arrangement_id IN (?, ?)
+//          AND tree_node.next_node_id IS NULL
+//    UNION ALL
+//    SELECT
+//      walk.relationship_instance_id,
+//      tree_node.id node_id,
+//      tree_node.tree_arrangement_id
+//    FROM walk
+//      JOIN tree_link ON tree_link.subnode_id = walk.node_id
+//      JOIN tree_node ON tree_link.supernode_id = tree_node.id
+//    WHERE tree_node.next_node_id IS NULL
+//          AND tree_node.tree_arrangement_id IN (?, ?)
+//          AND walk.tree_arrangement_id <> ?
+//  )
+//SELECT DISTINCT relationship_instance_id
+//FROM walk
+//WHERE tree_arrangement_id = ? ''') { PreparedStatement qry ->
+//                qry.setLong(1, instance.id)
+//                qry.setLong(2, tree.id)
+//                qry.setLong(3, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
+//                qry.setLong(4, tree.id)
+//                qry.setLong(5, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
+//                qry.setLong(6, tree.id)
+//                qry.setLong(7, tree.id)
+//
+//
+//                ResultSet rs = qry.executeQuery()
+//                while (rs.next())
+//                    l.add(Instance.get(rs.getLong('relationship_instance_id')))
+//                rs.close()
+//            }
+//        }
 
-        doWork(sessionFactory_nsl) { Connection cnct ->
-            withQ(cnct, '''
-WITH RECURSIVE
-    walk AS (
-    SELECT
-      instance.id AS relationship_instance_id,
-      tree_node.id   node_id,
-      tree_node.tree_arrangement_id
-    FROM instance
-      JOIN tree_node ON tree_node.instance_id = instance.cited_by_id
-    WHERE instance.cites_id = ?
-          AND tree_node.internal_type = 'T'
-          AND tree_node.tree_arrangement_id IN (?, ?)
-          AND tree_node.next_node_id IS NULL
-    UNION ALL
-    SELECT
-      walk.relationship_instance_id,
-      tree_node.id node_id,
-      tree_node.tree_arrangement_id
-    FROM walk
-      JOIN tree_link ON tree_link.subnode_id = walk.node_id
-      JOIN tree_node ON tree_link.supernode_id = tree_node.id
-    WHERE tree_node.next_node_id IS NULL
-          AND tree_node.tree_arrangement_id IN (?, ?)
-          AND walk.tree_arrangement_id <> ?
-  )
-SELECT DISTINCT relationship_instance_id
-FROM walk
-WHERE tree_arrangement_id = ? ''') { PreparedStatement qry ->
-                qry.setLong(1, instance.id)
-                qry.setLong(2, tree.id)
-                qry.setLong(3, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(4, tree.id)
-                qry.setLong(5, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(6, tree.id)
-                qry.setLong(7, tree.id)
-
-
-                ResultSet rs = qry.executeQuery()
-                while (rs.next())
-                    l.add(Instance.get(rs.getLong('relationship_instance_id')))
-                rs.close()
-            }
-        }
-
-        return l
+        return synonyms
     }
 
 

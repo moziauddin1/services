@@ -16,6 +16,10 @@
 
 package au.org.biodiversity.nsl.tree
 
+import au.org.biodiversity.nsl.Arrangement
+import au.org.biodiversity.nsl.Instance
+import au.org.biodiversity.nsl.Name
+
 import javax.sql.DataSource
 
 import org.apache.commons.logging.Log
@@ -27,30 +31,13 @@ import java.sql.Timestamp
 
 @Mixin(BuildSampleTreeMixin)
 class QueryServiceSpec extends Specification {
-	DataSource dataSource_nsl
-	SessionFactory sessionFactory_nsl
-	static final Log log = LogFactory.getLog(QueryServiceSpec.class)
-
+    DataSource dataSource_nsl
+    SessionFactory sessionFactory_nsl
+    static final Log log = LogFactory.getLog(QueryServiceSpec.class)
 
     // fields
     BasicOperationsService basicOperationsService
     QueryService queryService
-
-    // fixture methods
-
-    def setup() {
-    }
-
-    def cleanup() {
-    }
-
-    def setupSpec() {
-    }
-
-    def cleanupSpec() {
-    }
-
-    // feature methods
 
     void "test getStatistics simple"() {
         when: "we get statistics"
@@ -90,5 +77,31 @@ class QueryServiceSpec extends Specification {
         s
     }
 
+    void "test find Synonyms of instance in tree"() {
+        when: "I look for Doodia"
+        List<Name> doodiaAspera = Name.findAllBySimpleName('Doodia aspera')
+
+        println doodiaAspera
+
+        then:
+        doodiaAspera.size() == 1
+
+        when: "I check for synonyms on a tree"
+        Arrangement apc = Arrangement.findByLabel('APC')
+        //  Woodwardia aspera (R.Br.) Mett.
+        // nomenclatural synonym: Doodia aspera R.Br.
+        Instance woodwardiaAspera = Instance.get(536794) //comb. nov.
+        List<Instance> synonyms = queryService.findInstancesHavingSynonymInTree(apc, woodwardiaAspera)
+        println synonyms
+
+        then: "We should find Doodia aspera R.Br."
+        woodwardiaAspera
+        woodwardiaAspera.name.simpleName == 'Woodwardia aspera'
+        synonyms.size() == 1
+        synonyms.first().name.fullName == 'Woodwardia aspera (R.Br.) Mett.'
+        synonyms.first().citedBy.name.fullName == 'Doodia aspera R.Br.'
+
+
+    }
 
 }

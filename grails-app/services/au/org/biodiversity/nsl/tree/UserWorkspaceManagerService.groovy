@@ -1111,14 +1111,14 @@ ${display(parentShouldBe)}
 
                 // CHECK FOR SYNONYMS
                 // this query returns the relationship instance
-                List<Instance> l = queryService.findSynonymsOfInstanceInTree(ws, instance)
+                List<Instance> synonymInstances = queryService.findSynonymsOfInstanceInTree(ws, instance)
 
-                log.debug("findSynonymsOfInstanceInTree: ${l}")
+                log.debug("findSynonymsOfInstanceInTree: ${synonymInstances}")
 
-                if (!l.isEmpty()) {
+                if (!synonymInstances.isEmpty()) {
                     Message mm = Message.makeMsg(Msg.HAS_SYNONYM_ALREADY_IN_TREE)
                     error.nested.add(mm)
-                    for (Instance i : l) {
+                    for (Instance i : synonymInstances) {
                         if (!currentLink || i.cites.name != name)
                             mm.nested.add(Message.makeMsg(Msg.HAS_SYNONYM_ALREADY_IN_TREE_item, [i.cites, i.instanceType.ofLabel]))
                     }
@@ -1126,14 +1126,14 @@ ${display(parentShouldBe)}
 
                 // CHECK FOR SYNONYMS
                 // this query returns the relationship instance
-                l = queryService.findInstancesHavingSynonymInTree(ws, instance)
+                synonymInstances = queryService.findInstancesHavingSynonymInTree(ws, instance)
 
-                log.debug("findInstancesHavingSynonymInTree: ${l}")
+                log.debug("findInstancesHavingSynonymInTree: ${synonymInstances}")
 
-                if (!l.isEmpty()) {
+                if (!synonymInstances.isEmpty()) {
                     Message mm = Message.makeMsg(Msg.IS_SYNONYM_OF_ALREADY_IN_TREE)
                     error.nested.add(mm)
-                    for (Instance i : l) {
+                    for (Instance i : synonymInstances) {
                         if (!currentLink || i.citedBy.name != name)
                             mm.nested.add(Message.makeMsg(Msg.IS_SYNONYM_OF_ALREADY_IN_TREE_item, [i.citedBy, i.instanceType.hasLabel]))
                     }
