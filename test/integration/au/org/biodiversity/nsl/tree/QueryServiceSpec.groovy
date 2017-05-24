@@ -18,7 +18,6 @@ package au.org.biodiversity.nsl.tree
 
 import au.org.biodiversity.nsl.Arrangement
 import au.org.biodiversity.nsl.Instance
-import au.org.biodiversity.nsl.Name
 
 import javax.sql.DataSource
 

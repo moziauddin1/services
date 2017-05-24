@@ -1127,12 +1127,12 @@ ${display(parentShouldBe)}
                     if (parentName.isRankedLowerThan(name)) {
                         throw new PlacementException("You can't place ${name.simpleName} (${name.nameRank.abbrev}) below ${parentName.simpleName} (${parentName.nameRank.abbrev}).", HttpStatus.CONFLICT)
                     }
-                }
 
-                // If the name is being placed under a name that is is generic or below,
-                // then the common part of the names must match unless the name being placed under it is an excluded name.
-                if ("ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
-                    throw new PlacementException("You can't place ${name.simpleName} below a different parentage (${parentName.simpleName}) to ${name.parent.simpleName} as you'd need a new name.", HttpStatus.CONFLICT)
+                    // If the name is being placed under a name that is is generic or below,
+                    // then the common part of the names must match unless the name being placed under it is an excluded name.
+                    if ("ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
+                        throw new PlacementException("You should place ${name.simpleName} below ${majorParentOf(name.parent).simpleName}, not ${parentName.simpleName}.", HttpStatus.CONFLICT)
+                    }
                 }
             }
 
