@@ -511,7 +511,6 @@ WHERE root = :arrangement
 ''', [arrangement: classification, idPart: taxonUri.idPart, namespace: taxonUri.nsPart])
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
     Collection<Link> findCurrentNamePlacement(Arrangement classification, Uri nameUri) {
         Link.executeQuery('''SELECT l
 FROM Link l
@@ -527,23 +526,6 @@ WHERE
 ''', [arrangement: classification, idPart: nameUri.idPart, namespace: nameUri.nsPart])
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
-    Collection<Link> findCurrentTaxonPlacement(Arrangement classification, Uri taxonUri) {
-        Link.executeQuery('''SELECT l
-FROM Link l
-WHERE
-  supernode.root = :arrangement
-  AND supernode.checkedInAt IS NOT NULL
-  AND supernode.next IS NULL
-  AND subnode.root = :arrangement
-  AND subnode.taxonUriIdPart = :idPart
-  AND subnode.taxonUriNsPart = :namespace
-  AND subnode.checkedInAt IS NOT NULL
-  AND subnode.next IS NULL
-''', [arrangement: classification, idPart: taxonUri.idPart, namespace: taxonUri.nsPart])
-    }
-
-    @SuppressWarnings("GroovyUnusedDeclaration")
     Collection<Link> findCurrentNslNamePlacement(Arrangement classification, Name nslName) {
         Link.executeQuery('''SELECT l
 FROM Link l
@@ -556,21 +538,6 @@ WHERE
   AND subnode.checkedInAt IS NOT NULL
   AND subnode.next IS NULL
 ''', [arrangement: classification, nslName: nslName])
-    }
-
-    @SuppressWarnings("GroovyUnusedDeclaration")
-    Collection<Link> findCurrentNslInstancePlacement(Arrangement classification, Instance nslInstance) {
-        Link.executeQuery('''SELECT l
-FROM Link l
-WHERE
-  supernode.root = :arrangement
-  AND supernode.checkedInAt IS NOT NULL
-  AND supernode.next IS NULL
-  AND subnode.root = :arrangement
-  AND subnode.instance = :nslInstance
-  AND subnode.checkedInAt IS NOT NULL
-  AND subnode.next IS NULL
-''', [arrangement: classification, nslInstance: nslInstance])
     }
 
     @SuppressWarnings("ChangeToOperator")
@@ -591,121 +558,55 @@ WHERE
         return l
     }
 
-    // this query returns the relationship instances where instance.hasSynonym foo
-    @SuppressWarnings("ChangeToOperator")
-    List<Instance> findSynonymsOfInstanceInTree(Arrangement tree, Instance instance) {
-        List<Instance> l = new ArrayList<Instance>()
-
-        //find instances that cite this instance and check if they are on this tree or the base tree
-
-
-        doWork(sessionFactory_nsl) { Connection cnct ->
-            withQ(cnct, '''
-WITH RECURSIVE
-    walk AS (
-    SELECT
-      instance.id  relationship_instance_id,
-      tree_node.id node_id,
-      tree_node.tree_arrangement_id
-    FROM instance
-      JOIN tree_node ON instance.cites_id = tree_node.instance_id
-    WHERE instance.cited_by_id = ?
-          AND tree_node.internal_type = 'T'
-          AND tree_node.tree_arrangement_id IN (?, ?)
-          AND tree_node.next_node_id IS NULL
-    UNION ALL
-    SELECT
-      walk.relationship_instance_id,
-      tree_node.id node_id,
-      tree_node.tree_arrangement_id
-    FROM walk
-      JOIN tree_link ON tree_link.subnode_id = walk.node_id
-      JOIN tree_node ON tree_link.supernode_id = tree_node.id
-    WHERE tree_node.next_node_id IS NULL
-          AND tree_node.tree_arrangement_id IN (?, ?)
-          AND walk.tree_arrangement_id <> ?
-  )
-SELECT DISTINCT relationship_instance_id
-FROM walk
-WHERE tree_arrangement_id = ?''') { PreparedStatement qry ->
-                qry.setLong(1, instance.id)
-                qry.setLong(2, tree.id)
-                qry.setLong(3, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(4, tree.id)
-                qry.setLong(5, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(6, tree.id)
-                qry.setLong(7, tree.id)
-
-
-                ResultSet rs = qry.executeQuery()
-                while (rs.next())
-                    l.add(Instance.get(rs.getLong('relationship_instance_id')))
-                rs.close()
-            }
-        }
-
-        return l
+    /**
+     * This checks to see if the instance you are about to place onto the tree considers any names already on the tree
+     * to be a synonym of itself. It checks the synonyms by name as the instance on the tree may not consider this
+     * instance to be a synonym.
+     *
+     * This checks both the tree and it's base tree
+     * This ONLY checks for taxonomic synonyms
+     *
+     * @link https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+     * @param tree - the tree and base tree we're interested in
+     * @param instance - the instance we're trying to place on the tree
+     * @return
+     */
+    List<Instance> findSynonymsOfThisInstanceInATree(Arrangement tree, Instance instance) {
+        Instance.executeQuery('''
+select synonym from Instance synonym, Node node
+where node.root  in (:tree, :baseTree)
+  and synonym.citedBy = :instance
+  and synonym.instanceType.taxonomic = true
+  and node.name = synonym.name
+  and node.next is null
+''', [tree: tree, baseTree: tree.baseArrangement ?: tree, instance: instance])
     }
 
-    @SuppressWarnings("ChangeToOperator")
-    List<Instance> findInstancesHavingSynonymInTree(Arrangement tree, Instance instance) {
-//        List<Instance> l = new ArrayList<Instance>()
-        List<Instance> potential = Instance.executeQuery('select i.citedBy from Instance i where i.cites = :instance', [instance: instance])
-        List<Instance> synonyms = Instance.executeQuery('''
-select n.instance 
-from Node n 
-where n.next is null and n.root = :tree 
-and n.instance in (:potential)''', [tree: tree, potential: potential])
-//        doWork(sessionFactory_nsl) { Connection cnct ->
-//            withQ(cnct, '''
-//WITH RECURSIVE
-//    walk AS (
-//    SELECT
-//      instance.id AS relationship_instance_id,
-//      tree_node.id   node_id,
-//      tree_node.tree_arrangement_id
-//    FROM instance
-//      JOIN tree_node ON tree_node.instance_id = instance.cited_by_id
-//    WHERE instance.cites_id = ?
-//          AND tree_node.internal_type = 'T'
-//          AND tree_node.tree_arrangement_id IN (?, ?)
-//          AND tree_node.next_node_id IS NULL
-//    UNION ALL
-//    SELECT
-//      walk.relationship_instance_id,
-//      tree_node.id node_id,
-//      tree_node.tree_arrangement_id
-//    FROM walk
-//      JOIN tree_link ON tree_link.subnode_id = walk.node_id
-//      JOIN tree_node ON tree_link.supernode_id = tree_node.id
-//    WHERE tree_node.next_node_id IS NULL
-//          AND tree_node.tree_arrangement_id IN (?, ?)
-//          AND walk.tree_arrangement_id <> ?
-//  )
-//SELECT DISTINCT relationship_instance_id
-//FROM walk
-//WHERE tree_arrangement_id = ? ''') { PreparedStatement qry ->
-//                qry.setLong(1, instance.id)
-//                qry.setLong(2, tree.id)
-//                qry.setLong(3, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-//                qry.setLong(4, tree.id)
-//                qry.setLong(5, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-//                qry.setLong(6, tree.id)
-//                qry.setLong(7, tree.id)
-//
-//
-//                ResultSet rs = qry.executeQuery()
-//                while (rs.next())
-//                    l.add(Instance.get(rs.getLong('relationship_instance_id')))
-//                rs.close()
-//            }
-//        }
-
-        return synonyms
+    /**
+     * This checks if any instances already on the tree consider this instance to be a synonym.
+     *
+     * This checks both the tree and it's base tree
+     * This ONLY checks for taxonomic synonyms
+     *
+     * @link https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+     * @param tree - the tree and base tree we're interested in
+     * @param instance - the instance we're trying to place on the tree
+     * @return
+     */
+    List<Instance> findInstancesInATreeThatSayThisIsASynonym(Arrangement tree, Instance instance) {
+        Instance.executeQuery('''
+select relation 
+  from Node node, Instance relation 
+  where node.next is null 
+    and node.root in (:tree, :baseTree) 
+    and node.instance in (select i.citedBy from Instance i where i.cites = :instance and i.instanceType.taxonomic = true)
+    and relation.cites = :instance 
+    and relation.citedBy = node.instance
+''', [tree: tree, baseTree: tree.baseArrangement ?: tree, instance: instance])
     }
 
 
-    @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])
+    @SuppressWarnings(["ChangeToOperator"])
     List findNamesInSubtree(Node node, String nameLike) {
         List l = []
 
@@ -786,7 +687,7 @@ where tree_runner.running_node_id = ?
 
     }
 
-    @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])
+    @SuppressWarnings(["ChangeToOperator"])
     List findNamesDirectlyInSubtree(Node node, String nameLike) {
 
         /**

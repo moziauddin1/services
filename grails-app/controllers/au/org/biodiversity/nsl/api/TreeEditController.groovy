@@ -24,6 +24,7 @@ import grails.validation.Validateable
 import au.org.biodiversity.nsl.*
 import au.org.biodiversity.nsl.tree.*
 import org.springframework.context.MessageSource
+import org.springframework.http.HttpStatus
 import org.springframework.validation.FieldError
 import org.springframework.validation.ObjectError
 
@@ -208,9 +209,56 @@ class TreeEditController {
 
     @RequiresRoles('treebuilder')
     placeNameOnTree(PlaceNameOnTreeParam param) {
-        if (!param.validate()) return renderValidationErrors(param)
+        validateAndAuthorize(param) {
+            try {
+                Uri placementType = makePlacementType(param.placementType)
 
-        if (!canEdit(param.tree)) {
+                userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, placementType)
+
+                return render([
+                        success: true,
+                        msg    : [[msg: "Placed."]]
+                ] as JSON)
+            } catch (PlacementException ex) {
+
+                log.debug ex.message
+
+                response.status = ex.status?.value()
+                return render([
+                        success: false,
+                        msg    : [[msg: ex.message]]
+                ] as JSON)
+            } catch (IllegalStateException ex) {
+
+                ex.printStackTrace()
+
+                response.status = HttpStatus.INTERNAL_SERVER_ERROR.value()
+                return render([
+                        success: false,
+                        msg    : [[msg: "An error happened, sorry: $ex.message"]]
+                ] as JSON)
+            }
+        }
+    }
+
+    private Uri makePlacementType(String placementTypeName) {
+        Uri placementType = null
+
+        if ("accepted" == placementTypeName)
+            placementType = uri('apc-voc', 'ApcConcept')
+        else if ("excluded" == placementTypeName)
+            placementType = uri('apc-voc', 'ApcExcluded')
+        else if ("untreated" == placementTypeName)
+            placementType = uri('apc-voc', 'DeclaredBt')
+        return placementType
+    }
+
+    private validateAndAuthorize(param, Closure work) {
+        if (!param.validate()) {
+            return renderValidationErrors(param)
+        }
+
+        if (!canEdit(param.tree as Arrangement)) {
             response.status = 403
             return render([
                     success: false,
@@ -222,25 +270,9 @@ class TreeEditController {
                     ]
             ] as JSON)
         }
-
-        handleException { handleExceptionIgnore ->
-            Uri placementType = null
-
-            if ("accepted" == param.placementType)
-                placementType = uri('apc-voc', 'ApcConcept')
-            else if ("excluded" == param.placementType)
-                placementType = uri('apc-voc', 'ApcExcluded')
-            else if ("untreated" == param.placementType)
-                placementType = uri('apc-voc', 'DeclaredBt')
-
-            Message msg = userWorkspaceManagerService.placeNameOnTree(param.tree, param.name, param.instance, param.parentName, placementType)
-
-            return render([
-                    success: true,
-                    msg    : new TreeServiceMessageUtil(linkService).unpackMessage(msg, 'success')
-            ] as JSON)
-        }
+        return work()
     }
+
 
     @RequiresRoles('treebuilder')
     removeNameFromTree(RemoveNameFromTreeParam param) {

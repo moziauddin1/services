@@ -77,29 +77,88 @@ class QueryServiceSpec extends Specification {
         s
     }
 
-    void "test find Synonyms of instance in tree"() {
-        when: "I look for Doodia"
-        List<Name> doodiaAspera = Name.findAllBySimpleName('Doodia aspera')
-
-        println doodiaAspera
-
-        then:
-        doodiaAspera.size() == 1
-
-        when: "I check for synonyms on a tree"
+    void "test find synonyms of this Instance in a tree"() {
+        when: "I check the data exists"
         Arrangement apc = Arrangement.findByLabel('APC')
-        //  Woodwardia aspera (R.Br.) Mett.
-        // nomenclatural synonym: Doodia aspera R.Br.
-        Instance woodwardiaAspera = Instance.get(536794) //comb. nov.
-        List<Instance> synonyms = queryService.findInstancesHavingSynonymInTree(apc, woodwardiaAspera)
+
+        println apc
+
+        then: "I find it and can continue"
+        apc
+
+        when: "we try to place ficus virens Aiton sensu CHAH 2005"
+        Instance ficusVirensCHAH2005 = Instance.get(598372)
+        println ficusVirensCHAH2005
+        List<Instance> synonyms = queryService.findSynonymsOfThisInstanceInATree(apc, ficusVirensCHAH2005)
+
+        then: "we find Ficus virens var. sublanceolata"
+        synonyms.size() == 1
+        synonyms.first().cites.name.fullName == 'Ficus virens var. sublanceolata (Miq.) Corner'
+        synonyms.first().citedBy.name.fullName == 'Ficus virens Aiton'
+        synonyms.first().instanceType.name == 'taxonomic synonym'
+
+        when: "we try to place ficus virens Aiton sensu CHAH 2014"
+        //Ficus virens var. sublanceolata (Miq.) Corner tax synonym of Ficus virens Aiton
+        // relationship instance = 835352, Tree instance = 488466
+        Instance ficusVirensCHAH2014 = Instance.get(781547)
+        synonyms = queryService.findSynonymsOfThisInstanceInATree(apc, ficusVirensCHAH2014)
+        println synonyms
+
+        then: "We find nothing"
+        synonyms.size() == 0
+
+        when: "I check for Woodwardia on a tree"
+        //  Woodwardia Sm.
+        // nomenclatural synonym: Doodia R.Br.
+        Instance woodwardia = Instance.get(3749729)
+        synonyms = queryService.findSynonymsOfThisInstanceInATree(apc, woodwardia)
         println synonyms
 
         then: "We should find Doodia aspera R.Br."
-        woodwardiaAspera
-        woodwardiaAspera.name.simpleName == 'Woodwardia aspera'
         synonyms.size() == 1
-        synonyms.first().name.fullName == 'Woodwardia aspera (R.Br.) Mett.'
+        synonyms.first().cites.name.fullName == 'Doodia R.Br.'
+        synonyms.first().citedBy.name.fullName == 'Woodwardia Sm.'
+        synonyms.first().instanceType.name == 'taxonomic synonym'
+    }
+
+    void "test find Instances in a Tree that say this is a synonym"() {
+        when: "I check the data exists"
+        Arrangement apc = Arrangement.findByLabel('APC')
+        println apc
+
+        then: "It does and I can continue this test"
+        apc
+
+        when: "I check for Woodwardia aspera on a tree"
+        //  Woodwardia aspera (R.Br.) Mett.
+        // nomenclatural synonym: Doodia aspera R.Br.
+        Instance woodwardiaAspera = Instance.get(536794) //comb. nov.
+        List<Instance> synonyms = queryService.findInstancesInATreeThatSayThisIsASynonym(apc, woodwardiaAspera)
+        println synonyms
+
+        then: "We should not find Doodia aspera R.Br. because it is a nomenclatural synonym"
+        synonyms.size() == 0
+
+        when: "I check for Woodwardia on a tree"
+        //  Woodwardia Sm.
+        // nomenclatural synonym: Doodia R.Br.
+        Instance woodwardia = Instance.get(3749729)
+        synonyms = queryService.findInstancesInATreeThatSayThisIsASynonym(apc, woodwardia)
+        println synonyms
+
+        then: "We should not find Doodia aspera R.Br. because it's instance (578615) doesn't think this is a synonym"
+        synonyms.size() == 0
+
+        when: "We try to place Blechnum neohollandicum Christenh instance/apni/751268"
+        Instance blechnumNeohollandicum = Instance.get(751268)
+        synonyms = queryService.findInstancesInATreeThatSayThisIsASynonym(apc, blechnumNeohollandicum)
+        println synonyms
+
+        then: "We should find the taxonomic synonym of Doodia aspera R.Br."
+        synonyms.size() == 1
+        synonyms.first().cites.name.fullName == 'Blechnum neohollandicum Christenh.'
         synonyms.first().citedBy.name.fullName == 'Doodia aspera R.Br.'
+        synonyms.first().instanceType.name == 'taxonomic synonym'
 
 
     }

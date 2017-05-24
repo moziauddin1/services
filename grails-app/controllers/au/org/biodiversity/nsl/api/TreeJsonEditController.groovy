@@ -54,7 +54,8 @@ class TreeJsonEditController {
         if (!param.validate()) return renderValidationErrors(param)
 
         handleException { handleExceptionIgnore ->
-
+            log.debug "create workspace ${param.dump()}"
+            
             String title = param.title ?: "${SecurityUtils.subject.principal} ${new Date()}"
             Namespace ns = Namespace.findByName(param.namespace)
             // todo: use the grails parameter validation to do this

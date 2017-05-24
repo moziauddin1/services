@@ -5,6 +5,7 @@ import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import org.hibernate.SessionFactory
 import org.hibernate.jdbc.Work
+import org.springframework.http.HttpStatus
 
 import javax.sql.DataSource
 import java.sql.Connection
@@ -1077,235 +1078,200 @@ ${display(parentShouldBe)}
         else return "${nodeSummary(l.supernode)} -> [${l.id}] -> ${nodeSummary(l.subnode)}"
     }
 
-    Message placeNameOnTree(Arrangement ws, Name name, Instance instance, Name parentName, Uri placementType) {
-        mustHave(tree: ws, name: name, instance: instance, "Placement type": placementType) {
-            if (ws.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
+    /**
+     * To place a name on the tree, that name must not have any synonyms elsewhere on the tree,
+     * nor should it have synonyms that are elsewhere on the tree.
+     *
+     * If the name is placed under some other name, the the other name it is to be placed under
+     * must be of higher rank.
+     *
+     * If the name is being placed under a name that is is generic or below then,
+     * then the common part of the names must match unless the name being placed
+     * under it is an excluded name. NSL-464
+     *
+     * If the name is already on the tree as an accepted name, then this operation is a move of that node.
+     *
+     * If the name is already on the tree as an accepted name, and the parent name of that placement is the same
+     * as the required parent name, then this is simply an update of the node.
+     *
+     * https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+     *
+     * @param workspace
+     * @param name
+     * @param instance
+     * @param parentName
+     * @param placementType
+     */
+    void placeNameOnTree(Arrangement workspace, Name name, Instance instance, Name parentName, Uri placementType) {
+        mustHave(tree: workspace, name: name, instance: instance, "Placement type": placementType) {
+            if (workspace.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
 
-            try {
+            // CHECK FOR SYNONYMS
+            List<Instance> synonymInstances = queryService.findSynonymsOfThisInstanceInATree(workspace, instance)
 
-                Message error = Message.makeMsg(Msg.placeNameOnTree, [name, ws])
-
-                /**
-                 * To place a name on the tree, that name must not have any synonyms elsewhere on the tree,
-                 * nor should it have synonyms that are elsewhere on the tree.
-                 *
-                 * If the name is placed under some other name, the the other name it is to be placed under
-                 * must be of higher rank.
-                 *
-                 * If the name is being placed under a name that is is generic or below then,
-                 * then the common part of the names must match unless the name being placed
-                 * under it is an excluded name. NSL-464
-                 *
-                 * If the name is already on the tree as an accepted name, then this operation is a move of that node.
-                 *
-                 * If the name is already on the tree as an accepted name, and the parent name of that placement is the same
-                 * as the required parent name, then this is simply an update of the node.
-                 *
-                 * https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
-                 *
-                 */
-
-                Link currentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, name)
-
-                log.debug("current link is ${linkSummary(currentLink)}")
-
-                // CHECK FOR SYNONYMS
-                // this query returns the relationship instance
-                List<Instance> synonymInstances = queryService.findSynonymsOfInstanceInTree(ws, instance)
-
-                log.debug("findSynonymsOfInstanceInTree: ${synonymInstances}")
-
-                if (!synonymInstances.isEmpty()) {
-                    Message mm = Message.makeMsg(Msg.HAS_SYNONYM_ALREADY_IN_TREE)
-                    error.nested.add(mm)
-                    for (Instance i : synonymInstances) {
-                        if (!currentLink || i.cites.name != name)
-                            mm.nested.add(Message.makeMsg(Msg.HAS_SYNONYM_ALREADY_IN_TREE_item, [i.cites, i.instanceType.ofLabel]))
-                    }
-                }
-
-                // CHECK FOR SYNONYMS
-                // this query returns the relationship instance
-                synonymInstances = queryService.findInstancesHavingSynonymInTree(ws, instance)
-
-                log.debug("findInstancesHavingSynonymInTree: ${synonymInstances}")
-
-                if (!synonymInstances.isEmpty()) {
-                    Message mm = Message.makeMsg(Msg.IS_SYNONYM_OF_ALREADY_IN_TREE)
-                    error.nested.add(mm)
-                    for (Instance i : synonymInstances) {
-                        if (!currentLink || i.citedBy.name != name)
-                            mm.nested.add(Message.makeMsg(Msg.IS_SYNONYM_OF_ALREADY_IN_TREE_item, [i.citedBy, i.instanceType.hasLabel]))
-                    }
-                }
-
-                // CHECK FOR NAME COMPATIBILITY
-                if (parentName) {
-                    // If the name is placed under some other name, the the other name it is to be placed under
-                    // must be of higher rank.
-                    use(RankUtils) {
-                        if (parentName.isRankedLowerThan(name)) {
-                            error.nested.add(Message.makeMsg(Msg.CANNOT_PLACE_NAME_UNDER_HIGHER_RANK, [name.nameRank.abbrev, parentName.nameRank.abbrev]))
-                        }
-                    }
-
-                    // If the name is being placed under a name that is is generic or below,
-                    // then the common part of the names must match unless the name being placed under it is an excluded name.
-                    if ("ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
-                        error.nested.add(Message.makeMsg(Msg.NAME_CANNOT_BE_PLACED_UNDER_NAME, [parentName, name]))
-                    }
-                }
-
-                Link newParentLink
-                if (parentName != null) {
-                    newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, parentName)
-                    if (newParentLink == null) {
-                        error.nested.add(Message.makeMsg(Msg.THING_NOT_FOUND_IN_ARRANGEMENT, [ws, parentName, 'Name']))
-                    }
-                } else {
-                    newParentLink = DomainUtils.getSingleSublink(ws.node)
-                    if (newParentLink.typeUriIdPart != 'workspace-top-node') throw new IllegalStateException(newParentLink.typeUriIdPart)
-                }
-
-                if (!error.nested.isEmpty()) ServiceException.raise(error)
-
-                // oh well. Let's write this dog. At each step we may need to re-search/re-fetch stuff
-
-                // First, if the node needs to be updated, then check it out and update it.
-
-                if (currentLink != null) {
-                    log.debug("the name is currently in the tree at ${linkSummary(currentLink)}")
-                    Node currentNode = currentLink.subnode
-                    if (currentNode.name != name) throw new IllegalStateException()
-
-                    if (currentNode.instance != instance || DomainUtils.getNodeTypeUri(currentNode) != placementType) {
-                        log.debug("the node needs to be edited")
-                        // needs to be possibly checked out and then saved.
-
-                        if (DomainUtils.isCheckedIn(currentNode)) {
-                            log.debug("checking out ${nodeSummary(currentNode)}")
-                            currentNode = basicOperationsService.checkoutNode(ws.node, currentNode)
-                            log.debug("checked out node is now ${nodeSummary(currentNode)}")
-                            currentLink = DomainUtils.getDraftNodeSuperlink(currentNode)
-                            log.debug("currentLink ${linkSummary(currentLink)}")
-                        }
-
-                        basicOperationsService.updateDraftNode(currentNode, nslInstance: instance, nodeType: placementType)
-                    } else {
-                        log.debug("the node does not need to be edited")
-                    }
-                }
-
-                // at this point, the tree may have been disturbed and we need to re-fetch things - copy/paste the code.
-                // Note that at this stage the current node may or may not be a draft node
-
-                if (parentName != null) {
-                    newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, parentName)
-                    if (newParentLink == null) {
-                        error.nested.add(Message.makeMsg(Msg.THING_NOT_FOUND_IN_ARRANGEMENT, [ws, parentName, 'Name']))
-                    }
-                } else {
-                    newParentLink = DomainUtils.getSingleSublink(ws.node)
-                    if (newParentLink.typeUriIdPart != 'workspace-top-node') throw new IllegalStateException(newParentLink.typeUriIdPart)
-                }
-
-
-                log.debug("current link is now ${linkSummary(currentLink)}")
-                log.debug("link to the new parent is now ${linkSummary(newParentLink)}")
-
-                // next - the placement. If there is going to be a move, then the node's current parent must be checked out
-                // and the destination parent must be checked out.
-
-                // do we need to move at all?
-
-                if (currentLink == null || currentLink.supernode != newParentLink.subnode) {
-                    log.debug("the node needs to be moved")
-
-                    // both the current and new parent need to be checked out, which they either or both may already be. If
-                    // both of them need checking out, AND one of them is below the other, THEN the sequence becomes very critical.
-                    // we check out the 'higher' one first and then the lower one, because checking out the lower one will
-                    // also check out the higher one which will cause our reference to that higher one to get lost
-
-                    if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode) && DomainUtils.isCheckedIn(newParentLink.subnode)
-                            && queryService.countPaths(newParentLink.subnode, currentLink.supernode) != 0) {
-                        log.debug("both the current parent and the new parent may need to be checked out, in reverse order")
-                        // the new parent is above the old parent, so we must check out the new parent first
-
-                        if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
-                            log.debug("checking out new parent")
-                            Node newNode = basicOperationsService.checkoutNode(ws.node, newParentLink.subnode)
-                            newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
-                        } else {
-                            log.debug("new parent is already checked out")
-                        }
-
-                        if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
-                            log.debug("checking out old parent")
-                            Node newNode = basicOperationsService.checkoutNode(ws.node, currentLink.supernode)
-                            currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
-                        } else {
-                            log.debug("no old parent, or old parent is already checked out")
-                        }
-
-                    } else {
-                        if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
-                            Node newNode = basicOperationsService.checkoutNode(ws.node, currentLink.supernode)
-                            currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
-                            log.debug("checking out old parent")
-                        } else {
-                            log.debug("no old parent, or old parent is already checked out")
-                        }
-
-                        if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
-                            log.debug("checking out new parent")
-                            Node newNode = basicOperationsService.checkoutNode(ws.node, newParentLink.subnode)
-                            newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
-                        } else {
-                            log.debug("new parent is already checked out")
-                        }
-                    }
-
-                    // once the node's current parent and destination parent are both checked out, then the node is moved either as
-                    // a draft node move or as an un-adopt/adopt sequence. Oh - or we have to create it, duh.
-
-                    currentLink = DomainUtils.refetchLink(currentLink)
-                    newParentLink = DomainUtils.refetchLink(newParentLink)
-
-                    log.debug("currentLink ${linkSummary(currentLink)}")
-                    log.debug("newParentLink ${linkSummary(newParentLink)}")
-
-                    if (currentLink == null) {
-                        log.debug("name is not in the tree. creating a new draft node")
-                        basicOperationsService.createDraftNode(newParentLink.subnode, VersioningMethod.V, NodeInternalType.T,
-                                nslName: name, nslInstance: instance, nodeType: placementType)
-                    } else if (DomainUtils.isCheckedIn(currentLink.subnode)) {
-                        log.debug("name is not checked out in the tree. Removing from old parent and adopting into the new one")
-                        basicOperationsService.deleteLink(currentLink.supernode, currentLink.linkSeq)
-                        basicOperationsService.adoptNode(newParentLink.subnode, currentLink.subnode, VersioningMethod.V)
-                    } else {
-                        log.debug("name checked out in the tree. Moving the draft node.")
-                        basicOperationsService.simpleMoveDraftLink(currentLink, newParentLink.subnode)
-                    }
-                } else {
-                    log.debug("node does not need to be moved")
-                }
-
-                return null
+            if (!synonymInstances.isEmpty()) {
+                throw new PlacementException("There are synonyms of ${instance.name.simpleName} in the tree: ${synonymInstances.collect { it.name.simpleName }}", HttpStatus.CONFLICT)
             }
-            catch (Throwable t) {
-                for (Throwable tt = t; tt != null; tt = tt.getCause()) {
-                    log.error(tt.toString())
-                    for (StackTraceElement e : tt.getStackTrace()) {
-                        if (e.getClassName().startsWith("au.org.bio") && e.getLineNumber() >= 0) {
-                            log.error("  " + e.toString())
-                        }
-                    }
 
+            synonymInstances = queryService.findInstancesInATreeThatSayThisIsASynonym(workspace, instance)
+
+            if (!synonymInstances.isEmpty()) {
+                throw new PlacementException("There are instances in the tree that think ${instance.name.simpleName} is a synonym of ${synonymInstances.collect { it.citedBy.name.simpleName }.join(', ')}", HttpStatus.CONFLICT)
+            }
+
+            // CHECK FOR NAME COMPATIBILITY
+            if (parentName) {
+                // If the name is placed under some other name, the the other name it is to be placed under
+                // must be of higher rank.
+                use(RankUtils) {
+                    if (parentName.isRankedLowerThan(name)) {
+                        throw new PlacementException("You can't place ${name.simpleName} (${name.nameRank.abbrev}) below ${parentName.simpleName} (${parentName.nameRank.abbrev}).", HttpStatus.CONFLICT)
+                    }
                 }
 
-                throw t
+                // If the name is being placed under a name that is is generic or below,
+                // then the common part of the names must match unless the name being placed under it is an excluded name.
+                if ("ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
+                    throw new PlacementException("You can't place ${name.simpleName} below a different parentage (${parentName.simpleName}) to ${name.parent.simpleName} as you'd need a new name.", HttpStatus.CONFLICT)
+                }
             }
-        } as Message
+
+            Link currentLink = queryService.findCurrentNslNameInTreeOrBaseTree(workspace, name)
+            log.debug("the name is currently in the tree at ${linkSummary(currentLink)}")
+
+            if (currentLink != null && currentLink.subnode.name != name) {
+                //this would perhaps happen in a race condition. Somebody else updated this name in the tree to a different name.
+                throw new IllegalStateException("The current Node for this name isn't pointing at ${name}. Perhaps it changed just before you tried this.")
+            }
+
+            // if the node needs to be updated, then check it out and update it.
+
+            if (currentLink != null) {
+                Node currentNode = currentLink.subnode
+
+                if (currentNode.instance != instance || DomainUtils.getNodeTypeUri(currentNode) != placementType) {
+                    log.debug("the node needs to be edited")
+                    // needs to be possibly checked out and then saved.
+
+                    if (DomainUtils.isCheckedIn(currentNode)) {
+                        log.debug("checking out ${nodeSummary(currentNode)}")
+                        currentNode = basicOperationsService.checkoutNode(workspace.node, currentNode)
+                        log.debug("checked out node is now ${nodeSummary(currentNode)}")
+                        currentLink = DomainUtils.getDraftNodeSuperlink(currentNode)
+                        log.debug("currentLink ${linkSummary(currentLink)}")
+                    }
+
+                    basicOperationsService.updateDraftNode(currentNode, nslInstance: instance, nodeType: placementType)
+                } else {
+                    log.debug("the node does not need to be edited")
+                }
+            }
+
+            Link newParentLink
+            if (parentName != null) {
+                newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(workspace, parentName)
+                if (newParentLink == null) {
+                    throw new PlacementException("You can't place ${name.simpleName} under a name that isn't in ${workspaceName(workspace)} (${parentName.simpleName}).", HttpStatus.CONFLICT)
+                }
+            } else {
+                newParentLink = DomainUtils.getSingleSublink(workspace.node)
+                if (newParentLink.typeUriIdPart != 'workspace-top-node') {
+                    throw new IllegalStateException("Workspace parent link wasn't the correct type, 'workspace-top-node' it was $newParentLink.typeUriIdPart")
+                }
+            }
+
+            log.debug("current link is now ${linkSummary(currentLink)}")
+            log.debug("link to the new parent is now ${linkSummary(newParentLink)}")
+
+            // next - the placement. If there is going to be a move, then the node's current parent must be checked out
+            // and the destination parent must be checked out.
+
+            // do we need to move at all?
+
+            if (currentLink == null || currentLink.supernode != newParentLink.subnode) {
+                log.debug("the node needs to be moved")
+                moveNode(currentLink, newParentLink, name, placementType, instance, workspace)
+            } else {
+                log.debug("node does not need to be moved")
+            }
+        }
+    }
+
+    private static String workspaceName(Arrangement workspace) {
+        if (workspace.baseArrangement) {
+            "(${workspace.baseArrangement.label ?: workspace.baseArrangement.title}) ${workspace.title ?: workspace.label}"
+        } else {
+            "${workspace.label ?: workspace.title}"
+        }
+    }
+
+    private void moveNode(Link currentLink, Link newParentLink, Name name, Uri placementType, Instance instance, Arrangement workspace) {
+
+        // both the current and new parent need to be checked out, which they either or both may already be. If
+        // both of them need checking out, AND one of them is below the other, THEN the sequence becomes very critical.
+        // we check out the 'higher' one first and then the lower one, because checking out the lower one will
+        // also check out the higher one which will cause our reference to that higher one to get lost
+
+        if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode) && DomainUtils.isCheckedIn(newParentLink.subnode)
+                && queryService.countPaths(newParentLink.subnode, currentLink.supernode) != 0) {
+            log.debug("both the current parent and the new parent may need to be checked out, in reverse order")
+            // the new parent is above the old parent, so we must check out the new parent first
+
+            if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
+                log.debug("checking out new parent")
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, newParentLink.subnode)
+                newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
+            } else {
+                log.debug("new parent is already checked out")
+            }
+
+            if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
+                log.debug("checking out old parent")
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, currentLink.supernode)
+                currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
+            } else {
+                log.debug("no old parent, or old parent is already checked out")
+            }
+
+        } else {
+            if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, currentLink.supernode)
+                currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
+                log.debug("checking out old parent")
+            } else {
+                log.debug("no old parent, or old parent is already checked out")
+            }
+
+            if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
+                log.debug("checking out new parent")
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, newParentLink.subnode)
+                newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
+            } else {
+                log.debug("new parent is already checked out")
+            }
+        }
+
+        // once the node's current parent and destination parent are both checked out, then the node is moved either as
+        // a draft node move or as an un-adopt/adopt sequence. Oh - or we have to create it, duh.
+
+        currentLink = DomainUtils.refetchLink(currentLink)
+        newParentLink = DomainUtils.refetchLink(newParentLink)
+
+        log.debug("currentLink ${linkSummary(currentLink)}")
+        log.debug("newParentLink ${linkSummary(newParentLink)}")
+
+        if (currentLink == null) {
+            log.debug("name is not in the tree. creating a new draft node")
+            basicOperationsService.createDraftNode(newParentLink.subnode, VersioningMethod.V, NodeInternalType.T,
+                    nslName: name, nslInstance: instance, nodeType: placementType)
+        } else if (DomainUtils.isCheckedIn(currentLink.subnode)) {
+            log.debug("name is not checked out in the tree. Removing from old parent and adopting into the new one")
+            basicOperationsService.deleteLink(currentLink.supernode, currentLink.linkSeq)
+            basicOperationsService.adoptNode(newParentLink.subnode, currentLink.subnode, VersioningMethod.V)
+        } else {
+            log.debug("name checked out in the tree. Moving the draft node.")
+            basicOperationsService.simpleMoveDraftLink(currentLink, newParentLink.subnode)
+        }
     }
 
     /**
