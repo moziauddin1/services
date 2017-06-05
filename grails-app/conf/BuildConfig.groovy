@@ -56,6 +56,8 @@ grails.project.dependency.resolution = {
     repositories {
         inherits true // Whether to inherit repository definitions from plugins
 
+        mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/anbg-snapshot/")
+        mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/anbg-release/")
         mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/maven-central/")
         mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/grails-plugins/")
         grailsHome()
