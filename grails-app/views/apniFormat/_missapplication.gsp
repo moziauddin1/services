@@ -6,8 +6,7 @@
     <st:preferredLink target="${instance.cites}"><i title="Link to use in reference"
                                                     class="fa fa-link hidden-print"></i></st:preferredLink>
     <name-status class="${instance.cites.name.nameStatus.name}">${instance.cites.name.nameStatus.name}</name-status>
-    <g:if test="${!instance.instanceType.unsourced}">
       by ${raw(instance?.cites?.reference?.citationHtml)}: ${instance?.cites?.page ?: '-'}
-    </g:if>
+
   </misapplication>
 </af:sortedInstances>
