@@ -181,7 +181,7 @@ class ReferenceServiceSpec extends Specification {
         Reference reference = new Reference(base)
         reference.save()
         reference.citationHtml = service.generateReferenceCitation(reference, unknownAuthor, editorRole)
-        reference.citation = ConstructedNameService.stripMarkUp(reference.citationHtml)
+        reference.citation = NameConstructionService.stripMarkUp(reference.citationHtml)
         reference.save()
         return reference
     }

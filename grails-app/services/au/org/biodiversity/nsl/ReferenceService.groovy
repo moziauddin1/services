@@ -214,7 +214,7 @@ class ReferenceService {
             String citationHtml = generateReferenceCitation(child, unknownAuthor, editor)
             if (child.citationHtml != citationHtml) {
                 child.citationHtml = citationHtml
-                child.citation = ConstructedNameService.stripMarkUp(citationHtml)
+                child.citation = NameConstructionService.stripMarkUp(citationHtml)
                 child.save()
                 //don't need to go down a level and check the child of the child since a change in the reference
                 //will cause a new notification, which will check.
@@ -246,7 +246,7 @@ class ReferenceService {
 
                         if (reference.citationHtml != citationHtml) {
                             reference.citationHtml = citationHtml
-                            reference.citation = ConstructedNameService.stripMarkUp(citationHtml)
+                            reference.citation = NameConstructionService.stripMarkUp(citationHtml)
                             reference.save()
                             log.debug "saved $reference.citationHtml"
                         } else {
@@ -505,7 +505,7 @@ class ReferenceService {
 
             if (reference.citationHtml != citationHtml) {
                 reference.citationHtml = citationHtml
-                reference.citation = ConstructedNameService.stripMarkUp(citationHtml)
+                reference.citation = NameConstructionService.stripMarkUp(citationHtml)
                 reference.save()
                 log.debug "saved $reference.citationHtml"
             } else {

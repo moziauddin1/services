@@ -17,7 +17,7 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Author
-import au.org.biodiversity.nsl.ConstructedNameService
+import au.org.biodiversity.nsl.NameConstructionService
 import au.org.biodiversity.nsl.RefAuthorRole
 import au.org.biodiversity.nsl.Reference
 import grails.transaction.Transactional
@@ -67,7 +67,7 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
             result << [
                     result: [
                             citationHtml: citationHtml,
-                            citation    : ConstructedNameService.stripMarkUp(citationHtml)
+                            citation    : NameConstructionService.stripMarkUp(citationHtml)
                     ]
             ]
             if (request.method == 'PUT') {

@@ -12,8 +12,8 @@ import spock.lang.Specification
  */
 @TestMixin(GrailsUnitTestMixin)
 @Mock([NameGroup, NameRank, Name])
-@TestFor(ConstructedNameService)
-class ConstructedNameServiceSpec extends Specification {
+@TestFor(NameConstructionService)
+class NameConstructionServiceSpec extends Specification {
 
     def setup() {
         String.metaClass.encodeAsHTML = {
@@ -25,41 +25,41 @@ class ConstructedNameServiceSpec extends Specification {
 
         //create basic nameRanks
         List<Map> data = [
-                [abbrev: 'reg.', name: 'Regnum', sortOrder: 10, descriptionHtml: '[description of <b>Regnum</b>]', rdfId: 'regnum'],
-                [abbrev: 'div.', name: 'Division', sortOrder: 20, descriptionHtml: '[description of <b>Division</b>]', rdfId: 'division'],
-                [abbrev: 'cl.', name: 'Classis', sortOrder: 30, descriptionHtml: '[description of <b>Classis</b>]', rdfId: 'classis'],
-                [abbrev: 'subcl.', name: 'Subclassis', sortOrder: 40, descriptionHtml: '[description of <b>Subclassis</b>]', rdfId: 'subclassis'],
-                [abbrev: 'superordo', name: 'Superordo', sortOrder: 50, descriptionHtml: '[description of <b>Superordo</b>]', rdfId: 'superordo'],
-                [abbrev: 'ordo', name: 'Ordo', sortOrder: 60, descriptionHtml: '[description of <b>Ordo</b>]', rdfId: 'ordo'],
-                [abbrev: 'subordo', name: 'Subordo', sortOrder: 70, descriptionHtml: '[description of <b>Subordo</b>]', rdfId: 'subordo'],
-                [abbrev: 'fam.', name: 'Familia', sortOrder: 80, descriptionHtml: '[description of <b>Familia</b>]', rdfId: 'familia'],
-                [abbrev: 'subfam.', name: 'Subfamilia', sortOrder: 90, descriptionHtml: '[description of <b>Subfamilia</b>]', rdfId: 'subfamilia'],
-                [abbrev: 'trib.', name: 'Tribus', sortOrder: 100, descriptionHtml: '[description of <b>Tribus</b>]', rdfId: 'tribus'],
-                [abbrev: 'subtrib.', name: 'Subtribus', sortOrder: 110, descriptionHtml: '[description of <b>Subtribus</b>]', rdfId: 'subtribus'],
-                [abbrev: 'gen.', name: 'Genus', sortOrder: 120, descriptionHtml: '[description of <b>Genus</b>]', rdfId: 'genus'],
-                [abbrev: 'subg.', name: 'Subgenus', sortOrder: 130, descriptionHtml: '[description of <b>Subgenus</b>]', rdfId: 'subgenus'],
-                [abbrev: 'sect.', name: 'Sectio', sortOrder: 140, descriptionHtml: '[description of <b>Sectio</b>]', rdfId: 'sectio'],
-                [abbrev: 'subsect.', name: 'Subsectio', sortOrder: 150, descriptionHtml: '[description of <b>Subsectio</b>]', rdfId: 'subsectio'],
-                [abbrev: 'ser.', name: 'Series', sortOrder: 160, descriptionHtml: '[description of <b>Series</b>]', rdfId: 'series'],
-                [abbrev: 'subser.', name: 'Subseries', sortOrder: 170, descriptionHtml: '[description of <b>Subseries</b>]', rdfId: 'subseries'],
-                [abbrev: 'supersp.', name: 'Superspecies', sortOrder: 180, descriptionHtml: '[description of <b>Superspecies</b>]', rdfId: 'superspecies'],
-                [abbrev: 'sp.', name: 'Species', sortOrder: 190, descriptionHtml: '[description of <b>Species</b>]', rdfId: 'species'],
-                [abbrev: 'subsp.', name: 'Subspecies', sortOrder: 200, descriptionHtml: '[description of <b>Subspecies</b>]', rdfId: 'subspecies'],
-                [abbrev: 'nothovar.', name: 'Nothovarietas', sortOrder: 210, descriptionHtml: '[description of <b>Nothovarietas</b>]', rdfId: 'nothovarietas'],
-                [abbrev: 'var.', name: 'Varietas', sortOrder: 210, descriptionHtml: '[description of <b>Varietas</b>]', rdfId: 'varietas'],
-                [abbrev: 'subvar.', name: 'Subvarietas', sortOrder: 220, descriptionHtml: '[description of <b>Subvarietas</b>]', rdfId: 'subvarietas'],
-                [abbrev: 'f.', name: 'Forma', sortOrder: 230, descriptionHtml: '[description of <b>Forma</b>]', rdfId: 'forma'],
-                [abbrev: 'subf.', name: 'Subforma', sortOrder: 240, descriptionHtml: '[description of <b>Subforma</b>]', rdfId: 'subforma'],
-                [abbrev: 'form taxon', name: 'form taxon', sortOrder: 250, descriptionHtml: '[description of <b>form taxon</b>]', rdfId: 'form-taxon'],
-                [abbrev: 'morph.', name: 'morphological var.', sortOrder: 260, descriptionHtml: '[description of <b>morphological var.</b>]', rdfId: 'morphological-var'],
-                [abbrev: 'nothomorph', name: 'nothomorph.', sortOrder: 270, descriptionHtml: '[description of <b>nothomorph.</b>]', rdfId: 'nothomorph'],
-                [abbrev: '[unranked]', name: '[unranked]', sortOrder: 500, descriptionHtml: '[description of <b>[unranked]</b>]', rdfId: 'unranked'],
-                [abbrev: '[infrafamily]', name: '[infrafamily]', sortOrder: 500, descriptionHtml: '[description of <b>[infrafamily]</b>]', rdfId: 'infrafamily'],
-                [abbrev: '[infragenus]', name: '[infragenus]', sortOrder: 500, descriptionHtml: '[description of <b>[infragenus]</b>]', rdfId: 'infragenus'],
-                [abbrev: '[infrasp.]', name: '[infraspecies]', sortOrder: 500, descriptionHtml: '[description of <b>[infraspecies]</b>]', rdfId: 'infraspecies'],
-                [abbrev: '[unknown]', name: '[unknown]', sortOrder: 500, descriptionHtml: '[description of <b>[unknown]</b>]', rdfId: 'unknown'],
-                [abbrev: 'regio', name: 'Regio', sortOrder: 8, descriptionHtml: '[description of <b>Regio</b>]', rdfId: 'regio'],
-                [abbrev: '[n/a]', name: '[n/a]', sortOrder: 500, descriptionHtml: '[description of <b>[n/a]</b>]', rdfId: 'n-a']
+                [useVerbatimRank: false, abbrev: 'reg.', name: 'Regnum', sortOrder: 10, descriptionHtml: '[description of <b>Regnum</b>]', rdfId: 'regnum'],
+                [useVerbatimRank: false, abbrev: 'div.', name: 'Division', sortOrder: 20, descriptionHtml: '[description of <b>Division</b>]', rdfId: 'division'],
+                [useVerbatimRank: false, abbrev: 'cl.', name: 'Classis', sortOrder: 30, descriptionHtml: '[description of <b>Classis</b>]', rdfId: 'classis'],
+                [useVerbatimRank: false, abbrev: 'subcl.', name: 'Subclassis', sortOrder: 40, descriptionHtml: '[description of <b>Subclassis</b>]', rdfId: 'subclassis'],
+                [useVerbatimRank: false, abbrev: 'superordo', name: 'Superordo', sortOrder: 50, descriptionHtml: '[description of <b>Superordo</b>]', rdfId: 'superordo'],
+                [useVerbatimRank: false, abbrev: 'ordo', name: 'Ordo', sortOrder: 60, descriptionHtml: '[description of <b>Ordo</b>]', rdfId: 'ordo'],
+                [useVerbatimRank: false, abbrev: 'subordo', name: 'Subordo', sortOrder: 70, descriptionHtml: '[description of <b>Subordo</b>]', rdfId: 'subordo'],
+                [useVerbatimRank: false, abbrev: 'fam.', name: 'Familia', sortOrder: 80, descriptionHtml: '[description of <b>Familia</b>]', rdfId: 'familia'],
+                [useVerbatimRank: false, abbrev: 'subfam.', name: 'Subfamilia', sortOrder: 90, descriptionHtml: '[description of <b>Subfamilia</b>]', rdfId: 'subfamilia'],
+                [useVerbatimRank: false, abbrev: 'trib.', name: 'Tribus', sortOrder: 100, descriptionHtml: '[description of <b>Tribus</b>]', rdfId: 'tribus'],
+                [useVerbatimRank: false, abbrev: 'subtrib.', name: 'Subtribus', sortOrder: 110, descriptionHtml: '[description of <b>Subtribus</b>]', rdfId: 'subtribus'],
+                [useVerbatimRank: false, abbrev: 'gen.', name: 'Genus', sortOrder: 120, descriptionHtml: '[description of <b>Genus</b>]', rdfId: 'genus'],
+                [useVerbatimRank: false, abbrev: 'subg.', name: 'Subgenus', sortOrder: 130, descriptionHtml: '[description of <b>Subgenus</b>]', rdfId: 'subgenus'],
+                [useVerbatimRank: false, abbrev: 'sect.', name: 'Sectio', sortOrder: 140, descriptionHtml: '[description of <b>Sectio</b>]', rdfId: 'sectio'],
+                [useVerbatimRank: false, abbrev: 'subsect.', name: 'Subsectio', sortOrder: 150, descriptionHtml: '[description of <b>Subsectio</b>]', rdfId: 'subsectio'],
+                [useVerbatimRank: false, abbrev: 'ser.', name: 'Series', sortOrder: 160, descriptionHtml: '[description of <b>Series</b>]', rdfId: 'series'],
+                [useVerbatimRank: false, abbrev: 'subser.', name: 'Subseries', sortOrder: 170, descriptionHtml: '[description of <b>Subseries</b>]', rdfId: 'subseries'],
+                [useVerbatimRank: false, abbrev: 'supersp.', name: 'Superspecies', sortOrder: 180, descriptionHtml: '[description of <b>Superspecies</b>]', rdfId: 'superspecies'],
+                [useVerbatimRank: false, abbrev: 'sp.', name: 'Species', sortOrder: 190, descriptionHtml: '[description of <b>Species</b>]', rdfId: 'species'],
+                [useVerbatimRank: false, abbrev: 'subsp.', name: 'Subspecies', sortOrder: 200, descriptionHtml: '[description of <b>Subspecies</b>]', rdfId: 'subspecies'],
+                [useVerbatimRank: false, abbrev: 'nothovar.', name: 'Nothovarietas', sortOrder: 210, descriptionHtml: '[description of <b>Nothovarietas</b>]', rdfId: 'nothovarietas'],
+                [useVerbatimRank: false, abbrev: 'var.', name: 'Varietas', sortOrder: 210, descriptionHtml: '[description of <b>Varietas</b>]', rdfId: 'varietas'],
+                [useVerbatimRank: false, abbrev: 'subvar.', name: 'Subvarietas', sortOrder: 220, descriptionHtml: '[description of <b>Subvarietas</b>]', rdfId: 'subvarietas'],
+                [useVerbatimRank: false, abbrev: 'f.', name: 'Forma', sortOrder: 230, descriptionHtml: '[description of <b>Forma</b>]', rdfId: 'forma'],
+                [useVerbatimRank: false, abbrev: 'subf.', name: 'Subforma', sortOrder: 240, descriptionHtml: '[description of <b>Subforma</b>]', rdfId: 'subforma'],
+                [useVerbatimRank: false, abbrev: 'form taxon', name: 'form taxon', sortOrder: 250, descriptionHtml: '[description of <b>form taxon</b>]', rdfId: 'form-taxon'],
+                [useVerbatimRank: false, abbrev: 'morph.', name: 'morphological var.', sortOrder: 260, descriptionHtml: '[description of <b>morphological var.</b>]', rdfId: 'morphological-var'],
+                [useVerbatimRank: false, abbrev: 'nothomorph', name: 'nothomorph.', sortOrder: 270, descriptionHtml: '[description of <b>nothomorph.</b>]', rdfId: 'nothomorph'],
+                [useVerbatimRank: true, abbrev: '[unranked]', name: '[unranked]', sortOrder: 500, descriptionHtml: '[description of <b>[unranked]</b>]', rdfId: 'unranked'],
+                [useVerbatimRank: true, abbrev: '[infrafamily]', name: '[infrafamily]', sortOrder: 500, descriptionHtml: '[description of <b>[infrafamily]</b>]', rdfId: 'infrafamily'],
+                [useVerbatimRank: true, abbrev: '[infragenus]', name: '[infragenus]', sortOrder: 500, descriptionHtml: '[description of <b>[infragenus]</b>]', rdfId: 'infragenus'],
+                [useVerbatimRank: true, abbrev: '[infrasp.]', name: '[infraspecies]', sortOrder: 500, descriptionHtml: '[description of <b>[infraspecies]</b>]', rdfId: 'infraspecies'],
+                [useVerbatimRank: true, abbrev: '[unknown]', name: '[unknown]', sortOrder: 500, descriptionHtml: '[description of <b>[unknown]</b>]', rdfId: 'unknown'],
+                [useVerbatimRank: false, abbrev: 'regio', name: 'Regio', sortOrder: 8, descriptionHtml: '[description of <b>Regio</b>]', rdfId: 'regio'],
+                [useVerbatimRank: false, abbrev: '[n/a]', name: '[n/a]', sortOrder: 500, descriptionHtml: '[description of <b>[n/a]</b>]', rdfId: 'n-a']
         ]
         NameGroup group = new NameGroup([name: 'group'])
         data.each { Map d ->

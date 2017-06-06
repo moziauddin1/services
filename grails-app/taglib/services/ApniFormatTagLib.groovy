@@ -23,7 +23,7 @@ import org.apache.shiro.SecurityUtils
 
 class ApniFormatTagLib {
 
-    def constructedNameService
+    def nameConstructionService
     def nameTreePathService
     def instanceService
     LinkService linkService
@@ -124,7 +124,7 @@ class ApniFormatTagLib {
 
     def author = { attrs ->
         Name name = attrs.name
-        out << constructedNameService.constructAuthor(name)
+        out << nameConstructionService.constructAuthor(name)
     }
 
     def harvard = { attrs ->
