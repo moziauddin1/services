@@ -69,7 +69,7 @@ class NameConstructionService {
         if (name.nameType?.name == 'informal') {
             return constructInformalName(name, parent)
         }
-        if (name.nameType?.name == 'common') {
+        if (name.nameType?.nameCategory?.name == 'common') {
             String htmlNameElement = name.nameElement.encodeAsHTML()
             String markedUpName = "<common><name id='$name.id'><element class='${htmlNameElement}'>${htmlNameElement}</element></name></common>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
