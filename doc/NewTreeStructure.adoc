@@ -1,0 +1,410 @@
+= New tree structure
+v1.0, June 2015
+:imagesdir: resources/images/
+:toc: left
+:toclevels: 4
+:toc-class: toc2
+:icons: font
+:iconfont-cdn: //cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css
+:stylesdir: resources/style/
+:stylesheet: asciidoctor.css
+:description: New tree structure documentation
+:keywords: documentation, NSL, APNI, API, APC, tree
+:links:
+:numbered:
+
+The current tree structure is over complicated and difficult to validate and maintain going forward. The reasons for this
+are many, but basically come down to changing understanding of requirements.
+
+I propose to scale back and simplify the structure used to store the trees and to only implement what is currently required,
+then evolve the implementation as needed.
+
+The main change in requirements is the idea of using a workspace, or draft tree, to do work. The workspace would then be
+published as a new version. once a version is published it is immutable _except_ for minor typographical changes as determined
+by policy.
+
+****
+This work is designed to make the tree easy to understand and reason about, and therefore
+
+ * easier to change and maintain over time
+ * improve performance
+****
+
+== Requirements
+
+=== Major requirements:
+
+ . The tree must store and display the parent child taxonomic relationship between names.
+ . The tree must be versioned so that a citation (id) of a tree element must reproduce the tree as it was when it was
+ viewed.
+ . A link to an element on the tree should be able to identify the version of the tree and reproduce that version.
+ . You should be able to link to a _version_ of the tree and get the current tree easily.
+ . The tree must enforce strict rules about the placement of names on a tree.
+ . Profile data including only Comment and Distribution data is to be stored in the tree structure.
+ . Tree elements are pointers to an Instance as a representation of a Taxon Concept.
+ . Tree elements can represent Accepted and Excluded items which need to be distinguished. This appears to be accepted
+ and not accepted, but treated. The "Excluded" is a covering term of a number of reasons these names are not accepted
+ (e.g. doubtful) but the distinction is not required. As such for now we can just indicate an element is Accepted or Not.
+ . Easy to work with a version of the tree.
+ . All common operations must be fast. You should be able to query the status of a name on the current tree without
+ noticeable delay.
+ . Editors should be able to work on a draft version of the tree without it being public, then publish it at a time of
+ their choosing.
+ . Versions should be released as a unit of work, collecting a set of changes together (policy).
+ . The users need to be able to add a log entry describing the work done and referencing the documents that lead to the changes.
+ . Multiple workspaces that can be merged over different time frames is a requirement.
+ . It would be nice to be able to list and view older version of the tree and see what changed (diffing)
+ . It would be nice to be able to archive older versions of the tree without breaking it.
+ . we must be able to access the tree through RDF.
+
+=== Change over requirements:
+
+ . We must maintain existing links to trees (APC) that have been used prior to this change. This means any links to existing nodes must
+ resolve to the same instance data and position in the tree structure. The intrinsic data should not change, though
+ extraneous data may be left out (broken links, some RDF identifiers that didn't lead to real data).
+ . Editing the tree should work and be possible from the point of change over.
+
+== Concept
+
+The concept for the new structure is to remove the need for link objects and simply copy the list of tree elements for
+each version of the tree. The Workspace is then a copy of the current tree that is then altered. When the workspace is
+ready it is published as the latest version of the tree by making it the current version. A copy of the current version
+is then made to create the new workspace version.
+
+We track changes in the tree by maintaining a previous link that points to the tree_element in the previous version.
+
+Versions are grouped by a tree_version which is associated with a tree. Tree_elements are associated with a tree_version.
+
+ Tree <- [Tree_Versions] <- [Tree_Elements]
+
+The tree holds a pointer to the current tree and a default workspace.
+
+This concept trades storage efficiency for simplicity. Excessive numbers of versions could create a lot of copied
+tree elements, but the workspace/publish model may also lead to a more structured release of versions
+(e.g. once a Day/Week/Month) instead of on the fly changes.
+
+=== Data usage vs speed
+
+Copying the tree for every version is less space efficient than the current model, but affords many benefits. At the
+current size of the APC tree 35k tree_elements are required for each copy. Running the following code:
+
+[source]
+.copy nodes to JSON
+----
+COPY (
+SELECT json_build_object(
+    '_key', node.id :: TEXT,
+    'previousNode', node.prev_node_id,
+    'treeId', node.tree_arrangement_id,
+    'nameId', node.name_id,
+    'name', name.simple_name,
+    'instanceId', node.instance_id
+)
+FROM tree_node node
+  JOIN tree_arrangement tree ON node.tree_arrangement_id = tree.id
+  JOIN name ON node.name_id = name.id
+WHERE tree.label = 'APC'
+      AND node.internal_type = 'T'
+      AND node.checked_in_at_id IS NOT NULL
+      AND node.next_node_id IS NULL
+      AND node.instance_id IS NOT NULL
+) TO '/tmp/taxanomicNodes.json';
+----
+
+which copies all the current nodes to an external JSON file, takes about 0.2 seconds and produces a 5MB file. The
+resulting file looks like this:
+
+[source,javascript]
+.output.js
+----
+{"_key" : "7027311", "previousNode" : 2891448, "treeId" : 1133571, "nameId" : 110133, "name" : "Verbascum", "instanceId" : 724006}
+{"_key" : "7027305", "previousNode" : 2918125, "treeId" : 1133571, "nameId" : 110231, "name" : "Verbascum thapsus", "instanceId" : 573389}
+{"_key" : "7027308", "previousNode" : null, "treeId" : 1133571, "nameId" : 116756, "name" : "Verbascum thapsus subsp. thapsus", "instanceId" : 7027300}
+{"_key" : "8333362", "previousNode" : null, "treeId" : 1133571, "nameId" : 89713, "name" : "Ixia erecta", "instanceId" : 8333347}
+{"_key" : "5325150", "previousNode" : 2921142, "treeId" : 1133571, "nameId" : 106020, "name" : "Eucalyptus populnea var. x obconica", "instanceId" : 554400}
+{"_key" : "5325144", "previousNode" : 2907466, "treeId" : 1133571, "nameId" : 105992, "name" : "Eucalyptus populnea", "instanceId" : 613718}
+{"_key" : "7159328", "previousNode" : null, "treeId" : 1133571, "nameId" : 245373, "name" : "Hibbertia florida subsp. florida", "instanceId" : 773708}
+{"_key" : "3960668", "previousNode" : null, "treeId" : 1133571, "nameId" : 3960019, "name" : "Malvaviscus arboreus", "instanceId" : 3960661}
+{"_key" : "5255421", "previousNode" : 2889309, "treeId" : 1133571, "nameId" : 113385, "name" : "Eucalyptus x congener", "instanceId" : 554484}
+{"_key" : "4537374", "previousNode" : 4536981, "treeId" : 1133571, "nameId" : 54471, "name" : "Gleicheniaceae", "instanceId" : 651303}
+{"_key" : "4537375", "previousNode" : 4536982, "treeId" : 1133571, "nameId" : 223561, "name" : "Gleicheniales", "instanceId" : 655077}
+----
+
+Given that JSON text is less efficient than the DB and that we intend to store a little more data we could estimate that
+5MB per version is a reasonable guess. Given option 2a below comes to about 200 versions in 2.5 years we could estimate,
+say, 100 versions per year or 500MB/year.
+
+If that estimate is 100% out then we are looking at 1GB per year which is reasonable. Comparing that to the currently
+stored data in APNI. The compressed dump of APNI is ~ 420MB the 5MB JSON compressed is ~0.9MB, so lets say it will add
+100MB per year to the compressed dump of the database (less the original removal of node and link data)...
+
+The above estimate is obviously in no way accurate, but it gives us a feel for the amount of data we're looking at, and
+the time costs involved in copying nodes.
+
+We can copy all the current nodes _out of_ the database to a file and convert all the data to JSON in 0.2 seconds. Copying
+tree elements to new tree elements should not take any longer (it should be quicker).
+
+Also note that the new data structure allows us to partition and archive older versions should we need to.
+
+=== Multiple workspaces
+
+Because a workspace is just a copy of a version of the tree with pointers to the previous version of it's tree_elements,
+we can implement a merge of the latest tree or a version (like a branch in GIT). A workspace or draft version of the tree
+would reference the version it is a copy of and when you go to publish it, we check that the version of the current
+tree has not changed. If it has you would need to merge the current version of the tree with your draft version. Where
+there are conflicts, i.e. the current version  has changed a tree_element that you have also changed you need to resolve
+the conflict by either accepting the current version, overwriting the current version with yours, or somehow merging the
+changes. The workflow for a merge of conflicting changes is the trickiest bit.
+
+Where different workspaces are working in different branches of the tree auto merging would be possible.
+
+Multiple workspaces would make long running projects more feasible, e.g. adding a branch of orchids as a single update.
+
+Talking to the current APC editors they considered the ability to have multiple workspaces and merging as something that
+"was always a requirement, really"
+
+=== Building new trees
+
+A new tree starts with an initial draft version which can be
+
+ . a copy of an existing tree
+ . entirely new, adding elements to the root of the tree
+ . made up of copies of portions of other trees, by copying from a node down and placing that section under a node in
+ the draft.
+
+Once the initial draft is ready to be made "public" it is published as the first version.
+
+=== Tree paths
+
+The current name tree path concept would be incorporated into the new tree_elements to provide a rapid way to display,
+sort, and search for items under (subtending) an element (currently called a node). We can then remove name_tree_path as
+an additional maintenance cost.
+
+=== Immutable
+
+The immutability of published versions (apart from typographical fixes, mainly in the names/references) means that we can
+use de-normalisation of data to increase efficiency in display and queries. For example, storing a precomposed display
+string for the tree, name and rank information (see name_tree_paths rank path and name path). This also makes trees largely
+stand alone when it comes to queries.
+
+****
+For example you could search *just the tree elements* for a name string % abru% in family
+Fabaceae of rank species that are native to WA.
+****
+
+This will greatly improve the speed and simplicity of searches, especially given the right indexes.
+
+Since links are also immutable they can also be stored to reduce round trips to the mapper.
+
+=== Profile data
+
+The Profile data will be stored as a JSON object/document field in the tree_element. This allows arbitrary extension of the
+profile data to be stored. It also provides a consistent versioned view of the Profile data.
+
+==== Comments
+
+Comments will be stored as a text comment field in the JSON profile data.
+
+==== Distribution
+
+Distribution data is currently just unstructured and unvalidated text. However a *lot* of the requests for information
+rely on the distribution data, and the correct interpretation of that data. Since distribution data is part of the
+profile data requirement now is a good time to tackle this.
+
+To this end we will make the distribution profile data a JSON object in the profile field containing pointers to
+distribution data combinations. Distribution data combinations consist of a region and a set of flags in a legal
+combination much the same way as name_status is set up. We use a JSON field because there is a variable number of regions
+that can be assigned to a concept (tree_element) and we don't want to make outward pointing join tables to tree_elements.
+
+This design helps keep trees stand alone, while linking back to distribution combinations and allowing the distribution
+definition to be extended, while providing the editor with a configurable set of valid profile combinations.
+
+The Distribution field of the profile will contain a list of JSON object representations of the distribution combinations
+including the id of the combination for update purposes.
+
+=== Archiving
+
+The data structure allows for archiving of versions by moving/exporting a tree version. The structure keeps all the data
+contained in the tree itself. Versions are immutable or read only, and self contained. Operations that need to interact
+with the tree are limited to the workspaces/drafts, and perhaps some advanced search operations on the current version.
+
+By storing the Name, display string, Rank Path, and links on the tree, older versions can be displayed and queried without
+referring to the rest of the NSL database, making it possible to have a service which can display the tree as it was from
+archived version in a different database.
+
+This also means exporting a tree version provides 'all' the data needed to describe the tree.
+
+=== Composite keys for tree_elements
+
+It would be worth looking at using composite keys for tree_elements made up of the tree_version id and the tree_element id
+that way we can copy the tree_elements and just change the version number.
+
+The advantages of this are:
+
+ . dramatically reduces the number of id's we have to generate out of the globally unique ID pool
+ . intrinsically tracks nodes from one version to the next
+ . simplifies the copy process a little
+ . may help in diffing trees ( grab all the tree_elements with the same id across versions )
+ . lets you very quickly find what an old version of a tree_element looks like now and ask questions like is this in
+ the current version without any tree walks.
+
+Disadvantages are:
+
+ . Looking up by id always requires the version
+ . slightly trickier ORM mapping
+
+I think just advantage 1 outweighs the disadvantages because 100 x 35000 = 3,500,000 new IDs per year when the majority of
+the data doesn't change. The rest of the advantages come down to speed and efficiency.
+
+=== Auditing
+
+A single updated by and updated at field is required in the tree_element since changes are versioned. Once again the idea
+of this being copied makes the versions self contained at the expense of space.
+
+== Transition
+
+We will identify and replace the existing service endpoints for the Instance Editor to maintain functionality with the
+change over. The tree editor functionality will need to be changed or incorporated into the Instance Editor. This work
+needs to happen anyway.
+
+=== Existing history
+
+There are currently:
+
+ * 114k current APC nodes, including 35k taxon nodes and 79k value nodes.
+ * 365k taxon nodes for any tree (including the APNI name tree)
+ * 7M links.
+ * 2995 versioned changes to the APC tree
+
+The version changes date back to 2012-02-09 via the APC import. Greg Whitbread has suggested that we could discard all the
+historical changes up to a point, and considering no one would have relevant links that are currently supported.
+
+Looking in the mapper we only have mapped these older URI:
+
+ * apni.name/
+ * apni.publication/
+ * apni.reference/
+ * apni.taxon/
+
+None of which refer to tree information, or nodes.
+
+We currently map 63k node objects in the mapper across all trees, 48k nodes in apni (vascular shard).
+
+There are 315k taxon nodes out of 365k (apni shard) that are _not_ in the mapper and therefore have never been referenced.
+There are 67k APC taxon nodes out of 115k APC taxon nodes that are _not_ in the mapper and so haven't been referenced.
+There are only 5 nodes in the current APC tree that are not in the mapper.
+
+
+
+=== option 1
+
+Based on the above stats we should be able to work out which of the 2995 versions of the tree we have currently are in
+the mapper and and just replicate those versions to maintain the mapped links. Doable, but tricky.
+
+*NOTE* it's possible that we have shared links to nodes that are _not_ in the mapper via the APC taxon exports. These
+links are created in SQL, but may not have been created in the mapper because no one has referred to them via the services.
+We could fix this by adding all nodes since the APC taxon exports started being used (with node links). There are 5 nodes
+in the current APC tree that are not in the mapper.
+
+=== option 2
+
+Draw a line in the sand, then group changes. We can be sure that no links to the tree exist before the NSL was launched,
+so we can ignore all versions before January 2015 (leaving us with 2643 versions). Then group versions into monthly
+releases and point all node links in that month to the final version of the node for that month. This brings it down to
+around 30 versions.
+
+This somewhat breaks the contract that what was cited is what we get back, however the number of citations where the
+changes incurred matter would, I guess, be approaching zero? I say that because by and large the changes per version are
+for a single item, so while december 2015 saw 132 versions each one was for a single name, e.g.
+
+.version changes
+|===
+|note |time stamp
+
+|update name 5416769|2015-12-23 09:34:44.212000 +11:00
+|update name 81345|2015-12-23 09:33:52.836000 +11:00
+|update name 5417736|2015-12-23 09:32:46.223000 +11:00
+|update name 5419222|2015-12-23 09:31:40.348000 +11:00
+|update name 80372|2015-12-23 09:29:25.683000 +11:00
+|add name 80912 to name 80855|2015-12-23 08:49:16.608000 +11:00
+|add name 80899 to name 80855|2015-12-23 08:48:29.840000 +11:00
+|add name 80878 to name 80855|2015-12-23 08:47:15.710000 +11:00
+|===
+
+Take these changes adding excluded names to Correa pulchella J.B.Mackay ex Sweet which is this node
+https://biodiversity.org.au/nsl/services/node/apni/5424450 at 2015-12-23 08:49:16.608000 +11:00 but was a different
+node 3 minutes earlier. The reality is that these changes were meant to be done as a batch and should only have been
+published once.
+
+==== option 2a
+
+We could modify this option to group changes in a day to a single version, in which case I doubt anyone would notice.
+This would not dramatically increase the number of versions saved as tree work seems to be limited to a few days a month
+which comes out as a total of 206 versions from 2015-01-01.
+
+=== Existing links
+
+NOTE: A link to a node in the old structure only gives you the structure *below* it as it was when you took the link
+unless you took a link to a changed node further up the tree, or the top node. Although it is possible to find the
+version of the tree you were looking at it was *not* intrinsic in the link.
+
+We can take existing published links and forward them to new links. Due to history only being maintained in node links
+below that node we need node links to point to the latest version that has that node id (now the tree_element_id).
+
+****
+https://biodiversity.org.au/nsl/services/node/apni/7845073 would point to tree_element.tree_element_id = 7845073
+with the latest tree_version_id (137 in my spike):
+
+ select name_path, simple_name from tree_element where tree_version_id = 137 and tree_element_id = 7845073;
+
+|===
+|name_path|simple_name
+|/Plantae/Charophyta/Equisetopsida/Magnoliidae/Asteranae/Gentianales/Rubiaceae/Spermacoce | Spermacoce
+
+****
+
+We can update the mapper to make these links work correctly (that's what the mapper is for).
+
+==== new links
+
+We need to be able to encode the version into the tree links since tree_element uses a composite key.
+
+Links currently are structured as .../object/namespace/number, e.g. node/apni/7845073, where the namespace so far
+has been directly related to the shard. Trees are meant to be above/separate to shards, so perhaps we should move to
+storing the shard specifically in the identity structure in the mapper (it's more of a system identifier). This way
+we can use the namespace as intended and have tree element links like:
+
+ .../tree/137/7845073  i.e. effectively tree/version/element
+
+this lets us map any tree version to any shard/uber service directly.
+
+This change involves changing the mapper code to include a system identifier in "identifiers". This means we have to
+put in place changes to the services to ask the mapper to set the system, which we could default to the shard/namespace
+in the identifier.
+
+This URL scheme is useful for debugging.
+
+NOTE: Previously links were only created in the mapper when they were requested by the services - This was not intended
+ to be the default way to make links, but... So when a workspace is published we should do a bulk add of identifiers to
+ the mapper. We need to add a bulk add api call on the mapper.
+
+The mapper currently handles around 1.15 million identities without problem, and is designed to scale out via load
+balancing if needed.
+
+=== RDF
+
+We will need to map the new tree structure in joseki. There is a project called nsl-data, that is in the old git
+repository. The nsl-data/src/apni.ttl file contains around 400 lines of mapping config (lines 2057 - 2457) which will
+need to be reconfigured and deployed.
+
+Currently the RDF services are apparently largely unused, so we should be able to re-map to a structure that makes
+sense.
+
+== What it looks like
+
+image::new-tree-overview.svg[]
+
+== The model
+
+image::new-tree-structure.svg[]
+
