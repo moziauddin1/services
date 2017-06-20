@@ -55,7 +55,7 @@ This work is designed to make the tree easy to understand and reason about, and 
  . Multiple workspaces that can be merged over different time frames is a requirement.
  . It would be nice to be able to list and view older version of the tree and see what changed (diffing)
  . It would be nice to be able to archive older versions of the tree without breaking it.
- . we must be able to access the tree through RDF.
+ . we want to access the tree through RDF.
 
 === Change over requirements:
 
@@ -294,7 +294,7 @@ There are 315k taxon nodes out of 365k (apni shard) that are _not_ in the mapper
 There are 67k APC taxon nodes out of 115k APC taxon nodes that are _not_ in the mapper and so haven't been referenced.
 There are only 5 nodes in the current APC tree that are not in the mapper.
 
-
+How much history should we keep? We can import from 2016 and delete history later.
 
 === option 1
 
@@ -342,6 +342,12 @@ We could modify this option to group changes in a day to a single version, in wh
 This would not dramatically increase the number of versions saved as tree work seems to be limited to a few days a month
 which comes out as a total of 206 versions from 2015-01-01.
 
+=== Declared BTs
+
+Declared BT tree_elements will be removed from history and where we can the excluded names attached to the BT will
+be linked ot the BTs parent directly. Most of the time this will mean the top of the tree. This will create a consistent
+tree in the history.
+
 === Existing links
 
 NOTE: A link to a node in the old structure only gives you the structure *below* it as it was when you took the link
@@ -360,7 +366,7 @@ with the latest tree_version_id (137 in my spike):
 |===
 |name_path|simple_name
 |/Plantae/Charophyta/Equisetopsida/Magnoliidae/Asteranae/Gentianales/Rubiaceae/Spermacoce | Spermacoce
-
+|===
 ****
 
 We can update the mapper to make these links work correctly (that's what the mapper is for).
@@ -408,3 +414,199 @@ image::new-tree-overview.svg[]
 
 image::new-tree-structure.svg[]
 
+== User impact of change over
+
+Currently in production:
+
+ * a taxon can be added or removed from a tree.
+ * the status of the taxon can be changed from accepted to excluded.
+ * the comment and distribution values on the tree can be updated, but are not used as instance notes are used instead.
+
+Synonymy does not affect the tree structure as such, as that is related to the concepts that are placed on the tree only.
+There is no current process to determine if changes to synonymy of taxon concepts (instances) affect the tree, in terms
+of the rules governing placements.
+
+Placement rules are currently poorly implemented and incomplete.
+
+In the change over the initial goal will be to replace the existing functionality. We should be able to do this without
+major impact or change.
+
+== Amount of work
+
+There main functional areas affected by this change:
+
+ . Search
+ . Display
+ . Editing
+
+We would also need to factor out NameTreePath as it is replaced by the new TreeElement and the APNI name tree.
+
+I'm guestimating the amount of work to be around 340 hours in total, which depending on other work could be completed
+in 8 weeks.
+
+=== Search and display
+
+==== Services
+
+In the current services we use a search including the tree_nodes to determine if a name is on a tree and where it is
+ranked on that tree. We also look to see if a name is in APC to display an APC tick. This has been generalised somewhat
+to allow different "accepted" trees.
+
+We need to refactor:
+
+|===
+|work| notes| effort
+| search and APC/APNIFormat outputs.| -| 20h
+| tree path code to use the tree_element | will mostly be deleting code that keeps up with tree_node changes| 20h
+| The APNI name tree needs to be replaced | just use the name parent, and make sure Family comes from the accepted
+tree only. Extra time allowed for implementation discussion.|40h
+| tree services API | most of it is deleted.| 40h
+| Tree object representation| -|20h
+| flat view taxon and name exports | rework the view| 10h
+| test infrastructure and tests| -| 30h
+|| -|180h
+|===
+
+Obviously the existing tree structure is used extensively in the services for the "tree services", but most of that will
+just go and be replaced with a much simpler set of code. The search service and APNI/APC format out put are the only
+other places that use them along with name_tree_path.
+
+===== Objects representation in HTML/JSON
+
+Currently the tree nodes are modeled with and output object which in html looks like
+https://biodiversity.org.au/nsl/services/node/apni/9159708
+
+The JSON version exposes too much of the tree infrastructure by using terminology like "subnodes", links and some random
+RDF stuff.
+
+https://biodiversity.org.au/nsl/services/node/apni/9159708.json
+
+Most of the following snippet is useless to anyone consuming the data.
+
+[source,javascript]
+.node_snippet.js
+----
+{
+    "class": "au.org.biodiversity.nsl.Link",
+    "typeUri": {
+        "idPart": "btOf",
+        "nsPart": "apc-voc",
+        "uri": "http://biodiversity.org.au/voc/apc/APC#btOf",
+        "uriEncoded": "http%3A%2F%2Fbiodiversity.org.au%2Fvoc%2Fapc%2FAPC%23btOf",
+        "qname": "apc-voc:btOf",
+        "css": "apc-voc bt-of"
+    },
+    "subNode": {
+        "class": "au.org.biodiversity.nsl.Node",
+        "_links": {
+            "permalink": {
+                "link": "https://id.biodiversity.org.au/node/apni/9159707",
+                "preferred": true,
+                "resources": 1
+            }
+        },
+        "id": 9159707,
+        "type": "T",
+        "typeUri": {
+            "idPart": "ApcConcept",
+            "nsPart": "apc-voc",
+            "uri": "http://biodiversity.org.au/voc/apc/APC#ApcConcept",
+            "uriEncoded": "http%3A%2F%2Fbiodiversity.org.au%2Fvoc%2Fapc%2FAPC%23ApcConcept",
+            "qname": "apc-voc:ApcConcept",
+            "css": "apc-voc apc-concept"
+        }
+    },
+    "linkSeq": 1,
+    "versioningMethod": {
+        "enumType": "au.org.biodiversity.nsl.VersioningMethod",
+        "name": "V"
+    },
+    "isSynthetic": true
+},
+
+----
+
+We'll replace the html page with something very similar for now and completely restructure the JSON output to better
+represent the taxon in the context of the tree.
+
+==== Editor
+
+|===
+|work| notes| effort
+|convert views| mostly simple changes but need to handle node type| 10h
+|refactor models| the DB models need to be replaced with new models hopefully returning only relevant data| 40h
+|refactor the tree editing tab| with the refactoring of the tree edit service end points this should be a minimal change
+only replacing some of the reference keys like the voc:AcpComment stuff.| 40h
+|||90h
+|===
+
+The editor uses views to check if a name is currently accepted:
+
+ * accepted_name_vw
+ * accepted_synonym_vw
+
+We would need to change code around type_code which relates directly to tree_node.type_uri_id_part.
+
+The editor also models
+
+ * TreeArrangement
+ * TreeLink
+ * TreeNode
+ * TreeUriNs
+ * TreeValueUri
+ * AcceptedConcept
+ * AcceptedInSomeWay
+
+which would all need refactoring for usage.
+
+There are two different editors for the tree in the instance editor, the current AngularJS based one can be removed
+completely and be replaced with the workspace based one that uses the following service end points:
+
+ * treeEdit/updateValue
+ * treeEdit/placeNameOnTree
+ * treeEdit/removeNameFromTree
+
+==== New tree editor
+
+|===
+|work| notes| effort
+|Add admin tasks to admin pages| This should be a straightforward form| 20h
+|Add a tree view| This should already be part of the new tree_element object display replacing the node object| included
+|re work validation code| see services | included
+|||20h
+|===
+
+This editor needs to be incorporated in the instance editor. The new structure will make this easier, but this is
+possibly not required in the first iteration of this change.
+
+Basically we need to be able to create trees and workspaces and publish or delete a workspace. Create and delete are
+part of the existing API on the services.
+
+We will make the basic tree administration part of the existing services and incorporate the editing into the instance
+editor. We will develop a tree view for both the editor and services - where the editor view will allow access to
+instance editing etc.
+
+We will re-implement the validation code on the new tree structure as a callable service, and as part of the placement
+actions.
+
+==== New search
+
+|===
+|work| notes| effort
+|convert views| mostly simple changes but need to handle node type| 10h
+|refactor models| the DB models need to be replaced with new models hopefully returning only relevant data| 40h
+|||50h
+|===
+
+The new search app uses the following views:
+
+  * accepted_name_vw
+  * accepted_synonym_vw
+  * instance_resource_vw
+  * name_instance_vw
+  * name_or_synonym_vw
+
+It models:
+
+ * TreeArrangement
+ * TreeNode

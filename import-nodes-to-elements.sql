@@ -41,32 +41,34 @@ FROM daily_top_nodes('APC', '2016-01-01');
 
 DROP FUNCTION IF EXISTS tree_element_data_from_node( BIGINT );
 CREATE FUNCTION tree_element_data_from_node(root_node BIGINT)
-  RETURNS TABLE(tree_id     BIGINT, parent_id BIGINT, node_id BIGINT, instance_id BIGINT, name_id BIGINT,
+  RETURNS TABLE(tree_id     BIGINT, parent_id BIGINT, node_id BIGINT, excluded BOOLEAN, instance_id BIGINT, name_id BIGINT,
                 simple_name TEXT, display TEXT, prev_node_id BIGINT, tree_path TEXT, name_path TEXT, rank_path JSONB)
 LANGUAGE SQL
 AS $$
-WITH RECURSIVE treewalk (tree_id, parent_id, node_id, instance_id, name_id, simple_name, display, prev_node_id, tree_path, name_path, rank_path) AS (
+WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, name_id, simple_name, display, prev_node_id, tree_path, name_path, rank_path) AS (
   SELECT
-    tree.id        AS tree_id,
-    NULL :: BIGINT AS parent_id,
-    node.id        AS node_id,
-    node.instance_id,
-    node.name_id,
-    ''             AS simple_name,
-    ''             AS display,
-    node.prev_node_id,
-    '' :: TEXT     AS tree_path,
-    '' :: TEXT     AS name_path,
-    '{}' :: JSONB  AS rank_path,
-    0              AS depth
+    tree.id           AS tree_id,
+    NULL :: BIGINT    AS parent_id,
+    node.id           AS node_id,
+    FALSE             AS excluded,
+    node.instance_id  AS instance_id,
+    node.name_id      AS name_id,
+    ''                AS simple_name,
+    ''                AS display,
+    node.prev_node_id AS prev_node_id,
+    '' :: TEXT        AS tree_path,
+    '' :: TEXT        AS name_path,
+    '{}' :: JSONB     AS rank_path,
+    0                 AS depth
   FROM tree_node node
     JOIN tree_arrangement tree ON node.tree_arrangement_id = tree.id
   WHERE node.id = root_node
   UNION ALL
   SELECT
-    treewalk.tree_id,
+    treewalk.tree_id                                                                                   AS tree_id,
     treewalk.node_id                                                                                   AS parent_id,
     node.id                                                                                            AS node_id,
+    (node.type_uri_id_part <> 'ApcConcept') :: BOOLEAN                                                 AS excluded,
     node.instance_id                                                                                   AS instance_id,
     node.name_id                                                                                       AS name_id,
     name.simple_name :: TEXT                                                                           AS simple_name,
@@ -90,6 +92,7 @@ SELECT
   tree_id,
   parent_id,
   node_id,
+  excluded,
   instance_id,
   name_id,
   simple_name,
@@ -101,9 +104,13 @@ SELECT
 FROM treewalk
 $$;
 
-SELECT *
-FROM tree_element_data_from_node(5451502)
-WHERE simple_name LIKE 'Asplenium %';
+SELECT
+  node.type_uri_id_part,
+  *
+FROM tree_element_data_from_node(5451502) ted
+  JOIN tree_node node ON node.id = ted.node_id
+WHERE excluded = TRUE
+ORDER BY name_path;
 
 DROP SEQUENCE IF EXISTS test_seq;
 CREATE SEQUENCE test_seq;
@@ -155,6 +162,7 @@ INSERT INTO tree_element
 (tree_version_id,
  tree_element_id,
  lock_version,
+ excluded,
  display_string,
  element_link,
  instance_id,
@@ -176,6 +184,7 @@ INSERT INTO tree_element
      v.id                          AS tree_version_id,
      el_data.node_id               AS tree_element_id,
      0 :: BIGINT                   AS lock_version,
+     el_data.excluded              AS excluded,
      el_data.display               AS display_string,
      ''                            AS element_link,
      el_data.instance_id :: BIGINT AS instance_id,
@@ -217,7 +226,9 @@ WHERE ce.parent_version_id - 1 = pe.tree_version_id AND ce.name_id = pe.name_id;
 SELECT *
 FROM tree_element, tree t
 WHERE t.name = 'APC'
-      AND tree_version_id = 136
+      AND tree_version_id = (SELECT max(id)
+                             FROM tree_version
+                             WHERE tree_id = t.id)
 ORDER BY name_path;
 
 -- look at changes to the tree structure over time
@@ -278,3 +289,99 @@ SELECT
   simple_name
 FROM tree_element
 WHERE tree_version_id = 137 AND tree_element_id = 7845073;
+
+-- count BTs by version in tree_elements
+SELECT
+  v.id,
+  v.published_at,
+  count(tree_element_id) AS BTs
+FROM tree_element element
+  JOIN tree_node node ON node.id = element.tree_element_id
+  JOIN tree_version v ON element.tree_version_id = v.id
+WHERE node.type_uri_id_part = 'DeclaredBt'
+GROUP BY v.id
+ORDER BY v.id;
+
+-- update all names with BT to point to the BTs parent
+UPDATE tree_element element
+SET parent_element_id = bt_element.parent_element_id,
+  parent_version_id   = bt_element.parent_version_id
+FROM tree_node node, tree_element bt_element
+WHERE node.id = element.parent_element_id
+      AND node.type_uri_id_part = 'DeclaredBt'
+      AND bt_element.tree_element_id = element.parent_element_id
+      AND bt_element.tree_version_id = element.tree_version_id;
+
+-- count elements with bt parents - it should be zero
+SELECT count(*) AS elements_with_bt_parents
+FROM tree_element element
+  JOIN tree_node node ON node.id = element.parent_element_id
+  JOIN tree_version v ON element.tree_version_id = v.id
+WHERE node.type_uri_id_part = 'DeclaredBt';
+
+-- * delete BT elements *
+--- clean up foreign keys
+UPDATE tree_element
+SET parent_element_id = NULL, parent_version_id = NULL, previous_version_id = NULL, previous_element_id = NULL
+WHERE tree_element_id IN (SELECT id
+                          FROM tree_node node
+                          WHERE node.type_uri_id_part = 'DeclaredBt');
+
+UPDATE tree_element
+SET previous_version_id = NULL, previous_element_id = NULL
+WHERE previous_element_id IN (SELECT id
+                              FROM tree_node node
+                              WHERE node.type_uri_id_part = 'DeclaredBt');
+
+ALTER TABLE IF EXISTS tree_element
+  DROP CONSTRAINT IF EXISTS FK_tb2tweovvy36a4bgym73jhbbk;
+
+ALTER TABLE IF EXISTS tree_element
+  DROP CONSTRAINT IF EXISTS FK_slpx4w0673tudgw4fcodauilv;
+
+ALTER TABLE IF EXISTS tree_element
+  DROP CONSTRAINT IF EXISTS FK_89rcrnlb8ed10mgp22d3cj646;
+
+ALTER TABLE IF EXISTS tree_element
+  DROP CONSTRAINT IF EXISTS FK_964uyddp8ju1ya5v2px9wx5tf;
+
+ALTER TABLE IF EXISTS tree_element
+  DROP CONSTRAINT IF EXISTS FK_kaotdsllnfojld6pdxb8c9gml;
+
+DELETE FROM tree_element
+WHERE tree_element_id IN (SELECT id
+                          FROM tree_node node
+                          WHERE node.type_uri_id_part = 'DeclaredBt');
+
+ALTER TABLE IF EXISTS tree_element
+  ADD CONSTRAINT FK_tb2tweovvy36a4bgym73jhbbk
+FOREIGN KEY (tree_version_id)
+REFERENCES tree_version;
+
+ALTER TABLE IF EXISTS tree_element
+  ADD CONSTRAINT FK_slpx4w0673tudgw4fcodauilv
+FOREIGN KEY (instance_id)
+REFERENCES instance;
+
+ALTER TABLE IF EXISTS tree_element
+  ADD CONSTRAINT FK_89rcrnlb8ed10mgp22d3cj646
+FOREIGN KEY (name_id)
+REFERENCES name;
+
+ALTER TABLE IF EXISTS tree_element
+  ADD CONSTRAINT FK_964uyddp8ju1ya5v2px9wx5tf
+FOREIGN KEY (parent_Version_Id, parent_Element_Id)
+REFERENCES tree_element;
+
+ALTER TABLE IF EXISTS tree_element
+  ADD CONSTRAINT FK_kaotdsllnfojld6pdxb8c9gml
+FOREIGN KEY (previous_Version_Id, previous_Element_Id)
+REFERENCES tree_element;
+
+-- count of bt tree_elements should be zero
+SELECT count(*)
+FROM tree_element
+WHERE tree_element_id IN (SELECT id
+                          FROM tree_node node
+                          WHERE node.type_uri_id_part = 'DeclaredBt');
+
