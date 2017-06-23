@@ -444,6 +444,28 @@ We would also need to factor out NameTreePath as it is replaced by the new TreeE
 I'm guestimating the amount of work to be around 340 hours in total, which depending on other work could be completed
 in 8 weeks.
 
+=== APNI Name Tree
+
+Now would be the right time to replace the APNI name tree if we're going to do that. JIRA NSL-2304 discusses the issues
+around the name tree being replaced. There is definitely a current need for a tree structure that caters for names that
+aren't in the APC/taxonomic tree.
+
+The solution suggested in NSL-2304 is to replace Name.sortName with a tree path as per the tree_element and existing
+name_tree_path, and putting the "agreed" family of a name in the name where that name is below family. Name id path
+would be a logical addition to speed up any other name path operations, but we may say
+https://en.wikipedia.org/wiki/You_aren%27t_gonna_need_it[YAGNI] on this initially.
+
+To do this we would do this (in order):
+
+. copy the APC name path to all names in APC
+. copy the APC name path to all synonyms of names on the tree
+. follow name.parent up the tree for names not in APC till we reach a name in APC to build their path.
+
+In the last step we can stop once we hit a name with a name path, which makes this more of a functional step.
+
+This still means editors should put the immediate parent of a name in, not the "Name parent" as we're still using the
+name tree as a filler for what isn't in APC.
+
 === Search and display
 
 ==== Services

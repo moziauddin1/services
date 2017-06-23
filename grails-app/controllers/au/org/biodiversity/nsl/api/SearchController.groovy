@@ -16,13 +16,7 @@
 
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.Arrangement
-import au.org.biodiversity.nsl.CsvRenderer
-import au.org.biodiversity.nsl.FlatViewService
-import au.org.biodiversity.nsl.Name
-import au.org.biodiversity.nsl.NameTagName
-import au.org.biodiversity.nsl.Node
-import au.org.biodiversity.nsl.UriNs
+import au.org.biodiversity.nsl.*
 import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
@@ -38,19 +32,19 @@ class SearchController implements RequestUtil {
         String referer = request.getHeader('Referer')
         String remoteIP = remoteAddress(request)
         log.info "Search params $params, Referer: ${referer}, Remote: ${remoteIP}"
-        max = max ?: 100;
+        max = max ?: 100
 
         if (!params.product && !SecurityUtils.subject?.authenticated) {
             params.product = configService.nameTreeName
             params.display = params.display ?: 'apni'
         }
 
-        if (params.product) {
-            Arrangement tree = Arrangement.findByNamespaceAndLabelIlike(configService.nameSpace, params.product as String)
+        if (params.product && params.product != configService.nameTreeName) {
+            Tree tree = Tree.findByNameIlike(params.product as String)
             if (tree) {
-                params.product = tree.label //force to the correct case for a product label
+                params.product = tree.name //force to the correct case for a product label
                 params.tree = [id: tree.id]
-                params.display = (params.product == configService.nameTreeName ? 'apni' : 'apc')
+                params.display = 'apc'
             } else {
                 flash.message = "Unknown product ${params.product}"
                 return redirect(url: '/search')
@@ -140,7 +134,7 @@ class SearchController implements RequestUtil {
                     'http://biodiversity.org.au/voc/nsl/Tree#'            : 'nsl-tree',
                     'http://biodiversity.org.au/voc/nsl/APC#'             : 'nsl-apc',
                     'http://biodiversity.org.au/voc/nsl/Namespace#'       : 'nsl-ns'
-            ];
+            ]
 
             // if we have an item in UriNs, then it will override these handy prefixes.
 

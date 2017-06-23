@@ -155,17 +155,18 @@ class SearchService {
 
     private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
         if (params.tree?.id) {
-            Arrangement root = Arrangement.get(params.tree.id as Long)
-            queryParams.root = root
-            from.add('Node node')
-            and << "node.root = :root and node.checkedInAt is not null and node.next is null and node.internalType = 'T'"
+            Tree tree = Tree.get(params.tree.id as Long)
+            TreeVersion treeVersion = tree.currentTreeVersion
+            queryParams.treeVersion = treeVersion
+            from.add('TreeElement treeElement')
+            and << "treeElement.treeVersion = :treeVersion"
 
-            if (root.label == ConfigService.nameTreeName || params.exclSynonym == 'on') {
-                and << "n.id = node.name.id"
+            if (params.exclSynonym == 'on') {
+                and << "n = treeElement.name"
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
-                and << "n = s.name and (s.citedBy = i or s = i) and i.id = node.instance.id"
+                and << "n = s.name and (s.citedBy = i or s = i) and i = treeElement.instance"
             }
 
             if (params.inRank?.id) {
@@ -174,23 +175,12 @@ class SearchService {
                 if (rankNameString) {
                     List<Name> rankNames = Name.findAllByFullNameIlikeAndNameRank("${rankNameString}%", inRank)
                     if (rankNames && !rankNames.empty) {
-                        List<NameTreePath> ntps = nameTreePathService.findAllCurrentNameTreePathsForNames(rankNames, root)
-                        if (ntps && !ntps.empty) {
-                            from.add('NameTreePath ntp')
-                            if (root.label == ConfigService.nameTreeName || params.exclSynonym == 'on') {
-                                and << "n = ntp.name and ntp.tree = :root"
-                            } else {
-                                and << "i.name = ntp.name and ntp.tree = :root"
-                            }
-                            Set<String> pathOr = []
-                            ntps.eachWithIndex { ntp, i ->
-                                queryParams["path$i"] = "${ntp.nameIdPath}%"
-                                pathOr << "ntp.nameIdPath like :path$i"
-                            }
-                            and << "(${pathOr.join(' or ')})"
-                        } else {
-                            return [count: 0, names: [], message: "Name tree path for ${params.rankName} not found in ${root.label}"]
+                        Set<String> pathOr = []
+                        rankNames.eachWithIndex { Name name, int i ->
+                            queryParams["path$i"] = "%/${name.nameElement}%"
+                            pathOr << "treeElement.namePath like :path$i"
                         }
+                        and << "(${pathOr.join(' or ')})"
                     } else {
                         return [count: 0, names: [], message: "Rank name ${params.rankName} does not exist in rank ${inRank.name} in ${root.label}"]
                     }

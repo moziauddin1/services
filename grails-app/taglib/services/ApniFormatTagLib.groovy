@@ -25,6 +25,7 @@ class ApniFormatTagLib {
 
     def nameConstructionService
     def nameTreePathService
+    def treeService
     def instanceService
     LinkService linkService
     def configService
@@ -135,21 +136,21 @@ class ApniFormatTagLib {
     def branch = { attrs, body ->
         Name name = attrs.name
         String treeName = attrs.tree ?: configService.classificationTreeName
-        NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, treeName)
-        if (nameTreePath) {
+        TreeElement treeElement = treeService.findTreeElementForName(name, treeService.getTree(treeName))
+        if (treeElement) {
             out << "<branch title=\"click to see branch in $treeName.\">"
             out << body()
 
-            List<Node> nodesInBranch = nameTreePathService.getCurrentNodesInBranch(nameTreePath)
+            List<TreeElement> elementPath = treeService.getElementPath(treeElement)
 
             out << '<ul>'
             out << "<li>$treeName</li>"
-            nodesInBranch.each { Node n ->
-                String link = linkService.getPreferredLinkForObject(n)
+            elementPath.each { TreeElement element ->
+                String link = element.elementLink
                 if (link) {
-                    out << "<li><a href='${link}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                    out << "<li><a href='${link}'>${element.name.nameElement}</a> <span class=\"text-muted\">(${element.name.nameRank.abbrev})</span></li>"
                 } else {
-                    out << "<li>${n.name.nameElement} <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                    out << "<li>${element.name.nameElement} <span class=\"text-muted\">(${element.name.nameRank.abbrev})</span></li>"
                 }
             }
             out << '</ul></branch>'
