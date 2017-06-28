@@ -389,6 +389,9 @@ ALTER TABLE IF EXISTS tree_element
 FOREIGN KEY (previous_Version_Id, previous_Element_Id)
 REFERENCES tree_element;
 
+CREATE INDEX name_path_gin_trgm
+  ON tree_element USING GIN (name_path gin_trgm_ops);
+
 VACUUM ANALYSE;
 
 -- count of bt tree_elements should be zero
@@ -426,7 +429,6 @@ WHERE host.preferred;
 --       AND ident.object_type = 'name'
 --       AND ident.name_space = 'apni';
 --
--- EXPLAIN
 -- UPDATE tree_element el
 -- SET name_link = 'http://' || host.host_name || '/' || url.uri
 -- FROM mapper.host host, mapper.identifier ident
@@ -438,7 +440,145 @@ WHERE host.preferred;
 
 VACUUM ANALYSE;
 
-SELECT *
-FROM tree_element
-WHERE tree_version_id = 137
-ORDER BY name_path;
+-- SELECT element.*
+-- FROM tree_element element
+--   JOIN tree ON element.tree_version_id = tree.current_tree_version_id AND tree.name = 'APC'
+-- ORDER BY element.name_path;
+
+-- names or synonyms of names in the tree and their family according to APC
+-- SELECT
+--   element.rank_path ->> 'Familia' AS family,
+--   element.name_path,
+--   name.full_name,
+--   synonym.full_name               AS syn_of,
+--   element.instance_id,
+--   s.id                            AS syn_id,
+--   (element.instance_id <> s.id)   AS is_synonym
+-- FROM Name name,
+--   tree_element element
+--   JOIN tree ON element.tree_version_id = tree.current_tree_version_id AND tree.name = 'APC'
+--   ,
+--   Instance i,
+--   Instance s,
+--   name synonym
+-- WHERE name.id = s.name_id
+--       AND (s.cited_by_id = i.id OR s.id = i.id) AND i.id = element.instance_id
+--       AND synonym.id = i.name_id;
+--
+-- SELECT
+--   fam.id            AS family,
+--   element.name_path AS name_path,
+--   name.id
+-- FROM Name name,
+--   tree_element element
+--   JOIN tree ON element.tree_version_id = tree.current_tree_version_id AND tree.name = 'APC'
+--   LEFT OUTER JOIN name fam ON fam.simple_name = element.rank_path ->> 'Familia'
+--   ,
+--   Instance i,
+--   Instance s,
+--   name synonym
+-- WHERE name.id = s.name_id
+--       AND (s.cited_by_id = i.id OR s.id = i.id) AND i.id = element.instance_id
+--       AND synonym.id = i.name_id
+-- ORDER BY name_path;
+
+-- set all the existing name paths and family from APC tree
+UPDATE name n
+SET name_path = '';
+UPDATE name name
+SET family_id = fam.id,
+  name_path   = element.name_path
+FROM
+  tree_element element
+  JOIN tree ON element.tree_version_id = tree.current_tree_version_id AND tree.name = 'APC'
+  LEFT OUTER JOIN name fam ON fam.simple_name = element.rank_path ->> 'Familia'
+  ,
+  Instance i,
+  Instance s,
+  name synonym
+WHERE name.id = s.name_id
+      AND (s.cited_by_id = i.id OR s.id = i.id) AND i.id = element.instance_id
+      AND synonym.id = i.name_id;
+
+-- SELECT
+--   family.full_name AS familyName,
+--   n.full_name,
+--   n.sort_name,
+--   n.name_path
+-- FROM name n LEFT OUTER JOIN name family ON n.family_id = family.id
+-- WHERE n.name_path LIKE '%Rosanae/%'
+-- ORDER BY n.name_path;
+--
+-- -- find all scientific names without name path (32032)
+-- SELECT
+--   'https://id.biodiversity.org.au/name/apni/' || n.id AS link,
+--   n.full_name,
+--   rank.name                                           AS name_rank,
+--   name_type.name                                      AS name_type
+-- FROM (SELECT DISTINCT (name_id)
+--       FROM instance) AS apni_names
+--   JOIN name n ON name_id = n.id
+--   JOIN name_rank rank ON n.name_rank_id = rank.id
+--   JOIN name_type ON n.name_type_id = name_type.id
+-- JOIN NAME parent ON n.parent_id = parent.id
+-- WHERE name_type.scientific
+-- AND n.name_path = ''
+-- AND n.parent_id IS NOT NULL;
+--
+--
+-- SELECT
+--   n.full_name                                              AS unplaced_name,
+--   rank.name as name_rank,
+--   parent.full_name                                         AS parent_name,
+--   parent.name_path || '/' || coalesce(n.name_element, '?') AS new_name_path
+-- FROM (SELECT DISTINCT (name_id)
+--       FROM instance) AS apni_names,
+--   name n JOIN name_rank rank ON n.name_rank_id = rank.id,
+--   name_type,
+--   name parent
+-- WHERE n.id = name_id
+--       AND name_type.id = n.name_type_id
+--       AND name_type.scientific
+--       AND n.name_path = ''
+--       AND n.parent_id IS NOT NULL
+--       AND parent.id = n.parent_id
+--       AND parent.name_path <> ''
+-- ORDER BY new_name_path;
+
+-- find non APC names that have an APC name parent (20861)
+SELECT count(n.*)
+FROM (SELECT DISTINCT (name_id)
+      FROM instance) AS apni_names
+  JOIN name n ON name_id = n.id
+  JOIN name_type ON n.name_type_id = name_type.id
+  JOIN name parent ON n.parent_id = parent.id
+WHERE name_type.scientific
+      AND n.name_path = ''
+      AND n.parent_id IS NOT NULL
+      AND parent.name_path <> '';
+
+-- repeatedly do this until all names have been joined to an APC parent (6 times as of writing)
+UPDATE name n
+SET name_path = parent.name_path || '/' || coalesce(n.name_element, '?')
+FROM (SELECT DISTINCT (name_id)
+      FROM instance) AS apni_names,
+  name_type,
+  name parent
+WHERE n.id = name_id
+      AND name_type.id = n.name_type_id
+      AND name_type.scientific
+      AND n.name_path = ''
+      AND n.parent_id IS NOT NULL
+      AND parent.id = n.parent_id
+      AND parent.name_path <> '';
+
+-- get the simple name with all it's synonyms in a string
+SELECT '|' || name.simple_name || '|' ||
+       string_agg(DISTINCT (synonym.simple_name), '|')
+FROM Name name, tree_element element, Instance i, Instance s, name synonym
+WHERE element.tree_version_id = 137
+      AND name.id = i.name_id
+      AND s.cited_by_id = i.id
+      AND i.id = element.instance_id
+      AND synonym.id = s.name_id
+GROUP BY name.simple_name;

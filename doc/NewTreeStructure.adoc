@@ -55,7 +55,68 @@ This work is designed to make the tree easy to understand and reason about, and 
  . Multiple workspaces that can be merged over different time frames is a requirement.
  . It would be nice to be able to list and view older version of the tree and see what changed (diffing)
  . It would be nice to be able to archive older versions of the tree without breaking it.
- . we want to access the tree through RDF.
+ . we want to access the trees through RDF.
+
+==== Uber trees
+
+ . we must be able to create an "uber tree" from multiple sub trees.
+ . The uber tree should be able to merge sub trees from multiple points - for example lichens have multiple connections
+  the the fungi tree.
+ . according to https://www.environment.gov.au/science/abrs/publications/other/numbers-living-species/executive-summary[ABRS Numbers of Living Species in Australia and the World]
+ there are ~2million species in the world that we should aim to handle in an uber tree.
+
+==== Use cases
+
+ . creation of accepted taxonomic trees with strict hierarchical placement rules within a shard.
+ . creation of a list of taxon concepts commonly (only) from family down, known as a checklist, from one or more shards.
+ these trees may have more relaxed placement rules.
+ . creation of composite (uber) trees made from multiple sub trees, such as accepted taxonomic trees from multiple shards
+
+==== Editors
+
+Based on the above use cases, and current editor usage, it looks like we need two different editing pathways for trees.
+
+  . In instance editor tree editing: Where the advanced editor can create specific taxonomic concepts for accepted trees
+  in accordance with some authority such as CHAH.
+  . A composition editor that can compose multiple trees into an uber tree, or create a checklist. This doesn't require the
+  ability to edit instances, just choose concepts, or other tree elements/sections.
+
+Perhaps the second, compositional, editor is logically broken into an uber tree manager and a checklist editor.
+
+==== Search
+
+===== use cases
+
+ . search a tree for names under a name and bring back the results displaying the apni or apc format output
+   * search synonyms or accepted only
+   * search based on native, naturalised, distribution or profile data.
+   * further advanced filtering based on name/instance type, tags, author etc.
+ . search a tree for names independent of any tree and display in APNI format - this may be an advanced search on name types
+  tags, instance types, and may require knowledge of the Family.
+ . Name check - a specific check against the accepted tree in a shard.
+
+===== implementation (discussion)
+
+Tree searches should be associated with the tree they are on because a tree may be separated from the name and instance
+data it is pointing at. In the case of the uber trees they may be pointing to multiple shards.
+
+Since trees contain the name and instance id, but not instance data a tree search may bring back a list of names that can
+in turn fetch APNI or APC format data via the existing service API (much like the existing service search).
+
+If we want to implement a closer coupled database implementation in the search we could link to multiple shard databases
+to get the data. *I prefer the previous solution as it allows fully autonomous trees and lists to exist that just use
+linked data.* However speed will need to be taken into account when looking at this, which means looking at if the service
+APIs need improving or the solution is limited to direct database connections.
+
+We need to carefully consider what is offered in search and how you discover what can be searched... initially of course
+we are publicly offering only the APC as a cross shard search, and then moving up to NSL including AFD.
+
+Trees that are linked to a shard, e.g. the Vascular APC tree, that have a database relationship to the name and instance
+data in the shard can take advantage of joins for more complex queries.
+
+Cross shard searching in general needs an API approach where an API (which could be just a database connection) is used
+to collect data, then a map/reduce/sort approach is used to filter and sort results. The name paths and sort names will
+help in collating and sorting results from multiple sources.
 
 === Change over requirements:
 
@@ -82,6 +143,16 @@ The tree holds a pointer to the current tree and a default workspace.
 This concept trades storage efficiency for simplicity. Excessive numbers of versions could create a lot of copied
 tree elements, but the workspace/publish model may also lead to a more structured release of versions
 (e.g. once a Day/Week/Month) instead of on the fly changes.
+
+=== Autonomous trees
+
+Trees should be able to be autonomous from the shards. This means that database foreign keys to names and instances are
+not enforced (i.e. no direct FK relationship). This means we need to rely on the link to identify the instances. It also
+means that we want to copy the data required to ask questions of the tree into the tree structure as much as possible.
+
+Whilst we will rely on the link to reference the data in the shards we will store the instance and name id (as a Long),
+which means also that we need to store the source shard for the instance and name. If a placed name later becomes
+de-duplicated we may have to update the id by using the mapper (rare).
 
 === Data usage vs speed
 
@@ -146,6 +217,56 @@ tree elements to new tree elements should not take any longer (it should be quic
 
 Also note that the new data structure allows us to partition and archive older versions should we need to.
 
+Copying the 35k tree_elements to a workspace takes about 12.8 seconds:
+
+ sql> INSERT INTO tree_element
+ (tree_version_id,
+  tree_element_id,
+  lock_version,
+  excluded,
+  display_string,
+  element_link,
+  instance_id,
+  instance_link,
+  name_id,
+  name_link,
+  parent_version_id,
+  parent_element_id,
+  previous_version_id,
+  previous_element_id,
+  profile,
+  rank_path,
+  simple_name,
+  tree_path,
+  name_path,
+  updated_at,
+  updated_by)
+   (SELECT
+     139,
+      tree_element_id,
+      lock_version,
+      excluded,
+      display_string,
+      '',
+      instance_id,
+      instance_link,
+      name_id,
+      name_link,
+      139,
+      parent_element_id,
+      tree_version_id, -- previous version
+      tree_element_id,
+      profile,
+      rank_path,
+      simple_name,
+      tree_path,
+      name_path,
+      updated_at,
+      updated_by
+     from tree_element where tree_version_id = 137
+   )
+ [2017-06-26 18:42:38] 35334 rows affected in 12s 802ms
+
 === Multiple workspaces
 
 Because a workspace is just a copy of a version of the tree with pointers to the previous version of it's tree_elements,
@@ -195,6 +316,20 @@ Fabaceae of rank species that are native to WA.
 This will greatly improve the speed and simplicity of searches, especially given the right indexes.
 
 Since links are also immutable they can also be stored to reduce round trips to the mapper.
+
+=== Synonyms
+
+To further make trees autonomous we need to store the synonyms of the name in the tree element data. This can be achieved
+by storing a names string, similar to the name path, that contains all the synonyms of the name separated by a pipe.
+
+ e.g.
+ |Acacia mucronata subsp. mucronata|Acacia mucronata var. linearis|Acacia mucronata var. mucronata|Racosperma mucronatum subsp. mucronatum
+
+This means you can do a search for a name on a tree including the synonyms by doing:
+
+ select * from tree_element where names like '%|Acacia mucronata var. linearis%';
+
+You can even display the synonyms without further query.
 
 === Profile data
 
@@ -405,6 +540,53 @@ need to be reconfigured and deployed.
 
 Currently the RDF services are apparently largely unused, so we should be able to re-map to a structure that makes
 sense.
+
+=== Uber trees
+
+The new structure caters for uber trees by easily allowing trees to be copied and providing very fast mechanisms for
+search and display. Two million records is certainly not excessive to copy or refer to. It is not expected that people
+will edit the uber tree directly so workspace versions would not normally be required.
+
+We need to provide a mechanism to describe and build an uber tree that potentially watches the component trees to build
+current uber tree.
+
+Two million record tree would be expected to take up around 285MB based on the estimated data usage figures quoted above
+for 35k names.
+
+doing a select on 4 819 443 tree_elements and ordering by name_path on my local machine took 3m 12s
+
+ select * from tree_element order by name_path;
+ 2000 rows retrieved starting from 1 in 3m 12s 448ms (execution: 3m 11s 788ms, fetching: 660ms)
+
+after optimising postgresql this came down to 1m 40s.
+
+With a trigram index on name_path a search for everything under Eucalyptus on 4.8M tree_elements (159213 results 2000 fetched)
+takes ~5 seconds.
+
+ sql> select * from tree_element where name_path like '%/Eucalyptus/%' order by name_path
+ [2017-06-26 17:02:47] 2000 rows retrieved starting from 1 in 4s 910ms (execution: 4s 579ms, fetching: 331ms)
+
+On about 2M elements it takes 2.2s indicating the time taken for these queries is linear with number of records.
+
+  sql> select * from tree_element where tree_version_id > 80 and name_path like '%/Eucalyptus/%' order by name_path
+  [2017-06-26 17:07:46] 2000 rows retrieved starting from 1 in 2s 271ms (execution: 2s 35ms, fetching: 236ms)
+
+This also indicates more machine grunt may improve performance. (After optimising postgresql this came down to 1.48s)
+
+****
+My local machine is an i7-4820K 3.70GHz CPU x 4, 32GB machine with a 500GB Samsung SSD. Postgresql had not been optimised
+for this machine yet.
+****
+
+Copying 2 million tree_elements into a new table takes around 9.6s
+
+ sql> select * into new_tree_elements from tree_element where tree_version_id > 80
+ [2017-06-26 17:37:30] completed in 9s 618ms
+
+
+Given it takes about 12 seconds to copy/insert 35k tree_elements into the tree_elements table to make a workspace
+it should take around 11 minutes to copy an entire 2 million element tree. We shouldn't have to copy the entire uber
+tree of this size very often.
 
 == What it looks like
 
@@ -632,3 +814,10 @@ It models:
 
  * TreeArrangement
  * TreeNode
+
+== Other stuff
+At the moment the name tree has namespaces and the lichen name tree has 31 Fungi name spaced names. This doens't work at
+the moment as a tree can only have one name space. I have changed the lichen names to all have the same namespace (Lichen)
+so that the current name tree works kind of....
+
+But this is going to bring up a problem we'll have to deal with where we have intersecting trees.

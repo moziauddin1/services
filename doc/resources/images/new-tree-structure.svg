@@ -1,188 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/PR-SVG-20010719/DTD/svg10.dtd">
-<svg width="56cm" height="39cm" viewBox="739 -241 1102 762" xmlns="http://www.w3.org/2000/svg">
+<svg width="37cm" height="41cm" viewBox="1119 -238 722 819" xmlns="http://www.w3.org/2000/svg">
     <g>
-        <rect style="fill: #ffffff" x="1140" y="-240" width="700" height="760"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="1140" y="-240" width="700"
-              height="760"/>
-    </g>
-    <g>
-        <rect style="fill: #ffffff" x="740" y="-240" width="380" height="760"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="740" y="-240" width="380"
-              height="760"/>
-    </g>
-    <g>
-        <rect style="fill: #ffffff" x="840" y="-140" width="241" height="28"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="840" y="-140" width="241"
-              height="28"/>
-        <text font-size="16"
-              style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700"
-              x="960.5" y="-121">Tree
-        </text>
-        <rect style="fill: #ffffff" x="840" y="-112" width="241" height="68"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="840" y="-112" width="241"
-              height="68"/>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="843"
-              y="-98">+Name: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="843"
-              y="-82">+defaultDraftTree: TreeVersion
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="843"
-              y="-66">+currentTree: TreeVersion
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="843"
-              y="-50">+group: String
-        </text>
-        <rect style="fill: #ffffff" x="840" y="-44" width="241" height="8"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="840" y="-44" width="241"
-              height="8"/>
-    </g>
-    <g>
-        <rect style="fill: #ffffff" x="820" y="40" width="233.3" height="28"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="820" y="40" width="233.3"
-              height="28"/>
-        <text font-size="16"
-              style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700"
-              x="936.65" y="59">TreeVersion
-        </text>
-        <rect style="fill: #ffffff" x="820" y="68" width="233.3" height="84"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="820" y="68" width="233.3"
-              height="84"/>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="823"
-              y="82">+id: long
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="823"
-              y="98">+Tree: Tree
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="823"
-              y="114">+Date published: Timestamp
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="823"
-              y="130">+previousVersion: TreeVersion
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="823"
-              y="146">+draftName: String
-        </text>
-        <rect style="fill: #ffffff" x="820" y="152" width="233.3" height="8"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="820" y="152" width="233.3"
-              height="8"/>
-    </g>
-    <g>
-        <rect style="fill: #ffffff" x="800" y="200" width="202.5" height="28"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="800" y="200" width="202.5"
-              height="28"/>
-        <text font-size="16"
-              style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700"
-              x="901.25" y="219">TreeItem
-        </text>
-        <rect style="fill: #ffffff" x="800" y="228" width="202.5" height="260"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="800" y="228" width="202.5"
-              height="260"/>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="242">+id: long
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="258">+treeVersion: TreeVersion
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="274">+instance: Instance
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="290">+name: Name
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="306">+parentItem: TreeItem
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="322">+previousItem: TreeItem
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="338">+profile: JSON
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="354">+display: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="370">+simpleName: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="386">+rankPath: Map
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="402">+treePath: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="418">+elementLink: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="434">+instanceLink: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="450">+nameLink: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="466">+updatedBy: String
-        </text>
-        <text font-size="12.8"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="803"
-              y="482">+updatedAt: Timestamp
-        </text>
-        <rect style="fill: #ffffff" x="800" y="488" width="202.5" height="8"/>
-        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="800" y="488" width="202.5"
-              height="8"/>
-    </g>
-    <g>
-        <polyline style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000"
-                  points="960.5,-34.9935 960.5,1.99951 936.65,1.99951 936.65,38.9926 "/>
-        <text font-size="12.7998"
-              style="fill: #000000;text-anchor:middle;font-family:monospace;font-style:normal;font-weight:normal"
-              x="948.575" y="-1.00049"/>
-        <polygon style="fill: #000000" points="950.575,-1.00049 950.575,-9.00049 958.575,-5.00049 "/>
-        <text font-size="12.7998"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
-              x="964.5" y="-22.9935"/>
-        <text font-size="12.7998"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
-              x="940.65" y="34.9926"/>
-    </g>
-    <g>
-        <polyline style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000"
-                  points="936.65,161.007 936.65,179.999 901.25,179.999 901.25,198.991 "/>
-        <text font-size="12.7998"
-              style="fill: #000000;text-anchor:middle;font-family:monospace;font-style:normal;font-weight:normal"
-              x="918.95" y="176.999"/>
-        <polygon style="fill: #000000" points="920.95,176.999 920.95,168.999 928.95,172.999 "/>
-        <text font-size="12.7998"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
-              x="940.65" y="173.007"/>
-        <text font-size="12.7998"
-              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
-              x="905.25" y="194.991"/>
+        <rect style="fill: #ffffff" x="1120" y="-237" width="720" height="817"/>
+        <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="1120" y="-237" width="720"
+              height="817"/>
     </g>
     <g>
         <rect style="fill: #ffffff" x="1240" y="-140" width="210.8" height="18"/>
@@ -252,9 +74,9 @@
               style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700"
               x="1340.8" y="54">tree_version
         </text>
-        <rect style="fill: #ffffff" x="1220" y="58" width="241.6" height="84"/>
+        <rect style="fill: #ffffff" x="1220" y="58" width="241.6" height="100"/>
         <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="1220" y="58" width="241.6"
-              height="84"/>
+              height="100"/>
         <polygon style="fill: #000000" points="1223,68 1225,71 1227,68 1225,65 "/>
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
@@ -305,6 +127,16 @@
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1362.2" y="138">text
         </text>
+        <ellipse style="fill: none; fill-opacity:0; stroke-width: 0.2; stroke: #000000" cx="1225" cy="148" rx="2"
+                 ry="2"/>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1229" y="154">log_entry
+        </text>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1362.2" y="154">text
+        </text>
     </g>
     <g>
         <rect style="fill: #ffffff" x="1240" y="220" width="241.6" height="18"/>
@@ -312,11 +144,11 @@
               height="18"/>
         <text font-size="11.2"
               style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:700"
-              x="1360.8" y="234">tree_item
+              x="1360.8" y="234">tree_element
         </text>
-        <rect style="fill: #ffffff" x="1240" y="238" width="241.6" height="260"/>
+        <rect style="fill: #ffffff" x="1240" y="238" width="241.6" height="308"/>
         <rect style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x="1240" y="238" width="241.6"
-              height="260"/>
+              height="308"/>
         <polygon style="fill: #000000" points="1243,248 1245,251 1247,248 1245,245 "/>
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
@@ -396,8 +228,7 @@
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1382.2" y="366">text
         </text>
-        <ellipse style="fill: none; fill-opacity:0; stroke-width: 0.2; stroke: #000000" cx="1245" cy="376" rx="2"
-                 ry="2"/>
+        <ellipse style="fill: #000000" cx="1245" cy="376" rx="2" ry="2"/>
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1249" y="382">simple_name
@@ -416,8 +247,7 @@
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1382.2" y="398">hstore/JSON
         </text>
-        <ellipse style="fill: none; fill-opacity:0; stroke-width: 0.2; stroke: #000000" cx="1245" cy="408" rx="2"
-                 ry="2"/>
+        <ellipse style="fill: #000000" cx="1245" cy="408" rx="2" ry="2"/>
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1249" y="414">tree_path
@@ -426,8 +256,7 @@
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1382.2" y="414">text
         </text>
-        <ellipse style="fill: none; fill-opacity:0; stroke-width: 0.2; stroke: #000000" cx="1245" cy="424" rx="2"
-                 ry="2"/>
+        <ellipse style="fill: #000000" cx="1245" cy="424" rx="2" ry="2"/>
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1249" y="430">element_link
@@ -436,8 +265,7 @@
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1382.2" y="430">text
         </text>
-        <ellipse style="fill: none; fill-opacity:0; stroke-width: 0.2; stroke: #000000" cx="1245" cy="440" rx="2"
-                 ry="2"/>
+        <ellipse style="fill: #000000" cx="1245" cy="440" rx="2" ry="2"/>
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1249" y="446">instance_link
@@ -446,8 +274,7 @@
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1382.2" y="446">text
         </text>
-        <ellipse style="fill: none; fill-opacity:0; stroke-width: 0.2; stroke: #000000" cx="1245" cy="456" rx="2"
-                 ry="2"/>
+        <ellipse style="fill: #000000" cx="1245" cy="456" rx="2" ry="2"/>
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1249" y="462">name_link
@@ -475,6 +302,33 @@
         <text font-size="12.8"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
               x="1382.2" y="494">timestamp-tz
+        </text>
+        <ellipse style="fill: #000000" cx="1245" cy="504" rx="2" ry="2"/>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1249" y="510">name_path
+        </text>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1382.2" y="510">text
+        </text>
+        <ellipse style="fill: #000000" cx="1245" cy="520" rx="2" ry="2"/>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1249" y="526">names
+        </text>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1382.2" y="526">text
+        </text>
+        <ellipse style="fill: #000000" cx="1245" cy="536" rx="2" ry="2"/>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1249" y="542">source_shard
+        </text>
+        <text font-size="12.8"
+              style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
+              x="1382.2" y="542">text
         </text>
     </g>
     <g>
@@ -524,13 +378,13 @@
     </g>
     <g>
         <polyline style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000"
-                  points="1340.8,142 1340.8,181 1360.8,181 1360.8,210.264 "/>
+                  points="1340.8,158 1340.8,189 1360.8,189 1360.8,210.264 "/>
         <polygon style="fill: #000000" points="1360.8,217.764 1355.8,207.764 1360.8,210.264 1365.8,207.764 "/>
         <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000"
                  points="1360.8,217.764 1355.8,207.764 1360.8,210.264 1365.8,207.764 "/>
         <text font-size="9.6"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
-              x="1344.8" y="154">1
+              x="1344.8" y="170">1
         </text>
         <text font-size="9.6"
               style="fill: #000000;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal"
@@ -620,16 +474,6 @@
               x="1750.4" y="397.25">boolean
         </text>
     </g>
-    <text font-size="12.8"
-          style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="930"
-          y="140">
-        <tspan x="930" y="140"></tspan>
-    </text>
-    <text font-size="12.8"
-          style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="880"
-          y="-220">
-        <tspan x="880" y="-220">Object Model</tspan>
-    </text>
     <text font-size="12.8"
           style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="1260"
           y="-220">
