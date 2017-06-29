@@ -593,3 +593,7 @@ FROM synonym_strings
 WHERE el.tree_version_id = synonym_strings.tree_version_id
       AND el.tree_element_id = synonym_strings.tree_element_id;
 
+-- set the names element for names without synonyms to | simple_name
+UPDATE tree_element
+SET names = '|' || simple_name
+WHERE names = '';
