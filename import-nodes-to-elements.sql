@@ -526,24 +526,26 @@ WHERE name.id = s.name_id
 -- AND n.parent_id IS NOT NULL;
 --
 --
--- SELECT
---   n.full_name                                              AS unplaced_name,
---   rank.name as name_rank,
---   parent.full_name                                         AS parent_name,
---   parent.name_path || '/' || coalesce(n.name_element, '?') AS new_name_path
--- FROM (SELECT DISTINCT (name_id)
---       FROM instance) AS apni_names,
---   name n JOIN name_rank rank ON n.name_rank_id = rank.id,
---   name_type,
---   name parent
--- WHERE n.id = name_id
---       AND name_type.id = n.name_type_id
---       AND name_type.scientific
---       AND n.name_path = ''
---       AND n.parent_id IS NOT NULL
---       AND parent.id = n.parent_id
---       AND parent.name_path <> ''
--- ORDER BY new_name_path;
+SELECT
+  n.full_name                                              AS unplaced_name,
+  rank.name                                                AS name_rank,
+  parent.full_name                                         AS parent_name,
+  parent.name_path || '/' || coalesce(n.name_element, '?') AS new_name_path
+FROM (SELECT DISTINCT (name_id)
+      FROM instance) AS apni_names,
+  name n
+  JOIN name_rank rank ON n.name_rank_id = rank.id
+  ,
+  name_type,
+  name parent
+WHERE n.id = name_id
+      AND name_type.id = n.name_type_id
+      AND name_type.scientific
+      AND n.name_path = ''
+      AND n.parent_id IS NOT NULL
+      AND parent.id = n.parent_id
+      AND parent.name_path <> ''
+ORDER BY new_name_path;
 
 -- find non APC names that have an APC name parent (20861)
 SELECT count(n.*)
@@ -573,12 +575,21 @@ WHERE n.id = name_id
       AND parent.name_path <> '';
 
 -- get the simple name with all it's synonyms in a string
-SELECT '|' || name.simple_name || '|' ||
-       string_agg(DISTINCT (synonym.simple_name), '|')
-FROM Name name, tree_element element, Instance i, Instance s, name synonym
-WHERE element.tree_version_id = 137
-      AND name.id = i.name_id
-      AND s.cited_by_id = i.id
-      AND i.id = element.instance_id
-      AND synonym.id = s.name_id
-GROUP BY name.simple_name;
+WITH synonym_strings AS
+(SELECT
+   element.tree_version_id,
+   element.tree_element_id,
+   '|' || name.simple_name || '|' ||
+   string_agg(DISTINCT (synonym.simple_name), '|') AS synonym_names
+ FROM Name name, tree_element element, Instance i, Instance s, name synonym
+ WHERE name.id = i.name_id
+       AND s.cited_by_id = i.id
+       AND i.id = element.instance_id
+       AND synonym.id = s.name_id
+ GROUP BY name.simple_name, element.tree_version_id, element.tree_element_id)
+UPDATE tree_element el
+SET names = synonym_strings.synonym_names
+FROM synonym_strings
+WHERE el.tree_version_id = synonym_strings.tree_version_id
+      AND el.tree_element_id = synonym_strings.tree_element_id;
+

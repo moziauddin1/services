@@ -62,8 +62,9 @@ This work is designed to make the tree easy to understand and reason about, and 
  . we must be able to create an "uber tree" from multiple sub trees.
  . The uber tree should be able to merge sub trees from multiple points - for example lichens have multiple connections
   the the fungi tree.
- . according to https://www.environment.gov.au/science/abrs/publications/other/numbers-living-species/executive-summary[ABRS Numbers of Living Species in Australia and the World]
- there are ~2million species in the world that we should aim to handle in an uber tree.
+
+according to https://www.environment.gov.au/science/abrs/publications/other/numbers-living-species/executive-summary[ABRS Numbers of Living Species in Australia and the World]
+there are ~2million species in the world that we should aim to handle in an uber tree.
 
 ==== Use cases
 
