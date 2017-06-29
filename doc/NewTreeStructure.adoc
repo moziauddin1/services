@@ -73,6 +73,9 @@ there are ~2million species in the world that we should aim to handle in an uber
  these trees may have more relaxed placement rules.
  . creation of composite (uber) trees made from multiple sub trees, such as accepted taxonomic trees from multiple shards
 
+WARNING: We should take a closer look at the needs of List compilers and Tree composers to see if the difference in the
+ set or requirements leads to different solutions for each.
+
 ==== Editors
 
 Based on the above use cases, and current editor usage, it looks like we need two different editing pathways for trees.
@@ -85,6 +88,11 @@ Based on the above use cases, and current editor usage, it looks like we need tw
 Perhaps the second, compositional, editor is logically broken into an uber tree manager and a checklist editor.
 
 ==== Search
+
+We need to clearly define the  difference between the search on names (the APNI search) and the search requirements on
+trees. At the moment there is confusion because some searches in the advanced search are mix tree and name concerns.
+
+NOTE: Greg W. put this view forward too.
 
 ===== use cases
 
@@ -331,6 +339,9 @@ This means you can do a search for a name on a tree including the synonyms by do
  select * from tree_element where names like '%|Acacia mucronata var. linearis%';
 
 You can even display the synonyms without further query.
+
+NOTE: Greg W says to make the search useful we'll need to store the type of synonym as well. This could be stored
+in a jsonb field so we retain the speed of the trigram indexed synonyms search with the ability to filter on instance type.
 
 === Profile data
 
