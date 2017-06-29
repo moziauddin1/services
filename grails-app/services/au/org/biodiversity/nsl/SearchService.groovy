@@ -369,6 +369,7 @@ order by sortName
                 NameRank rank = instance.name.nameRank
                 Integer parentSortOrder = getRankSuggestionParentSortOrder(rank, params.allRanksAbove == 'true')
                 log.debug "This rank $rank, parent $rank.parentRank, parentSortOrder $parentSortOrder"
+                String treeName = ConfigService.classificationTreeName
 
                 return Name.executeQuery('''
 select n from Name n
@@ -378,7 +379,7 @@ and n.nameRank.sortOrder >= :parentSortOrder
 and exists (
   select 1
   from Node nd
-  where nd.root.label = 'APC'
+  where nd.root.label = :treeName
   and nd.checkedInAt is not null
   and nd.replacedAt is null
   and nd.nameUriNsPart.label = 'nsl-name'
@@ -388,7 +389,8 @@ order by n.sortName asc''',
                         [
                                 query          : query.toLowerCase() + '%',
                                 sortOrder      : rank.sortOrder,
-                                parentSortOrder: parentSortOrder
+                                parentSortOrder: parentSortOrder,
+                                treeName       : treeName
                         ], [max: 15])
                            .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
 
