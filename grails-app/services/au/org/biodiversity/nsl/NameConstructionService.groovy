@@ -16,7 +16,7 @@
 
 package au.org.biodiversity.nsl
 
-class ConstructedNameService {
+class NameConstructionService {
 
     def classificationService
     static transactional = false
@@ -69,7 +69,7 @@ class ConstructedNameService {
         if (name.nameType?.name == 'informal') {
             return constructInformalName(name, parent)
         }
-        if (name.nameType?.name == 'common') {
+        if (name.nameType?.nameCategory?.name == 'common') {
             String htmlNameElement = name.nameElement.encodeAsHTML()
             String markedUpName = "<common><name id='$name.id'><element class='${htmlNameElement}'>${htmlNameElement}</element></name></common>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
@@ -208,7 +208,7 @@ class ConstructedNameService {
 
     String makeRankString(Name parent, Name name) {
         if (parent && name.nameRank?.visibleInName && !name.nameType.formula) {
-            if (name.nameRank.name == '[unranked]' && name.verbatimRank) {
+            if (name.nameRank.useVerbatimRank && name.verbatimRank) {
                 return "<rank id='${name.nameRank?.id}'>${name.verbatimRank}</rank>"
             }
             return "<rank id='${name.nameRank?.id}'>${name.nameRank?.abbrev}</rank>"

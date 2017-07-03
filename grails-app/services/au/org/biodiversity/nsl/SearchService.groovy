@@ -359,6 +359,7 @@ order by sortName
     def registerSuggestions() {
         // add apc name search
         suggestService.addSuggestionHandler('apc-search') { String subject, String query, Map params ->
+            String treeName = ConfigService.classificationTreeName
 
             log.debug "apc-search suggestion handler params: $params"
             Instance instance
@@ -378,7 +379,7 @@ and n.nameRank.sortOrder >= :parentSortOrder
 and exists (
   select 1
   from Node nd
-  where nd.root.label = 'APC'
+  where nd.root.label = :treeName
   and nd.checkedInAt is not null
   and nd.replacedAt is null
   and nd.nameUriNsPart.label = 'nsl-name'
@@ -388,9 +389,12 @@ order by n.sortName asc''',
                         [
                                 query          : query.toLowerCase() + '%',
                                 sortOrder      : rank.sortOrder,
-                                parentSortOrder: parentSortOrder
+                                parentSortOrder: parentSortOrder,
+                                treeName       : treeName
                         ], [max: 15])
-                           .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
+                           .collect { name ->
+                    [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml]
+                }
 
             } else {
                 return Name.executeQuery('''
@@ -399,15 +403,18 @@ where lower(n.fullName) like :query
 and exists (
   select 1 
   from Node nd
-  where nd.root.label = 'APC'
+  where nd.root.label = :treeName
   and nd.checkedInAt is not null
   and nd.replacedAt is null
   and nd.nameUriNsPart.label = 'nsl-name'
   and nd.nameUriIdPart = cast(n.id as string)
 )
 order by n.sortName asc''',
-                        [query: query.toLowerCase() + '%'], [max: 15])
-                           .collect { name -> [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml] }
+                        [query   : query.toLowerCase() + '%',
+                         treeName: treeName], [max: 15])
+                           .collect { name ->
+                    [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml]
+                }
             }
         }
 

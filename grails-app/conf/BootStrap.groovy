@@ -46,7 +46,14 @@ class BootStrap {
             String keyString = MacProvider.generateKey().encodeAsBase64()
             println "key: $keyString"
         }
-        photoService.refresh()
+        environments {
+            development {
+                photoService.refresh()
+            }
+            production {
+                photoService.refresh()
+            }
+        }
     }
     def destroy = {
     }

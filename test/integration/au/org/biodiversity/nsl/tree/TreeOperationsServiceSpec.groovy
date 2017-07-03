@@ -57,9 +57,9 @@ class TreeOperationsServiceSpec extends Specification {
         Event event = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new Timestamp(System.currentTimeMillis()), 'TEST', 'test find a current node')
         SomeStuff tree = makeSampleTree()
 
-        Arrangement arrangement = tree.t
-        Node ab = tree.ab
-        basicOperationsService.persistNode(event, tree.root)
+        Arrangement arrangement = tree.tree
+        Node ab = tree.nodeAB
+        basicOperationsService.persistNode(event, tree.rootNode)
         tree.reloadWithoutClear()
         ab = DomainUtils.refetchNode(ab)
 
@@ -78,9 +78,9 @@ class TreeOperationsServiceSpec extends Specification {
         Event event = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new Timestamp(System.currentTimeMillis()), 'TEST', 'test find a current taxon')
         SomeStuff tree = makeSampleTree()
 
-        Arrangement arrangement = tree.t
-        Node aa = tree.aa
-        basicOperationsService.persistNode(event, tree.root)
+        Arrangement arrangement = tree.tree
+        Node aa = tree.nodeAA
+        basicOperationsService.persistNode(event, tree.rootNode)
         tree.reloadWithoutClear()
         aa = DomainUtils.refetchNode(aa)
 

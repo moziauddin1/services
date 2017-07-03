@@ -79,18 +79,18 @@ class DeleteHistorySpec extends Specification {
 
         when:
 
-        versionZero = basicOperationsService.createDraftNode(s.root, VersioningMethod.T, NodeInternalType.T, name: DomainUtils.getStandaloneUri('ROOT'))
+        versionZero = basicOperationsService.createDraftNode(s.rootNode, VersioningMethod.T, NodeInternalType.T, name: DomainUtils.getStandaloneUri('ROOT'))
         reset()
 
-        basicOperationsService.persistNode(e, s.root)
+        basicOperationsService.persistNode(e, s.rootNode)
         reset()
 
         BuildSampleTreeUtil.dumpStuff(sessionFactory_nsl, log, [s, ws])
 
-        basicOperationsService.adoptNode(ws.t.node, versionZero, VersioningMethod.V)
+        basicOperationsService.adoptNode(ws.tree.node, versionZero, VersioningMethod.V)
         reset()
 
-        versionOne = basicOperationsService.checkoutNode(ws.t.node, versionZero)
+        versionOne = basicOperationsService.checkoutNode(ws.tree.node, versionZero)
         reset()
 
         basicOperationsService.persistNode(e, versionOne)
@@ -99,15 +99,15 @@ class DeleteHistorySpec extends Specification {
         Map<Node, Node> v = new HashMap<Node, Node>()
         v.clear()
         v.put(versionZero, versionOne)
-        versioningService.performVersioning(e, v, ws.t)
+        versioningService.performVersioning(e, v, ws.tree)
         reset()
 
-        basicOperationsService.moveFinalNodesFromTreeToTree ws.t, s.t
+        basicOperationsService.moveFinalNodesFromTreeToTree ws.tree, s.tree
         reset()
 
         BuildSampleTreeUtil.dumpStuff(sessionFactory_nsl, log, [s, ws])
 
-        versionTwo = basicOperationsService.checkoutNode(ws.t.node, versionOne)
+        versionTwo = basicOperationsService.checkoutNode(ws.tree.node, versionOne)
         reset()
 
         basicOperationsService.persistNode(e, versionTwo)
@@ -115,12 +115,12 @@ class DeleteHistorySpec extends Specification {
 
         v.clear()
         v.put(versionOne, versionTwo)
-        versioningService.performVersioning(e, v, ws.t)
+        versioningService.performVersioning(e, v, ws.tree)
         reset()
-        basicOperationsService.moveFinalNodesFromTreeToTree ws.t, s.t
+        basicOperationsService.moveFinalNodesFromTreeToTree ws.tree, s.tree
         reset()
 
-        versionThree = basicOperationsService.checkoutNode(ws.t.node, versionTwo)
+        versionThree = basicOperationsService.checkoutNode(ws.tree.node, versionTwo)
         reset()
 
         basicOperationsService.persistNode(e, versionThree)
@@ -128,10 +128,10 @@ class DeleteHistorySpec extends Specification {
 
         v.clear()
         v.put(versionTwo, versionThree)
-        versioningService.performVersioning(e, v, ws.t)
+        versioningService.performVersioning(e, v, ws.tree)
         reset()
 
-        basicOperationsService.moveFinalNodesFromTreeToTree ws.t, s.t
+        basicOperationsService.moveFinalNodesFromTreeToTree ws.tree, s.tree
         reset()
 
         BuildSampleTreeUtil.dumpStuff sessionFactory_nsl, log, [s, ws]

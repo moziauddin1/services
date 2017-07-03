@@ -63,7 +63,9 @@ class TreeJsonViewController {
 
         def result = Arrangement.findAll { arrangementType == ArrangementType.P && namespace.name == param.namespace }
                                 .sort { Arrangement a, Arrangement b -> a.label <=> b.label }
-                                .collect { linkService.getPreferredLinkForObject(it) }
+                                .collect {
+            [uri: linkService.getPreferredLinkForObject(it), label: it.label ?: it.title]
+        }
         render result as JSON
     }
 
@@ -557,7 +559,6 @@ class TreeJsonViewController {
         }
 
         arrangement = (Arrangement) o
-        root = DomainUtils.getSingleSubnode(arrangement.node)
 
         if (arrangement.arrangementType != ArrangementType.P && arrangement.arrangementType != ArrangementType.U) {
             return renderJsonError(400,
@@ -569,6 +570,8 @@ class TreeJsonViewController {
                     ]
             )
         }
+
+        root = DomainUtils.getSingleSubnode(arrangement.node)
 
         if (param.node && param.node != 0) {
             focus = Node.get(param.node)
@@ -608,7 +611,7 @@ class TreeJsonViewController {
                         node    : nodeDisplayJson(focus, null),
                         subnodes: focus.subLink
                                        .findAll { it.subnode.internalType == NodeInternalType.T }
-                                       .sort { Link a, Link b -> return (a.subnode.name?.simpleName ?: '').compareTo((b.subnode.name?.simpleName ?: '')) }
+                                       .sort { Link a, Link b -> return (a.subnode.name?.sortName ?: '') <=> ((b.subnode.name?.sortName ?: '')) }
                                        .collect { linkDisplayJson(it, subTaxaCountMap) }
                 ]
         ]
@@ -864,6 +867,7 @@ class TreeJsonViewController {
         } else if (DomainUtils.getBoatreeUri('workspace-root').equals(DomainUtils.getNodeTypeUri(n))) {
             json.label = "${n.root.label ?: n.root.title} (${n.root.baseArrangement.label ?: n.root.baseArrangement.title})"
         } else if (n.name) {
+            json.nameId = n.nameId
             json.simpleName = n.name.simpleName
             json.simpleNameHtml = n.name.simpleNameHtml
             json.fullName = n.name.fullName
@@ -872,6 +876,7 @@ class TreeJsonViewController {
             json.nameType = n.name.nameType.name
 
             if (n.instance) {
+                json.instanceId = n.instanceId
                 json.instanceType = n.instance.instanceType.name
                 if (!n.instance.instanceType.relationship && n.instance.reference) {
                     json.authYear = JsonRendererService.citationAuthYear(n.instance.reference)

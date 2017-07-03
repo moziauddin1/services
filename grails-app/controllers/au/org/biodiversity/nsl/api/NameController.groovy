@@ -26,7 +26,7 @@ import static org.springframework.http.HttpStatus.*
 @Transactional
 class NameController implements UnauthenticatedHandler, WithTarget {
 
-    def constructedNameService
+    def nameConstructionService
     def classificationService
     def jsonRendererService
     def nameService
@@ -121,10 +121,10 @@ class NameController implements UnauthenticatedHandler, WithTarget {
     @Timed()
     nameStrings(Name name) {
         withTarget(name) { ResultObject result ->
-            result.result = constructedNameService.constructName(name)
-            result.result.fullName = constructedNameService.stripMarkUp(result.result.fullMarkedUpName as String)
-            result.result.simpleName = constructedNameService.stripMarkUp(result.result.simpleMarkedUpName as String)
-            result.result.sortName = constructedNameService.makeSortName(name, result.result.simpleName as String)
+            result.result = nameConstructionService.constructName(name)
+            result.result.fullName = nameConstructionService.stripMarkUp(result.result.fullMarkedUpName as String)
+            result.result.simpleName = nameConstructionService.stripMarkUp(result.result.simpleMarkedUpName as String)
+            result.result.sortName = nameConstructionService.makeSortName(name, result.result.simpleName as String)
             if (request.method == 'PUT') {
                 SecurityUtils.subject.checkRole('admin')
                 name.fullNameHtml = result.result.fullMarkedUpName

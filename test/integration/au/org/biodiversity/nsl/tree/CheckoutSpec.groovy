@@ -60,7 +60,7 @@ class CheckoutSpec extends Specification {
         SomeStuff s1 = makeSampleTree()
         SomeStuff s2 = makeSampleTree()
 
-        basicOperationsService.persistNode(e, s2.t.node)
+        basicOperationsService.persistNode(e, s2.tree.node)
 
         sessionFactory_nsl.currentSession.clear()
 
@@ -68,12 +68,12 @@ class CheckoutSpec extends Specification {
         s2.reloadWithoutClear()
 
 
-        basicOperationsService.adoptNode(s1.a, s2.a, VersioningMethod.V, seq: 5)
+        basicOperationsService.adoptNode(s1.nodeA, s2.nodeA, VersioningMethod.V, seq: 5)
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
 
-        Node newAA = basicOperationsService.checkoutNode(s1.t.node, s2.aa)
+        Node newAA = basicOperationsService.checkoutNode(s1.tree.node, s2.nodeAA)
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
@@ -86,19 +86,19 @@ class CheckoutSpec extends Specification {
         then:
         newAA
         newA
-        newAA != s2.aa
-        newA != s2.a
+        newAA != s2.nodeAA
+        newA != s2.nodeA
 
-        newA.prev == s2.a
-        newAA.prev == s2.aa
+        newA.prev == s2.nodeA
+        newAA.prev == s2.nodeAA
 
         when:
         Link[] l
-        l = DomainUtils.getSublinksAsArray(s1.a)
+        l = DomainUtils.getSublinksAsArray(s1.nodeA)
 
         then:
-        l[1].subnode == s1.aa
-        l[2].subnode == s1.ab
+        l[1].subnode == s1.nodeAA
+        l[2].subnode == s1.nodeAB
         l[5].subnode == newA
 
         when:
@@ -106,7 +106,7 @@ class CheckoutSpec extends Specification {
 
         then:
         l[1].subnode == newAA
-        l[2].subnode == s2.ab
+        l[2].subnode == s2.nodeAB
     }
 
     void "test a checkout that would result in a draft node attached more than once"() {
@@ -115,22 +115,22 @@ class CheckoutSpec extends Specification {
         SomeStuff s1 = makeSampleTree()
         SomeStuff s2 = makeSampleTree()
 
-        basicOperationsService.persistNode(e, s2.t.node)
+        basicOperationsService.persistNode(e, s2.tree.node)
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
 
-        basicOperationsService.adoptNode s1.a, s2.a, VersioningMethod.V, seq: 5
+        basicOperationsService.adoptNode s1.nodeA, s2.nodeA, VersioningMethod.V, seq: 5
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
 
-        basicOperationsService.adoptNode s1.b, s2.aa, VersioningMethod.V, seq: 6
+        basicOperationsService.adoptNode s1.nodeB, s2.nodeAA, VersioningMethod.V, seq: 6
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
 
-        Node newAA = basicOperationsService.checkoutNode(s1.t.node, s2.aa)
+        Node newAA = basicOperationsService.checkoutNode(s1.tree.node, s2.nodeAA)
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
@@ -144,17 +144,17 @@ class CheckoutSpec extends Specification {
         Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new Timestamp(System.currentTimeMillis()), 'TEST', 'test a checkout and undo')
         SomeStuff s1 = makeSampleTree()
         SomeStuff s2 = makeSampleTree()
-        basicOperationsService.persistNode(e, s2.t.node)
+        basicOperationsService.persistNode(e, s2.tree.node)
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
 
-        basicOperationsService.adoptNode s1.a, s2.a, VersioningMethod.V, seq: 5
+        basicOperationsService.adoptNode s1.nodeA, s2.nodeA, VersioningMethod.V, seq: 5
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
 
-        Node newAA = basicOperationsService.checkoutNode(s1.t.node, s2.aa)
+        Node newAA = basicOperationsService.checkoutNode(s1.tree.node, s2.nodeAA)
         sessionFactory_nsl.currentSession.clear()
         s1.reloadWithoutClear()
         s2.reloadWithoutClear()
@@ -165,13 +165,13 @@ class CheckoutSpec extends Specification {
         then:
         newAA
         newA
-        newAA != s2.aa
-        newA != s2.a
+        newAA != s2.nodeAA
+        newA != s2.nodeA
 
-        newA.prev == s2.a
-        newAA.prev == s2.aa
+        newA.prev == s2.nodeA
+        newAA.prev == s2.nodeAA
 
-        DomainUtils.getSublinksAsArray(s1.a)[5].subnode == newA
+        DomainUtils.getSublinksAsArray(s1.nodeA)[5].subnode == newA
 
         when:
         basicOperationsService.undoCheckout(newA)
@@ -180,7 +180,7 @@ class CheckoutSpec extends Specification {
         s2.reloadWithoutClear()
 
         then:
-        DomainUtils.getSublinksAsArray(s1.a)[5].subnode == s2.a
+        DomainUtils.getSublinksAsArray(s1.nodeA)[5].subnode == s2.nodeA
         Node.get(newA.id) == null
         Node.get(newAA.id) == null
 

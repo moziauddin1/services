@@ -29,273 +29,266 @@ import au.org.biodiversity.nsl.Node
 import au.org.biodiversity.nsl.NodeInternalType
 import au.org.biodiversity.nsl.VersioningMethod
 
+import java.sql.Timestamp
+
 @Mixin(BuildSampleTreeMixin)
 class PerformVersioningSpec extends Specification {
-	DataSource dataSource_nsl
-	SessionFactory sessionFactory_nsl
-	static final Log log = LogFactory.getLog(PerformVersioningSpec.class)
-
-
-	// fields
-	BasicOperationsService basicOperationsService
-	VersioningService versioningService
-
-	// fixture methods
-
-	def setup() {
-	}
-
-	def cleanup() {
-	}
-
-	def setupSpec() {
-	}
-
-	def cleanupSpec() {
-	}
-
-	// feature methods
-
-	void "test versioning" () {
-		when:
-		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning')
-		SomeStuff s1 = makeSampleTree()
-		SomeStuff s2 = makeSampleTree()
-		basicOperationsService.persistNode(e, s1.t.node)
-		basicOperationsService.persistNode(e, s2.t.node)
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
-
-		then:
-		s1.a
-		s2.a
-
-		when:
-
-		Map<Node, Node> replace = new HashMap<Node, Node>()
-		replace.put(s1.aa, s2.aa)
-
-		versioningService.performVersioning e, replace, s1.t
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
-
-		then:
-		s1.a.next
-		s1.aa.next == s2.aa
-		!s1.ab.next
-
-		!s1.b.next
-		!s1.ba.next
-		!s1.bb.next
-
-		!DomainUtils.isCurrent(s1.a)
-		!DomainUtils.isCurrent(s1.aa)
-		DomainUtils.isCurrent(s1.ab)
-
-		DomainUtils.isCurrent(s1.b)
-		DomainUtils.isCurrent(s1.ba)
-		DomainUtils.isCurrent(s1.bb)
-	}
-
-	void "test versioning replacing 2" () {
-		when:
-		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning replacing 2')
-		SomeStuff s1 = makeSampleTree()
-		SomeStuff s2 = makeSampleTree()
-		basicOperationsService.persistNode(e, s1.t.node)
-		basicOperationsService.persistNode(e, s2.t.node)
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
-
-		then:
-		s1.a
-		s2.a
-
-		when:
-
-		Map<Node, Node> replace = new HashMap<Node, Node>()
-		replace.put(s1.aa, s2.aa)
-		replace.put(s1.ab, s2.ab)
-
-		versioningService.performVersioning e, replace, s1.t
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
-
-		dumpStuff([s1, s2])
-
-		then:
-		s1.a.next
-		s1.aa.next == s2.aa
-		s1.ab.next == s2.ab
-
-		!s1.b.next
-		!s1.ba.next
-		!s1.bb.next
-
-		!DomainUtils.isCurrent(s1.a)
-		!DomainUtils.isCurrent(s1.aa)
-		!DomainUtils.isCurrent(s1.ab)
-
-		DomainUtils.isCurrent(s1.b)
-		DomainUtils.isCurrent(s1.ba)
-		DomainUtils.isCurrent(s1.bb)
-	}
-
-	void "test versioning replacing parent and child" () {
-		when:
-		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning replacing parent and child')
-		SomeStuff s1 = makeSampleTree()
-		SomeStuff s2 = makeSampleTree()
-		basicOperationsService.persistNode(e, s1.t.node)
-		basicOperationsService.persistNode(e, s2.t.node)
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
-
-		then:
-		s1.a
-		s2.a
-
-		when:
-
-		Map<Node, Node> replace = new HashMap<Node, Node>()
-		replace.put(s1.a, s2.a)
-		replace.put(s1.aa, s2.aa)
-
-		versioningService.performVersioning e, replace, s1.t
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
-
-		dumpStuff([s1, s2])
-
-		then:
-		thrown ServiceException
-	}
-
-	void "test versioning replacing parent and child without orphans" () {
-		when:
-		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning replacing parent and child without orphans')
-		SomeStuff s1 = makeSampleTree()
-		SomeStuff s2 = makeSampleTree()
-		basicOperationsService.persistNode(e, s1.t.node)
-		basicOperationsService.persistNode(e, s2.t.node)
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
+    DataSource dataSource_nsl
+    SessionFactory sessionFactory_nsl
+    static final Log log = LogFactory.getLog(PerformVersioningSpec.class)
+
+    // fields
+    BasicOperationsService basicOperationsService
+    VersioningService versioningService
+
+    // feature methods
+
+    void "test versioning"() {
+        when:
+        Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning')
+        SomeStuff s1 = makeSampleTree()
+        SomeStuff s2 = makeSampleTree()
+        basicOperationsService.persistNode(e, s1.tree.node)
+        basicOperationsService.persistNode(e, s2.tree.node)
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
+
+        then:
+        s1.nodeA
+        s2.nodeA
+
+        when:
+
+        Map<Node, Node> replace = new HashMap<Node, Node>()
+        replace.put(s1.nodeAA, s2.nodeAA)
+
+        versioningService.performVersioning e, replace, s1.tree
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
+
+        then:
+        s1.nodeA.next
+        s1.nodeAA.next == s2.nodeAA
+        !s1.nodeAB.next
+
+        !s1.nodeB.next
+        !s1.nodeBA.next
+        !s1.nodeBB.next
+
+        !DomainUtils.isCurrent(s1.nodeA)
+        !DomainUtils.isCurrent(s1.nodeAA)
+        DomainUtils.isCurrent(s1.nodeAB)
+
+        DomainUtils.isCurrent(s1.nodeB)
+        DomainUtils.isCurrent(s1.nodeBA)
+        DomainUtils.isCurrent(s1.nodeBB)
+    }
+
+    void "test versioning replacing 2"() {
+        when:
+        Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning replacing 2')
+        SomeStuff s1 = makeSampleTree()
+        SomeStuff s2 = makeSampleTree()
+        basicOperationsService.persistNode(e, s1.tree.node)
+        basicOperationsService.persistNode(e, s2.tree.node)
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
+
+        then:
+        s1.nodeA
+        s2.nodeA
+
+        when:
+
+        Map<Node, Node> replace = new HashMap<Node, Node>()
+        replace.put(s1.nodeAA, s2.nodeAA)
+        replace.put(s1.nodeAB, s2.nodeAB)
+
+        versioningService.performVersioning e, replace, s1.tree
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
+
+        dumpStuff([s1, s2])
+
+        then:
+        s1.nodeA.next
+        s1.nodeAA.next == s2.nodeAA
+        s1.nodeAB.next == s2.nodeAB
+
+        !s1.nodeB.next
+        !s1.nodeBA.next
+        !s1.nodeBB.next
+
+        !DomainUtils.isCurrent(s1.nodeA)
+        !DomainUtils.isCurrent(s1.nodeAA)
+        !DomainUtils.isCurrent(s1.nodeAB)
+
+        DomainUtils.isCurrent(s1.nodeB)
+        DomainUtils.isCurrent(s1.nodeBA)
+        DomainUtils.isCurrent(s1.nodeBB)
+    }
+
+    void "test versioning replacing parent and child"() {
+        when:
+        Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning replacing parent and child')
+        SomeStuff s1 = makeSampleTree()
+        SomeStuff s2 = makeSampleTree()
+        basicOperationsService.persistNode(e, s1.tree.node)
+        basicOperationsService.persistNode(e, s2.tree.node)
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
+
+        then:
+        s1.nodeA
+        s2.nodeA
+
+        when:
+
+        Map<Node, Node> replace = new HashMap<Node, Node>()
+        replace.put(s1.nodeA, s2.nodeA)
+        replace.put(s1.nodeAA, s2.nodeAA)
+
+        versioningService.performVersioning e, replace, s1.tree
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
+
+        dumpStuff([s1, s2])
+
+        then:
+        thrown ServiceException
+    }
+
+    void "test versioning replacing parent and child without orphans"() {
+        when:
+        Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new Timestamp(System.currentTimeMillis()), 'TEST', 'test versioning replacing parent and child without orphans')
+        SomeStuff s1 = makeSampleTree()
+        SomeStuff s2 = makeSampleTree()
+        basicOperationsService.persistNode(e, s1.tree.node)
+        basicOperationsService.persistNode(e, s2.tree.node)
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
+
+        then:
+        s1.nodeA
+        s2.nodeA
+
+        when:
+
+        Map<Node, Node> replace = new HashMap<Node, Node>()
+        replace.put(s1.nodeA, s2.nodeA)
+        replace.put(s1.nodeAA, s2.nodeAA)
+        replace.put(s1.nodeAB, DomainUtils.getEndNode())
 
-		then:
-		s1.a
-		s2.a
+        versioningService.performVersioning e, replace, s1.tree
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
 
-		when:
+        dumpStuff([s1, s2])
 
-		Map<Node, Node> replace = new HashMap<Node, Node>()
-		replace.put(s1.a, s2.a)
-		replace.put(s1.aa, s2.aa)
-		replace.put(s1.ab, DomainUtils.getEndNode())
+        then:
+        s1.nodeA.next == s2.nodeA
+        s1.nodeAA.next == s2.nodeAA
+        s1.nodeAB.next == DomainUtils.getEndNode()
 
-		versioningService.performVersioning e, replace, s1.t
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
+        !s1.nodeB.next
+        !s1.nodeBA.next
+        !s1.nodeBB.next
 
-		dumpStuff([s1, s2])
+        !DomainUtils.isCurrent(s1.nodeA)
+        !DomainUtils.isCurrent(s1.nodeAA)
+        !DomainUtils.isCurrent(s1.nodeAB)
 
-		then:
-		s1.a.next == s2.a
-		s1.aa.next == s2.aa
-		s1.ab.next == DomainUtils.getEndNode()
+        DomainUtils.isCurrent(s1.nodeB)
+        DomainUtils.isCurrent(s1.nodeBA)
+        DomainUtils.isCurrent(s1.nodeBB)
+    }
 
-		!s1.b.next
-		!s1.ba.next
-		!s1.bb.next
+    void "test a more-or-less believable versioning"() {
+        /**
+         * Ok! I am going to checkout node aa and modify it, checkout node b, delete bb, add bc,
+         * then persist and version the changes
+         */
+        when:
+        Event event = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(),
+                new Timestamp(System.currentTimeMillis()),
+                'TEST',
+                'test a more-or-less believable versioning')
 
-		!DomainUtils.isCurrent(s1.a)
-		!DomainUtils.isCurrent(s1.aa)
-		!DomainUtils.isCurrent(s1.ab)
+        SomeStuffWithHistory afd = makeSampleTreeWithHistory()
+        SomeStuffEmptyTree workSpace = makeSampleEmptyTree()
 
-		DomainUtils.isCurrent(s1.b)
-		DomainUtils.isCurrent(s1.ba)
-		DomainUtils.isCurrent(s1.bb)
-	}
+        Closure clearSessionAndReload = {
+            sessionFactory_nsl.currentSession.clear()
+            afd.reloadWithoutClear()
+            workSpace.reloadWithoutClear()
+        }
 
-	void "test a more-or-less believable versioning"() {
-		/**
-		 * Ok! I am going to checkout node aa and modify it, checkout node b, delete bb, add bc,
-		 * then persist and version the changes
-		 */
-		when:
-		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'test a more-or-less believable versioning')
-		SomeStuffWithHistory afd = makeSampleTreeWithHistory()
-		SomeStuffEmptyTree ws = makeSampleEmptyTree()
+        basicOperationsService.persistNode(event, afd.tree.node)
+        clearSessionAndReload()
 
-		Closure reset = {
-			sessionFactory_nsl.currentSession.clear()
-			afd.reloadWithoutClear()
-			ws.reloadWithoutClear()
-		}
+        basicOperationsService.adoptNode(workSpace.tree.node, afd.nodeAA, VersioningMethod.V)
+        clearSessionAndReload()
 
-		basicOperationsService.persistNode(e, afd.t.node)
-		reset()
+        long newAAid = basicOperationsService.checkoutNode(workSpace.tree.node, afd.nodeAA).id
+        clearSessionAndReload()
 
-		basicOperationsService.adoptNode(ws.t.node, afd.aa, VersioningMethod.V)
-		reset()
+        basicOperationsService.updateDraftNode Node.get(newAAid), name: DomainUtils.uri('afd-name', 'newAA')
+        clearSessionAndReload()
 
-		long newAAid = basicOperationsService.checkoutNode(ws.t.node, afd.aa).id
-		reset()
+        basicOperationsService.adoptNode(workSpace.tree.node, afd.nodeB, VersioningMethod.V)
+        clearSessionAndReload()
 
-		basicOperationsService.updateDraftNode Node.get(newAAid), name: DomainUtils.uri('afd-name', 'newAA')
-		reset()
+        long newBid = basicOperationsService.checkoutNode(workSpace.tree.node, afd.nodeB).id
+        clearSessionAndReload()
 
-		basicOperationsService.adoptNode(ws.t.node, afd.b, VersioningMethod.V)
-		reset()
+        basicOperationsService.deleteLink Node.get(newBid), 2
+        clearSessionAndReload()
 
-		long newBid = basicOperationsService.checkoutNode(ws.t.node, afd.b).id
-		reset()
+        Node newBC = basicOperationsService.createDraftNode(Node.get(newBid), VersioningMethod.V, NodeInternalType.T,
+                seq: 3,
+                name: DomainUtils.uri('afd-name', 'newBC'))
+        clearSessionAndReload()
 
-		basicOperationsService.deleteLink Node.get(newBid), 2
-		reset()
+        basicOperationsService.persistNode event, workSpace.tree.node
+        clearSessionAndReload()
 
-		Node newBC = basicOperationsService.createDraftNode Node.get(newBid), VersioningMethod.V, NodeInternalType.T, seq: 3, name: DomainUtils.uri('afd-name', 'newBC')
-		reset()
+        BuildSampleTreeUtil.dumpStuff sessionFactory_nsl, log, [afd, workSpace]
 
-		basicOperationsService.persistNode e, ws.t.node
-		reset()
+        Map<Node, Node> version = new HashMap<Node, Node>()
 
-		BuildSampleTreeUtil.dumpStuff sessionFactory_nsl, log, [afd, ws]
+        version.put(afd.nodeAA, Node.get(newAAid))
+        version.put(afd.nodeB, Node.get(newBid))
+        version.put(afd.nodeBB, DomainUtils.getEndNode())
 
-		Map<Node, Node> version = new HashMap<Node, Node>()
+        log.debug "replacing ${afd.nodeBB} with ${version.get(afd.nodeBB)}"
 
-		version.put(afd.aa, Node.get(newAAid))
-		version.put(afd.b, Node.get(newBid))
-		version.put(afd.bb, DomainUtils.getEndNode())
+        versioningService.performVersioning(event, version, afd.tree)
+        clearSessionAndReload()
 
-		log.debug "replacing ${afd.bb} with ${version.get(afd.bb)}"
+        BuildSampleTreeUtil.dumpStuff sessionFactory_nsl, log, [afd, workSpace]
 
-		versioningService.performVersioning (e, version, afd.t)
-		reset()
+        basicOperationsService.moveFinalNodesFromTreeToTree workSpace.tree, afd.tree
+        clearSessionAndReload()
 
-		BuildSampleTreeUtil.dumpStuff sessionFactory_nsl, log, [afd, ws]
+        basicOperationsService.deleteArrangement(workSpace.tree)
+        // dont use reset, because ws.t will be cleared and I want to see that it's properly gone
+        sessionFactory_nsl.currentSession.clear()
+        afd.reloadWithoutClear()
 
-		basicOperationsService.moveFinalNodesFromTreeToTree ws.t, afd.t
-		reset()
+        BuildSampleTreeUtil.dumpStuff sessionFactory_nsl, log, [afd, workSpace]
 
-		basicOperationsService.deleteArrangement(ws.t)
-		// dont use reset, because ws.t will be cleared and I want to see that it's properly gone
-		sessionFactory_nsl.currentSession.clear()
-		afd.reloadWithoutClear()
+        then:
+        1 == 1
 
-		BuildSampleTreeUtil.dumpStuff sessionFactory_nsl, log, [afd, ws]
 
-		then:
-		1 == 1
-
-
-	}
+    }
 
 }

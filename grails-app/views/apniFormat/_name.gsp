@@ -31,7 +31,7 @@
     </span>
 
     <g:if test="${name.nameType.cultivar && name.nameType.hybrid}">
-      <br><span class="small text-muted">${name.parent?.simpleName}  x ${name.secondParent?.simpleName}</span>
+      <br><span class="small text-muted">${name.parent?.simpleName} x ${name.secondParent?.simpleName}</span>
     </g:if>
 
     <div class="instances">

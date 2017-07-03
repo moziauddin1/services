@@ -54,24 +54,25 @@ class TreeJsonEditController {
         if (!param.validate()) return renderValidationErrors(param)
 
         handleException { handleExceptionIgnore ->
-
+            log.debug "create workspace ${param.dump()}"
+            
             String title = param.title ?: "${SecurityUtils.subject.principal} ${new Date()}"
             Namespace ns = Namespace.findByName(param.namespace)
             // todo: use the grails parameter validation to do this
             if (!ns) {
-                def msg = [];
+                def msg = []
 
                 msg += [msg: 'Namespace not found', status: 'warning', body: "Namespace \"${param.namespace}\" not found"]
 
                 def result = [
                         success: false,
                         msg    : msg
-                ];
+                ]
                 response.status = 400
                 return render(result as JSON)
             }
 
-            Arrangement baseTree = null;
+            Arrangement baseTree = null
 
             if (param.baseTree) {
                 Object o = getObjectForLink(param.baseTree)
@@ -132,7 +133,7 @@ class TreeJsonEditController {
                             [msg: 'Created Workspace', body: a.title, status: 'success'],
                     ],
                     uri    : linkService.getPreferredLinkForObject(a)
-            ];
+            ]
 
             response.status = 201
             return render(result as JSON)
@@ -166,7 +167,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            Arrangement a = (Arrangement) o;
+            Arrangement a = (Arrangement) o
 
             if (!canEditWorkspace(a)) {
                 def result = [
@@ -179,7 +180,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            userWorkspaceManagerService.deleteWorkspace(a);
+            userWorkspaceManagerService.deleteWorkspace(a)
 
             response.status = 200
             return render([
@@ -218,7 +219,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            Arrangement a = (Arrangement) o;
+            Arrangement a = (Arrangement) o
 
             if (!canEditWorkspace(a)) {
                 def result = [
@@ -231,7 +232,7 @@ class TreeJsonEditController {
                 return render(result as JSON)
             }
 
-            userWorkspaceManagerService.updateWorkspace(a, param.shared == null ? false : param.shared, param.title, param.description);
+            userWorkspaceManagerService.updateWorkspace(a, param.shared == null ? false : param.shared, param.title, param.description)
 
             response.status = 200
             return render([
@@ -253,7 +254,7 @@ class TreeJsonEditController {
             Arrangement ws = (Arrangement) getObjectForLink(param.wsUri as String)
             Node focus = (Node) getObjectForLink(param.focus as String)
 
-            def msgV = [];
+            def msgV = []
 
             if (ws.arrangementType != ArrangementType.U) {
                 msgV << [msg: "Illegal Argument", body: "${param.wsUri} is not a workspace", status: 'danger']
@@ -281,20 +282,20 @@ class TreeJsonEditController {
 
 
 
-            def names = [];
+            def names = []
 
             // TODO better error handling here.
 
             for (uri in param.names) {
-                def o = getObjectForLink(uri);
+                def o = getObjectForLink(uri)
                 if (!(o instanceof Name) && !(o instanceof Instance)) {
-                    throw new IllegalArgumentException(uri);
+                    throw new IllegalArgumentException(uri)
                 }
                 names.add(o)
             }
 
-            Node newFocus = userWorkspaceManagerService.addNamesToNode(ws, focus, names).target;
-            newFocus = DomainUtils.refetchNode(newFocus);
+            Node newFocus = userWorkspaceManagerService.addNamesToNode(ws, focus, names).target
+            newFocus = DomainUtils.refetchNode(newFocus)
 
             response.status = 200
             return render([
@@ -312,7 +313,7 @@ class TreeJsonEditController {
 
         handleException { handleExceptionIgnore ->
 
-            response.status = 200; // default
+            response.status = 200 // default
 
             Node wsNode = (Node) getObjectForLink(param.wsNode as String)
 
@@ -383,7 +384,7 @@ class TreeJsonEditController {
                 def result = [
                         success: false,
                         msg    : [msg: 'Unrecognised URI', body: "${param.uris.get(0)} does not appear to be a uri from this NSL shard", status: 'danger'],
-                ];
+                ]
 
                 return render(result as JSON)
 
@@ -401,7 +402,7 @@ class TreeJsonEditController {
                                 msg    : [
                                         [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger']
                                 ]
-                        ];
+                        ]
 
                         return render(result as JSON)
                     }
@@ -414,7 +415,7 @@ class TreeJsonEditController {
                                 msg    : [
                                         [msg: 'Not citing', body: "${param.uris.get(0)} does not appear to be a citing instance", status: 'danger']
                                 ]
-                        ];
+                        ]
 
                         return render(result as JSON)
                     }
@@ -426,7 +427,7 @@ class TreeJsonEditController {
                                 msg    : [
                                         [msg: 'Not standalone', body: "${param.uris.get(0)} does not appear to be a standalone instance", status: 'danger']
                                 ]
-                        ];
+                        ]
 
                         return render(result as JSON)
                     }
@@ -444,7 +445,7 @@ class TreeJsonEditController {
                                 [msg: 'Cannot handle drop', body: o as String, status: 'danger']
                         ],
                         treeServiceException: ex,
-                ];
+                ]
 
                 return render(result as JSON)
 
@@ -462,13 +463,13 @@ class TreeJsonEditController {
     }
 
     static enum DropInstanceOntoNodeEnum {
-        AddNewSubnode, ChangeNodeInstance(true);
+        AddNewSubnode, ChangeNodeInstance(true)
 
-        final boolean needsWarning;
+        final boolean needsWarning
 
-        DropInstanceOntoNodeEnum() { needsWarning = false; }
+        DropInstanceOntoNodeEnum() { needsWarning = false }
 
-        DropInstanceOntoNodeEnum(boolean w) { needsWarning = w; }
+        DropInstanceOntoNodeEnum(boolean w) { needsWarning = w }
     }
 
 
@@ -511,13 +512,13 @@ class TreeJsonEditController {
         log.debug(instance.instancesForParent)
 
         if (target.name == instance.name) {
-            result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance);
+            result = userWorkspaceManagerService.changeNodeInstance(ws, target, instance)
         } else {
-            result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance);
+            result = userWorkspaceManagerService.addNodeSubinstance(ws, target, instance)
         }
 
 
-        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode
 
         return [
                 success  : true,
@@ -532,10 +533,10 @@ class TreeJsonEditController {
     private boolean incompatibleNames(Name a, Name b) {
         for (; ;) {
             // genus has a sort order of 120
-            if (!a || !b || a.nameRank.sortOrder < 120 || b.nameRank.sortOrder < 120) return false;
-            if (a.nameRank.sortOrder == b.nameRank.sortOrder) return a != b;
-            if (a.nameRank.sortOrder > b.nameRank.sortOrder) a = a.parent;
-            else b = b.parent;
+            if (!a || !b || a.nameRank.sortOrder < 120 || b.nameRank.sortOrder < 120) return false
+            if (a.nameRank.sortOrder == b.nameRank.sortOrder) return a != b
+            if (a.nameRank.sortOrder > b.nameRank.sortOrder) a = a.parent
+            else b = b.parent
         }
     }
 
@@ -583,8 +584,8 @@ class TreeJsonEditController {
             ] as JSON)
         }
 
-        int pathsToTarget = queryService.countPaths(ws.node, target);
-        int pathsToNode = queryService.countPaths(ws.node, node);
+        int pathsToTarget = queryService.countPaths(ws.node, target)
+        int pathsToNode = queryService.countPaths(ws.node, node)
 
         if (pathsToTarget == 0) {
             return [
@@ -620,16 +621,16 @@ class TreeJsonEditController {
             ]
         }
 
-        def errors = [];
+        def errors = []
 
         for (Link l : node.subLink.findAll { it.subnode.internalType == NodeInternalType.T }) {
             // TODO: think about making this less APC
             if (incompatibleNames(target.name, l.subnode.name) && DomainUtils.getNodeTypeUri(l.subnode).asQName() == "apc-voc:ApcConcept") {
-                errors.add([msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning']);
+                errors.add([msg: 'Name part mismatch', body: "Cannot place ${l.subnode.name.simpleName} under ${target.name.simpleName}", status: 'warning'])
             }
 
             if (target.name && target.name.nameRank.sortOrder >= l.subnode.name.nameRank.sortOrder) {
-                errors.add([msg: 'Name rank mismatch', body: "Cannot place ${l.subnode.name.nameRank.name} ${l.subnode.name.simpleName} under ${target.name.nameRank.name} ${target.name.simpleName}", status: 'warning']);
+                errors.add([msg: 'Name rank mismatch', body: "Cannot place ${l.subnode.name.nameRank.name} ${l.subnode.name.simpleName} under ${target.name.nameRank.name} ${target.name.simpleName}", status: 'warning'])
             }
         }
 
@@ -642,7 +643,7 @@ class TreeJsonEditController {
 
         def result = userWorkspaceManagerService.moveWorkspaceSubnodes(ws, target, node)
 
-        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+        Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode
 
         return [
                 success  : true,
@@ -663,10 +664,10 @@ class TreeJsonEditController {
             Node target = (Node) getObjectForLink(param.target as String)
             Node focus = (Node) getObjectForLink(param.focus as String)
 
-            if (!wsNode) throw new IllegalArgumentException("null wsNode");
-            if (!ws) throw new IllegalArgumentException("null ws");
-            if (!target) throw new IllegalArgumentException("null target");
-            if (!focus) throw new IllegalArgumentException("null focus");
+            if (!wsNode) throw new IllegalArgumentException("null wsNode")
+            if (!ws) throw new IllegalArgumentException("null ws")
+            if (!target) throw new IllegalArgumentException("null target")
+            if (!focus) throw new IllegalArgumentException("null focus")
 
             if (ws.arrangementType != ArrangementType.U) {
                 response.status = 400
@@ -727,8 +728,8 @@ class TreeJsonEditController {
             }
 
 
-            Node curr;
-            for (curr = target.prev; curr && !DomainUtils.isCurrent(curr); curr = curr.next);
+            Node curr
+            for (curr = target.prev; curr && !DomainUtils.isCurrent(curr); curr = curr.next)
 
             if (!DomainUtils.isCurrent(target.prev)) {
                 response.status = 400
@@ -783,7 +784,7 @@ class TreeJsonEditController {
 
             // ok. delete the draft node and insert the current replacement node into the tree
 
-            Link parentLink = userWorkspaceManagerService.replaceDraftNodeWith(target, curr);
+            Link parentLink = userWorkspaceManagerService.replaceDraftNodeWith(target, curr)
 
             // if the parent is the focus, then reset the focus path to point at the replacement (curr)
             // refetch the parent node
@@ -808,11 +809,11 @@ class TreeJsonEditController {
             Node linkSuper = getObjectForLink(param.linkSuper as String)
             Link link = Link.findBySupernodeAndLinkSeq(linkSuper, param.linkSeq)
 
-            if (!wsNode) throw new IllegalArgumentException("null wsNode");
-            if (!ws) throw new IllegalArgumentException("null ws");
-            if (!linkSuper) throw new IllegalArgumentException("null super");
-            if (!link) throw new IllegalArgumentException("linkSeq not found");
-            if (!focus) throw new IllegalArgumentException("null focus");
+            if (!wsNode) throw new IllegalArgumentException("null wsNode")
+            if (!ws) throw new IllegalArgumentException("null ws")
+            if (!linkSuper) throw new IllegalArgumentException("null super")
+            if (!link) throw new IllegalArgumentException("linkSeq not found")
+            if (!focus) throw new IllegalArgumentException("null focus")
 
             if (ws.arrangementType != ArrangementType.U) {
                 response.status = 400
@@ -862,9 +863,9 @@ class TreeJsonEditController {
                 ] as JSON)
             }
 
-            Node newCheckout = userWorkspaceManagerService.removeLink(ws, link);
+            Node newCheckout = userWorkspaceManagerService.removeLink(ws, link)
 
-            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode
 
             def focusPath = queryService.findPath(ws.node, newFocus).collect { Node it2 ->
                 linkService.getPreferredLinkForObject(it2)
@@ -892,10 +893,10 @@ class TreeJsonEditController {
             Node target = (Node) getObjectForLink(param.target as String)
             UriNs ns = UriNs.findByLabel(param.nsPart)
 
-            if (!wsNode) throw new IllegalArgumentException("null wsNode");
-            if (!ws) throw new IllegalArgumentException("null ws");
-            if (!focus) throw new IllegalArgumentException("null focus");
-            if (!target) throw new IllegalArgumentException("null target");
+            if (!wsNode) throw new IllegalArgumentException("null wsNode")
+            if (!ws) throw new IllegalArgumentException("null ws")
+            if (!focus) throw new IllegalArgumentException("null focus")
+            if (!target) throw new IllegalArgumentException("null target")
 
             if (ws.arrangementType != ArrangementType.U) {
                 response.status = 400
@@ -932,9 +933,9 @@ class TreeJsonEditController {
                 ] as JSON)
             }
 
-            def result = userWorkspaceManagerService.setNodeType(ws, target, new au.org.biodiversity.nsl.tree.Uri(ns, param.idPart));
+            def result = userWorkspaceManagerService.setNodeType(ws, target, new au.org.biodiversity.nsl.tree.Uri(ns, param.idPart))
 
-            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode;
+            Node newFocus = ws.node.id == focus.id ? focus : queryService.findNodeCurrentOrCheckedout(ws.node, focus).subnode
 
             return render([
                     success  : true,
@@ -968,21 +969,24 @@ class TreeJsonEditController {
 
          */
 
-            def problems = userWorkspaceManagerService.getCheckinErrors(node).collect { Message it ->
+            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService)
+            Collection<Message> errors =  userWorkspaceManagerService.getCheckinErrors(node)
+            def problems = errors.collect { Message it ->
                 [
                         msg   : 'ERROR',
                         body  : it.humanReadableMessage,
                         status: 'danger',
-                        args  : new TreeServiceMessageUtil(linkService).unrollArgs(it)
+                        args  : tsmu.unrollArgs(it)
                 ]
             }
 
-            def warnings = userWorkspaceManagerService.getCheckinWarnings(node).collect { Message it ->
+            Collection<Message> warningMessages = userWorkspaceManagerService.getCheckinWarnings(node)
+            def warnings = warningMessages.collect { Message message ->
                 [
                         msg   : 'WARNING',
-                        body  : it.humanReadableMessage,
+                        body  : message.humanReadableMessage,
                         status: 'warning',
-                        args  : new TreeServiceMessageUtil(linkService).unrollArgs(it)
+                        args  : tsmu.unrollArgs(message)
                 ]
             }
 
@@ -1004,7 +1008,7 @@ class TreeJsonEditController {
 
             Node node = (Node) getObjectForLink(param.uri as String)
 
-            def result = userWorkspaceManagerService.performCheckin(node);
+            def result = userWorkspaceManagerService.performCheckin(node)
 
             return render([
                     success       : true,
@@ -1054,16 +1058,16 @@ class TreeJsonEditController {
 
             if (!errors.isEmpty()) {
                 // we should not get here if the revert has been veriufied correctly
-                response.status = 400;
+                response.status = 400
                 return render([
                         success: false,
                         msg    : errors
                 ] as JSON)
             }
 
-            Node prev = node.prev;
+            Node prev = node.prev
 
-            userWorkspaceManagerService.replaceDraftNodeWith(node, prev);
+            userWorkspaceManagerService.replaceDraftNodeWith(node, prev)
 
             return render([
                     success       : true,
@@ -1104,7 +1108,7 @@ class TreeJsonEditController {
 // ==============================
 
     private renderValidationErrors(param) {
-        def msg = [];
+        def msg = []
         msg += param.errors.globalErrors.collect { it -> [msg: 'Validation', status: 'warning', body: messageSource.getMessage(it, (Locale) null)] }
         msg += param.errors.fieldErrors.collect { FieldError it -> [msg: it.field, status: 'warning', body: messageSource.getMessage(it, (Locale) null)] }
         response.status = 400
@@ -1116,14 +1120,14 @@ class TreeJsonEditController {
 
     private handleException(Closure doIt) {
         try {
-            return doIt();
+            return doIt()
         }
         catch (Exception ex) {
             log.debug ex
 
             doIt.delegate.response.status = ex instanceof ServiceException ? 400 : 500
 
-            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService);
+            TreeServiceMessageUtil tsmu = new TreeServiceMessageUtil(linkService)
 
             return render([
                     success   : false,
@@ -1134,7 +1138,7 @@ class TreeJsonEditController {
     }
 
     private static boolean canEditWorkspace(Arrangement a) {
-        return a && a.arrangementType == ArrangementType.U && SecurityUtils.subject.hasRole(a.baseArrangement.label);
+        return a && a.arrangementType == ArrangementType.U && SecurityUtils.subject.hasRole(a.baseArrangement.label)
     }
 
 }

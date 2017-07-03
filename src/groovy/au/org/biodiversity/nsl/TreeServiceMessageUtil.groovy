@@ -14,30 +14,30 @@ import java.sql.SQLException
  * Created by ibis on 3/1/17.
  */
 class TreeServiceMessageUtil {
-    final LinkService linkService;
+    final LinkService linkService
 
     TreeServiceMessageUtil(LinkService linkService) {
-        this.linkService = linkService;
+        this.linkService = linkService
     }
 
-    List unpackMessage(Message m, status = "danger") {
-        List msg = [];
-        if (m != null) {
-            msg << [msg: m.getHumanReadableMessage(), status: status, args: unrollArgs(m)]
-            unrollAllNested(msg, m)
+    List unpackMessage(Message message, status = "danger") {
+        List messages = []
+        if (message != null) {
+            messages << [msg: message.getHumanReadableMessage(), status: status, args: unrollArgs(message)]
+            unrollAllNested(messages, message)
         }
-        return msg
+        return messages
     }
 
     List unpackThrowable(Throwable t, String status = 'danger') {
         if (t == null) {
             return []
         } else if (t instanceof ServiceException) {
-            return unpackServiceException((ServiceException) t, status);
+            return unpackServiceException((ServiceException) t, status)
         } else if (t instanceof JDBCException) {
-            return unpackJDBCException((JDBCException) t, status);
+            return unpackJDBCException((JDBCException) t, status)
         } else {
-            return unpackOtherException(t, status);
+            return unpackOtherException(t, status)
         }
 
     }
@@ -60,26 +60,26 @@ class TreeServiceMessageUtil {
         if (ex != null) {
             msg += unpackMessage(ex.msg, status)
             if (ex.getCause() && ex.getCause() != ex) {
-                msg += unpackThrowable(ex.getCause(), status);
+                msg += unpackThrowable(ex.getCause(), status)
             }
         }
         return msg
     }
 
     private List unpackOtherException(Throwable t, String status) {
-        if (t == null) return [];
+        if (t == null) return []
 
         List msg = [
                 [msg: t.getClass().getSimpleName(), body: t.getLocalizedMessage(), status: status]
         ]
         if (t.getCause() && t.getCause() != t) {
-            msg += unpackThrowable(t.getCause(), status);
+            msg += unpackThrowable(t.getCause(), status)
         }
-        return msg;
+        return msg
     }
 
     List unpackStacktrace(Throwable t) {
-        if (t == null) return [];
+        if (t == null) return []
         return t.getStackTrace().findAll {
             StackTraceElement it -> it.fileName && it.lineNumber != -1 && it.className.startsWith('au.org.biodiversity.nsl.')
         }.collect {
@@ -87,17 +87,17 @@ class TreeServiceMessageUtil {
         }
     }
 
-    private void unrollAllNested(List msg, Message m) {
-        if (m == null) return;
+    private void unrollAllNested(List messages, Message topMessage) {
+        if (topMessage == null) return
 
-        for (Message mm : m.nested) {
-            msg << [msg: mm.getHumanReadableMessage(), status: 'info', args: unrollArgs(m)]
-            unrollAllNested(msg, mm)
+        for (Message message : topMessage.nested) {
+            messages << [msg: message.getHumanReadableMessage(), status: 'info', args: unrollArgs(topMessage)]
+            unrollAllNested(messages, message)
         }
     }
 
-    List unrollArgs(Message msg) {
-        List l = [];
+    List<Map> unrollArgs(Message msg) {
+        List l = []
 
         if (msg) {
             msg.args.each {
@@ -114,13 +114,13 @@ class TreeServiceMessageUtil {
                 ) {
                     l << [class: it.class, uri: linkService.getPreferredLinkForObject(it)]
                 } else {
-                    l << it;
+                    l << it
                 }
             }
 
         }
 
-        return l;
+        return l
     }
 
 }

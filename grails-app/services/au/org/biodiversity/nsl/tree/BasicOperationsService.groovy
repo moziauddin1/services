@@ -17,12 +17,12 @@
 package au.org.biodiversity.nsl.tree
 
 import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.api.SessionTrait
+import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import org.apache.shiro.UnavailableSecurityManagerException
-import org.hibernate.SessionFactory
 import org.apache.shiro.SecurityUtils
 
-import java.security.Principal
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -57,7 +57,7 @@ import static au.org.biodiversity.nsl.tree.HibernateSessionUtils.*
  *
  * It's horrible, but its the only way.
  *
- * @author ibis
+ * @author pmurray
  */
 
 /*
@@ -94,11 +94,9 @@ import static au.org.biodiversity.nsl.tree.HibernateSessionUtils.*
  */
 
 @Transactional(rollbackFor = [ServiceException])
-class BasicOperationsService {
+class BasicOperationsService implements ValidationUtils, SessionTrait {
     static datasource = 'nsl'
 
-    def messageSource
-    SessionFactory sessionFactory_nsl
     QueryService queryService
     def grailsApplication
 
@@ -110,44 +108,11 @@ class BasicOperationsService {
         return UriNs.findByLabel(grailsApplication.config.nslTreePlugin.nslInstanceNamespace as String)
     }
 
-    /**
-     * @deprecated moved to QueryService
-     */
-
-    Long getNextval() {
-        return queryService.getNextval()
-    }
-
-    /**
-     * @deprecated moved to QueryService
-     */
-
-    Timestamp getTimestamp() {
-        return queryService.getTimestamp()
-    }
-
-    def checkAndSave(thing, List errors) {
-        if (thing.validate()) {
-            thing.save()
-        } else {
-            log.error "Error adding ${thing.dump()}"
-            def locale = java.util.Locale.getDefault()
-            for (fieldErrors in thing.errors) {
-                for (error in fieldErrors.allErrors) {
-                    String message = messageSource.getMessage(error, locale)
-                    log.error message
-                    errors.add(message)
-                }
-            }
-        }
-        return thing
-    }
-
     private static String getPrincipal() {
         try {
             return SecurityUtils.subject?.principal as String ?: 'No principal'
         }
-        catch(UnavailableSecurityManagerException ex) {
+        catch (UnavailableSecurityManagerException ex) {
             return 'TEST'
         }
     }
@@ -182,22 +147,21 @@ class BasicOperationsService {
 
     Arrangement createTemporaryArrangement(Namespace namespace) {
         if (!namespace) throw new IllegalArgumentException("null namespace")
-        clearAndFlush {
-            // temporary arangments do not belong to any shard
-            Arrangement tempArrangement = new Arrangement(arrangementType: ArrangementType.Z, synthetic: 'Y', namespace: namespace, owner: 'INTERNAL')
-            tempArrangement.save()
-            Node tempNode = new Node(
-                    root: tempArrangement,
-                    internalType: NodeInternalType.Z,
-                    typeUriNsPart: UriNs.get(1),
-                    typeUriIdPart: 'temp-arrangement-root',
-                    synthetic: true
-            )
-            tempNode.save()
-            tempArrangement.node = tempNode
-            tempArrangement.save()
-            return tempArrangement
-        } as Arrangement
+        // temporary arrangements do not belong to any shard
+        Arrangement tempArrangement = new Arrangement(arrangementType: ArrangementType.Z, synthetic: 'Y', namespace: namespace, owner: 'INTERNAL')
+
+        Node tempNode = new Node(
+                root: tempArrangement,
+                internalType: NodeInternalType.Z,
+                typeUriNsPart: UriNs.get(1),
+                typeUriIdPart: 'temp-arrangement-root',
+                synthetic: true
+        )
+        tempArrangement.addToNodes(tempNode)
+        tempArrangement.node = tempNode
+        tempArrangement.save(flush: true)
+        tempNode.refresh()
+        return tempArrangement
     }
 
     /**
@@ -286,7 +250,7 @@ class BasicOperationsService {
 
                 baseArrangement = DomainUtils.refetchArrangement(baseArrangement)
 
-                if(event.namespace != baseArrangement.namespace) {
+                if (event.namespace != baseArrangement.namespace) {
                     throw new IllegalArgumentException("event.namespace != baseArrangement.namespace")
                 }
 
@@ -329,7 +293,7 @@ class BasicOperationsService {
             clearAndFlush {
                 arrangement = DomainUtils.refetchArrangement(arrangement)
 
-                if(arrangement.arrangementType != ArrangementType.U) throw new IllegalArgumentException("Not a workspace")
+                if (arrangement.arrangementType != ArrangementType.U) throw new IllegalArgumentException("Not a workspace")
 
                 if (!title) {
                     throw new IllegalArgumentException("Workspaces must have a title")
@@ -383,69 +347,71 @@ class BasicOperationsService {
      * @param supernode
      * @param versioningMethod
      * @param linkSeq
-     * @return
+     * @return a draft Node
      */
 
     Node createDraftNode(Map params = [:], Node supernode, VersioningMethod versioningMethod, NodeInternalType internalType) {
         mustHave(supernode: supernode, versioningMethod: versioningMethod, internalType: internalType) {
-            clearAndFlush {
-                supernode = DomainUtils.refetchNode(supernode)
-                params = DomainUtils.refetchMap(params)
+            mapAttach(params)
+            Uri nodeType = params.nodeType as Uri
+            Uri linkType = params.linkType as Uri
+            Uri name = params.name as Uri
+            Uri taxon = params.taxon as Uri
+            Uri resource = params.resource as Uri
+            String literal = params.literal as String
+            Integer linkSeq = params.seq as Integer
+            Name nslName = params.nslName as Name
+            Instance nslInstance = params.nslInstance as Instance
 
-                Uri nodeType = params.nodeType as Uri
-                Uri linkType = params.linkType as Uri
-                Uri name = params.name as Uri
-                Uri taxon = params.taxon as Uri
-                Uri resource = params.resource as Uri
-                String literal = params.literal as String
-                Integer linkSeq = params.seq as Integer
-                Name nslName = params.nslName as Name
-                Instance nslInstance = params.nslInstance as Instance
+            if (nslName && name == null) {
+                name = new Uri(nslNameNs(), nslName.id)
+            }
+            if (nslInstance && taxon == null) {
+                taxon = new Uri(nslInstanceNs(), nslInstance.id)
+            }
 
-                if (nslName && name == null) {
-                    name = new Uri(nslNameNs(), nslName.id)
-                }
-                if (nslInstance && taxon == null) {
-                    taxon = new Uri(nslInstanceNs(), nslInstance.id)
-                }
+            checkWeCanCreateThisHere(supernode, versioningMethod, internalType, literal, name, nslName, taxon, nslInstance, resource, linkSeq)
 
-                checkWeCanCreateThisHere(supernode, versioningMethod, internalType, literal, name, nslName, taxon, nslInstance, resource, linkSeq)
+            Node node = new Node(
+                    internalType: internalType,
+                    typeUriNsPart: nodeType?.nsPart ?: UriNs.get(0),
+                    typeUriIdPart: nodeType?.idPart,
+                    name: nslName,
+                    nameUriNsPart: name?.nsPart,
+                    nameUriIdPart: name?.idPart,
+                    instance: nslInstance,
+                    taxonUriNsPart: taxon?.nsPart,
+                    taxonUriIdPart: taxon?.idPart,
+                    resourceUriNsPart: resource?.nsPart,
+                    resourceUriIdPart: resource?.idPart,
+                    literal: literal,
+                    synthetic: false
+            )
+            supernode.root.addToNodes(node)
+            supernode.root.save()
 
-                Node node = new Node(
-                        internalType: internalType,
-                        typeUriNsPart: nodeType?.nsPart ?: UriNs.get(0),
-                        typeUriIdPart: nodeType?.idPart,
-                        name: nslName,
-                        nameUriNsPart: name?.nsPart,
-                        nameUriIdPart: name?.idPart,
-                        instance: nslInstance,
-                        taxonUriNsPart: taxon?.nsPart,
-                        taxonUriIdPart: taxon?.idPart,
-                        resourceUriNsPart: resource?.nsPart,
-                        resourceUriIdPart: resource?.idPart,
-                        literal: literal,
-                        synthetic: false
-                )
-                node.root = supernode.root
-                node.save()
+            Integer nextSeq = linkSeq ?: nextLinkSequence(supernode.subLink)
 
-                Link maxSeqLink = supernode.subLink.max { it.linkSeq }
-                Integer nextSeq = linkSeq ?: (maxSeqLink ? maxSeqLink.linkSeq + 1 : 1)
+            Link appendLink = new Link(
+                    subnode: node,
+                    typeUriNsPart: linkType?.nsPart ?: UriNs.get(0),
+                    typeUriIdPart: linkType?.idPart ?: null,
+                    linkSeq: nextSeq,
+                    versioningMethod: versioningMethod,
+                    synthetic: false
+            )
 
-                Link appendLink = new Link(
-                        subnode: node,
-                        typeUriNsPart: linkType?.nsPart ?: UriNs.get(0),
-                        typeUriIdPart: linkType?.idPart ?: null,
-                        linkSeq: nextSeq,
-                        versioningMethod: versioningMethod,
-                        synthetic: false
-                )
-
-                supernode.addToSubLink(appendLink)
-                supernode.save()
-                return node
-            } as Node
+            supernode.addToSubLink(appendLink)
+            supernode.save(flush: true)
+            return node.refresh()
         } as Node
+    }
+
+    private static Integer nextLinkSequence(Set<Link> links) {
+        if (links) {
+            return (links.collect { it.linkSeq }?.max { it } ?: 0) + 1
+        }
+        return 1
     }
 
     private void checkWeCanCreateThisHere(Node supernode, VersioningMethod versioningMethod, NodeInternalType internalType,
@@ -848,7 +814,7 @@ class BasicOperationsService {
             Integer linkSeq = params.linkSeq as Integer
             Link prevLink = params.prevLink as Link
 
-            if(!linkSeq) {
+            if (!linkSeq) {
                 if (prevLink) {
                     linkSeq = prevLink.linkSeq
                 } else {
@@ -860,7 +826,7 @@ class BasicOperationsService {
                 linkSeq = linkSeq + 1
             }
 
-            if(linkSeq <= 0) throw new IllegalArgumentException("linkSeq ${linkSeq} must be positive")
+            if (linkSeq <= 0) throw new IllegalArgumentException("linkSeq ${linkSeq} must be positive")
 
             l = DomainUtils.refetchLink(l)
             newSupernode = DomainUtils.refetchNode(newSupernode)
@@ -884,7 +850,7 @@ class BasicOperationsService {
             l.save()
 
             return l
-        }
+        } as Link
     }
 
 /**
@@ -1109,16 +1075,12 @@ class BasicOperationsService {
         }
     }
 
-/**
- * Check In a node
- * @param e is an event and is basically a timestamp
- * @param n
- */
-
-/*
- * TODO - given that we have tracking links, should I remove the stuff that keeps the root in a draft state?
- */
-
+    /**
+     * Check In a node
+     * TODO - given that we have tracking links, should I remove the stuff that keeps the root in a draft state?
+     * @param e is an event and is basically a timestamp
+     * @param n
+     */
     void persistNode(Event e, Node n) {
         mustHave(Event: (e), Node: n) {
             clearAndFlush {
@@ -1153,9 +1115,9 @@ class BasicOperationsService {
                     // ok. Find all nodes needing to be checked in. I am turning this into a loop
                     // because the recursive query seems to be slow.
 
-                    create_tree_temp_id cnct
-                    create_tree_temp_id2 cnct
-                    create_tree_temp_id3 cnct
+                    createTreeTempIdTable cnct
+                    createTreeTempId2Table cnct
+                    createTreeTempId3Table cnct
 
                     withQ cnct, 'insert into tree_temp_id3(id) values ( ? ) ', { PreparedStatement stmt ->
                         stmt.setLong(1, n.id)
@@ -1248,204 +1210,139 @@ class BasicOperationsService {
         }
     }
 
+    /**
+     * (pmcneil) this should "Adopt a final taxon to a working taxon by creating an arc" according to
+     * https://www.anbg.gov.au/ibis25/display/~pmurray/Data+structure+for+curated+taxonomies#Datastructureforcuratedtaxonomies-Versioning
+     *
+     * An "Arc" in this case is a link from the supernode to the subnode, so I assume the subnode is the adopted "final"
+     * node since NEW nodes can have FINAL nodes but FINAL nodes can't have NEW nodes under them.
+     *
+     * not sure what Versioning Method does apart from
+     *
+     * @param params
+     * @param supernode - the new or draft node the is adopting the FINAL node
+     * @param subnode - the node to adopt, which should be a final node
+     * @param versioningMethod - 'F' a Fixed link., 'V' a Versioning link, 'T' a Tracking link
+     * @return
+     */
     Link adoptNode(Map params = [:], Node supernode, Node subnode, VersioningMethod versioningMethod) {
         mustHave(supernode: supernode, subnode: subnode, versioningMethod: versioningMethod) {
-            clearAndFlush {
-                supernode = DomainUtils.refetchNode(supernode)
-                subnode = DomainUtils.refetchNode(subnode)
-                params = DomainUtils.refetchMap(params)
+            supernode = DomainUtils.refetchNode(supernode)
+            subnode = DomainUtils.refetchNode(subnode)
+            params = DomainUtils.refetchMap(params)
 
-                if (DomainUtils.isEndNode(supernode) || DomainUtils.isEndNode(subnode)) {
-                    ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
-                            supernode,
-                            subnode,
-                            ServiceException.makeMsg(Msg.END_NODE_NOT_PERMITTED)
-                    ])
-                }
+            if (DomainUtils.isEndNode(supernode) || DomainUtils.isEndNode(subnode)) {
+                ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
+                        supernode,
+                        subnode,
+                        ServiceException.makeMsg(Msg.END_NODE_NOT_PERMITTED)
+                ])
+            }
 
-                if (supernode.root.namespace != subnode.root.namespace) {
-                    ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
-                            supernode,
-                            subnode,
-                            ServiceException.makeMsg(Msg.NAMESPACE_MISMATCH, [supernode.root.namespace, subnode.root.namespace])
-                    ])
-                }
+            if (supernode.root.namespace != subnode.root.namespace) {
+                ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
+                        supernode,
+                        subnode,
+                        ServiceException.makeMsg(Msg.NAMESPACE_MISMATCH, [supernode.root.namespace, subnode.root.namespace])
+                ])
+            }
 
-                if (supernode.internalType == NodeInternalType.V) {
-                    ServiceException.raise ServiceException.makeMsg(Msg.persistNode, [
-                            supernode,
-                            subnode,
-                            ServiceException.makeMsg(Msg.LITERAL_NODE_MAY_NOT_HAVE_SUBNODES, [supernode, subnode])
-                    ])
-                }
+            if (supernode.internalType == NodeInternalType.V) {
+                ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
+                        supernode,
+                        subnode,
+                        ServiceException.makeMsg(Msg.LITERAL_NODE_MAY_NOT_HAVE_SUBNODES, [supernode, subnode])
+                ])
+            }
 
-                if (DomainUtils.isCheckedIn(supernode)) {
-                    ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
-                            supernode,
-                            subnode,
-                            ServiceException.makeMsg(Msg.PERSISTENT_NODE_NOT_PERMITTED, supernode)
-                    ])
-                }
+            if (DomainUtils.isCheckedIn(supernode)) {
+                ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
+                        supernode,
+                        subnode,
+                        ServiceException.makeMsg(Msg.PERSISTENT_NODE_NOT_PERMITTED, supernode)
+                ])
+            }
 
-                if (!DomainUtils.isCheckedIn(subnode)) {
-                    ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
-                            supernode,
-                            subnode,
-                            ServiceException.makeMsg(Msg.DRAFT_NODE_NOT_PERMITTED, subnode)
-                    ])
-                }
+            if (!DomainUtils.isCheckedIn(subnode)) {
+                ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
+                        supernode,
+                        subnode,
+                        ServiceException.makeMsg(Msg.DRAFT_NODE_NOT_PERMITTED, subnode)
+                ])
+            }
 
-                if (versioningMethod != versioningMethod.F && !DomainUtils.isCurrent(subnode)) {
-                    ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
-                            supernode,
-                            subnode,
-                            ServiceException.makeMsg(Msg.OLD_NODE_NOT_PERMITTED, subnode)
-                    ])
-                }
+            if (versioningMethod != versioningMethod.F && !DomainUtils.isCurrent(subnode)) {
+                ServiceException.raise ServiceException.makeMsg(Msg.adoptNode, [
+                        supernode,
+                        subnode,
+                        ServiceException.makeMsg(Msg.OLD_NODE_NOT_PERMITTED, subnode)
+                ])
+            }
 
-                Uri linkType = params.linkType as Uri
-                Integer linkSeq = params.seq as Integer
-                Link prevLink = params.prevLink as Link
+            Uri linkType = params.linkType as Uri
+            Integer linkSeq = params.seq as Integer
+            Link prevLink = params.prevLink as Link
 
-                if(!linkSeq && prevLink) {
-                    linkSeq = prevLink.linkSeq + 1
-                }
+            if (!linkSeq && prevLink) {
+                linkSeq = prevLink.linkSeq + 1
+            }
 
-                if (linkSeq != null && linkSeq.intValue() <= 0) {
-                    throw new IllegalArgumentException("Link sequence ${linkSeq} must be positive or null")
-                }
+            if (linkSeq != null && linkSeq <= 0) {
+                throw new IllegalArgumentException("Link sequence ${linkSeq} must be positive or null")
+            }
 
-                long linkId = queryService.getNextval()
+            if (linkSeq == null) {
+                linkSeq = Link.executeQuery(
+                        "select max(linkSeq) from Link where supernode = :supernode",
+                        [supernode: supernode])?.first() as Integer ?: 0
+                linkSeq++
+            } else if (Link.findByLinkSeqAndSupernode(linkSeq, supernode) != null) {
+                insertSequenceNumber(supernode, linkSeq)
+            }
 
-                // OK! everything looks sweet.
-
-                doWork(sessionFactory_nsl) { Connection cnct ->
-
-                    // this is a big blob of copy/pasted code and needs to be refactored
-
-                    if (linkSeq == null) {
-                        cnct
-                        withQ cnct, '''
-					insert into tree_link (
-					 ID,					   --NOT NULL NUMBER(38)
-					 LOCK_VERSION,			   --NOT NULL NUMBER(38)
-					 SUPERNODE_ID,			   --NOT NULL NUMBER(38)
-					 SUBNODE_ID,			   --NOT NULL NUMBER(38)
-					 TYPE_URI_NS_PART_ID,	   -- NUMBER(38)
-					 TYPE_URI_ID_PART,		   -- VARCHAR2(255)
-					 LINK_SEQ,				   --NOT NULL NUMBER(38)
-					 VERSIONING_METHOD,		   --NOT NULL CHAR(1)
-					 IS_SYNTHETIC			   --NOT NULL CHAR(1)
-					)
-					values (
-						?,
-						1,
-						?,
-						?,
-						?,
-						?,
-						coalesce ( (select max(LINK_SEQ) from tree_link where SUPERNODE_ID = ? ), 0) + 1,
-						?,
-						'N'
-					)		
-			''', { PreparedStatement appendLink ->
-                            appendLink.setLong(1, linkId)
-                            appendLink.setLong(2, supernode.id)
-                            appendLink.setLong(3, subnode.id)
-                            appendLink.setLong(4, linkType ? linkType.nsPart.id : 0L)
-                            appendLink.setString(5, linkType ? linkType.idPart : null)
-                            appendLink.setLong(6, supernode.id)
-                            appendLink.setString(7, versioningMethod.name())
-                            appendLink.executeUpdate()
-                        }
-                    } else {
-                        boolean linkSeqIsUsed =
-                                withQ cnct, 'select count(*) as ct from tree_link where SUPERNODE_ID = ? and LINK_SEQ = ?', { isLinkSeqUsed ->
-                                    isLinkSeqUsed.setLong(1, supernode.id)
-                                    isLinkSeqUsed.setLong(2, linkSeq)
-                                    ResultSet rs = isLinkSeqUsed.executeQuery()
-                                    rs.next()
-                                    boolean isItUsed = rs.getInt(1) != 0
-                                    rs.close()
-                                    return isItUsed // that is - return this value from the closure
-                                }
-
-                        if (linkSeqIsUsed) {
-                            withQ cnct, '''
-						update tree_link
-						set link_seq = link_seq + 1
-						where 
-							SUPERNODE_ID = ?
-							and LINK_SEQ >= ?
-							and LINK_SEQ <= (
-								select min(l1.link_seq)
-								from tree_link l1
-								where 
-									l1.SUPERNODE_ID = ?
-									and l1.LINK_SEQ >= ?
-									and not exists (
-										select 1
-										from tree_link l2
-										where l2.SUPERNODE_ID = ?
-										and l2.link_seq = l1.link_seq+1
-									)
-								)
-						''', { PreparedStatement incrementSeq ->
-                                incrementSeq.setLong(1, (Long) supernode.id)
-                                incrementSeq.setInt(2, (Integer) linkSeq)
-                                incrementSeq.setLong(3, (Long) supernode.id)
-                                incrementSeq.setInt(4, (Integer) linkSeq)
-                                incrementSeq.setLong(5, (Long) supernode.id)
-                                incrementSeq.executeUpdate()
-                            }
-                        }
-
-                        withQ cnct, '''
-					insert into tree_link (
-					 ID,					   --NOT NULL NUMBER(38)
-					 lock_version,				   --NOT NULL NUMBER(38)
-					 SUPERNODE_ID,			   --NOT NULL NUMBER(38)
-					 SUBNODE_ID,			   --NOT NULL NUMBER(38)
-					 TYPE_URI_NS_PART_ID,	   -- NUMBER(38)
-					 TYPE_URI_ID_PART,		   -- VARCHAR2(255)
-					 LINK_SEQ,				   --NOT NULL NUMBER(38)
-					 VERSIONING_METHOD,		   --NOT NULL CHAR(1)
-					 IS_SYNTHETIC			   --NOT NULL CHAR(1)
-					)
-					values (
-						?,
-						1,
-						?,
-						?,
-						?,
-						?,
-						?,
-						?,
-						'N'
-					)
-					''', { PreparedStatement setLink ->
-                            setLink.setLong(1, linkId)
-                            setLink.setLong(2, (Long) supernode.id)
-                            setLink.setLong(3, (Long) subnode.id)
-                            setLink.setLong(4, (Long) (linkType ? linkType.nsPart.id : 0L))
-                            setLink.setString(5, linkType ? linkType.idPart : null)
-                            setLink.setInt(6, (Integer) linkSeq)
-                            setLink.setString(7, versioningMethod.name())
-                            setLink.executeUpdate()
-                        }
-                    }
-
-                    // because links belong-to the supernode, we increment the supernode version
-
-                    withQ cnct, 'update tree_node set lock_version = lock_version+1 where id = ?', { PreparedStatement setLink ->
-                        setLink.setLong(1, (Long) supernode.id)
-                        setLink.executeUpdate()
-                    }
-
-                }
-                return Link.get(linkId)
-            } as Link
+            Link adoptingLink = new Link(
+                    supernode: supernode,
+                    subnode: subnode,
+                    typeUriNsPart: linkType ? linkType.nsPart : DomainUtils.getBlankNs(),
+                    typeUriIdPart: linkType ? linkType.idPart : null,
+                    linkSeq: linkSeq,
+                    versioningMethod: versioningMethod,
+                    synthetic: false
+            )
+            supernode.addToSubLink(adoptingLink)
+            subnode.addToSupLink(adoptingLink)
+            adoptingLink.save()
+            supernode.refresh() //update sublinks
+            subnode.refresh()   //update suplinks
+            return adoptingLink
         } as Link
+    }
+
+    /**
+     * Make space for a link sequence number by bumping up all the link sequences by one until there is a gap in the sequence.
+     * Note: there can be a lot of links (e.g. 2700 odd)
+     *
+     * @param supernode the node the links link from
+     * @param linkSeq the sequence number we wish to make space for (or insert)
+     */
+    private static void insertSequenceNumber(Node supernode, int linkSeq) {
+        //get the first gap
+        Integer gapSeq = Link.executeQuery('''
+                    select l.linkSeq from Link l 
+                        where l.supernode = :supernode
+                            and l.linkSeq >= :linkSeq
+                            and not exists (select 1 from Link endSeqLink 
+                                where endSeqLink.linkSeq = l.linkSeq + 1
+                                    and endSeqLink.supernode = :supernode)''',
+                [supernode: supernode, linkSeq: linkSeq])?.first() as Integer
+        //bump the sequence up by one and negate to make sure it's unique (avoid constraint)
+        Link.executeUpdate('''update Link set linkSeq = (linkSeq + 1)* -1 
+                                                where supernode = :supernode 
+                                                    and linkSeq >= :linkSeq 
+                                                    and linkSeq <= :gap''',
+                [linkSeq: linkSeq, supernode: supernode, gap: gapSeq])
+        //now negate negative sequence numbers
+        Link.executeUpdate("update Link set linkSeq = linkSeq * -1 where linkSeq < 0")
     }
 
 /**
@@ -1453,12 +1350,13 @@ class BasicOperationsService {
  * If the node appears more than once in the tree, then this method will fail, because a draft node may only have one supernode.
  * In this situation, you will need to use checkout link for finer-grained control.
  * @param n Node to be checked out
- * @param a Arrangemt in which to check it out
+ * @param a Arrangement in which to check it out
  * @return The checked-out node.
  */
 
     Node checkoutNode(Node supernode, Node targetnode) {
         mustHave(supernode: supernode, targetnode: targetnode) {
+            cleanSession()
             clearAndFlush {
                 supernode = DomainUtils.refetchNode(supernode)
                 targetnode = DomainUtils.refetchNode(targetnode)
@@ -1479,7 +1377,7 @@ class BasicOperationsService {
                     ])
                 }
 
-                if(queryService.countPaths(supernode, targetnode) != 1) {
+                if (queryService.countPaths(supernode, targetnode) != 1) {
                     ServiceException.raise ServiceException.makeMsg(Msg.checkoutNode, [
                             supernode,
                             targetnode,
@@ -1493,7 +1391,7 @@ class BasicOperationsService {
                     // OK! find all the nodes that connect the target node to the selected supernode!
                     // note that we can't filter this by current nodes only
 
-                    create_tree_temp_id cnct
+                    createTreeTempIdTable cnct
 
                     // ok. Do the treewalk and extract all entangled links into tree_temp_id
                     withQ cnct, '''
@@ -1590,7 +1488,7 @@ class BasicOperationsService {
                     // make a note of the node id that was created for the target node. We need this now because if the target is directly
                     // beneath the bottom draft node, then that link will get updated later on and we will lose track of the id
 
-                    newTargetId = withQresult(cnct, '''
+                    newTargetId = withQResult(cnct, '''
 						select id2 from tree_link join tree_temp_id  on tree_temp_id.id = tree_link.id 
 						where tree_link.subnode_id = ?''')
                             { PreparedStatement qry ->
@@ -1799,7 +1697,6 @@ class BasicOperationsService {
                 if (DomainUtils.isCheckedIn(supernode)) {
                     ServiceException.raise ServiceException.makeMsg(Msg.checkoutNode, [
                             supernode,
-                            targetnode,
                             ServiceException.makeMsg(Msg.PERSISTENT_NODE_NOT_PERMITTED, supernode)
                     ])
                 }
@@ -1821,9 +1718,9 @@ class BasicOperationsService {
                     // OK! find all the nodes that connect the target node to the selected supernode!
                     // note that we can't filter this by current nodes only
 
-                    create_tree_temp_id cnct
-                    create_tree_temp_id2 cnct
-                    create_link_treewalk cnct
+                    createTreeTempIdTable cnct
+                    createTreeTempId2Table cnct
+                    createTempLinkTreewalkTable cnct
 
                     // ok. First job - load all the target nodes into tree_temp_id2
 
@@ -2433,20 +2330,20 @@ select link_id from (
     void createCopiesOfAllNonTreeNodes(Event e, Node n) {
         mustHave(e: e, node: n) {
             // these messages are unhelpful to the user because we should not have gotten this far at all
-            if(DomainUtils.isCheckedIn(n)) {
+            if (DomainUtils.isCheckedIn(n)) {
                 throw new IllegalArgumentException('DomainUtils.isCheckedIn(n)')
             }
 
-            if(n.root.arrangementType != ArrangementType.U) {
+            if (n.root.arrangementType != ArrangementType.U) {
                 throw new IllegalArgumentException('n.root.arrangementType != ArrangementType.U')
             }
-            if(!n.prev) {
+            if (!n.prev) {
                 throw new IllegalArgumentException('!n.prev')
             }
-            if(!DomainUtils.isCurrent(n.prev)) {
+            if (!DomainUtils.isCurrent(n.prev)) {
                 throw new IllegalArgumentException('!DomainUtils.isCurrent(n.prev)')
             }
-            if(n.prev.root.arrangementType != ArrangementType.P) {
+            if (n.prev.root.arrangementType != ArrangementType.P) {
                 throw new IllegalArgumentException('n.prev.root.arrangementType != ArrangementType.P')
             }
 
@@ -2599,10 +2496,10 @@ select link_id from (
                     join tree_node on w.supernode_id = tree_node.id
                     where tree_node.tree_arrangement_id = ?)
                 ''',
-                { PreparedStatement qry ->
-                    qry.setLong(1, n.root.id)
-                    qry.executeUpdate()
-                }
+                        { PreparedStatement qry ->
+                            qry.setLong(1, n.root.id)
+                            qry.executeUpdate()
+                        }
             }
         }
     }
@@ -2661,7 +2558,7 @@ where tree_node.id in (
 
     private void delete_node_tree(long node_id) {
         doWork(sessionFactory_nsl) { Connection cnct ->
-            create_tree_temp_id cnct
+            createTreeTempIdTable cnct
 
             withQ cnct, '''
 									insert into tree_temp_id(id)
@@ -2690,33 +2587,8 @@ where tree_node.id in (
         }
     }
 
-/*
- * This code is copy/pasted from tree operations controller and probably should be in a utility class
- */
-
-    private static mustHave(Map things, Closure work) {
-        things.each { k, v ->
-            if (!v) {
-                throw new IllegalArgumentException("$k must not be null")
-            }
-        }
-        return work()
-    }
-
-    private clearAndFlush(Closure work) {
-        if (sessionFactory_nsl.getCurrentSession().isDirty()) {
-            throw new IllegalStateException("Changes to the classification trees may only be done via BasicOperationsService")
-        }
-        sessionFactory_nsl.getCurrentSession().clear()
-        // I don't use a try/catch because if an exception is thrown then meh
-        Object ret = work()
-        sessionFactory_nsl.getCurrentSession().flush()
-        sessionFactory_nsl.getCurrentSession().clear()
-        return DomainUtils.refetchObject(ret)
-    }
-
     void checkClassificationIntegrity(Arrangement a) throws ServiceException {
-        if(!a || a.arrangementType != ArrangementType.P) throw new IllegalArgumentException()
+        if (!a || a.arrangementType != ArrangementType.P) throw new IllegalArgumentException()
 
         // every current node in a classification must have one and only one parent in the classification, except for the root node
 

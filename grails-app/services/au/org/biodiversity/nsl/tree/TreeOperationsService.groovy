@@ -17,6 +17,8 @@
 package au.org.biodiversity.nsl.tree
 
 import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.api.SessionTrait
+import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import org.hibernate.SessionFactory
 
@@ -36,10 +38,8 @@ import static ServiceException.raise
  * @see VersioningMethod
  */
 @Transactional(rollbackFor = [ServiceException])
-public class TreeOperationsService {
+public class TreeOperationsService implements ValidationUtils, SessionTrait {
     static datasource = 'nsl'
-
-    SessionFactory sessionFactory_nsl
 
     def grailsApplication
     BasicOperationsService basicOperationsService
@@ -237,7 +237,7 @@ public class TreeOperationsService {
                     if (!superNode) throw new IllegalArgumentException("Classification ${classification} is not a properly-formed tree")
                 }
 
-                Node result =  addNameToClassification(superNode, nameUri, taxonUri, name, instance, params, profileItems,
+                Node result = addNameToClassification(superNode, nameUri, taxonUri, name, instance, params, profileItems,
                         supernameUri.toString(), classification, authUser)
 
                 basicOperationsService.checkClassificationIntegrity(DomainUtils.refetchArrangement(classification))
@@ -311,7 +311,7 @@ public class TreeOperationsService {
                     if (!superNode) throw new IllegalArgumentException("Classification ${classification} is not a properly-formed tree")
                 }
 
-                Node result =  addNameToClassification(superNode, nameUri, taxonUri, name, instance, params, profileItems,
+                Node result = addNameToClassification(superNode, nameUri, taxonUri, name, instance, params, profileItems,
                         supername ? supername.id as String : "Top Level", classification, authUser)
                 basicOperationsService.checkClassificationIntegrity(DomainUtils.refetchArrangement(classification))
 
@@ -476,7 +476,7 @@ public class TreeOperationsService {
                 }
 
 
-                Node result =  updateNameInClassification(existingNode, existingNodeSingleSuperlink, existingMoveFrom, existingMoveTo,
+                Node result = updateNameInClassification(existingNode, existingNodeSingleSuperlink, existingMoveFrom, existingMoveTo,
                         taxonUri, nodeTypeUri, linkTypeUri, linkSeq, profileItems, instance,
                         classification, authUser)
 
@@ -561,7 +561,7 @@ public class TreeOperationsService {
                     checkCurrentNslInstanceNotInTree(classification, instance, 'instance')
                 }
 
-                Node result =  updateNameInClassification(existingNode, existingNodeSingleSuperlink, existingMoveFrom, existingMoveTo,
+                Node result = updateNameInClassification(existingNode, existingNodeSingleSuperlink, existingMoveFrom, existingMoveTo,
                         taxonUri, nodeTypeUri, linkTypeUri, linkSeq, profileItems, instance,
                         classification, authUser)
 
@@ -743,8 +743,7 @@ public class TreeOperationsService {
     private Link changeLinkCheckOut(Arrangement tempSpace, Node existingMoveFrom, Node existingNode) {
         // we need to checkout the supernode, but there is no moving around involved
         Node moveFromCheckout = adoptAndCheckOut(tempSpace, existingMoveFrom)
-        Link checkedOutSupernodeLink = DomainUtils.getSublinksAsArray(moveFromCheckout)[DomainUtils.getSingleSuperlink(existingNode).linkSeq]
-        return checkedOutSupernodeLink
+        return moveFromCheckout.subLink.find { it.linkSeq == DomainUtils.getSingleSuperlink(existingNode).linkSeq }
     }
 
     private Link moveNodeCheckOut(Node existingMoveFrom, Node existingMoveTo, Arrangement tempSpace, Node existingNode) {
@@ -775,7 +774,9 @@ public class TreeOperationsService {
         moveFromCheckout = DomainUtils.refetchNode(moveFromCheckout)
         moveToCheckout = DomainUtils.refetchNode(moveToCheckout)
 
-        Link checkedOutSupernodeLink = DomainUtils.getSublinksAsArray(moveFromCheckout)[DomainUtils.getSingleSuperlink(existingNode).linkSeq]
+        Link checkedOutSupernodeLink = moveFromCheckout.subLink.find {
+            it.linkSeq == DomainUtils.getSingleSuperlink(existingNode).linkSeq
+        }
 
         basicOperationsService.updateDraftNodeLink(checkedOutSupernodeLink.supernode, checkedOutSupernodeLink.linkSeq, supernode: moveToCheckout)
 
@@ -883,11 +884,11 @@ public class TreeOperationsService {
 
     void zz() {
         Throwable t = new Throwable();
-        int i=0;
-        while ( !t.getStackTrace()[i].getMethodName().endsWith("zz"))
+        int i = 0;
+        while (!t.getStackTrace()[i].getMethodName().endsWith("zz"))
             i++;
 
-        while ( t.getStackTrace()[i].getMethodName().endsWith("zz"))
+        while (t.getStackTrace()[i].getMethodName().endsWith("zz"))
             i++;
 
         StackTraceElement e = t.getStackTrace()[i];
@@ -1030,26 +1031,4 @@ public class TreeOperationsService {
         basicOperationsService.moveFinalNodesFromTreeToTree tempSpace, arrangement
         basicOperationsService.deleteArrangement tempSpace
     }
-
-    private static mustHave(Map things, Closure work) {
-        things.each { k, v ->
-            if (!v) {
-                throw new IllegalArgumentException("$k must not be null")
-            }
-        }
-        return work()
-    }
-
-    private clearAndFlush(Closure work) {
-        if (sessionFactory_nsl.getCurrentSession().isDirty()) {
-            throw new IllegalStateException("Changes to the classification trees may only be done via BasicOperationsService");
-        }
-        sessionFactory_nsl.getCurrentSession().clear();
-        // I don't use a try/catch because if an exception is thrown then meh
-        Object ret = work();
-        sessionFactory_nsl.getCurrentSession().flush();
-        sessionFactory_nsl.getCurrentSession().clear();
-        return DomainUtils.refetchObject(ret);
-    }
-
 }

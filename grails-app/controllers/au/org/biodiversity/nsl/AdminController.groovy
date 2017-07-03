@@ -26,7 +26,7 @@ import static org.springframework.http.HttpStatus.OK
 @Transactional
 class AdminController {
 
-    def constructedNameService
+    def nameConstructionService
     def nameService
     def nameTreePathService
     def apcTreeService
@@ -66,11 +66,11 @@ class AdminController {
         NameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
             long start = System.currentTimeMillis()
             names.each { Name name ->
-                Map constructedNames = constructedNameService.constructName(name)
+                Map constructedNames = nameConstructionService.constructName(name)
 
                 if (name.fullNameHtml != constructedNames.fullMarkedUpName) {
-                    String constStripped = constructedNameService.stripMarkUp(constructedNames.fullMarkedUpName)
-                    String nameStripped = constructedNameService.stripMarkUp(name.fullNameHtml)
+                    String constStripped = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
+                    String nameStripped = nameConstructionService.stripMarkUp(name.fullNameHtml)
                     if (constStripped != nameStripped) {
                         String verbatim = null
                         List<Instance> primaryInstances = instanceService.findPrimaryInstance(name)

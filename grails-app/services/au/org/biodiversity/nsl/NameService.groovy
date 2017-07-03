@@ -21,15 +21,13 @@ import org.apache.shiro.grails.annotations.RoleRequired
 import org.quartz.Scheduler
 import org.springframework.transaction.TransactionStatus
 
-import java.util.concurrent.atomic.AtomicBoolean
-
 @Transactional
 class NameService {
 
     def configService
     def restCallService
     def classificationService
-    def constructedNameService
+    def nameConstructionService
     def nameTreePathService
     def linkService
     def treeOperationsService
@@ -291,11 +289,11 @@ class NameService {
     }
 
     private void updateFullName(Name name) {
-        Map fullNameMap = constructedNameService.constructName(name)
+        Map fullNameMap = nameConstructionService.constructName(name)
         name.fullNameHtml = fullNameMap.fullMarkedUpName
         name.simpleNameHtml = fullNameMap.simpleMarkedUpName
-        name.simpleName = constructedNameService.stripMarkUp(fullNameMap.simpleMarkedUpName)
-        name.fullName = constructedNameService.stripMarkUp(fullNameMap.fullMarkedUpName)
+        name.simpleName = nameConstructionService.stripMarkUp(fullNameMap.simpleMarkedUpName)
+        name.fullName = nameConstructionService.stripMarkUp(fullNameMap.fullMarkedUpName)
         name.save()
     }
 
@@ -360,15 +358,15 @@ class NameService {
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     names.each { Name name ->
-                        Map constructedNames = constructedNameService.constructName(name)
+                        Map constructedNames = nameConstructionService.constructName(name)
 
                         if (!(name.fullNameHtml && name.simpleNameHtml && name.fullName && name.simpleName && name.sortName) ||
                                 name.fullNameHtml != constructedNames.fullMarkedUpName) {
                             name.fullNameHtml = constructedNames.fullMarkedUpName
-                            name.fullName = constructedNameService.stripMarkUp(constructedNames.fullMarkedUpName)
+                            name.fullName = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
                             name.simpleNameHtml = constructedNames.simpleMarkedUpName
-                            name.simpleName = constructedNameService.stripMarkUp(constructedNames.simpleMarkedUpName)
-                            name.sortName = constructedNameService.makeSortName(name, name.simpleName)
+                            name.simpleName = nameConstructionService.stripMarkUp(constructedNames.simpleMarkedUpName)
+                            name.sortName = nameConstructionService.makeSortName(name, name.simpleName)
                             name.save()
 //                            log.debug "saved $name.fullName"
                         } else {
@@ -397,7 +395,7 @@ class NameService {
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     names.each { Name name ->
-                        String sortName = constructedNameService.makeSortName(name, name.simpleName)
+                        String sortName = nameConstructionService.makeSortName(name, name.simpleName)
                         if (!(name.sortName) || name.sortName != sortName) {
                             name.sortName = sortName
                             name.save()
@@ -431,12 +429,12 @@ or n.fullNameHtml is null""", params)
                 long start = System.currentTimeMillis()
                 Name.withSession { session ->
                     names.each { Name name ->
-                        Map constructedNames = constructedNameService.constructName(name)
+                        Map constructedNames = nameConstructionService.constructName(name)
 
                         name.fullNameHtml = constructedNames.fullMarkedUpName
-                        name.fullName = constructedNameService.stripMarkUp(constructedNames.fullMarkedUpName)
+                        name.fullName = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
                         name.simpleNameHtml = constructedNames.simpleMarkedUpName
-                        name.simpleName = constructedNameService.stripMarkUp(constructedNames.simpleMarkedUpName)
+                        name.simpleName = nameConstructionService.stripMarkUp(constructedNames.simpleMarkedUpName)
                         name.save()
                         log.debug "saved $name.fullName"
                     }

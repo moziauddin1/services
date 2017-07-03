@@ -51,18 +51,18 @@ class QueryService {
         return doWork(sessionFactory_nsl, { Connection cnct ->
             final Statistics s = new Statistics()
 
-            s.nodesCt = withQresult(cnct, '''
+            s.nodesCt = withQResult(cnct, '''
 					select count(*) from tree_node where tree_arrangement_id = ?
 					''') { PreparedStatement stmt ->
                 stmt.setLong(1, r.id)
             } as Integer
-            s.currentNodesCt = withQresult(cnct, '''
+            s.currentNodesCt = withQResult(cnct, '''
 					select count(*) from tree_node where tree_arrangement_id = ?
 					and next_node_id is null
 					''') { PreparedStatement stmt ->
                 stmt.setLong(1, r.id)
             } as Integer
-            s.typesCt = withQresult(cnct, '''
+            s.typesCt = withQResult(cnct, '''
 					select count(*) from (
 						select distinct type_uri_ns_part_id, type_uri_id_part
 						from tree_node where tree_arrangement_id = ?
@@ -70,7 +70,7 @@ class QueryService {
 					''') { PreparedStatement stmt ->
                 stmt.setLong(1, r.id)
             } as Integer
-            s.currentTypesCt = withQresult(cnct, '''
+            s.currentTypesCt = withQResult(cnct, '''
 					select count(*) from (
 						select distinct type_uri_ns_part_id, type_uri_id_part
 						from tree_node where tree_arrangement_id = ?
@@ -79,7 +79,7 @@ class QueryService {
 					''') { PreparedStatement stmt ->
                 stmt.setLong(1, r.id)
             } as Integer
-            s.namesCt = withQresult(cnct, '''
+            s.namesCt = withQResult(cnct, '''
 					select count(*) from (
 						select distinct name_uri_ns_part_id, name_uri_id_part
 						from tree_node where tree_arrangement_id = ?
@@ -87,7 +87,7 @@ class QueryService {
 					''') { PreparedStatement stmt ->
                 stmt.setLong(1, r.id)
             } as Integer
-            s.currentNamesCt = withQresult(cnct, '''
+            s.currentNamesCt = withQResult(cnct, '''
 					select count(*) from (
 						select distinct name_uri_ns_part_id, name_uri_id_part
 						from tree_node where tree_arrangement_id = ?
@@ -96,7 +96,7 @@ class QueryService {
 					''') { PreparedStatement stmt ->
                 stmt.setLong(1, r.id)
             } as Integer
-            s.taxaCt = withQresult(cnct, '''
+            s.taxaCt = withQResult(cnct, '''
 					select count(*) from (
 						select distinct taxon_uri_ns_part_id, taxon_uri_id_part
 						from tree_node where tree_arrangement_id = ?
@@ -104,7 +104,7 @@ class QueryService {
 					''') { PreparedStatement stmt ->
                 stmt.setLong(1, r.id)
             } as Integer
-            s.currentTaxaCt = withQresult(cnct, '''
+            s.currentTaxaCt = withQResult(cnct, '''
 					select count(*) from (
 						select distinct taxon_uri_ns_part_id, taxon_uri_id_part
 						from tree_node where tree_arrangement_id = ?
@@ -130,14 +130,14 @@ class QueryService {
 
     @SuppressWarnings("ChangeToOperator")
     private static void get_dependencies(final Arrangement r, final Statistics s, final Connection cnct) {
-        withQ cnct, '''
-					select distinct n2.tree_arrangement_id
-					from tree_node n1
-						join tree_link l on n1.id = l.supernode_id
-						join tree_node n2 on l.subnode_id = n2.id
-					where n1.tree_arrangement_id = ?
-					and n1.tree_arrangement_id <> n2.tree_arrangement_id
-				''', { PreparedStatement stmt ->
+        withQ(cnct, '''
+SELECT DISTINCT n2.tree_arrangement_id
+FROM tree_node n1
+  JOIN tree_link l ON n1.id = l.supernode_id
+  JOIN tree_node n2 ON l.subnode_id = n2.id
+WHERE n1.tree_arrangement_id = ?
+      AND n1.tree_arrangement_id <> n2.tree_arrangement_id
+				''') { PreparedStatement stmt ->
             stmt.setLong(1, r.id)
             ResultSet rs = stmt.executeQuery()
             while (rs.next()) {
@@ -146,15 +146,14 @@ class QueryService {
             rs.close()
         }
 
-        withQ cnct, '''
-					select distinct n1.tree_arrangement_id
-					from tree_node n2
-						join tree_link l on l.subnode_id = n2.id
-						join tree_node n1 on n1.id = l.supernode_id
-					where
-					n2.tree_arrangement_id = ?
-					and n1.tree_arrangement_id <> n2.tree_arrangement_id
-				''', { PreparedStatement stmt ->
+        withQ(cnct, '''
+SELECT DISTINCT n1.tree_arrangement_id
+FROM tree_node n2
+  JOIN tree_link l ON l.subnode_id = n2.id
+  JOIN tree_node n1 ON n1.id = l.supernode_id
+WHERE
+  n2.tree_arrangement_id = ?
+  AND n1.tree_arrangement_id <> n2.tree_arrangement_id''') { PreparedStatement stmt ->
             stmt.setLong(1, r.id)
             ResultSet rs = stmt.executeQuery()
             while (rs.next()) {
@@ -173,17 +172,21 @@ class QueryService {
     String dumpNodes(Collection<Node> topNodes) {
 
         StringWriter out = new StringWriter()
-        doWork sessionFactory_nsl, { Connection cnct ->
+        doWork(sessionFactory_nsl) { Connection cnct ->
             Set<Node> nodes = new HashSet<Node>()
 
-            withQ cnct, '''
-					with recursive n(id) as (
-						select tree_node.id from tree_node where id = ?
-					union all
-						select subnode_id from n join tree_link on n.id=supernode_id
-					)
-					select distinct id from n
-				''', { PreparedStatement stmt ->
+            withQ(cnct, '''
+WITH RECURSIVE n(id) AS (
+  SELECT tree_node.id
+  FROM tree_node
+  WHERE id = ?
+  UNION ALL
+  SELECT subnode_id
+  FROM n
+    JOIN tree_link ON n.id = supernode_id
+)
+SELECT DISTINCT id
+FROM n''') { PreparedStatement stmt ->
                 topNodes.each { Node topNode ->
                     if (topNode) {
                         topNode.refresh()
@@ -329,31 +332,49 @@ class QueryService {
         out.toString()
     }
 
-    @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])
+    @SuppressWarnings(["ChangeToOperator"])
     List<Link> getPathForNode(Arrangement a, Node n) {
         if (!a) throw new IllegalArgumentException("Arrangement not specified")
         if (!n) throw new IllegalArgumentException("Node not specified")
 
         Collection<Link> l = new ArrayList<Link>()
-        doWork sessionFactory_nsl, { Connection cnct ->
-            withQ cnct, '''
-				with recursive search_up(link_id, supernode_id, subnode_id) as (
-				    select l.id, l.supernode_id, l.subnode_id from tree_link l where l.subnode_id = ?
-				union all
-				    select l.id, l.supernode_id, l.subnode_id 
-					from search_up join tree_link l on search_up.supernode_id = l.subnode_id
-				),
-				search_down(link_id, subnode_id, depth) as
-				(
-				    select search_up.link_id, search_up.subnode_id, 0 
-					from tree_arrangement a join search_up on a.node_id = search_up.supernode_id
-					where a.id = ?
-				union all
-				    select search_up.link_id, search_up.subnode_id, search_down.depth+1
-				    from search_down join search_up on search_down.subnode_id = search_up.supernode_id
-				)
-				select link_id from search_down order by depth
-			''', { PreparedStatement sql ->
+        doWork(sessionFactory_nsl) { Connection cnct ->
+            withQ(cnct, '''
+WITH RECURSIVE search_up(link_id, supernode_id, subnode_id) AS (
+  SELECT
+    l.id,
+    l.supernode_id,
+    l.subnode_id
+  FROM tree_link l
+  WHERE l.subnode_id = ?
+  UNION ALL
+  SELECT
+    l.id,
+    l.supernode_id,
+    l.subnode_id
+  FROM search_up
+    JOIN tree_link l ON search_up.supernode_id = l.subnode_id
+),
+    search_down(link_id, subnode_id, depth) AS
+  (
+    SELECT
+      search_up.link_id,
+      search_up.subnode_id,
+      0
+    FROM tree_arrangement a
+      JOIN search_up ON a.node_id = search_up.supernode_id
+    WHERE a.id = ?
+    UNION ALL
+    SELECT
+      search_up.link_id,
+      search_up.subnode_id,
+      search_down.depth + 1
+    FROM search_down
+      JOIN search_up ON search_down.subnode_id = search_up.supernode_id
+  )
+SELECT link_id
+FROM search_down
+ORDER BY depth''') { PreparedStatement sql ->
                 sql.setLong(1, n.id)
                 sql.setLong(2, a.id)
                 ResultSet rs = sql.executeQuery()
@@ -399,7 +420,7 @@ class QueryService {
 
     Long getNextval() {
         return doWork(sessionFactory_nsl) { Connection cnct ->
-            return withQresult(cnct, "select nextval('nsl_global_seq') as v") {}
+            return withQResult(cnct, "select nextval('nsl_global_seq') as v") {}
         } as Long
     }
 
@@ -425,11 +446,12 @@ class QueryService {
      * @return Collection of Node
      */
     Collection<Node> findCurrentNslName(Arrangement classification, Name name) {
-        Node.executeQuery('''select n from Node n
-where root = :arrangement
-and name = :name
-and checkedInAt is not null
-and next is null
+        Node.executeQuery('''SELECT n
+FROM Node n
+WHERE root = :arrangement
+      AND name = :name
+      AND checkedInAt IS NOT NULL
+      AND next IS NULL
 ''', [arrangement: classification, name: name])
     }
 
@@ -442,12 +464,13 @@ and next is null
      * @return Collection of Node
      */
     Collection<Node> findCurrentName(Arrangement classification, Uri nameUri) {
-        Node.executeQuery('''select n from Node n
-where root = :arrangement
-and nameUriIdPart = :idPart
-and nameUriNsPart = :namespace
-and checkedInAt is not null
-and next is null
+        Node.executeQuery('''SELECT n
+FROM Node n
+WHERE root = :arrangement
+      AND nameUriIdPart = :idPart
+      AND nameUriNsPart = :namespace
+      AND checkedInAt IS NOT NULL
+      AND next IS NULL
 ''', [arrangement: classification, idPart: nameUri.idPart, namespace: nameUri.nsPart])
     }
 
@@ -460,11 +483,12 @@ and next is null
      * @return Collection of Node
      */
     Collection<Node> findCurrentNslInstance(Arrangement classification, Instance instance) {
-        Node.executeQuery('''select n from Node n
-where root = :arrangement
-and instance = :instance
-and checkedInAt is not null
-and next is null
+        Node.executeQuery('''SELECT n
+FROM Node n
+WHERE root = :arrangement
+      AND instance = :instance
+      AND checkedInAt IS NOT NULL
+      AND next IS NULL
 ''', [arrangement: classification, instance: instance])
     }
 
@@ -477,79 +501,51 @@ and next is null
      * @return Collection of Node
      */
     Collection<Node> findCurrentTaxon(Arrangement classification, Uri taxonUri) {
-        Node.executeQuery('''select n from Node n
-where root = :arrangement
-and taxonUriIdPart = :idPart
-and taxonUriNsPart = :namespace
-and checkedInAt is not null
-and next is null
+        Node.executeQuery('''SELECT n
+FROM Node n
+WHERE root = :arrangement
+      AND taxonUriIdPart = :idPart
+      AND taxonUriNsPart = :namespace
+      AND checkedInAt IS NOT NULL
+      AND next IS NULL
 ''', [arrangement: classification, idPart: taxonUri.idPart, namespace: taxonUri.nsPart])
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
     Collection<Link> findCurrentNamePlacement(Arrangement classification, Uri nameUri) {
-        Link.executeQuery('''select l from Link l
-where
-    supernode.root = :arrangement
-and supernode.checkedInAt is not null
-and supernode.next is null
-and subnode.root = :arrangement
-and subnode.nameUriIdPart = :idPart
-and subnode.nameUriNsPart = :namespace
-and subnode.checkedInAt is not null
-and subnode.next is null
+        Link.executeQuery('''SELECT l
+FROM Link l
+WHERE
+  supernode.root = :arrangement
+  AND supernode.checkedInAt IS NOT NULL
+  AND supernode.next IS NULL
+  AND subnode.root = :arrangement
+  AND subnode.nameUriIdPart = :idPart
+  AND subnode.nameUriNsPart = :namespace
+  AND subnode.checkedInAt IS NOT NULL
+  AND subnode.next IS NULL
 ''', [arrangement: classification, idPart: nameUri.idPart, namespace: nameUri.nsPart])
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
-    Collection<Link> findCurrentTaxonPlacement(Arrangement classification, Uri taxonUri) {
-        Link.executeQuery('''select l from Link l
-where
-    supernode.root = :arrangement
-and supernode.checkedInAt is not null
-and supernode.next is null
-and subnode.root = :arrangement
-and subnode.taxonUriIdPart = :idPart
-and subnode.taxonUriNsPart = :namespace
-and subnode.checkedInAt is not null
-and subnode.next is null
-''', [arrangement: classification, idPart: taxonUri.idPart, namespace: taxonUri.nsPart])
-    }
-
-    @SuppressWarnings("GroovyUnusedDeclaration")
     Collection<Link> findCurrentNslNamePlacement(Arrangement classification, Name nslName) {
-        Link.executeQuery('''select l from Link l
-where
-    supernode.root = :arrangement
-and supernode.checkedInAt is not null
-and supernode.next is null
-and subnode.root = :arrangement
-and subnode.name = :nslName
-and subnode.checkedInAt is not null
-and subnode.next is null
+        Link.executeQuery('''SELECT l
+FROM Link l
+WHERE
+  supernode.root = :arrangement
+  AND supernode.checkedInAt IS NOT NULL
+  AND supernode.next IS NULL
+  AND subnode.root = :arrangement
+  AND subnode.name = :nslName
+  AND subnode.checkedInAt IS NOT NULL
+  AND subnode.next IS NULL
 ''', [arrangement: classification, nslName: nslName])
-    }
-
-    @SuppressWarnings("GroovyUnusedDeclaration")
-    Collection<Link> findCurrentNslInstancePlacement(Arrangement classification, Instance nslInstance) {
-        Link.executeQuery('''select l from Link l
-where
-    supernode.root = :arrangement
-and supernode.checkedInAt is not null
-and supernode.next is null
-and subnode.root = :arrangement
-and subnode.instance = :nslInstance
-and subnode.checkedInAt is not null
-and subnode.next is null
-''', [arrangement: classification, nslInstance: nslInstance])
     }
 
     @SuppressWarnings("ChangeToOperator")
     Link findCurrentNslNameInTreeOrBaseTree(Arrangement tree, Name name) {
         Link l = null
 
-        doWork sessionFactory_nsl, { Connection cnct ->
-            withQ cnct, "select find_name_in_tree(?, ?) as link_id", { PreparedStatement qry ->
+        doWork(sessionFactory_nsl) { Connection cnct ->
+            withQ(cnct, "select find_name_in_tree(?, ?) as link_id") { PreparedStatement qry ->
                 qry.setLong(1, name.id)
                 qry.setLong(2, tree.id)
                 ResultSet rs = qry.executeQuery()
@@ -562,100 +558,55 @@ and subnode.next is null
         return l
     }
 
-    // this query returns the relationship instances where instance.hasSynonym foo
-    @SuppressWarnings("ChangeToOperator")
-    List<Instance> findSynonymsOfInstanceInTree(Arrangement tree, Instance instance) {
-        List<Instance> l = new ArrayList<Instance>()
-
-        doWork sessionFactory_nsl, { Connection cnct ->
-            withQ cnct, '''
-with recursive
-walk as (
-    select instance.id relationship_instance_id, tree_node.id node_id, tree_node.tree_arrangement_id
-    from instance
-    join tree_node on instance.cites_id = tree_node.instance_id
-    where instance.cited_by_id = ?
-    and tree_node.internal_type = 'T'
-    and tree_node.tree_arrangement_id in (?,?)
-    and tree_node.next_node_id is null
-    union all
-    select walk.relationship_instance_id, tree_node.id node_id, tree_node.tree_arrangement_id
-    from walk join tree_link on tree_link.subnode_id = walk.node_id
-    join tree_node on tree_link.supernode_id = tree_node.id
-    where tree_node.next_node_id is null
-    and tree_node.tree_arrangement_id in (?,?)
-    and walk.tree_arrangement_id <> ?
-)
-select distinct relationship_instance_id from walk where tree_arrangement_id = ?
-
-            ''', { PreparedStatement qry ->
-                qry.setLong(1, instance.id)
-                qry.setLong(2, tree.id)
-                qry.setLong(3, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(4, tree.id)
-                qry.setLong(5, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(6, tree.id)
-                qry.setLong(7, tree.id)
-
-
-                ResultSet rs = qry.executeQuery()
-                while (rs.next())
-                    l.add(Instance.get(rs.getLong('relationship_instance_id')))
-                rs.close()
-            }
-        }
-
-        return l
+    /**
+     * This checks to see if the instance you are about to place onto the tree considers any names already on the tree
+     * to be a synonym of itself. It checks the synonyms by name as the instance on the tree may not consider this
+     * instance to be a synonym.
+     *
+     * This checks both the tree and it's base tree
+     * This ONLY checks for taxonomic synonyms
+     *
+     * @link https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+     * @param tree - the tree and base tree we're interested in
+     * @param instance - the instance we're trying to place on the tree
+     * @return
+     */
+    List<Instance> findSynonymsOfThisInstanceInATree(Arrangement tree, Instance instance) {
+        Instance.executeQuery('''
+select synonym from Instance synonym, Node node
+where node.root  in (:tree, :baseTree)
+  and synonym.citedBy = :instance
+  and synonym.instanceType.taxonomic = true
+  and node.name = synonym.name
+  and node.next is null
+''', [tree: tree, baseTree: tree.baseArrangement ?: tree, instance: instance])
     }
 
-    @SuppressWarnings("ChangeToOperator")
-    List<Instance> findInstancesHavingSynonymInTree(Arrangement tree, Instance instance) {
-        List<Instance> l = new ArrayList<Instance>()
-
-        doWork sessionFactory_nsl, { Connection cnct ->
-            withQ cnct, '''
-with recursive
-walk as (
-    select instance.id as relationship_instance_id, tree_node.id node_id, tree_node.tree_arrangement_id
-    from instance
-    join tree_node on tree_node.instance_id = instance.cited_by_id
-    where instance.cites_id = ?
-    and tree_node.internal_type = 'T'
-    and tree_node.tree_arrangement_id in (?,?)
-    and tree_node.next_node_id is null
-    union all
-    select
-    walk.relationship_instance_id, tree_node.id node_id, tree_node.tree_arrangement_id
-    from walk join tree_link on tree_link.subnode_id = walk.node_id
-    join tree_node on tree_link.supernode_id = tree_node.id
-    where tree_node.next_node_id is null
-    and tree_node.tree_arrangement_id in (?,?)
-    and walk.tree_arrangement_id <> ?
-)
-select distinct relationship_instance_id from walk where tree_arrangement_id = ?
-
-            ''', { PreparedStatement qry ->
-                qry.setLong(1, instance.id)
-                qry.setLong(2, tree.id)
-                qry.setLong(3, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(4, tree.id)
-                qry.setLong(5, tree.baseArrangement == null ? tree.id : tree.baseArrangement.id)
-                qry.setLong(6, tree.id)
-                qry.setLong(7, tree.id)
-
-
-                ResultSet rs = qry.executeQuery()
-                while (rs.next())
-                    l.add(Instance.get(rs.getLong('relationship_instance_id')))
-                rs.close()
-            }
-        }
-
-        return l
+    /**
+     * This checks if any instances already on the tree consider this instance to be a synonym.
+     *
+     * This checks both the tree and it's base tree
+     * This ONLY checks for taxonomic synonyms
+     *
+     * @link https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+     * @param tree - the tree and base tree we're interested in
+     * @param instance - the instance we're trying to place on the tree
+     * @return
+     */
+    List<Instance> findInstancesInATreeThatSayThisIsASynonym(Arrangement tree, Instance instance) {
+        Instance.executeQuery('''
+select relation 
+  from Node node, Instance relation 
+  where node.next is null 
+    and node.root in (:tree, :baseTree) 
+    and node.instance in (select i.citedBy from Instance i where i.cites = :instance and i.instanceType.taxonomic = true)
+    and relation.cites = :instance 
+    and relation.citedBy = node.instance
+''', [tree: tree, baseTree: tree.baseArrangement ?: tree, instance: instance])
     }
 
 
-    @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])
+    @SuppressWarnings(["ChangeToOperator"])
     List findNamesInSubtree(Node node, String nameLike) {
         List l = []
 
@@ -736,7 +687,7 @@ where tree_runner.running_node_id = ?
 
     }
 
-    @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])
+    @SuppressWarnings(["ChangeToOperator"])
     List findNamesDirectlyInSubtree(Node node, String nameLike) {
 
         /**
@@ -1039,7 +990,7 @@ select distinct start_id from ll where supernode_id = ?
         if (!root) throw new IllegalArgumentException("root is null")
         if (!focus) throw new IllegalArgumentException("focus is null")
 
-        List<Link> l = new ArrayList<Link>()
+        List<Link> links = new ArrayList<Link>()
 
         doWork(sessionFactory_nsl) { Connection cnct ->
             withQ cnct, '''
@@ -1064,7 +1015,7 @@ select distinct start_id from ll where supernode_id = ?
 
                         try {
                             while (rs.next()) {
-                                l.add(Link.get(rs.getLong('id')))
+                                links.add(Link.get(rs.getLong('id')))
                             }
                         }
                         finally {
@@ -1073,7 +1024,7 @@ select distinct start_id from ll where supernode_id = ?
                     }
         }
 
-        return l
+        return links
     }
 
     @SuppressWarnings(["ChangeToOperator", "GroovyUnusedDeclaration"])

@@ -1,9 +1,11 @@
 package au.org.biodiversity.nsl.tree
 
 import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import org.hibernate.SessionFactory
 import org.hibernate.jdbc.Work
+import org.springframework.http.HttpStatus
 
 import javax.sql.DataSource
 import java.sql.Connection
@@ -12,7 +14,7 @@ import java.sql.ResultSet
 import java.sql.SQLException
 
 @Transactional(rollbackFor = [ServiceException])
-class UserWorkspaceManagerService {
+class UserWorkspaceManagerService implements ValidationUtils {
     QueryService queryService
     BasicOperationsService basicOperationsService
     VersioningService versioningService
@@ -21,28 +23,27 @@ class UserWorkspaceManagerService {
 
 
     Arrangement createWorkspace(Namespace namespace, Arrangement baseTree, String owner, boolean shared, String title, String description) {
-        if (!owner) throw new IllegalArgumentException("owner may not be null")
-        if (!title) throw new IllegalArgumentException("title may not be null")
-        if (!baseTree) throw new IllegalArgumentException("baseTree may not be null")
+        mustHave(owner: owner, title: title, baseTree: baseTree) {
 
-        if (baseTree.arrangementType != ArrangementType.P) {
-            throw new IllegalArgumentException("baseTree must be a classifcation")
-        }
+            if (baseTree.arrangementType != ArrangementType.P) {
+                throw new IllegalArgumentException("baseTree must be a classifcation")
+            }
 
-        Event e = basicOperationsService.newEvent(namespace, "Create workspace on ${baseTree.label} for ${owner}", owner)
-        baseTree = DomainUtils.refetchArrangement(baseTree)
+            Event e = basicOperationsService.newEvent(namespace, "Create workspace on ${baseTree.label} for ${owner}", owner)
+            baseTree = DomainUtils.refetchArrangement(baseTree)
 
-        Arrangement ws = basicOperationsService.createWorkspace(e, baseTree, owner, shared, title, description)
+            Arrangement ws = basicOperationsService.createWorkspace(e, baseTree, owner, shared, title, description)
 
-        baseTree = DomainUtils.refetchArrangement(baseTree)
+            baseTree = DomainUtils.refetchArrangement(baseTree)
 
-        Node checkout = DomainUtils.getSingleSubnode(baseTree.node)
+            Node checkout = DomainUtils.getSingleSubnode(baseTree.node)
 
-        basicOperationsService.adoptNode(ws.node, checkout, VersioningMethod.V, linkType: DomainUtils.getBoatreeUri('workspace-top-node'))
+            basicOperationsService.adoptNode(ws.node, checkout, VersioningMethod.V, linkType: DomainUtils.getBoatreeUri('workspace-top-node'))
 
-        ws = DomainUtils.refetchArrangement(ws)
+            ws = DomainUtils.refetchArrangement(ws)
 
-        return ws
+            return ws
+        } as Arrangement
     }
 
     void deleteWorkspace(Arrangement arrangement) {
@@ -58,7 +59,6 @@ class UserWorkspaceManagerService {
         basicOperationsService.updateWorkspace(arrangement, shared, title, description)
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
     def moveWorkspaceNode(Arrangement ws, Node target, Node node) {
         if (target == node) throw new IllegalArgumentException("node == target")
 
@@ -111,7 +111,6 @@ class UserWorkspaceManagerService {
 
     }
 
-    @SuppressWarnings("GroovyUnusedDeclaration")
     def moveWorkspaceSubnodes(Arrangement ws, Node target, Node node) {
         if (target == node) throw new IllegalArgumentException("node == target")
 
@@ -171,10 +170,10 @@ class UserWorkspaceManagerService {
 
     }
 
-    def adoptNode(Arrangement ws, Node target, Node node) {
+    Map adoptNode(Arrangement workSpace, Node target, Node node) {
         if (target == node) throw new IllegalArgumentException("node == target")
 
-        if (node == ws.node) throw new IllegalArgumentException("node == ws.node")
+        if (node == workSpace.node) throw new IllegalArgumentException("node == workSpace.node")
 
         if (!DomainUtils.isCheckedIn(node)) throw new IllegalArgumentException("cannot adopt draft node")
         if (DomainUtils.isReplaced(node)) throw new IllegalArgumentException("cannot adopt outdated node")
@@ -184,17 +183,17 @@ class UserWorkspaceManagerService {
         if (reversePath && !reversePath.isEmpty()) throw new IllegalArgumentException("node is supernode of target")
 
         if (DomainUtils.isCheckedIn(target)) {
-            List<Node> pathToTarget = queryService.findPath(ws.node, target)
+            List<Node> pathToTarget = queryService.findPath(workSpace.node, target)
             if (pathToTarget.isEmpty()) throw new IllegalArgumentException("target not in workspace")
 
-            target = basicOperationsService.checkoutNode(ws.node, target)
+            target = basicOperationsService.checkoutNode(workSpace.node, target)
 
-            ws = DomainUtils.refetchArrangement(ws)
+            workSpace = DomainUtils.refetchArrangement(workSpace)
             target = DomainUtils.refetchNode(target)
             node = DomainUtils.refetchNode(node)
         }
 
-        List<Link> pathToNode = queryService.findPathLinks(ws.node, node)
+        List<Link> pathToNode = queryService.findPathLinks(workSpace.node, node)
 
         if (!pathToNode.isEmpty()) throw new IllegalArgumentException("node already in workspace")
 
@@ -206,9 +205,7 @@ class UserWorkspaceManagerService {
         ]
     }
 
-
-    @SuppressWarnings("GroovyUnusedDeclaration")
-    def addNamesToNode(Arrangement ws, Node focus, List<?> names) {
+    Map addNamesToNode(Arrangement ws, Node focus, List<?> names) {
         log.debug('addNamesToNode')
         if (!ws) throw new IllegalArgumentException("root may not be null")
         if (!focus) throw new IllegalArgumentException("focus may not be null")
@@ -228,32 +225,19 @@ class UserWorkspaceManagerService {
         }
 
         names.each {
-            log.debug('refetch root')
             ws = DomainUtils.refetchArrangement(ws)
-            log.debug('refetch focus')
             focus = DomainUtils.refetchNode(focus)
-
-            log.debug('check type of it')
-            log.debug(it.class)
 
             if (it instanceof Name) {
                 // TODO: DO NOT IGNORE THIS TODO
                 // TODO: find if this name is already in the tree. If it is, check out the supernode and delete the link.
-                log.debug('its a name. refetch it')
                 Name n = DomainUtils.refetchName((Name) it)
-                log.debug('name refetched. create the node')
-                log.debug("oh by the way - now I have refethed it, it liks like this: ${n}")
                 basicOperationsService.createDraftNode(focus, VersioningMethod.V, NodeInternalType.T, nslName: n)
-                log.debug('all ok')
             } else if (it instanceof Instance) {
                 // TODO: DO NOT IGNORE THIS TODO
                 // TODO: find if this name is already in the tree. If it is, check out the supernode and delete the link.
-                log.debug('its an instance. refetch it')
                 Instance inst = DomainUtils.refetchInstance((Instance) it)
-                log.debug('instance refetched. create the node')
-                log.debug("oh by the way - now I have refethed it, it liks like this: ${inst}")
                 basicOperationsService.createDraftNode(focus, VersioningMethod.V, NodeInternalType.T, nslInstance: inst)
-                log.debug('all ok')
             } else {
                 log.debug('I don\'t know what this is. throw an exception')
                 throw new IllegalArgumentException("dont know how to add a ${it.class} to a node")
@@ -263,12 +247,10 @@ class UserWorkspaceManagerService {
         }
         log.debug('added all elements ok')
 
-        return {
-            target:
-            focus
-            modified:
-            []
-        }
+        return [
+                target  : focus,
+                modified: []
+        ]
     }
 
     def replaceDraftNodeWith(Node target, Node replacement) {
@@ -413,7 +395,6 @@ class UserWorkspaceManagerService {
         ]
     }
 
-
     def changeNodeInstance(Arrangement ws, Node target, Instance instance) {
         if (!ws) throw new IllegalArgumentException("null ws")
         if (!target) throw new IllegalArgumentException("null target")
@@ -503,14 +484,14 @@ class UserWorkspaceManagerService {
 
         performCheckinChecks(node)
 
-        Event e = basicOperationsService.newEvent(node.namespace(), "checkin of ${node}")
+        Event event = basicOperationsService.newEvent(node.namespace(), "checkin of ${node}")
         node = DomainUtils.refetchNode(node)
-        basicOperationsService.createCopiesOfAllNonTreeNodes(e, node)
+        basicOperationsService.createCopiesOfAllNonTreeNodes(event, node)
         node = DomainUtils.refetchNode(node)
-        basicOperationsService.persistNode(e, node)
+        basicOperationsService.persistNode(event, node)
         node = DomainUtils.refetchNode(node)
         Map<Node, Node> v = versioningService.getCheckinVersioningMap(node.root, node.prev.root, node)
-        versioningService.performVersioning(e, v, node.prev.root)
+        versioningService.performVersioning(event, v, node.prev.root)
         node = DomainUtils.refetchNode(node)
         basicOperationsService.moveNodeSubtreeIntoArrangement(node.root, node.prev.root, node)
         node = DomainUtils.refetchNode(node)
@@ -527,170 +508,27 @@ class UserWorkspaceManagerService {
         msg.nested.addAll(getCheckinErrors(node))
         if (!msg.nested.empty) ServiceException.raise(msg)
     }
-    //todo refactor: too long, repeaded code, it(true) used as code blocks - this is smelly as prawns in the sun
-    public Collection<Message> getCheckinErrors(Node node) {
 
-        Node checkin_target = DomainUtils.isCheckedIn(node) ? node : node.prev
+    //pmc TODO refactor: too long, repeated code - this is smelly as prawns in the sun
+    Collection<Message> getCheckinErrors(Node node) {
+
+        Node checkinTargetNode = DomainUtils.isCheckedIn(node) ? node : node.prev
 
         Collection<Message> messages = []
 
         sessionFactory_nsl.getCurrentSession().doWork(new Work() {
 
             void execute(Connection connection) throws SQLException {
-                if (true) {
-                    // check for name rank issues
-                    String rankIssuesSql = '''
-WITH RECURSIVE
-links_being_checked_in AS (
-    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
-    FROM tree_link
-      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE
-      tree_link.supernode_id = ?
-      AND subnode.internal_type <> 'V'
-UNION ALL
-    SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
-    FROM links_being_checked_in
-      JOIN tree_link ON links_being_checked_in.subnode_id = tree_link.supernode_id
-      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V'
-)SELECT
-    l.link_id
-FROM
-  links_being_checked_in l
-  JOIN tree_node supernode ON l.supernode_id = supernode.id
-  JOIN name supername ON supernode.name_id = supername.id
-  JOIN name_rank superrank ON supername.name_rank_id = superrank.id
-  JOIN tree_node subnode ON l.subnode_id = subnode.id
-  JOIN name subname ON subnode.name_id = subname.id
-  JOIN name_rank subrank ON subname.name_rank_id = subrank.id
-WHERE superrank.sort_order > subrank.sort_order
-				'''
+                checkNameRankIssues(connection)
+                checkForDiamonds(connection)
+                // Check for duplicate names inside the checkin
+                checkForDuplicateNamesInCheckin(connection)
+                // Check for duplicate names between the checkin and the destination
+                checkForDuplicateNamesOnDestination(connection)  //, node, checkin_target
+            }
 
-                    PreparedStatement stmt = connection.prepareStatement(rankIssuesSql)
-
-                    stmt.setLong(1, node.id)
-
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Link l = Link.get(rs.getInt('link_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${l.subnode.name.simpleName} with rank ${l.subnode.name.nameRank.name}
-is placed under
-${l.supernode.name.simpleName} with rank ${l.supernode.name.nameRank.name}
-.
-""", l.subnode, l.supernode])
-                        messages.add(submsg)
-                    }
-                }
-
-                if (true) {
-                    // check for diamonds
-                    String sql = '''
-WITH RECURSIVE
-nodes_being_checked_in AS (
-    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
-UNION ALL
-    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
-    FROM nodes_being_checked_in
-      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
-        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V'
-),
-problems AS (
-SELECT
-    node_id
-FROM
-nodes_being_checked_in
-    GROUP BY node_id
-    HAVING count(*) > 1
-),
-distinct_supers AS (
-    SELECT DISTINCT *
-    FROM nodes_being_checked_in
-    WHERE node_id IN (SELECT node_id FROM problems)
-),
-one_distinct_super AS (
-    SELECT node_id, max(supernode_id) AS supernode_id
-    FROM distinct_supers
-    GROUP BY node_id
-    HAVING count(*) = 1
-),
-one_distinct_problem_super AS (
-    SELECT * FROM one_distinct_super
-    WHERE supernode_id IN (SELECT node_id FROM problems)
-)
-SELECT * FROM problems
-WHERE node_id NOT IN (SELECT node_id FROM one_distinct_problem_super)
-
-				'''
-
-                    PreparedStatement stmt = connection.prepareStatement(sql)
-
-                    stmt.setLong(1, node.id)
-
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node n = Node.get(rs.getInt('node_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${node.name.simpleName} from "${node.root.title}"
-contains a node ${n.name.simpleName}
-which is attached in multiple places (graph diamond).
-""", n.name])
-
-                        messages.add(submsg)
-                    }
-                }
-
-                if (true) {
-                    // Check for duplicate names inside the checkin
-
-                    String sql = '''
-WITH RECURSIVE
-nodes_being_checked_in AS (
-    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
-UNION ALL
-    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
-    FROM nodes_being_checked_in
-      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
-        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE subnode.internal_type <> 'V'
-),
-problems AS (
-SELECT
-    name_id, count(*) AS ct
-    FROM nodes_being_checked_in
-    JOIN tree_node ON nodes_being_checked_in.node_id = tree_node.id
-    GROUP BY name_id
-    HAVING count(*) > 1
-)
-SELECT problems.* FROM problems
-JOIN name ON problems.name_id = name.id
-WHERE name.parent_id NOT IN (SELECT name_id FROM problems)
-
-				'''
-
-                    PreparedStatement stmt = connection.prepareStatement(sql)
-
-                    stmt.setLong(1, node.id)
-
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Name n = Name.get(rs.getInt('name_id'))
-                        int ct = rs.getInt('ct')
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${node.name.simpleName} from "${node.root.title}"
-contains ${n.simpleName} ${ct} times
-""", n])
-                        messages.add(submsg)
-                    }
-
-                }
-
-
-                if (true) {
-                    // Check for duplicate names bewtween the chekin and the destination
-                    String sql = '''
+            private void checkForDuplicateNamesOnDestination(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -731,60 +569,146 @@ LEFT OUTER JOIN problems AS sup ON problems.checkin_supernode_id = sup.checkin_n
 WHERE sup.checkin_node_id IS NULL
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    log.debug("nodes being checked in are the tree from ${node} ${node.root}")
-                    log.debug("nodes being replaced are the tree from ${checkin_target.root.node}  ${checkin_target.root}")
-                    log.debug("nodes being replaced will be clipped at  ${checkin_target}")
+                log.debug("nodes being checked in are the tree from ${node} ${node.root}")
+                log.debug("nodes being replaced are the tree from ${checkinTargetNode.root.node}  ${checkinTargetNode.root}")
+                log.debug("nodes being replaced will be clipped at  ${checkinTargetNode}")
 
-                    stmt.setLong(1, node.id)
-                    stmt.setLong(2, checkin_target.root.node.id)
-                    stmt.setLong(3, checkin_target.id)
-                    stmt.setLong(4, checkin_target.id)
+                stmt.setLong(1, node.id)
+                stmt.setLong(2, checkinTargetNode.root.node.id)
+                stmt.setLong(3, checkinTargetNode.id)
+                stmt.setLong(4, checkinTargetNode.id)
 
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
-                        Node n = Node.get(rs.getInt('checkin_node_id'))
-                        Link l = Link.get(rs.getInt('being_enddated_link_id'))
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+                    Node n = Node.get(rs.getInt('checkin_node_id'))
+                    Link l = Link.get(rs.getInt('being_enddated_link_id'))
 
-                        Message submsg = Message.makeMsg(Msg.EMPTY, [
-                                (node != checkin_target) ?
-"""
+                    Message submsg = Message.makeMsg(Msg.EMPTY, [
+                            (node != checkinTargetNode) ?
+                                    """
 Checking in ${node.name.simpleName} from "${node.root.title}"
-into ${checkin_target.root.label}
-will result in a duplicate placement of ${n.name.simpleName}, which is currently placed in ${checkin_target.root.label}.
+into ${checkinTargetNode.root.label}
+will result in a duplicate placement of ${n.name.simpleName}, which is currently placed in ${
+                                        checkinTargetNode.root.label
+                                    }.
 """
-                        :
-                        """
+                                    :
+                                    """
 ${n.name.simpleName}
 has a duplicate placement in ${node.root.label}.
 """, checkin_supernode, n])
 
-                        messages.add(submsg)
+                    messages.add(submsg)
 
-                        log.debug "CONFLICT - node ${n} with name ${n.name} and supernode ${checkin_supernode} has the same name as the subnode of link ${l} nodes ${l.supernode}->${l.subnode} names ${l.supernode.name}->${l.subnode.name} "
-                    }
+                    log.debug "CONFLICT - node ${n} with name ${n.name} and supernode ${checkin_supernode} has the same name as the subnode of link ${l} nodes ${l.supernode}->${l.subnode} names ${l.supernode.name}->${l.subnode.name} "
                 }
             }
-        })
 
-        return messages
-    }
+            private void checkForDuplicateNamesInCheckin(Connection connection) {
+                String sql = '''
+WITH RECURSIVE
+nodes_being_checked_in AS (
+    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
+UNION ALL
+    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
+    FROM nodes_being_checked_in
+      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
+        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE subnode.internal_type <> 'V'
+),
+problems AS (
+SELECT
+    name_id, count(*) AS ct
+    FROM nodes_being_checked_in
+    JOIN tree_node ON nodes_being_checked_in.node_id = tree_node.id
+    GROUP BY name_id
+    HAVING count(*) > 1
+)
+SELECT problems.* FROM problems
+JOIN name ON problems.name_id = name.id
+WHERE name.parent_id NOT IN (SELECT name_id FROM problems)
 
-    private Collection<Message> getCheckinWarnings(Node node) {
-        Node checkin_target = DomainUtils.isCheckedIn(node) ? node : node.prev
+				'''
 
-        Collection<Message> messages = []
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-        sessionFactory_nsl.getCurrentSession().doWork(new Work() {
+                stmt.setLong(1, node.id)
 
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Name n = Name.get(rs.getInt('name_id'))
+                    int ct = rs.getInt('ct')
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${node.name.simpleName} from "${node.root.title}"
+contains ${n.simpleName} ${ct} times
+""", n])
+                    messages.add(submsg)
+                }
+            }
 
-            void execute(Connection connection) throws SQLException {
-                if (true) {
-                    // check for name prefix issues
-                    String sql = '''
+            private void checkForDiamonds(Connection connection) {
+                String sql = '''
+WITH RECURSIVE
+nodes_being_checked_in AS (
+    SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
+UNION ALL
+    SELECT tree_link.supernode_id, tree_link.subnode_id AS node_id
+    FROM nodes_being_checked_in
+      JOIN tree_link ON nodes_being_checked_in.node_id = tree_link.supernode_id
+        JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE subnode.internal_type <> 'V'
+),
+problems AS (
+SELECT
+    node_id
+FROM
+nodes_being_checked_in
+    GROUP BY node_id
+    HAVING count(*) > 1
+),
+distinct_supers AS (
+    SELECT DISTINCT *
+    FROM nodes_being_checked_in
+    WHERE node_id IN (SELECT node_id FROM problems)
+),
+one_distinct_super AS (
+    SELECT node_id, max(supernode_id) AS supernode_id
+    FROM distinct_supers
+    GROUP BY node_id
+    HAVING count(*) = 1
+),
+one_distinct_problem_super AS (
+    SELECT * FROM one_distinct_super
+    WHERE supernode_id IN (SELECT node_id FROM problems)
+)
+SELECT * FROM problems
+WHERE node_id NOT IN (SELECT node_id FROM one_distinct_problem_super)
+
+				'''
+
+                PreparedStatement stmt = connection.prepareStatement(sql)
+
+                stmt.setLong(1, node.id)
+
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node n = Node.get(rs.getInt('node_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${node.name.simpleName} from "${node.root.title}"
+contains a node ${n.name.simpleName}
+which is attached in multiple places (graph diamond).
+""", n.name])
+
+                    messages.add(submsg)
+                }
+            }
+
+            private void checkNameRankIssues(Connection connection) {
+                String rankIssuesSql = '''
 WITH RECURSIVE
 links_being_checked_in AS (
     SELECT tree_link.id link_id, tree_link.supernode_id, tree_link.subnode_id
@@ -804,59 +728,56 @@ UNION ALL
 FROM
   links_being_checked_in l
   JOIN tree_node supernode ON l.supernode_id = supernode.id
+  JOIN name supername ON supernode.name_id = supername.id
+  JOIN name_rank superrank ON supername.name_rank_id = superrank.id
   JOIN tree_node subnode ON l.subnode_id = subnode.id
   JOIN name subname ON subnode.name_id = subname.id
-  JOIN name_rank subname_rank ON subname.name_rank_id = subname_rank.id
-  join name_type subname_type on subname.name_type_id = subname_type.id
-  left outer join name subname_parent on subname.parent_id = subname_parent.id
-WHERE
-  subnode.type_uri_id_part = 'ApcConcept'
-  AND supernode.name_id IS NOT NULL
-  AND (
-      (
-        not subname_type.hybrid
-        AND subname.parent_id IS NOT NULL
-        AND subname.parent_id <> supernode.name_id
-      )
-      OR
-      (
-        subname_type.hybrid
-        AND subname_parent.parent_id IS NOT NULL
-        AND subname_parent.parent_id <> supernode.name_id
-      )
-  )
-
-  AND subname_rank.sort_order > 120
+  JOIN name_rank subrank ON subname.name_rank_id = subrank.id
+WHERE superrank.sort_order > subrank.sort_order
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(rankIssuesSql)
 
-                    stmt.setLong(1, node.id)
+                stmt.setLong(1, node.id)
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Link l = Link.get(rs.getInt('link_id'))
-
-                        Name parentIs = l.supernode.name
-                        Name parentShouldBe = l.subnode.name.nameType.hybrid ? l.subnode.name.parent.parent : l.subnode.name.parent
-
-                        Closure display = (parentIs.simpleName==parentShouldBe.simpleName) ? { Name it -> it.fullName } : { Name it -> it.simpleName }
-
-                        Message submsg = Message.makeMsg(Msg.EMPTY, [
-"""
-${l.subnode.name.simpleName}
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Link l = Link.get(rs.getInt('link_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${l.subnode.name.simpleName} with rank ${l.subnode.name.nameRank.name}
 is placed under
-${display(parentIs)}
-rather than
-${display(parentShouldBe)}
-"""
-                        , l.subnode, parentIs, parentShouldBe])
-                        messages.add(submsg)
-                    }
+${l.supernode.name.simpleName} with rank ${l.supernode.name.nameRank.name}
+.
+""", l.subnode, l.supernode])
+                    messages.add(submsg)
                 }
+            }
+        })
 
-                if (true) {
-                    String sql = '''
+        return messages
+    }
+
+    Collection<Message> getCheckinWarnings(Node node) {
+        Node checkin_target = DomainUtils.isCheckedIn(node) ? node : node.prev
+
+        Collection<Message> messages = []
+
+        sessionFactory_nsl.getCurrentSession().doWork(new Work() {
+
+
+            void execute(Connection connection) throws SQLException {
+
+                checkNamePrefix(connection)
+
+                checkForSynonymsOnTree(connection)
+
+                checkAppearsElsewhere(connection) //, node, checkin_target
+
+                checkReplacedSynonym(connection) //, node, checkin_target
+            }
+
+            private void checkReplacedSynonym(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -867,46 +788,73 @@ UNION ALL
         JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
     WHERE subnode.internal_type <> 'V'
 ),
+links_being_replaced AS (
+    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
+    tree_link
+    WHERE
+      tree_link.supernode_id = ?
+      AND tree_link.subnode_id <> ? -- clip search
+UNION ALL
+    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
+    links_being_replaced JOIN tree_link ON links_being_replaced.subnode_id = tree_link.supernode_id
+    JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE tree_link.subnode_id <> ? -- clip search
+    AND subnode.internal_type <> 'V'
+),
 problems AS (
 SELECT
-    a.node_id AS a_node_id, a_synonym.id AS a_synonym_id, b.node_id AS b_node_id
-    FROM
-    nodes_being_checked_in a
-    JOIN tree_node a_node ON a.node_id = a_node.id
-    JOIN instance a_synonym ON a_node.instance_id = a_synonym.cited_by_id
-    JOIN instance_type ON a_synonym.instance_type_id = instance_type.id,
-    nodes_being_checked_in b
-    JOIN tree_node b_node ON b.node_id = b_node.id
-    WHERE a_synonym.name_id = b_node.name_id
-    AND a.node_id <> b.node_id
+  nodes_being_checked_in.supernode_id AS checkin_supernode_id,
+  nodes_being_checked_in.node_id AS checkin_node_id,
+  links_being_replaced.link_id AS being_enddated_link_id,
+  replaced_synonym.id AS replaced_synonym_id
+FROM
+nodes_being_checked_in
+  JOIN tree_node checkin_node ON nodes_being_checked_in.node_id = checkin_node.id
+    ,
+links_being_replaced
+  JOIN tree_node replaced_node ON links_being_replaced.subnode_id = replaced_node.id
+    JOIN instance replaced_synonym ON replaced_node.instance_id = replaced_synonym.cited_by_id
+  JOIN instance_type ON replaced_synonym.instance_type_id = instance_type.id
+WHERE replaced_synonym.name_id = checkin_node.name_id
     AND NOT instance_type.misapplied
     AND NOT instance_type.pro_parte
 )
-SELECT * FROM problems
+SELECT problems.* FROM problems
+-- we do all synonymy issues, not just the top level
+--LEFT OUTER JOIN problems AS sup ON problems.checkin_supernode_id = sup.checkin_node_id
+--WHERE sup.checkin_node_id IS NULL
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    stmt.setLong(1, node.id)
+                log.debug("nodes being checked in are the tree from ${node}")
+                log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
+                log.debug("nodes being replaced will be clipped at  ${checkin_target}")
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node a_node = Node.get(rs.getInt('a_node_id'))
-                        Instance a_synonym = Instance.get(rs.getInt('a_synonym_id'))
-                        Node b_node = Node.get(rs.getInt('b_node_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-${a_node.name.simpleName} in ${a_node.instance.reference.citation}
-has a ${a_synonym.instanceType.hasLabel} ${a_synonym.name.simpleName}
-which appears elsewhere in the check-in.
-""", a_node, a_synonym, b_node])
-                        messages.add(submsg)
-                    }
+                stmt.setLong(1, node.id)
+                stmt.setLong(2, checkin_target.root.node.id)
+                stmt.setLong(3, checkin_target.id)
+                stmt.setLong(4, checkin_target.id)
+
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+//                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+                    Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
+                    Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
+                    Instance replaced_synonym = Instance.get(rs.getInt('replaced_synonym_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+                    ${checkin_node.name.simpleName}
+                    is ${replaced_synonym.instanceType.ofLabel} ${
+                        replaced_link.subnode.name.simpleName
+                    } in ${replaced_synonym.reference.citation},
+                    which appears elsewhere in ${checkin_target.root.label}.
+""", checkin_node, replaced_link.subnode])
+                    messages.add(submsg)
                 }
+            }
 
-
-                if (true) {
-                    // OK!
-                    String sql = '''
+            private void checkAppearsElsewhere(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -955,38 +903,36 @@ SELECT problems.* FROM problems
 --WHERE sup.checkin_node_id IS NULL
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    log.debug("nodes being checked in are the tree from ${node}")
-                    log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
-                    log.debug("nodes being replaced will be clipped at  ${checkin_target}")
+                log.debug("nodes being checked in are the tree from ${node}")
+                log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
+                log.debug("nodes being replaced will be clipped at  ${checkin_target}")
 
-                    stmt.setLong(1, node.id)
-                    stmt.setLong(2, checkin_target.root.node.id)
-                    stmt.setLong(3, checkin_target.id)
-                    stmt.setLong(4, checkin_target.id)
+                stmt.setLong(1, node.id)
+                stmt.setLong(2, checkin_target.root.node.id)
+                stmt.setLong(3, checkin_target.id)
+                stmt.setLong(4, checkin_target.id)
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
-                        Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
-                        Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
-                        Instance checkin_synonym = Instance.get(rs.getInt('checkin_synonym_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+//                    Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
+                    Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
+//                    Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
+                    Instance checkin_synonym = Instance.get(rs.getInt('checkin_synonym_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
                     ${checkin_node.name.simpleName} in ${checkin_node.instance.reference.citation}
                     has a ${checkin_synonym.instanceType.hasLabel} ${
-                            checkin_synonym.name.simpleName
-                        },
+                        checkin_synonym.name.simpleName
+                    },
                     which appears elsewhere in ${checkin_target.root.label}.
 """, checkin_node, checkin_synonym])
-                        messages.add(submsg)
-                    }
-
+                    messages.add(submsg)
                 }
+            }
 
-                if (true) {
-                    // OK!
-                    String sql = '''
+            private void checkForSynonymsOnTree(Connection connection) {
+                String sql = '''
 WITH RECURSIVE
 nodes_being_checked_in AS (
     SELECT cast(NULL AS BIGINT) supernode_id, cast(? AS BIGINT) AS node_id
@@ -997,70 +943,121 @@ UNION ALL
         JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
     WHERE subnode.internal_type <> 'V'
 ),
-links_being_replaced AS (
-    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
-    tree_link
-    WHERE
-      tree_link.supernode_id = ?
-      AND tree_link.subnode_id <> ? -- clip search
-UNION ALL
-    SELECT tree_link.id AS link_id, tree_link.supernode_id, tree_link.subnode_id FROM
-    links_being_replaced JOIN tree_link ON links_being_replaced.subnode_id = tree_link.supernode_id
-    JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
-    WHERE tree_link.subnode_id <> ? -- clip search
-    AND subnode.internal_type <> 'V'
-),
 problems AS (
 SELECT
-  nodes_being_checked_in.supernode_id AS checkin_supernode_id,
-  nodes_being_checked_in.node_id AS checkin_node_id,
-  links_being_replaced.link_id AS being_enddated_link_id,
-  replaced_synonym.id AS replaced_synonym_id
-FROM
-nodes_being_checked_in
-  JOIN tree_node checkin_node ON nodes_being_checked_in.node_id = checkin_node.id
-    ,
-links_being_replaced
-  JOIN tree_node replaced_node ON links_being_replaced.subnode_id = replaced_node.id
-    JOIN instance replaced_synonym ON replaced_node.instance_id = replaced_synonym.cited_by_id
-  JOIN instance_type ON replaced_synonym.instance_type_id = instance_type.id
-WHERE replaced_synonym.name_id = checkin_node.name_id
+    a.node_id AS a_node_id, a_synonym.id AS a_synonym_id, b.node_id AS b_node_id
+    FROM
+    nodes_being_checked_in a
+    JOIN tree_node a_node ON a.node_id = a_node.id
+    JOIN instance a_synonym ON a_node.instance_id = a_synonym.cited_by_id
+    JOIN instance_type ON a_synonym.instance_type_id = instance_type.id,
+    nodes_being_checked_in b
+    JOIN tree_node b_node ON b.node_id = b_node.id
+    WHERE a_synonym.name_id = b_node.name_id
+    AND a.node_id <> b.node_id
     AND NOT instance_type.misapplied
     AND NOT instance_type.pro_parte
 )
-SELECT problems.* FROM problems
--- we do all synonymy issues, not just the top level
---LEFT OUTER JOIN problems AS sup ON problems.checkin_supernode_id = sup.checkin_node_id
---WHERE sup.checkin_node_id IS NULL
+SELECT * FROM problems
 				'''
 
-                    PreparedStatement stmt = connection.prepareStatement(sql)
+                PreparedStatement stmt = connection.prepareStatement(sql)
 
-                    log.debug("nodes being checked in are the tree from ${node}")
-                    log.debug("nodes being replaced are the tree from ${checkin_target.root.node}")
-                    log.debug("nodes being replaced will be clipped at  ${checkin_target}")
+                stmt.setLong(1, node.id)
 
-                    stmt.setLong(1, node.id)
-                    stmt.setLong(2, checkin_target.root.node.id)
-                    stmt.setLong(3, checkin_target.id)
-                    stmt.setLong(4, checkin_target.id)
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Node a_node = Node.get(rs.getInt('a_node_id'))
+                    Instance a_synonym = Instance.get(rs.getInt('a_synonym_id'))
+                    Node b_node = Node.get(rs.getInt('b_node_id'))
+                    Message submsg = Message.makeMsg(Msg.EMPTY, ["""
+${a_node.name.simpleName} in ${a_node.instance.reference.citation}
+has a ${a_synonym.instanceType.hasLabel} ${a_synonym.name.simpleName}
+which appears elsewhere in the check-in.
+""", a_node, a_synonym, b_node])
+                    messages.add(submsg)
+                }
+            }
 
-                    ResultSet rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        Node checkin_supernode = Node.get(rs.getInt('checkin_supernode_id'))
-                        Node checkin_node = Node.get(rs.getInt('checkin_node_id'))
-                        Link replaced_link = Link.get(rs.getInt('being_enddated_link_id'))
-                        Instance replaced_synonym = Instance.get(rs.getInt('replaced_synonym_id'))
-                        Message submsg = Message.makeMsg(Msg.EMPTY, ["""
-                    ${checkin_node.name.simpleName}
-                    is ${replaced_synonym.instanceType.ofLabel} ${
-                            replaced_link.subnode.name.simpleName
-                        } in ${replaced_synonym.reference.citation},
-                    which appears elsewhere in ${checkin_target.root.label}.
-""",checkin_node, replaced_link.subnode])
-                        messages.add(submsg)
-                    }
+            /**
+             * produces warnings like "thing is placed under thingeae rather than thinga"
+             * @param connection
+             */
+            private void checkNamePrefix(Connection connection) {
+                String sql = '''
+WITH RECURSIVE
+    links_being_checked_in AS (
+    SELECT
+      tree_link.id link_id,
+      tree_link.supernode_id,
+      tree_link.subnode_id
+    FROM tree_link
+      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE
+      tree_link.supernode_id = ?
+      AND subnode.internal_type <> 'V'
+    UNION ALL
+    SELECT
+      tree_link.id link_id,
+      tree_link.supernode_id,
+      tree_link.subnode_id
+    FROM links_being_checked_in
+      JOIN tree_link ON links_being_checked_in.subnode_id = tree_link.supernode_id
+      JOIN tree_node subnode ON tree_link.subnode_id = subnode.id
+    WHERE subnode.internal_type <> 'V'
+  ) SELECT l.link_id
+    FROM
+      name_rank genus,
+      links_being_checked_in l
+      JOIN tree_node supernode ON l.supernode_id = supernode.id
+      JOIN tree_node subnode ON l.subnode_id = subnode.id
+      JOIN name subname ON subnode.name_id = subname.id
+      JOIN name_rank subname_rank ON subname.name_rank_id = subname_rank.id
+      JOIN name_type subname_type ON subname.name_type_id = subname_type.id
+      LEFT OUTER JOIN name subname_parent ON subname.parent_id = subname_parent.id
+    WHERE
+      genus.name = 'Genus'
+      AND subnode.type_uri_id_part = 'ApcConcept'
+      AND supernode.name_id IS NOT NULL
+      AND (
+        (
+          NOT subname_type.hybrid
+          AND subname.parent_id IS NOT NULL
+          AND subname.parent_id <> supernode.name_id
+        )
+        OR
+        (
+          subname_type.hybrid
+          AND subname_parent.parent_id IS NOT NULL
+          AND subname_parent.parent_id <> supernode.name_id
+        )
+      )
+      AND subname_rank.sort_order > genus.sort_order;
+'''
 
+                PreparedStatement stmt = connection.prepareStatement(sql)
+
+                stmt.setLong(1, node.id)
+
+                ResultSet rs = stmt.executeQuery()
+                while (rs.next()) {
+                    Link l = Link.get(rs.getInt('link_id'))
+
+                    Name parentIs = l.supernode.name
+                    Name parentShouldBe = l.subnode.name.nameType.hybrid ? l.subnode.name.parent.parent : l.subnode.name.parent
+
+                    Closure display = (parentIs.simpleName == parentShouldBe.simpleName) ? { Name it -> it.fullName } : { Name it -> it.simpleName }
+
+                    Message submsg = Message.makeMsg(Msg.EMPTY, [
+                            """
+${l.subnode.name.simpleName}
+is placed under
+${display(parentIs)}
+rather than
+${display(parentShouldBe)}
+"""
+                            , l.subnode, parentIs, parentShouldBe])
+                    messages.add(submsg)
                 }
             }
         })
@@ -1071,123 +1068,97 @@ SELECT problems.* FROM problems
     ////////////////////////////////////////////
     // these operations are the two operations required for the NSL-Editor. Yes, we are re-inventing the wheel here.
 
-    String nn(Node n) {
+    String nodeSummary(Node n) {
         if (n == null) return 'null'
         else return "${n.id} ${n.name?.simpleName} ${n.checkedInAt ? "" : " (DRAFT)"}"
     }
 
-    String ll(Link l) {
+    String linkSummary(Link l) {
         if (l == null) return 'null'
-        else return "${nn(l.supernode)} -> [${l.id}] -> ${nn(l.subnode)}"
+        else return "${nodeSummary(l.supernode)} -> [${l.id}] -> ${nodeSummary(l.subnode)}"
     }
 
-    Message placeNameOnTree(Arrangement ws, Name name, Instance instance, Name parentName, Uri placementType) {
-
-        try {
-
-            if (!ws) throw new IllegalArgumentException("null tree")
-            if (!name) throw new IllegalArgumentException("null name")
-            if (!instance) throw new IllegalArgumentException("null instance")
-            if (!placementType) throw new IllegalArgumentException("null placementType")
-            if (ws.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
-
-            Message error = Message.makeMsg(Msg.placeNameOnTree, [name, ws])
-
-            /**
-             * Ok, to place a name on the tree, that name must not have any synonyms elsewhere on the tree,
-             * nor should it have synonyms that are elsewhere on the tree.
-             *
-             * If the name is placed under some other name, the the other name it is to be placed under
-             * must be of higher rank.
-             *
-             * If the name is being placed under a name that is is generic or below then,
-             * then the common part of the names must match unless the name being placed under it is an excluded name.
-             *
-             * If the name is already on the tree as an accepted name, then this operation is a move of that node.
-             *
-             * If the name is already on the tree as an accepted name, and the parent name of that placement is the same
-             * as the required parent name, then this is simply an update of the node.
-             */
-
-
-            Link currentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, name)
-
-            log.debug("current link is ${ll(currentLink)}")
+    /**
+     * To place a name on the tree, that name must not have any synonyms elsewhere on the tree,
+     * nor should it have synonyms that are elsewhere on the tree.
+     *
+     * If the name is placed under some other name, the the other name it is to be placed under
+     * must be of higher rank.
+     *
+     * If the name is being placed under a name that is is generic or below then,
+     * then the common part of the names must match unless the name being placed
+     * under it is an excluded name. NSL-464
+     *
+     * If the name is already on the tree as an accepted name, then this operation is a move of that node.
+     *
+     * If the name is already on the tree as an accepted name, and the parent name of that placement is the same
+     * as the required parent name, then this is simply an update of the node.
+     *
+     * https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+     *
+     * @param workspace
+     * @param name
+     * @param instance
+     * @param parentName
+     * @param placementType
+     */
+    void placeNameOnTree(Arrangement workspace, Name name, Instance instance, Name parentName, Uri placementType) {
+        mustHave(tree: workspace, name: name, instance: instance, "Placement type": placementType) {
+            if (workspace.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
 
             // CHECK FOR SYNONYMS
-            // this query returns the relationship instance
-            List<Instance> l = queryService.findSynonymsOfInstanceInTree(ws, instance)
+            List<Instance> synonymInstances = queryService.findSynonymsOfThisInstanceInATree(workspace, instance)
 
-            log.debug("findSynonymsOfInstanceInTree: ${l}")
-
-            if (!l.isEmpty()) {
-                Message mm = Message.makeMsg(Msg.HAS_SYNONYM_ALREADY_IN_TREE)
-                error.nested.add(mm)
-                for (Instance i : l) {
-                    if (!currentLink || i.cites.name != name)
-                        mm.nested.add(Message.makeMsg(Msg.HAS_SYNONYM_ALREADY_IN_TREE_item, [i.cites, i.instanceType.ofLabel]))
-                }
+            if (!synonymInstances.isEmpty()) {
+                throw new PlacementException("There are synonyms of ${instance.name.simpleName} in the tree: ${synonymInstances.collect { it.name.simpleName }}", HttpStatus.CONFLICT)
             }
 
-            // CHECK FOR SYNONYMS
-            // this query returns the relationship instance
-            l = queryService.findInstancesHavingSynonymInTree(ws, instance)
+            synonymInstances = queryService.findInstancesInATreeThatSayThisIsASynonym(workspace, instance)
 
-            log.debug("findInstancesHavingSynonymInTree: ${l}")
-
-            if (!l.isEmpty()) {
-                Message mm = Message.makeMsg(Msg.IS_SYNONYM_OF_ALREADY_IN_TREE)
-                error.nested.add(mm)
-                for (Instance i : l) {
-                    if (!currentLink || i.citedBy.name != name)
-                        mm.nested.add(Message.makeMsg(Msg.IS_SYNONYM_OF_ALREADY_IN_TREE_item, [i.citedBy, i.instanceType.hasLabel]))
-                }
+            if (!synonymInstances.isEmpty()) {
+                throw new PlacementException("There are instances in the tree that think ${instance.name.simpleName} is a synonym of ${synonymInstances.collect { it.citedBy.name.simpleName }.join(', ')}", HttpStatus.CONFLICT)
             }
 
             // CHECK FOR NAME COMPATIBILITY
-
             if (parentName) {
-                if (parentName.nameRank.sortOrder >= name.nameRank.sortOrder) {
-                    error.nested.add(Message.makeMsg(Msg.CANNOT_PLACE_NAME_UNDER_HIGHER_RANK, [name.nameRank.abbrev, parentName.nameRank.abbrev]))
-                }
+                // If the name is placed under some other name, the the other name it is to be placed under
+                // must be of higher rank.
+                use(RankUtils) {
+                    if (parentName.isRankedLowerThan(name)) {
+                        throw new PlacementException("You can't place ${name.simpleName} (${name.nameRank.abbrev}) below ${parentName.simpleName} (${parentName.nameRank.abbrev}).", HttpStatus.CONFLICT)
+                    }
 
-                if (parentName && "ApcConcept".equals(placementType.idPart)) {
-                    check_name_compatibility(error.nested, parentName, name)
+                    // If the name is being placed under a name that is is generic or below,
+                    // then the common part of the names must match unless the name being placed under it is an excluded name.
+                    if ("ApcConcept".equals(placementType.idPart) && !isNameCompatible(parentName, name)) {
+                        throw new PlacementException("You should place ${name.simpleName} below ${majorParentOf(name.parent).simpleName}, not ${parentName.simpleName}.", HttpStatus.CONFLICT)
+                    }
                 }
             }
 
-            Link newParentLink = null
-            if (parentName != null) {
-                newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, parentName)
-                if (newParentLink == null) {
-                    error.nested.add(Message.makeMsg(Msg.THING_NOT_FOUND_IN_ARRANGEMENT, [ws, parentName, 'Name']))
-                }
-            } else {
-                newParentLink = DomainUtils.getSingleSublink(ws.node)
-                if (newParentLink.typeUriIdPart != 'workspace-top-node') throw new IllegalStateException(newParentLink.typeUriIdPart)
+            Link currentLink = queryService.findCurrentNslNameInTreeOrBaseTree(workspace, name)
+            log.debug("the name is currently in the tree at ${linkSummary(currentLink)}")
+
+            if (currentLink != null && currentLink.subnode.name != name) {
+                //this would perhaps happen in a race condition. Somebody else updated this name in the tree to a different name.
+                throw new IllegalStateException("The current Node for this name isn't pointing at ${name}. Perhaps it changed just before you tried this.")
             }
 
-            if (!error.nested.isEmpty()) ServiceException.raise(error)
-
-            // oh well. Let's write this dog. At ewqch step we may nned to re-search/re-fetch stuff
-
-            // First, if the node needs to be updated, then check it out and update it.
+            // if the node needs to be updated, then check it out and update it.
 
             if (currentLink != null) {
-                log.debug("the name is currently in the tree at ${ll(currentLink)}")
                 Node currentNode = currentLink.subnode
-                if (currentNode.name != name) throw new IllegalStateException()
 
                 if (currentNode.instance != instance || DomainUtils.getNodeTypeUri(currentNode) != placementType) {
                     log.debug("the node needs to be edited")
                     // needs to be possibly checked out and then saved.
 
                     if (DomainUtils.isCheckedIn(currentNode)) {
-                        log.debug("checking out ${nn(currentNode)}")
-                        currentNode = basicOperationsService.checkoutNode(ws.node, currentNode)
-                        log.debug("checked out node is now ${nn(currentNode)}")
+                        log.debug("checking out ${nodeSummary(currentNode)}")
+                        currentNode = basicOperationsService.checkoutNode(workspace.node, currentNode)
+                        log.debug("checked out node is now ${nodeSummary(currentNode)}")
                         currentLink = DomainUtils.getDraftNodeSuperlink(currentNode)
-                        log.debug("currentLink ${ll(currentLink)}")
+                        log.debug("currentLink ${linkSummary(currentLink)}")
                     }
 
                     basicOperationsService.updateDraftNode(currentNode, nslInstance: instance, nodeType: placementType)
@@ -1196,22 +1167,21 @@ SELECT problems.* FROM problems
                 }
             }
 
-            // at this point, the tree may have been disturbed and we need to re-fetch things - copy/paste the code. Note that at this stage
-            // the current node may or may not be a draft node
-
+            Link newParentLink
             if (parentName != null) {
-                newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(ws, parentName)
+                newParentLink = queryService.findCurrentNslNameInTreeOrBaseTree(workspace, parentName)
                 if (newParentLink == null) {
-                    error.nested.add(Message.makeMsg(Msg.THING_NOT_FOUND_IN_ARRANGEMENT, [ws, parentName, 'Name']))
+                    throw new PlacementException("You can't place ${name.simpleName} under a name that isn't in ${workspaceName(workspace)} (${parentName.simpleName}).", HttpStatus.CONFLICT)
                 }
             } else {
-                newParentLink = DomainUtils.getSingleSublink(ws.node)
-                if (newParentLink.typeUriIdPart != 'workspace-top-node') throw new IllegalStateException(newParentLink.typeUriIdPart)
+                newParentLink = DomainUtils.getSingleSublink(workspace.node)
+                if (newParentLink.typeUriIdPart != 'workspace-top-node') {
+                    throw new IllegalStateException("Workspace parent link wasn't the correct type, 'workspace-top-node' it was $newParentLink.typeUriIdPart")
+                }
             }
 
-
-            log.debug("current link is now ${ll(currentLink)}")
-            log.debug("link to the new parent is now ${ll(newParentLink)}")
+            log.debug("current link is now ${linkSummary(currentLink)}")
+            log.debug("link to the new parent is now ${linkSummary(newParentLink)}")
 
             // next - the placement. If there is going to be a move, then the node's current parent must be checked out
             // and the destination parent must be checked out.
@@ -1220,113 +1190,140 @@ SELECT problems.* FROM problems
 
             if (currentLink == null || currentLink.supernode != newParentLink.subnode) {
                 log.debug("the node needs to be moved")
-
-                // both the current and new parent need to be checked out, which they either or both may already be. If
-                // both of them need checking out, AND one of them is below the other, THEN the sequence becomes very critical.
-                // we check out the 'higher' one first and then the lower one, because checking out the lower one will
-                // also check out the higher one which will cause our reference to that higher one to get lost
-
-                if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode) && DomainUtils.isCheckedIn(newParentLink.subnode)
-                        && queryService.countPaths(newParentLink.subnode, currentLink.supernode) != 0) {
-                    log.debug("both the current parent and the new parent may need to be checked out, in reverse order")
-                    // the new parent is above the old parent, so we must check out the new parent first
-
-                    if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
-                        log.debug("checking out new parent")
-                        Node newNode = basicOperationsService.checkoutNode(ws.node, newParentLink.subnode)
-                        newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
-                    } else {
-                        log.debug("new parent is already checked out")
-                    }
-
-                    if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
-                        log.debug("checking out old parent")
-                        Node newNode = basicOperationsService.checkoutNode(ws.node, currentLink.supernode)
-                        currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
-                    } else {
-                        log.debug("no old parent, or old parent is already checked out")
-                    }
-
-                } else {
-                    if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
-                        Node newNode = basicOperationsService.checkoutNode(ws.node, currentLink.supernode)
-                        currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
-                        log.debug("checking out old parent")
-                    } else {
-                        log.debug("no old parent, or old parent is already checked out")
-                    }
-
-                    if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
-                        log.debug("checking out new parent")
-                        Node newNode = basicOperationsService.checkoutNode(ws.node, newParentLink.subnode)
-                        newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
-                    } else {
-                        log.debug("new parent is already checked out")
-                    }
-                }
-
-                // once the node's current parent and destination parent are both checked out, then the node is moved either as
-                // a draft node move or as an un-adopt/adopt sequence. Oh - or we have to create it, duh.
-
-                currentLink = DomainUtils.refetchLink(currentLink)
-                newParentLink = DomainUtils.refetchLink(newParentLink)
-
-                log.debug("currentLink ${ll(currentLink)}")
-                log.debug("newParentLink ${ll(newParentLink)}")
-
-                if (currentLink == null) {
-                    log.debug("name is not in the tree. creating a new draft node")
-                    basicOperationsService.createDraftNode(newParentLink.subnode, VersioningMethod.V, NodeInternalType.T,
-                            nslName: name, nslInstance: instance, nodeType: placementType)
-                } else if (DomainUtils.isCheckedIn(currentLink.subnode)) {
-                    log.debug("name is not checked out in the tree. Removing from old parent and adopting into the new one")
-                    basicOperationsService.deleteLink(currentLink.supernode, currentLink.linkSeq)
-                    basicOperationsService.adoptNode(newParentLink.subnode, currentLink.subnode, VersioningMethod.V)
-                } else {
-                    log.debug("name checked out in the tree. Moving the draft node.")
-                    basicOperationsService.simpleMoveDraftLink(currentLink, newParentLink.subnode)
-                }
+                moveNode(currentLink, newParentLink, name, placementType, instance, workspace)
             } else {
                 log.debug("node does not need to be moved")
             }
-
-            return null
-
-        }
-        catch (Throwable t) {
-            for (Throwable tt = t; tt != null; tt = tt.getCause()) {
-                log.error(tt.toString())
-                for (StackTraceElement e: tt.getStackTrace()) {
-                    if (e.getClassName().startsWith("au.org.bio") && e.getLineNumber() >= 0) {
-                        log.error("  " + e.toString())
-                    }
-                }
-
-            }
-
-            throw t
         }
     }
 
-    private static void check_name_compatibility(List errors, Name supername, Name subname) {
-        Name a = supername
-        Name b = subname
+    private static String workspaceName(Arrangement workspace) {
+        if (workspace.baseArrangement) {
+            "(${workspace.baseArrangement.label ?: workspace.baseArrangement.title}) ${workspace.title ?: workspace.label}"
+        } else {
+            "${workspace.label ?: workspace.title}"
+        }
+    }
 
-        for (; ;) {
-            // genus has a sort order of 120
-            // TODO: move this important magic number into Name Rank,
-            // TODO: perhaps provide "is uninomial" functionality
-            if (!a || !b || a.nameRank.sortOrder < 120 || b.nameRank.sortOrder < 120) return
-            if (a.nameRank.sortOrder == b.nameRank.sortOrder) {
-                if (a != b) {
-                    errors.add(Message.makeMsg(Msg.NAME_CANNOT_BE_PLACED_UNDER_NAME, [supername, subname]))
-                }
-                return
+    private void moveNode(Link currentLink, Link newParentLink, Name name, Uri placementType, Instance instance, Arrangement workspace) {
+
+        // both the current and new parent need to be checked out, which they either or both may already be. If
+        // both of them need checking out, AND one of them is below the other, THEN the sequence becomes very critical.
+        // we check out the 'higher' one first and then the lower one, because checking out the lower one will
+        // also check out the higher one which will cause our reference to that higher one to get lost
+
+        if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode) && DomainUtils.isCheckedIn(newParentLink.subnode)
+                && queryService.countPaths(newParentLink.subnode, currentLink.supernode) != 0) {
+            log.debug("both the current parent and the new parent may need to be checked out, in reverse order")
+            // the new parent is above the old parent, so we must check out the new parent first
+
+            if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
+                log.debug("checking out new parent")
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, newParentLink.subnode)
+                newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
+            } else {
+                log.debug("new parent is already checked out")
             }
-            if (a.nameRank.sortOrder > b.nameRank.sortOrder) a = a.parent
-            else b = b.parent
+
+            if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
+                log.debug("checking out old parent")
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, currentLink.supernode)
+                currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
+            } else {
+                log.debug("no old parent, or old parent is already checked out")
+            }
+
+        } else {
+            if (currentLink != null && DomainUtils.isCheckedIn(currentLink.supernode)) {
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, currentLink.supernode)
+                currentLink = Link.findBySupernodeAndLinkSeq(newNode, currentLink.linkSeq)
+                log.debug("checking out old parent")
+            } else {
+                log.debug("no old parent, or old parent is already checked out")
+            }
+
+            if (DomainUtils.isCheckedIn(newParentLink.subnode)) {
+                log.debug("checking out new parent")
+                Node newNode = basicOperationsService.checkoutNode(workspace.node, newParentLink.subnode)
+                newParentLink = DomainUtils.getDraftNodeSuperlink(newNode)
+            } else {
+                log.debug("new parent is already checked out")
+            }
         }
 
+        // once the node's current parent and destination parent are both checked out, then the node is moved either as
+        // a draft node move or as an un-adopt/adopt sequence. Oh - or we have to create it, duh.
+
+        currentLink = DomainUtils.refetchLink(currentLink)
+        newParentLink = DomainUtils.refetchLink(newParentLink)
+
+        log.debug("currentLink ${linkSummary(currentLink)}")
+        log.debug("newParentLink ${linkSummary(newParentLink)}")
+
+        if (currentLink == null) {
+            log.debug("name is not in the tree. creating a new draft node")
+            basicOperationsService.createDraftNode(newParentLink.subnode, VersioningMethod.V, NodeInternalType.T,
+                    nslName: name, nslInstance: instance, nodeType: placementType)
+        } else if (DomainUtils.isCheckedIn(currentLink.subnode)) {
+            log.debug("name is not checked out in the tree. Removing from old parent and adopting into the new one")
+            basicOperationsService.deleteLink(currentLink.supernode, currentLink.linkSeq)
+            basicOperationsService.adoptNode(newParentLink.subnode, currentLink.subnode, VersioningMethod.V)
+        } else {
+            log.debug("name checked out in the tree. Moving the draft node.")
+            basicOperationsService.simpleMoveDraftLink(currentLink, newParentLink.subnode)
+        }
+    }
+
+    /**
+     * If the name is being placed under a name that is is generic or below then,
+     * then the common part of the names must match unless the name it is being placed under
+     * it is an excluded name. NSL-464
+     *
+     * @param superName
+     * @param subName
+     * @return true if compatible
+     */
+    protected static Boolean isNameCompatible(Name superName, Name subName) {
+        if (!superName || !subName) {
+            throw new NullPointerException("Supername and subname cannot be null.")
+        }
+
+        use(RankUtils) {
+            //sub name should always be below super name
+            if (subName.isRankedHigherThan(superName)) {
+                return false
+            }
+            //check only applies for sub genus sub names
+            if (subName.nameAtRankOrHigher('Genus')) {
+                return true
+            }
+            //can't place sub Genus name below name higher than genus
+            if (superName.nameHigherThanRank('Genus')) {
+                return false
+            }
+            // subspecies names should be placed below species
+            if (subName.nameLowerThanRank('Species') &&
+                    superName.nameHigherThanRank('Species')) {
+                return false
+            }
+
+            //given the above the super name should be in the *name* parent path of the sub name
+            //if the super name is a major rank
+            Name majorSuperName = majorParentOf(superName)
+            Name parent = subName.parent
+            while (majorSuperName && majorSuperName != parent && !parent.isRankedHigherThan(majorSuperName)) {
+                parent = parent.parent
+            }
+            return parent == majorSuperName //if equal we found it
+        }
+    }
+
+    private static Name majorParentOf(Name name) {
+        Name majorName = name
+        while (majorName && !majorName.nameRank.major) {
+            majorName = name.parent
+        }
+        return majorName.nameRank.major ? majorName : null
     }
 
     Message removeNameFromTree(Arrangement ws, Name name) {
@@ -1343,7 +1340,7 @@ SELECT problems.* FROM problems
                 ServiceException.raise(error)
             }
 
-            if(currentLink.subnode.subLink.find { Link l -> l.subnode.internalType == NodeInternalType.T } ) {
+            if (currentLink.subnode.subLink.find { Link l -> l.subnode.internalType == NodeInternalType.T }) {
                 error.nested.add(Message.makeMsg(Msg.NODE_HAS_SUBTAXA, [currentLink.subnode]))
                 ServiceException.raise(error)
             }
@@ -1376,7 +1373,7 @@ SELECT problems.* FROM problems
         return null
     }
 
-    Message updateValue(Arrangement ws, Name name, ValueNodeUri valueUri, String value) {
+    void updateValue(Arrangement ws, Name name, ValueNodeUri valueUri, String value) {
         if (!ws) throw new IllegalArgumentException("null tree")
         if (!name) throw new IllegalArgumentException("null name")
         if (!valueUri) throw new IllegalArgumentException("null value uri")
@@ -1421,7 +1418,7 @@ SELECT problems.* FROM problems
                 }
             }
 
-            // ok! now use the basic opearions service to update/add values on the node
+            // ok! now use the basic operations service to update/add values on the node
 
             if (currentValueLink && !DomainUtils.isCheckedIn(currentValueLink.subnode)) {
                 // update the existing draft subnode
@@ -1431,18 +1428,18 @@ SELECT problems.* FROM problems
                             literal: value
                     )
                     currentNameNode = DomainUtils.refetchNode(currentNameNode)
-                    basicOperationsService.updateDraftNodeLink(currentNameNode, currentValueLink.linkSeq, linkType: DomainUtils.getValueLinkTypeUri(valueUri))
+                    basicOperationsService.updateDraftNodeLink(currentNameNode, currentValueLink.linkSeq,
+                            linkType: DomainUtils.getValueLinkTypeUri(valueUri))
                 } else {
                     basicOperationsService.deleteDraftNode(currentValueLink.subnode)
                 }
             } else {
                 // unlink existing persistent subnode (if necessary),
-                // crate new draft subnode (if necesary)
+                // crate new draft subnode (if necessary)
                 if (currentValueLink) {
                     log.debug("deleting ")
                     basicOperationsService.deleteLink(currentNameNode, currentValueLink.linkSeq)
                     currentNameNode = DomainUtils.refetchNode(currentNameNode)
-                    currentValueLink = null
                 }
 
 
@@ -1467,25 +1464,6 @@ SELECT problems.* FROM problems
                 ServiceException.raise(error)
             }
         }
-        return null
     }
 
-    Message addMultiValue(Arrangement ws, Name name, ValueNodeUri valueUri, String value) {
-        if (!ws) throw new IllegalArgumentException("null tree")
-        if (!name) throw new IllegalArgumentException("null name")
-        if (!valueUri) throw new IllegalArgumentException("null value uri")
-        if (ws.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
-
-        if (!valueUri.isMultiValued) throw new IllegalArgumentException("${valueUri} is not multivalued")
-
-        ServiceException.raise(Message.makeMsg(Msg.TODO, ['Implement addMultiValue']))
-    }
-
-    Message removeMultiValue(Arrangement ws, Name name, int linkSeq) {
-        if (!ws) throw new IllegalArgumentException("null tree")
-        if (!name) throw new IllegalArgumentException("null name")
-        if (ws.arrangementType != ArrangementType.U) throw new IllegalArgumentException("ws is not a workspace")
-
-        ServiceException.raise(Message.makeMsg(Msg.TODO, ['Implement removeMultiValue']))
-    }
 }

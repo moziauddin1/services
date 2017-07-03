@@ -228,6 +228,10 @@ class NameTreePathService {
         (NameTreePath.executeQuery("select distinct ntp.tree.label from NameTreePath ntp where ntp.name = :name", [name: name]) as List<String>)
     }
 
+    static List<NameTreePath> findCurrentNameTreePathsForAllTrees(Name name) {
+        NameTreePath.findAllByNameAndNextIsNull(name)
+    }
+
     Integer treePathReport(String treeLabel) {
         Arrangement arrangement = Arrangement.findByNamespaceAndLabel(
                 configService.nameSpace,
@@ -287,7 +291,7 @@ AS (
     r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT AS rank_path,
     n.name_id                                                      AS name_id,
     CASE
-    WHEN r.name = 'Familia\'
+    WHEN r.name = 'Familia'
       THEN nm.id
     ELSE NULL
     END                                                            AS family_id
@@ -311,7 +315,7 @@ AS (
     (parent.rank_path || '>' || r.name :: TEXT || ':' || coalesce(nm.name_element, '') :: TEXT) AS rank_path,
     subnode.name_id                                                                             AS name_id,
     CASE
-    WHEN r.name = 'Familia\'
+    WHEN r.name = 'Familia'
       THEN nm.id
     WHEN parent.family_id IS NOT NULL
       THEN parent.family_id
@@ -323,8 +327,7 @@ AS (
         AND l.supernode_id = parentnode.id
         AND l.subnode_id = subnode.id
         AND subnode.tree_arrangement_id = parent.tree_id
-        AND subnode.internal_type = 'T\'
-        AND subnode.checked_in_at_id IS NOT NULL
+        AND subnode.internal_type = 'T'
         AND subnode.next_node_id IS NULL
         AND subnode.name_id = nm.id
         AND nm.name_rank_id = r.id

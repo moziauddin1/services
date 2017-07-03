@@ -55,7 +55,7 @@
         }]"/>
       </g:if>
 
-      <g:if test="${instance.instanceType.misapplied}">
+      <g:if test="${instance.instanceType.misapplied && !instance.instanceType.unsourced}">
         <g:render template="/apniFormat/missappliedTo" model="[instance: instance]"/>
       </g:if>
 

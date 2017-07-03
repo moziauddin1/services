@@ -516,7 +516,7 @@ class JsonRendererService {
     }
 
     Map marshallArrangement(Arrangement arrangement) {
-        Map data = brief arrangement, [
+        Map data = brief(arrangement, [
                 arrangementType: arrangement.arrangementType,
                 label          : arrangement.label,
                 title          : arrangement.title,
@@ -527,8 +527,11 @@ class JsonRendererService {
                 node           : brief(arrangement.node, [:]),
                 currentRoot    : arrangement.arrangementType == ArrangementType.P && arrangement.node && arrangement.node.subLink.size() == 1 && arrangement.node.subLink.first().versioningMethod == VersioningMethod.T ? brief(arrangement.node.subLink.first().subnode, [:]) : null,
                 namespace      : getBriefNamespace(arrangement.namespace),
-                baseArrangement: brief(arrangement.baseArrangement)
-        ]
+                baseArrangement: (brief(arrangement.baseArrangement, [
+                        label: arrangement.baseArrangement?.label,
+                        title: arrangement.baseArrangement?.title
+                ]))
+        ])
         return data
     }
 

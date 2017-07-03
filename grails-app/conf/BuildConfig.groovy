@@ -56,12 +56,10 @@ grails.project.dependency.resolution = {
     repositories {
         inherits true // Whether to inherit repository definitions from plugins
 
-        mavenRepo(id: "anbg", url: "http://appsdev1-ibis.it.csiro.au:8085/repository/maven-central/")
-        mavenRepo(id: "anbg", url: "http://appsdev1-ibis.it.csiro.au:8085/repository/grails-plugins/")
-        mavenRepo(id: "anbg", url: "http://appsdev1-ibis.it.csiro.au:8085/repository/anbg-release/")
-        mavenRepo(id: "anbg", url: "http://appsdev1-ibis.it.csiro.au:8085/repository/anbg-snapshot/") {
-            updatePolicy "interval:1"
-        }
+        mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/anbg-snapshot/")
+        mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/anbg-release/")
+        mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/maven-central/")
+        mavenRepo("http://appsdev1-ibis.it.csiro.au:8085/repository/grails-plugins/")
         grailsHome()
         mavenLocal()
         grailsCentral()
@@ -89,7 +87,7 @@ grails.project.dependency.resolution = {
         compile ':cache:1.1.8'
         compile "org.grails.plugins:cache-ehcache:1.0.5"
         compile ":asset-pipeline:2.1.0"
-        compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.5"
+        compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.6-SNAPSHOT"
         compile ':rest-client-builder:2.0.3'
         compile ":simple-suggestions:0.3"
 		compile ":twitter-bootstrap:3.3.0"

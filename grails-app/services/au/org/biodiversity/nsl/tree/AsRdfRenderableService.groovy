@@ -44,7 +44,7 @@ class AsRdfRenderableService {
         top_node, root_node, sub_node, prevnext, ids_only, in_link
     }
 
-    public RdfRenderable.Top springErrorsAsRenderable(Errors e) {
+    RdfRenderable.Top springErrorsAsRenderable(Errors e) {
 
         UriNs springErrorNs = DomainUtils.getBlankNs()
 
@@ -87,7 +87,7 @@ class AsRdfRenderableService {
         return o
     }
 
-    public RdfRenderable.Top serviceExceptionAsRenderable(ServiceException ex) {
+    RdfRenderable.Top serviceExceptionAsRenderable(ServiceException ex) {
         UriNs errorNs = DomainUtils.getBlankNs()
         RdfRenderable.Obj o = new RdfRenderable.Obj(DomainUtils.u(errorNs, ex.class.simpleName))
         RdfRenderable.Seq stackTrace = new RdfRenderable.Seq()
@@ -100,7 +100,7 @@ class AsRdfRenderableService {
                     || ee.getLineNumber() == -1
                     || !ee.getMethodName()
                     || ee.getMethodName().startsWith('$'))
-                continue;
+                continue
 
             RdfRenderable.Obj oo = new RdfRenderable.Obj(DomainUtils.u(errorNs, 'StackTraceElement'))
             stackTrace.add(oo)
@@ -115,7 +115,7 @@ class AsRdfRenderableService {
         return o
     }
 
-    public RdfRenderable.Top messageAsRenderable(Message m) {
+    RdfRenderable.Top messageAsRenderable(Message m) {
         UriNs messageNs = DomainUtils.getBlankNs()
         RdfRenderable.Obj o = new RdfRenderable.Obj(DomainUtils.u(messageNs, 'Message'))
 
@@ -130,21 +130,25 @@ class AsRdfRenderableService {
         o.add DomainUtils.u(messageNs, 'nested'), nested
 
         for (Object oo : m.args) {
-            if(RdfRenderable.Primitive.isPrimative(oo)) {
-                //noinspection GroovyAssignabilityCheck
-                args.add new RdfRenderable.Primitive(oo)
-            } else {
-                try {
+            if (oo) {
+                if (RdfRenderable.Primitive.isPrimative(oo)) {
                     //noinspection GroovyAssignabilityCheck
-                    addToArgs(args, oo)
-                } catch (MissingMethodException e1) {
-                    log.warn("RdfRenderable tryed to add arg for type $oo ($e1.message)")
+                    args.add new RdfRenderable.Primitive(oo)
+                } else {
+                    try {
+                        //noinspection GroovyAssignabilityCheck
+                        addToArgs(args, oo)
+                    } catch (MissingMethodException e1) {
+                        log.warn("RdfRenderable tryed to add arg for type $oo ($e1.message)")
+                    }
                 }
+            } else {
+                log.error "Can't add arg $oo to message."
             }
         }
 
         for (Object perhapsAMessage : m.nested) {
-            if(perhapsAMessage instanceof Message){
+            if (perhapsAMessage instanceof Message) {
                 nested.add messageAsRenderable(perhapsAMessage as Message)
             }
         }
@@ -182,7 +186,7 @@ class AsRdfRenderableService {
     ///////////////////////////////////////////////////////////////////////////////
 
 
-    public RdfRenderable.Top getNodeRdf(Map params = [:], Node n) {
+    RdfRenderable.Top getNodeRdf(Map params = [:], Node n) {
         return nodeAsRenderable(n,
                 params['idsOnly'] ? NodeRenderContext.ids_only : NodeRenderContext.top_node,
                 (Boolean) params['all'],
@@ -277,7 +281,7 @@ class AsRdfRenderableService {
 
     ///////////////////////////////////////////////////////////////////////////////
 
-    public RdfRenderable.Top getLinkRdf(Map params = [:], Link l) {
+    RdfRenderable.Top getLinkRdf(Map params = [:], Link l) {
         return linkAsRenderable(l, params['idsOnly'] ? NodeRenderContext.ids_only : NodeRenderContext.in_link, false, 0)
     }
 
@@ -311,11 +315,11 @@ class AsRdfRenderableService {
         }
     }
 
-    public RdfRenderable.Top getArrangementRdf(Map params = [:], Arrangement a) {
+    RdfRenderable.Top getArrangementRdf(Map params = [:], Arrangement a) {
         return arrangementAsRenderable(a, ArrangementRenderContext.as_arrangement, (Boolean) params['all'], (Integer) params['depth'])
     }
 
-    public RdfRenderable.Top getClassificationRdf(Map params = [:], Arrangement a) {
+    RdfRenderable.Top getClassificationRdf(Map params = [:], Arrangement a) {
         return arrangementAsRenderable(a, ArrangementRenderContext.as_classification, (Boolean) params['all'], (Integer) params['depth'])
     }
 
@@ -398,7 +402,7 @@ class AsRdfRenderableService {
 
     ///////////////////////////////////////////////////////////////////////////////
 
-    public static enum VocItem {
+    static enum VocItem {
         voc('Vocabularies'),
         ns('RDF Namespaces'),
         classification('Top-level public classification trees'),
@@ -411,7 +415,7 @@ class AsRdfRenderableService {
         }
     }
 
-    public RdfRenderable.Top getVocRdf(VocItem vocItem) {
+    RdfRenderable.Top getVocRdf(VocItem vocItem) {
         Closure getItems
         Closure toRenderable
 

@@ -28,171 +28,156 @@ import au.org.biodiversity.nsl.*;
 @Mixin(BuildSampleTreeMixin)
 
 public class MassCheckoutSpec extends Specification {
-	DataSource dataSource_nsl
-	SessionFactory sessionFactory_nsl
-	static final Log log = LogFactory.getLog(DomainSpec.class)
+    DataSource dataSource_nsl
+    SessionFactory sessionFactory_nsl
+    static final Log log = LogFactory.getLog(DomainSpec.class)
+
+    // fields
+    BasicOperationsService basicOperationsService
+
+    def 'attempt a mass checkout'() {
+        Link[] sub;
 
 
-	// fields
-	BasicOperationsService basicOperationsService
+        when:
+        Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'attempt a mass checkout')
 
-	// fixture methods
+        SomeStuffEmptyTree s1 = makeSampleEmptyTree() // the working tree
+        SomeStuff s2 = makeSampleTree() // some sample data
 
-	def setup() {
-	}
+        basicOperationsService.persistNode(e, s2.tree.node)
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
 
-	def cleanup() {
-	}
+        // we have to adopt a and b separately because the somestuff root node
+        // never gets persisted
 
-	def setupSpec() {
-	}
+        basicOperationsService.adoptNode(s1.rootNode, s2.nodeA, VersioningMethod.F)
+        basicOperationsService.adoptNode(s1.rootNode, s2.nodeB, VersioningMethod.F)
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
 
-	def cleanupSpec() {
-	}
+        basicOperationsService.massCheckout(s1.tree.node, [s2.nodeAA, s2.nodeB])
+        sessionFactory_nsl.currentSession.clear()
+        s1.reloadWithoutClear()
+        s2.reloadWithoutClear()
 
-	def 'attempt a mass checkout'() {
-		Link[] sub;
-		
-		
-		when:
-		Event e = basicOperationsService.newEventTs(TreeTestUtil.getTestNamespace(), new java.sql.Timestamp(System.currentTimeMillis()), 'TEST', 'attempt a mass checkout')
+        // check that the new nodes have been inserted into the draft tree.
 
-		SomeStuffEmptyTree s1 = makeSampleEmptyTree() // the working tree
-		SomeStuff s2 = makeSampleTree() // some sample data
+        then:
+        // FIRST: I want to check that my sample tree s2 is unaffected
+        // this means checking all seven nodes of the tree. Sorry
 
-		basicOperationsService.persistNode(e, s2.t.node)
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
+        // check root node
+        s2.tree.node == s2.rootNode
+        !DomainUtils.isCheckedIn(s2.rootNode)
 
-		// we have to adopt a and b separately because the somestuff root node
-		// never gets persisted
-		
-		basicOperationsService.adoptNode s1.root, s2.a, VersioningMethod.F
-		basicOperationsService.adoptNode s1.root, s2.b, VersioningMethod.F
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
+        when:
+        sub = DomainUtils.getSublinksAsArray(s2.rootNode)
+        then:
+        sub.length == 3
+        sub[1].subnode == s2.nodeA
+        sub[2].subnode == s2.nodeB
 
-		basicOperationsService.massCheckout(s1.t.node, [s2.aa, s2.b])
-		sessionFactory_nsl.currentSession.clear()
-		s1.reloadWithoutClear()
-		s2.reloadWithoutClear()
+        // check node a
+        DomainUtils.isCheckedIn(s2.nodeA)
+        when:
+        sub = DomainUtils.getSublinksAsArray(s2.nodeA)
+        then:
+        sub.length == 3
+        sub[1].subnode == s2.nodeAA
+        sub[2].subnode == s2.nodeAB
 
-		// check that the new nodes have been inserted into the draft tree.
+        // check node aa
+        DomainUtils.isCheckedIn(s2.nodeAA)
+        when:
+        sub = DomainUtils.getSublinksAsArray(s2.nodeAA)
+        then:
+        sub.length == 1
 
-		then:
-			// FIRST: I want to check that my sample tree s2 is unaffected
-			// this means checking all seven nodes of the tree. Sorry
+        // check node ab
+        DomainUtils.isCheckedIn(s2.nodeAB)
+        when:
+        sub = DomainUtils.getSublinksAsArray(s2.nodeAB)
+        then:
+        sub.length == 1
 
-			// check root node
-			s2.t.node == s2.root
-			!DomainUtils.isCheckedIn(s2.root)
-			
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s2.root)
-		then:
-			sub.length == 3
-			sub[1].subnode == s2.a
-			sub[2].subnode == s2.b
+        // check node b
+        DomainUtils.isCheckedIn(s2.nodeB)
+        when:
+        sub = DomainUtils.getSublinksAsArray(s2.nodeB)
+        then:
+        sub.length == 3
+        sub[1].subnode == s2.nodeBA
+        sub[2].subnode == s2.nodeBB
 
-			// check node a
-			DomainUtils.isCheckedIn(s2.a)
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s2.a)
-		then:
-			sub.length == 3
-			sub[1].subnode == s2.aa
-			sub[2].subnode == s2.ab
+        // check node aa
+        DomainUtils.isCheckedIn(s2.nodeBA)
+        when:
+        sub = DomainUtils.getSublinksAsArray(s2.nodeBA)
+        then:
+        sub.length == 1
 
-			// check node aa
-			DomainUtils.isCheckedIn(s2.aa)
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s2.aa)
-		then:
-			sub.length == 1
+        // check node ab
+        DomainUtils.isCheckedIn(s2.nodeBB)
+        when:
+        sub = DomainUtils.getSublinksAsArray(s2.nodeBB)
+        then:
+        sub.length == 1
 
-			// check node ab
-			DomainUtils.isCheckedIn(s2.ab)
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s2.ab)
-		then:
-			sub.length == 1
+        // OKAY!!!  Now to test the work tree, which should have various checked-out subnodes
 
-			// check node b
-			DomainUtils.isCheckedIn(s2.b)
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s2.b)
-		then:
-			sub.length == 3
-			sub[1].subnode == s2.ba
-			sub[2].subnode == s2.bb
+        // root should be a draft node with one subnode - a checked out version of s2.root
 
-			// check node aa
-			DomainUtils.isCheckedIn(s2.ba)
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s2.ba)
-		then:
-			sub.length == 1
+        s1.tree.node == s1.rootNode
+        !DomainUtils.isCheckedIn(s2.rootNode)
 
-			// check node ab
-			DomainUtils.isCheckedIn(s2.bb)
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s2.bb)
-		then:
-			sub.length == 1
+        when:
+        sub = DomainUtils.getSublinksAsArray(s1.tree.node)
+        then:
+        sub.length == 3
 
-		// OKAY!!!  Now to test the work tree, which should have various checked-out subnodes
-			
-			// root should be a draft node with one subnode - a checked out version of s2.root
-			
-			s1.t.node == s1.root
-			!DomainUtils.isCheckedIn(s2.root)
+        !DomainUtils.isCheckedIn(sub[1].subnode)
+        sub[1].subnode != s2.nodeA
+        sub[1].subnode.prev == s2.nodeA
 
-		when:	
-			sub = DomainUtils.getSublinksAsArray(s1.t.node)
-		then:
-			sub.length == 3
-			
-			!DomainUtils.isCheckedIn(sub[1].subnode)
-			sub[1].subnode != s2.a
-			sub[1].subnode.prev == s2.a
-			
-			!DomainUtils.isCheckedIn(sub[2].subnode)
-			sub[2].subnode != s2.b
-			sub[2].subnode.prev == s2.b
-			
-			when:
-			sub = DomainUtils.getSublinksAsArray(s1.t.node)
-			sub = DomainUtils.getSublinksAsArray(sub[1].subnode)
-			
-			then:
-			sub.length == 3
+        !DomainUtils.isCheckedIn(sub[2].subnode)
+        sub[2].subnode != s2.nodeB
+        sub[2].subnode.prev == s2.nodeB
 
-			!DomainUtils.isCheckedIn(sub[1].subnode)
-			sub[1].subnode != s2.aa
-			sub[1].subnode.prev == s2.aa
-			DomainUtils.getSublinksAsArray(sub[1].subnode).length == 1
-			
-			DomainUtils.isCheckedIn(sub[2].subnode)
-			sub[2].subnode == s2.ab
-			DomainUtils.getSublinksAsArray(sub[2].subnode).length == 1
-			
-			when:
-			sub = DomainUtils.getSublinksAsArray(s1.t.node)
-			sub = DomainUtils.getSublinksAsArray(sub[2].subnode)
-			
-			then:
-			sub.length == 3
+        when:
+        sub = DomainUtils.getSublinksAsArray(s1.tree.node)
+        sub = DomainUtils.getSublinksAsArray(sub[1].subnode)
 
-			DomainUtils.isCheckedIn(sub[2].subnode)
-			sub[1].subnode == s2.ba
-			DomainUtils.getSublinksAsArray(sub[1].subnode).length == 1
-			
-			DomainUtils.isCheckedIn(sub[2].subnode)
-			sub[2].subnode == s2.bb
-			DomainUtils.getSublinksAsArray(sub[2].subnode).length == 1
-			
+        then:
+        sub.length == 3
 
-	}
+        !DomainUtils.isCheckedIn(sub[1].subnode)
+        sub[1].subnode != s2.nodeAA
+        sub[1].subnode.prev == s2.nodeAA
+        DomainUtils.getSublinksAsArray(sub[1].subnode).length == 1
+
+        DomainUtils.isCheckedIn(sub[2].subnode)
+        sub[2].subnode == s2.nodeAB
+        DomainUtils.getSublinksAsArray(sub[2].subnode).length == 1
+
+        when:
+        sub = DomainUtils.getSublinksAsArray(s1.tree.node)
+        sub = DomainUtils.getSublinksAsArray(sub[2].subnode)
+
+        then:
+        sub.length == 3
+
+        DomainUtils.isCheckedIn(sub[2].subnode)
+        sub[1].subnode == s2.nodeBA
+        DomainUtils.getSublinksAsArray(sub[1].subnode).length == 1
+
+        DomainUtils.isCheckedIn(sub[2].subnode)
+        sub[2].subnode == s2.nodeBB
+        DomainUtils.getSublinksAsArray(sub[2].subnode).length == 1
+
+
+    }
 }
