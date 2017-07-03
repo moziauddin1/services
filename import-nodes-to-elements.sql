@@ -597,3 +597,43 @@ WHERE el.tree_version_id = synonym_strings.tree_version_id
 UPDATE tree_element
 SET names = '|' || simple_name
 WHERE names = '';
+
+SELECT
+  element.tree_version_id,
+  element.tree_element_id,
+  name.simple_name    AS accepted_name,
+  it.name             AS syn_type,
+  synonym.simple_name AS syn_name
+FROM Name name,
+  tree_element element,
+  Instance i,
+  Instance s
+  JOIN instance_type it ON s.instance_type_id = it.id
+  ,
+  name synonym
+WHERE name.id = i.name_id
+      AND s.cited_by_id = i.id
+      AND i.id = element.instance_id
+      AND synonym.id = s.name_id
+      AND element.tree_version_id = 137
+ORDER BY element.name_path;
+
+SELECT jsonb_agg(relationship)
+FROM (
+       SELECT
+         it.name             AS relationship,
+         it.misapplied       AS missapplied,
+         it.nomenclatural    AS nomencaltural,
+         it.taxonomic        AS taxonomic,
+         synonym.simple_name AS simple_name
+       FROM tree_element element,
+         Instance i,
+         Instance s
+         JOIN instance_type it ON s.instance_type_id = it.id
+         ,
+         name synonym
+       WHERE s.cited_by_id = i.id
+             AND i.id = element.instance_id
+             AND synonym.id = s.name_id
+             AND element.tree_version_id = 137
+             AND element.tree_element_id = 29163520) AS synonyms;
