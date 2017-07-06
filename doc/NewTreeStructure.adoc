@@ -62,6 +62,7 @@ This work is designed to make the tree easy to understand and reason about, and 
  . we must be able to create an "uber tree" from multiple sub trees.
  . The uber tree should be able to merge sub trees from multiple points - for example lichens have multiple connections
   the the fungi tree.
+ . Uber tree elements need to Link back to source tree nodes if compositional.
 
 according to https://www.environment.gov.au/science/abrs/publications/other/numbers-living-species/executive-summary[ABRS Numbers of Living Species in Australia and the World]
 there are ~2million species in the world that we should aim to handle in an uber tree.
@@ -127,11 +128,47 @@ Cross shard searching in general needs an API approach where an API (which could
 to collect data, then a map/reduce/sort approach is used to filter and sort results. The name paths and sort names will
 help in collating and sorting results from multiple sources.
 
+See https://www.anbg.gov.au/25jira/browse/NSL-2412[NSL-2312]
+
+After discussion with Greg Whitbread and following from user feedback and experience the use of the name tree search may
+be a reflection of the way we use the "product" concept and clarification of how the sets of data can be used, and what
+they should be used for.
+
+At the moment we try and describe this in the APNI and APC product descriptions.
+
+APNI
+****
+The Australian Plant Name Index (APNI) is a tool for the botanical community that deals with plant names and their usage
+in the scientific literature, whether as a current name or synonym. APNI does not recommend any particular taxonomy or
+nomenclature. For a listing of currently accepted scientific names for the Australian vascular flora, please use the
+Australian Plant Census (APC) link above.
+****
+
+APC
+****
+The Australian Plant Census (APC) is a list of the accepted scientific names for the Australian vascular flora, ferns,
+gymnosperms, hornworts and liverworts, both native and introduced, and includes synonyms and misapplications for these
+names. The APC covers all published scientific plant names used in an Australian context in the taxonomic literature,
+but excludes taxa known only from cultivation in Australia. The taxonomy and nomenclature adopted for the APC are endorsed
+by the Council of Heads of Australasian Herbaria (CHAH).
+****
+
+As Greg points out though, we don't limit the search, because people are asking "within" questions from APNI. This
+question comes about because scientific names intrinsically, but unreliably, describe or imply rank and hierarchy
+information, except where they don't.
+
+It seems to me that we need to explicitly combine the name and taxonomy searches and express clearly what it is the
+user is asking: for example "what is in the family Fabaceae according to Maberly" or "what is in the family Fabaceae
+according to APC" and then we can do useful things like "compare the family Fabaceae according to Maberly and APC"
+
+By combining we can ask questions like "What is not in APC but is in Maberly" so long as we can emphasize the context
+of the APNI/NSL dataset.
+
 === Change over requirements:
 
- . We must maintain existing links to trees (APC) that have been used prior to this change. This means any links to existing nodes must
- resolve to the same instance data and position in the tree structure. The intrinsic data should not change, though
- extraneous data may be left out (broken links, some RDF identifiers that didn't lead to real data).
+ . We must maintain existing links to trees (APC) that have been used prior to this change. This means any links to
+ existing nodes must resolve to the same instance data and position in the tree structure. The intrinsic data should not
+ change, though extraneous data may be left out (broken links, some RDF identifiers that didn't lead to real data).
  . Editing the tree should work and be possible from the point of change over.
 
 == Concept
@@ -166,57 +203,59 @@ de-duplicated we may have to update the id by using the mapper (rare).
 === Data usage vs speed
 
 Copying the tree for every version is less space efficient than the current model, but affords many benefits. At the
-current size of the APC tree 35k tree_elements are required for each copy. Running the following code:
+current size of the APC tree 35k tree_elements are required for each copy.
+
+NOTE: these are updated usage figures after spiking and importing actual data, the old guesstimate has been removed.
+
+After doing the spike and adding in all the additional data to make the trees autonomous we can compare actual data sizes.
+
+In APNI:
+
+|===
+| table | total size including inexes
+
+| tree_node
+| 282MB (inc 233MB index)
+
+| tree_link
+| 1394MB (inc 693MB index)
+
+| tree_element (144 versions)
+| 13GB (inc 2.7GB index)
+|===
+
+which makes the new tree structure  ~ 8 times the size of the old one without any real optimisation.
+Extrapolating we get ~90MB per version.
 
 [source]
-.copy nodes to JSON
+.table-size.sql
 ----
-COPY (
-SELECT json_build_object(
-    '_key', node.id :: TEXT,
-    'previousNode', node.prev_node_id,
-    'treeId', node.tree_arrangement_id,
-    'nameId', node.name_id,
-    'name', name.simple_name,
-    'instanceId', node.instance_id
-)
-FROM tree_node node
-  JOIN tree_arrangement tree ON node.tree_arrangement_id = tree.id
-  JOIN name ON node.name_id = name.id
-WHERE tree.label = 'APC'
-      AND node.internal_type = 'T'
-      AND node.checked_in_at_id IS NOT NULL
-      AND node.next_node_id IS NULL
-      AND node.instance_id IS NOT NULL
-) TO '/tmp/taxanomicNodes.json';
-----
-
-which copies all the current nodes to an external JSON file, takes about 0.2 seconds and produces a 5MB file. The
-resulting file looks like this:
-
-[source,javascript]
-.output.js
-----
-{"_key" : "7027311", "previousNode" : 2891448, "treeId" : 1133571, "nameId" : 110133, "name" : "Verbascum", "instanceId" : 724006}
-{"_key" : "7027305", "previousNode" : 2918125, "treeId" : 1133571, "nameId" : 110231, "name" : "Verbascum thapsus", "instanceId" : 573389}
-{"_key" : "7027308", "previousNode" : null, "treeId" : 1133571, "nameId" : 116756, "name" : "Verbascum thapsus subsp. thapsus", "instanceId" : 7027300}
-{"_key" : "8333362", "previousNode" : null, "treeId" : 1133571, "nameId" : 89713, "name" : "Ixia erecta", "instanceId" : 8333347}
-{"_key" : "5325150", "previousNode" : 2921142, "treeId" : 1133571, "nameId" : 106020, "name" : "Eucalyptus populnea var. x obconica", "instanceId" : 554400}
-{"_key" : "5325144", "previousNode" : 2907466, "treeId" : 1133571, "nameId" : 105992, "name" : "Eucalyptus populnea", "instanceId" : 613718}
-{"_key" : "7159328", "previousNode" : null, "treeId" : 1133571, "nameId" : 245373, "name" : "Hibbertia florida subsp. florida", "instanceId" : 773708}
-{"_key" : "3960668", "previousNode" : null, "treeId" : 1133571, "nameId" : 3960019, "name" : "Malvaviscus arboreus", "instanceId" : 3960661}
-{"_key" : "5255421", "previousNode" : 2889309, "treeId" : 1133571, "nameId" : 113385, "name" : "Eucalyptus x congener", "instanceId" : 554484}
-{"_key" : "4537374", "previousNode" : 4536981, "treeId" : 1133571, "nameId" : 54471, "name" : "Gleicheniaceae", "instanceId" : 651303}
-{"_key" : "4537375", "previousNode" : 4536982, "treeId" : 1133571, "nameId" : 223561, "name" : "Gleicheniales", "instanceId" : 655077}
+SELECT
+  *,
+  pg_size_pretty(total_bytes) AS total,
+  pg_size_pretty(index_bytes) AS INDEX,
+  pg_size_pretty(toast_bytes) AS toast,
+  pg_size_pretty(table_bytes) AS TABLE
+FROM (
+       SELECT
+         *,
+         total_bytes - index_bytes - COALESCE(toast_bytes, 0) AS table_bytes
+       FROM (
+              SELECT
+                c.oid,
+                nspname                               AS table_schema,
+                relname                               AS TABLE_NAME,
+                c.reltuples                           AS row_estimate,
+                pg_total_relation_size(c.oid)         AS total_bytes,
+                pg_indexes_size(c.oid)                AS index_bytes,
+                pg_total_relation_size(reltoastrelid) AS toast_bytes
+              FROM pg_class c
+                LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+              WHERE relkind = 'r'
+            ) a
+     ) a;
 ----
 
-Given that JSON text is less efficient than the DB and that we intend to store a little more data we could estimate that
-5MB per version is a reasonable guess. Given option 2a below comes to about 200 versions in 2.5 years we could estimate,
-say, 100 versions per year or 500MB/year.
-
-If that estimate is 100% out then we are looking at 1GB per year which is reasonable. Comparing that to the currently
-stored data in APNI. The compressed dump of APNI is ~ 420MB the 5MB JSON compressed is ~0.9MB, so lets say it will add
-100MB per year to the compressed dump of the database (less the original removal of node and link data)...
 
 The above estimate is obviously in no way accurate, but it gives us a feel for the amount of data we're looking at, and
 the time costs involved in copying nodes.
@@ -275,6 +314,15 @@ Copying the 35k tree_elements to a workspace takes about 12.8 seconds:
      from tree_element where tree_version_id = 137
    )
  [2017-06-26 18:42:38] 35334 rows affected in 12s 802ms
+
+
+VM info:
+appsint1 24GB RAM (18GB used) 50GB space with ~27GB free for tomcat
+pgsql-prod1-ibis.it.csiro.au 6GB RAM (5GB used) 
+/dev/mapper/vg_data-lv_data        50G  981M   50G   2% /pg_data
+/dev/mapper/vg_back-lv_back       100G   16G   85G  16% /pg_back
+/dev/mapper/vg_tbl1-lv_tbl1       100G  8.3G   92G   9% /pg_tbl1
+/dev/mapper/vg_xlog-lv_xlog        20G  257M   20G   2% /pg_xlog
 
 === Multiple workspaces
 
@@ -342,6 +390,15 @@ You can even display the synonyms without further query.
 
 NOTE: Greg W says to make the search useful we'll need to store the type of synonym as well. This could be stored
 in a jsonb field so we retain the speed of the trigram indexed synonyms search with the ability to filter on instance type.
+
+To do a synonym search on a JSONB field and take advantage of gin indexing we need to carefully structure the JSON data
+around a common search. This probably means grouping the synonyms into relationship types e.g.
+
+  {
+    nomenclatural: [],
+    taxonomic: [],
+    misapplied: []
+  }
 
 === Profile data
 
