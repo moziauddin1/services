@@ -257,9 +257,6 @@ FROM (
 ----
 
 
-The above estimate is obviously in no way accurate, but it gives us a feel for the amount of data we're looking at, and
-the time costs involved in copying nodes.
-
 We can copy all the current nodes _out of_ the database to a file and convert all the data to JSON in 0.2 seconds. Copying
 tree elements to new tree elements should not take any longer (it should be quicker).
 
