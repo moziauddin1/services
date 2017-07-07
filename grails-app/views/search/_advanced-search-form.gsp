@@ -1,15 +1,17 @@
 <%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameTag" %>
 <g:form name="search" role="form" controller="search" action="search" method="GET" class="closable checkbig">
   <div class="row">
-    <div class="col-md-2">
-      <g:render template="/search/using-tree"/>
+    <g:if test="${params.product != au.org.biodiversity.nsl.ConfigService.nameTreeName}">
+      <div class="col-md-2">
+        <g:render template="/search/using-tree"/>
 
-      <div class="checkbox" title="Search only for names on the selected tree. i.e. Accepted names on APC.">
-        <label>
-          <g:checkBox name="exclSynonym" value="${query.exclSynonym}"/> Not synonyms
-        </label>
+        <div class="checkbox" title="Search only for names on the selected tree. i.e. Accepted names on APC.">
+          <label>
+            <g:checkBox name="exclSynonym" value="${query.exclSynonym}"/> Not synonyms
+          </label>
+        </div>
       </div>
-    </div>
+    </g:if>
 
     <div class="col-md-6">
       <label>Names
@@ -182,9 +184,11 @@
           <label><g:checkBox name="inc.autonym" value="${query.inc?.autonym}"/>Autonyms</label>
         </div>
 
-        <div class="checkbox">
-          <label><g:checkBox name="inc.other" value="${query.inc?.other}"/>Other names, e.g. common</label>
-        </div>
+        <g:if test="${params.product != au.org.biodiversity.nsl.ConfigService.classificationTreeName}">
+          <div class="checkbox">
+            <label><g:checkBox name="inc.other" value="${query.inc?.other}"/>Other names, e.g. common</label>
+          </div>
+        </g:if>
       </div>
     </div>
 
