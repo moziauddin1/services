@@ -148,9 +148,9 @@ class ApniFormatTagLib {
             elementPath.each { TreeElement element ->
                 String link = element.elementLink
                 if (link) {
-                    out << "<li><a href='${link}'>${element.name.nameElement}</a> <span class=\"text-muted\">(${element.name.nameRank.abbrev})</span></li>"
+                    out << "<li><a href='${link}'>${element.name?.nameElement}</a> <span class=\"text-muted\">(${element.name?.nameRank?.abbrev})</span></li>"
                 } else {
-                    out << "<li>${element.name.nameElement} <span class=\"text-muted\">(${element.name.nameRank.abbrev})</span></li>"
+                    out << "<li>${element.name?.nameElement} <span class=\"text-muted\">(${element.name?.nameRank?.abbrev})</span></li>"
                 }
             }
             out << '</ul></branch>'

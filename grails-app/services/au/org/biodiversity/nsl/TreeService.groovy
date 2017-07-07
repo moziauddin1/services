@@ -34,7 +34,7 @@ class TreeService {
      * @return treeElement or null if not on the tree
      */
     TreeElement findTreeElementForName(Name name, TreeVersion treeVersion) {
-        TreeElement.findByNameAndTreeVersion(name, treeVersion)
+        TreeElement.findByNameIdAndTreeVersion(name.id, treeVersion)
     }
 
     /**

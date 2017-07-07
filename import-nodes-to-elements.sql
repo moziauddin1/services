@@ -352,27 +352,6 @@ WHERE name.id = s.name_id
       AND (s.cited_by_id = i.id OR s.id = i.id) AND i.id = element.instance_id
       AND synonym.id = i.name_id;
 
--- SELECT
---   n.full_name                                              AS unplaced_name,
---   rank.name                                                AS name_rank,
---   parent.full_name                                         AS parent_name,
---   parent.name_path || '/' || coalesce(n.name_element, '?') AS new_name_path
--- FROM (SELECT DISTINCT (name_id)
---       FROM instance) AS apni_names,
---   name n
---   JOIN name_rank rank ON n.name_rank_id = rank.id
---   ,
---   name_type,
---   name parent
--- WHERE n.id = name_id
---       AND name_type.id = n.name_type_id
---       AND name_type.scientific
---       AND n.name_path = ''
---       AND n.parent_id IS NOT NULL
---       AND parent.id = n.parent_id
---       AND parent.name_path <> ''
--- ORDER BY new_name_path;
-
 -- find non APC names that have an APC name parent (20861)
 SELECT count(n.*)
 FROM (SELECT DISTINCT (name_id)
@@ -387,7 +366,8 @@ WHERE name_type.scientific
 
 -- repeatedly do this until all names have been joined to an APC parent (6 times as of writing)
 UPDATE name n
-SET name_path = parent.name_path || '/' || coalesce(n.name_element, '?')
+SET name_path = parent.name_path || '/' || coalesce(n.name_element, '?'),
+  family_id   = parent.family_id
 FROM (SELECT DISTINCT (name_id)
       FROM instance) AS apni_names,
   name_type,

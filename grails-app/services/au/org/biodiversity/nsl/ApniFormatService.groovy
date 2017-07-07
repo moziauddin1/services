@@ -27,13 +27,11 @@ class ApniFormatService {
 
     Map getNameModel(Name name) {
         String acceptedTree = configService.getClassificationTreeName()
-        String nameTree = configService.getNameTreeName()
 
-        Map<String, Name> familyByTree = RankUtils.getFamilyByTrees(name)
-        Name familyName = familyByTree[nameTree]
+        Name familyName = name.family
         Node apc = classificationService.isNameInClassification(name, configService.getNameSpace(), acceptedTree)
         String link = linkService.getPreferredLinkForObject(name)
-        Map model = [name: name, apc: apc, familyName: familyName, preferredNameLink: link, familyByTree: familyByTree]
+        Map model = [name: name, apc: apc, familyName: familyName, preferredNameLink: link]
         model.putAll(nameReferenceInstanceMap(name) as Map)
         return model
     }
