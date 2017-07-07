@@ -165,7 +165,7 @@ class SearchService {
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
-                and << "n = s.name and (s.citedBy = i or s = i) and i.id = node.instance.id"
+                and << "n = s.name and (s.citedBy = i or s = i) and i.id = node.instance.id and (s.instanceType.synonym = true or s = i)"
             }
 
             if (params.inRank?.id) {
