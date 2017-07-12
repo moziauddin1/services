@@ -21,7 +21,7 @@ import org.grails.plugins.metrics.groovy.Timed
 class SearchService {
 
     def suggestService
-    def nameTreePathService
+    def treeService
     def linkService
     def classificationService
     def configService
@@ -153,7 +153,7 @@ class SearchService {
         return [count: count, total: total, names: names, queryTime: (System.currentTimeMillis() - start)]
     }
 
-    private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
+    private static Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
         if (params.tree?.id) {
             Tree tree = Tree.get(params.tree.id as Long)
             TreeVersion treeVersion = tree.currentTreeVersion
@@ -166,7 +166,7 @@ class SearchService {
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
-                and << "n = s.name and (s.citedBy = i or s = i) and i = treeElement.instance"
+                and << "n = s.name and (s.citedBy = i or s = i) and i.id = treeElement.instanceId"
             }
 
             if (params.inRank?.id) {
@@ -182,7 +182,7 @@ class SearchService {
                         }
                         and << "(${pathOr.join(' or ')})"
                     } else {
-                        return [count: 0, names: [], message: "Rank name ${params.rankName} does not exist in rank ${inRank.name} in ${root.label}"]
+                        return [count: 0, names: [], message: "${params.rankName} is not a ${inRank.name} in ${tree.name}"]
                     }
                 } else {
                     params.remove('inRank') //blank name so set it to any
@@ -323,9 +323,9 @@ order by sortName
 ''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
-                        Node apc = classificationService.isNameInAcceptedTree(name)
-                        Name family = RankUtils.getFamily(name, ConfigService.nameTreeName)
-                        [apc: apc, name: name, family: family]
+                        TreeElement treeElement = treeService.findTreeElementForName(name, treeService.getTree(ConfigService.classificationTreeName))
+                        Name family = name.family
+                        [treeElement: treeElement, name: name, family: family]
                     }
                     [query: nameString, found: found, names: r, count: names.size()]
                 }

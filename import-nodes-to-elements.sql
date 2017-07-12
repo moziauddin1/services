@@ -165,8 +165,6 @@ WHERE name = 'APC';
 VACUUM ANALYSE;
 
 -- create elements
-DROP INDEX IF EXISTS name_path_gin_trgm;
-DROP INDEX IF EXISTS names_gin_trgm;
 
 ALTER TABLE IF EXISTS tree_element
   DROP CONSTRAINT IF EXISTS FK_tb2tweovvy36a4bgym73jhbbk;
@@ -207,41 +205,43 @@ INSERT INTO tree_element
  updated_at,
  updated_by)
   (SELECT
-     v.id                          AS tree_version_id,
-     el_data.node_id               AS tree_element_id,
-     0 :: BIGINT                   AS lock_version,
-     el_data.excluded              AS excluded,
-     el_data.display               AS display_string,
-     ''                            AS element_link,
-     el_data.instance_id :: BIGINT AS instance_id,
-     ''                            AS instance_link,
-     el_data.name_id :: BIGINT     AS name_id,
-     ''                            AS name_link,
+     v.id                                                                    AS tree_version_id,
+     el_data.node_id                                                         AS tree_element_id,
+     0 :: BIGINT                                                             AS lock_version,
+     el_data.excluded                                                        AS excluded,
+     el_data.display                                                         AS display_string,
+     'http://' || host.host_name || '/node/apni/' || el_data.node_id         AS element_link,
+     el_data.instance_id :: BIGINT                                           AS instance_id,
+     'http://' || host.host_name || '/instance/apni/' || el_data.instance_id AS instance_link,
+     el_data.name_id :: BIGINT                                               AS name_id,
+     'http://' || host.host_name || '/name/apni/' || el_data.name_id         AS name_link,
      CASE WHEN el_data.parent_id IS NOT NULL AND el_data.parent_id != dtn.latest_node_id
        THEN
          v.id
      ELSE NULL :: BIGINT
-     END                           AS parentversionid,
+     END                                                                     AS parentversionid,
      CASE WHEN el_data.parent_id IS NOT NULL AND el_data.parent_id != dtn.latest_node_id
        THEN
          el_data.parent_id :: BIGINT
      ELSE NULL :: BIGINT
-     END                           AS parentelementid,
-     NULL                          AS previousversionid,
-     NULL                          AS previouselementid,
-     ('{}' :: JSONB)               AS profile,
-     el_data.rank_path :: JSONB    AS rank_path,
-     el_data.simple_name           AS simple_name,
-     el_data.tree_path             AS tree_path,
-     el_data.name_path             AS name_path,
-     'APNI'                        AS source_shard,
-     v.published_at                AS updated_at,
-     v.published_by                AS updated_by
+     END                                                                     AS parentelementid,
+     NULL                                                                    AS previousversionid,
+     NULL                                                                    AS previouselementid,
+     ('{}' :: JSONB)                                                         AS profile,
+     el_data.rank_path :: JSONB                                              AS rank_path,
+     el_data.simple_name                                                     AS simple_name,
+     el_data.tree_path                                                       AS tree_path,
+     el_data.name_path                                                       AS name_path,
+     'APNI'                                                                  AS source_shard,
+     v.published_at                                                          AS updated_at,
+     v.published_by                                                          AS updated_by
    FROM daily_top_nodes('APC', '2016-01-01') AS dtn,
      tree_version v,
-         tree_element_data_from_node(dtn.latest_node_id) AS el_data
+         tree_element_data_from_node(dtn.latest_node_id) AS el_data,
+     mapper.host host
    WHERE v.published_at = (dtn.year || '-' || dtn.month || '-' || dtn.day) :: TIMESTAMP
-         AND instance_id IS NOT NULL);
+         AND instance_id IS NOT NULL
+         AND host.preferred = TRUE);
 
 VACUUM ANALYSE;
 
@@ -324,19 +324,12 @@ WHERE tree_element_id IN (SELECT id
                           FROM tree_node node
                           WHERE node.type_uri_id_part = 'DeclaredBt');
 
--- shortcut set all the links
-UPDATE tree_element el
-SET element_link = 'http://' || host.host_name || '/node/apni/' || tree_element_id,
-  name_link      = 'http://' || host.host_name || '/name/apni/' || name_id,
-  instance_link  = 'http://' || host.host_name || '/instance/apni/' || instance_id
-FROM mapper.host host
-WHERE host.preferred;
-
 VACUUM ANALYSE;
 
 -- set all the existing name paths and family from APC tree
 UPDATE name n
 SET name_path = '';
+
 UPDATE name name
 SET family_id = fam.id,
   name_path   = element.name_path
@@ -404,11 +397,6 @@ UPDATE tree_element
 SET names = '|' || simple_name
 WHERE names = '';
 
-CREATE INDEX name_path_gin_trgm
-  ON tree_element USING GIN (lower(name_path) gin_trgm_ops);
-CREATE INDEX names_gin_trgm
-  ON tree_element USING GIN (lower(names) gin_trgm_ops);
-
 -- ---------------------------------- other stuff
 
 SELECT
@@ -431,55 +419,50 @@ WHERE name.id = i.name_id
       AND element.tree_version_id = 144
 ORDER BY element.name_path;
 
+-- add synonyms jsonb data to tree_element
 
 DROP FUNCTION IF EXISTS synonyms_as_jsonb( BIGINT, BIGINT );
 CREATE FUNCTION synonyms_as_jsonb(version_id BIGINT, element_id BIGINT)
   RETURNS JSONB
 LANGUAGE SQL
 AS $$
-WITH synonyms AS (
-    SELECT
-      it.name                        AS relationship,
-      it.misapplied,
-      it.nomenclatural,
-      it.taxonomic,
-      it.pro_parte,
-      jsonb_agg(synonym.simple_name) AS names
-    FROM tree_element element,
-      Instance i,
-      Instance s
-      JOIN instance_type it ON s.instance_type_id = it.id
-      ,
-      name synonym
-    WHERE s.cited_by_id = i.id
-          AND i.id = element.instance_id
-          AND synonym.id = s.name_id
-          AND element.tree_version_id = version_id
-          AND element.tree_element_id = element_id
-    GROUP BY it.name, it.misapplied, it.nomenclatural, it.taxonomic, it.pro_parte)
-SELECT jsonb_object_agg(relationship, jsonb_build_object(
-    'misapplied', misapplied,
-    'nomenclatural', nomenclatural,
-    'taxonomic', taxonomic,
-    'pro_parte', pro_parte,
-    'names', names))
-FROM synonyms;
+SELECT jsonb_object_agg(synonym.simple_name, it.name)
+FROM tree_element element,
+  Instance i,
+  Instance s
+  JOIN instance_type it ON s.instance_type_id = it.id
+  ,
+  name synonym
+WHERE s.cited_by_id = i.id
+      AND i.id = element.instance_id
+      AND synonym.id = s.name_id
+      AND element.tree_version_id = version_id
+      AND element.tree_element_id = element_id;
 $$;
 
 UPDATE tree_element
 SET synonyms = synonyms_as_jsonb(tree_version_id, tree_element_id);
 
--- example query on synonyms
--- SELECT *
--- FROM tree_element
--- WHERE
---   tree_version_id = 144
---   AND synonyms @> '{"taxonomic synonym": {"names" : ["Macrozamia sect. Monooccidentales"]}}'
--- ORDER BY name_path;
---
--- SELECT synonyms -> 'taxonomic synonym' ->> 'names', simple_name
--- FROM tree_element
--- WHERE
---   tree_version_id = 144
---   AND synonyms -> 'taxonomic synonym' ->> 'names' like '%Macrozamia% Parazamia%'
--- ORDER BY name_path;
+-- example synonyms search
+-- SELECT
+--   el.name_id,
+--   el.simple_name,
+--   tax_syn,
+--   synonyms ->> tax_syn,
+--   rank.name,
+--   type.name,
+--   el.names,
+--   el.name_path
+-- FROM tree_element el
+--   JOIN name n ON el.name_id = n.id
+--   JOIN name_rank rank ON n.name_rank_id = rank.id
+--   JOIN name_type type ON n.name_type_id = type.id
+--   ,
+--       jsonb_object_keys(synonyms) AS tax_syn
+-- WHERE tree_version_id = 144
+--       AND el.names like '%Billardiera b%'
+--       --         and rank.name = 'Species'
+--       AND type.scientific
+--       AND tax_syn ILIKE 'Billardiera b%'
+--       AND synonyms ->> tax_syn = 'taxonomic synonym'
+-- ORDER BY el.name_path;

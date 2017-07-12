@@ -39,7 +39,9 @@ class SearchController implements RequestUtil {
             params.display = params.display ?: 'apni'
         }
 
-        if (params.product && params.product != configService.nameTreeName) {
+        Boolean treeSearch = params.product && params.product != configService.nameTreeName
+
+        if (treeSearch) {
             Tree tree = Tree.findByNameIlike(params.product as String)
             if (tree) {
                 params.product = tree.name //force to the correct case for a product label
@@ -84,6 +86,7 @@ class SearchController implements RequestUtil {
                     return render(view: 'search',
                             model: [names         : models,
                                     query         : params,
+                                    treeSearch    : treeSearch,
                                     count         : results.count,
                                     total         : results.total,
                                     queryTime     : results.queryTime,
@@ -143,7 +146,7 @@ class SearchController implements RequestUtil {
             return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: [:]]
         }
 
-        return [query: params, max: max, displayFormats: displayFormats]
+        return [query: params, max: max, displayFormats: displayFormats, treeSearch: treeSearch]
 
     }
 
@@ -171,11 +174,12 @@ class SearchController implements RequestUtil {
 
     def nameCheck(Integer max) {
         List<Map> results = searchService.nameCheck(params, max)
-        params.product = configService.nameTreeName
+        params.product = ConfigService.nameTreeName
+        String treeName = ConfigService.classificationTreeName
         if (params.csv) {
             render(file: renderCsvResults(results).bytes, contentType: 'text/csv', fileName: 'name-check.csv')
         } else {
-            render(view: 'search', model: [results: results, query: params, max: max])
+            render(view: 'search', model: [results: results, query: params, max: max, treeName: treeName])
         }
     }
 
@@ -224,7 +228,7 @@ class SearchController implements RequestUtil {
                                    (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString(),
 
                     ]
-                    flatViewExportFields.each {fieldName ->
+                    flatViewExportFields.each { fieldName ->
                         values.add(flatViewRow[fieldName] ?: '')
                     }
 

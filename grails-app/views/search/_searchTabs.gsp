@@ -55,7 +55,12 @@
         </div>
 
         <div class="panel-body">
-          <g:render template="/search/advanced-search-form"/>
+          <g:if test="${treeSearch}">
+            <g:render template="/search/advanced-search-form"/>
+          </g:if>
+          <g:else>
+            <g:render template="/search/advanced-name-search-form"/>
+          </g:else>
         </div>
       </div>
     </div>

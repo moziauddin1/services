@@ -1,15 +1,6 @@
 <%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameTag" %>
 <g:form name="search" role="form" controller="search" action="search" method="GET" class="closable checkbig">
   <div class="row">
-      <div class="col-md-2">
-        <g:render template="/search/using-tree"/>
-
-        <div class="checkbox" title="Search only for names on the selected tree. i.e. Accepted names on APC.">
-          <label>
-            <g:checkBox name="exclSynonym" value="${query.exclSynonym}"/> Not synonyms
-          </label>
-        </div>
-      </div>
 
     <div class="col-md-6">
       <label>Names
@@ -35,31 +26,6 @@
       </label>
     </div>
   </div>
-
-  <div class="form-group">
-
-    <label>In
-    <g:select from="${NameRank.list().findAll { it.major }}"
-              noSelection="${['': 'any']}"
-              id="inRank"
-              name="inRank.id"
-              value="${query?.inRank?.id}"
-              optionKey="id"
-              optionValue="abbrev"
-              class="form-control"/>
-    </label>
-    <label>Named
-      <input type="text"
-             id="rankName"
-             name="rankName"
-             placeholder="name"
-             value="${query.rankName}"
-             data-subject="apni-search"
-             data-context="inRank"
-             class="form-control suggest"/>
-    </label>
-  </div>
-
 
   <div class="row">
     <div class="col-md-2">
