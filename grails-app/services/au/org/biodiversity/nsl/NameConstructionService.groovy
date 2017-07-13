@@ -71,7 +71,7 @@ class NameConstructionService {
         }
         if (name.nameType?.nameCategory?.name == 'common') {
             String htmlNameElement = name.nameElement.encodeAsHTML()
-            String markedUpName = "<common><name id='$name.id'><element class='${htmlNameElement}'>${htmlNameElement}</element></name></common>"
+            String markedUpName = "<common><name id='$name.id'><element>${htmlNameElement}</element></name></common>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
         return [fullMarkedUpName: (name.nameElement?.encodeAsHTML() ?: '?'), simpleMarkedUpName: (name.nameElement.encodeAsHTML() ?: '?')]
@@ -93,7 +93,7 @@ class NameConstructionService {
                 bits << filterPrecedingName(constructName(parent).simpleMarkedUpName)
             }
         }
-        bits << "<element class='$htmlNameElement'>${htmlNameElement}</element>"
+        bits << "<element>${htmlNameElement}</element>"
         bits << constructAuthor(name)
         String markedUpName = "<informal><name id='$name.id'>${join(bits)}</name></informal>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
@@ -118,10 +118,10 @@ class NameConstructionService {
                     bits << filterPrecedingName(constructName(secondParent).simpleMarkedUpName)
                 }
             } else {
-                bits << "<element class='$htmlNameElement'>&lsquo;${htmlNameElement}&rsquo;</element>"
+                bits << "<element>&lsquo;${htmlNameElement}&rsquo;</element>"
             }
         } else {
-            bits << "'<element class='$htmlNameElement'>${htmlNameElement}</element>"
+            bits << "'<element>${htmlNameElement}</element>"
         }
         String markedUpName = "<cultivar><name id='$name.id'>${join(bits)}</name></cultivar>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
@@ -144,7 +144,7 @@ class NameConstructionService {
 
         String htmlNameElement = name.nameElement.encodeAsHTML()
 
-        String el = "<element class='${htmlNameElement}'>${htmlNameElement}</element>"
+        String el = "<element>${htmlNameElement}</element>"
         Map nameElement = [fullMarkedUpName: el, simpleMarkedUpName: el]
 
         if (parent && name.nameType.formula) {
