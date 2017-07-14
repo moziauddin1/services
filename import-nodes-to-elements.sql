@@ -47,19 +47,19 @@ LANGUAGE SQL
 AS $$
 WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, name_id, simple_name, display, prev_node_id, tree_path, name_path, rank_path) AS (
   SELECT
-    tree.id                                                                                    AS tree_id,
-    NULL :: BIGINT                                                                             AS parent_id,
-    node.id                                                                                    AS node_id,
-    (node.type_uri_id_part <> 'ApcConcept') :: BOOLEAN                                         AS excluded,
-    node.instance_id                                                                           AS instance_id,
-    node.name_id                                                                               AS name_id,
-    name.simple_name :: TEXT                                                                   AS simple_name,
-    '<indent class="' || 0 || '"></indent>' || name.full_name_html || ' ' || ref.citation_html AS display,
-    node.prev_node_id                                                                          AS prev_node_id,
-    node.id :: TEXT                                                                            AS tree_path,
-    coalesce(name.name_element, '?') :: TEXT                                                   AS name_path,
-    jsonb_build_object(rank.name, name.name_element) :: JSONB                                  AS rank_path,
-    0                                                                                          AS depth
+    tree.id                                                                                              AS tree_id,
+    NULL :: BIGINT                                                                                       AS parent_id,
+    node.id                                                                                              AS node_id,
+    (node.type_uri_id_part <> 'ApcConcept') :: BOOLEAN                                                   AS excluded,
+    node.instance_id                                                                                     AS instance_id,
+    node.name_id                                                                                         AS name_id,
+    name.simple_name :: TEXT                                                                             AS simple_name,
+    '<div class="treeRow">' || name.full_name_html || ' ' || ref.citation_html || '</div>'               AS display,
+    node.prev_node_id                                                                                    AS prev_node_id,
+    node.id :: TEXT                                                                                      AS tree_path,
+    coalesce(name.name_element, '?') :: TEXT                                                             AS name_path,
+    jsonb_build_object(rank.name, jsonb_build_object('name', name.name_element, 'id', name.id)) :: JSONB AS rank_path,
+    '<ind>| </ind>'                                                                                      AS depth
   FROM tree_link link
     JOIN tree_node node ON link.subnode_id = node.id
     JOIN tree_arrangement tree ON node.tree_arrangement_id = tree.id
@@ -71,19 +71,24 @@ WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, nam
         AND node.internal_type = 'T'
   UNION ALL
   SELECT
-    treewalk.tree_id                                                                                   AS tree_id,
-    treewalk.node_id                                                                                   AS parent_id,
-    node.id                                                                                            AS node_id,
-    (node.type_uri_id_part <> 'ApcConcept') :: BOOLEAN                                                 AS excluded,
-    node.instance_id                                                                                   AS instance_id,
-    node.name_id                                                                                       AS name_id,
-    name.simple_name :: TEXT                                                                           AS simple_name,
-    '<indent class="' || depth + 1 || '"></indent>' || name.full_name_html || ' ' || ref.citation_html AS display,
-    node.prev_node_id                                                                                  AS prev_node_id,
-    treewalk.tree_path || '/' || node.id                                                               AS tree_path,
-    treewalk.name_path || '/' || coalesce(name.name_element, '?')                                      AS name_path,
-    treewalk.rank_path || jsonb_build_object(rank.name, name.name_element)                             AS rank_path,
-    treewalk.depth + 1                                                                                 AS depth
+    treewalk.tree_id                                                                                         AS tree_id,
+    treewalk.node_id                                                                                         AS parent_id,
+    node.id                                                                                                  AS node_id,
+    (node.type_uri_id_part <>
+     'ApcConcept') :: BOOLEAN                                                                                AS excluded,
+    node.instance_id                                                                                         AS instance_id,
+    node.name_id                                                                                             AS name_id,
+    name.simple_name :: TEXT                                                                                 AS simple_name,
+    '<div class="treeRow">' || treewalk.depth || name.full_name_html || ' ' || ref.citation_html || '</div>' AS display,
+    node.prev_node_id                                                                                        AS prev_node_id,
+    treewalk.tree_path || '/' ||
+    node.id                                                                                                  AS tree_path,
+    treewalk.name_path || '/' || coalesce(name.name_element,
+                                          '?')                                                               AS name_path,
+    treewalk.rank_path ||
+    jsonb_build_object(rank.name, jsonb_build_object('name', name.name_element, 'id',
+                                                     name.id))                                               AS rank_path,
+    treewalk.depth || '<ind>| </ind>'                                                                        AS depth
   FROM treewalk
     JOIN tree_link link ON link.supernode_id = treewalk.node_id
     JOIN tree_node node ON link.subnode_id = node.id
@@ -328,7 +333,7 @@ VACUUM ANALYSE;
 
 -- set all the existing name paths and family from APC tree
 UPDATE name n
-SET name_path = '';
+SET name_path = '', family_id = NULL;
 
 UPDATE name name
 SET family_id = fam.id,
@@ -336,7 +341,7 @@ SET family_id = fam.id,
 FROM
   tree_element element
   JOIN tree ON element.tree_version_id = tree.current_tree_version_id AND tree.name = 'APC'
-  LEFT OUTER JOIN name fam ON fam.simple_name = element.rank_path ->> 'Familia'
+  LEFT OUTER JOIN name fam ON fam.id = (element.rank_path -> 'Familia' ->> 'id') :: BIGINT
   ,
   Instance i,
   Instance s,
@@ -357,7 +362,7 @@ WHERE name_type.scientific
       AND n.parent_id IS NOT NULL
       AND parent.name_path <> '';
 
--- repeatedly do this until all names have been joined to an APC parent (6 times as of writing)
+-- 88888 repeatedly do this until all names have been joined to an APC parent (6 times as of writing)
 UPDATE name n
 SET name_path = parent.name_path || '/' || coalesce(n.name_element, '?'),
   family_id   = parent.family_id
@@ -372,6 +377,24 @@ WHERE n.id = name_id
       AND n.parent_id IS NOT NULL
       AND parent.id = n.parent_id
       AND parent.name_path <> '';
+
+-- set any family that hasn't got the family set to itself
+UPDATE name n
+SET family_id = n.id
+FROM name_rank rank
+WHERE n.name_rank_id = rank.id
+      AND rank.name = 'Familia'
+      AND family_id IS NULL;
+
+-- 88888 now we repeatedly look at parent name to see if it has a family set and use that until we update none
+-- this uses names that don't have instances because some names with instances have name parents that do not have instances
+-- after this there are about 56 names (ranked family and below) with instances that don't have a family. see NSL-2440
+UPDATE name n
+SET family_id = parent.family_id
+FROM name parent
+WHERE n.parent_id = parent.id
+      AND n.family_id IS NULL
+      AND parent.family_id IS NOT NULL;
 
 -- get the simple name with all it's synonyms in a string
 WITH synonym_strings AS
@@ -397,27 +420,25 @@ UPDATE tree_element
 SET names = '|' || simple_name
 WHERE names = '';
 
--- ---------------------------------- other stuff
-
-SELECT
-  element.tree_version_id,
-  element.tree_element_id,
-  name.simple_name    AS accepted_name,
-  it.name             AS syn_type,
-  synonym.simple_name AS syn_name
-FROM Name name,
-  tree_element element,
-  Instance i,
-  Instance s
-  JOIN instance_type it ON s.instance_type_id = it.id
-  ,
-  name synonym
-WHERE name.id = i.name_id
-      AND s.cited_by_id = i.id
-      AND i.id = element.instance_id
-      AND synonym.id = s.name_id
-      AND element.tree_version_id = 144
-ORDER BY element.name_path;
+-- SELECT
+--   element.tree_version_id,
+--   element.tree_element_id,
+--   name.simple_name    AS accepted_name,
+--   it.name             AS syn_type,
+--   synonym.simple_name AS syn_name
+-- FROM Name name,
+--   tree_element element,
+--   Instance i,
+--   Instance s
+--   JOIN instance_type it ON s.instance_type_id = it.id
+--   ,
+--   name synonym
+-- WHERE name.id = i.name_id
+--       AND s.cited_by_id = i.id
+--       AND i.id = element.instance_id
+--       AND synonym.id = s.name_id
+--       AND element.tree_version_id = 144
+-- ORDER BY element.name_path;
 
 -- add synonyms jsonb data to tree_element
 
