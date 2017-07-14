@@ -23,7 +23,7 @@
           class="fa fa-search"></i></a>
     </g:if>
 
-    <af:apc apc="${apc}" instance="${instance}"/>
+    <af:onTree element="${treeElement}" instance="${instance}"/>
 
     <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
     <instance data-instanceId="${instance.id}">

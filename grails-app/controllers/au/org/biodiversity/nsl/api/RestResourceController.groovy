@@ -31,9 +31,6 @@ class RestResourceController {
     def linkService
     def apniFormatService
 
-//    @SuppressWarnings("GroovyUnusedDeclaration")
-//    static responseFormats = ['json', 'xml', 'html']
-
     static allowedMethods = ['*': "GET", 'bulkFetch': 'POST']
 
     @Timed()
@@ -90,7 +87,7 @@ class RestResourceController {
 
     @Timed()
     def tree(String shard, Long idNumber) {
-        Arrangement tree = Arrangement.get(idNumber);
+        Arrangement tree = Arrangement.get(idNumber)
         if (tree == null) {
             return notFound("No tree in $shard with id $idNumber found")
         }
@@ -123,18 +120,6 @@ class RestResourceController {
     @Timed()
     @Transactional
     def bulkFetch() {
-        /*
-            TODO:
-            it would be nice if this call accepted content type url-list and text/plain, understood
-            as just a simple list of uris.
-            It might also be nice for this service to not assume JSON, or at least to rase a 406
-            if the caller won't accept it.
-            But for now, this works ok.
-
-            Note that JSON is not implemented correctly (by anyone). Technically, you can't send a
-            bare array or primitive as JSON. But everybody does, regardless.
-         */
-
         log.debug "Bulk Fetch request: $request.JSON"
         return render (request.JSON.collect { uri -> linkService.getObjectForLink(uri as String) } as JSON)
     }

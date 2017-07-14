@@ -27,7 +27,7 @@
 
     <div class="panel-body">
       <div class="results">
-        <g:render template="name" model="[name: name, apc: apc, preferredNameLink: preferredNameLink]"/>
+        <g:render template="name" model="[name: name, treeElement: treeElement, preferredNameLink: preferredNameLink]"/>
       </div>
     </div>
 

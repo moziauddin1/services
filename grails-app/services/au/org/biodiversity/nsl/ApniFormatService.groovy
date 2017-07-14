@@ -22,16 +22,16 @@ import grails.transaction.Transactional
 class ApniFormatService {
 
     def configService
-    def classificationService
     def linkService
+    TreeService treeService
 
     Map getNameModel(Name name) {
-        String acceptedTree = configService.getClassificationTreeName()
+        Tree tree = treeService.getTree(ConfigService.classificationTreeName)
 
         Name familyName = name.family
-        Node apc = classificationService.isNameInClassification(name, configService.getNameSpace(), acceptedTree)
+        TreeElement treeElement = treeService.findCurrentElementForName(name, tree)
         String link = linkService.getPreferredLinkForObject(name)
-        Map model = [name: name, apc: apc, familyName: familyName, preferredNameLink: link]
+        Map model = [name: name, treeElement: treeElement, familyName: familyName, preferredNameLink: link]
         model.putAll(nameReferenceInstanceMap(name) as Map)
         return model
     }

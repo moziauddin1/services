@@ -323,7 +323,7 @@ order by sortName
 ''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
-                        TreeElement treeElement = treeService.findTreeElementForName(name, treeService.getTree(ConfigService.classificationTreeName))
+                        TreeElement treeElement = treeService.findCurrentElementForName(name, treeService.getTree(ConfigService.classificationTreeName))
                         Name family = name.family
                         [treeElement: treeElement, name: name, family: family]
                     }
@@ -362,22 +362,16 @@ order by sortName
                 log.debug "This rank $rank, parent $rank.parentRank, parentSortOrder $parentSortOrder"
 
                 return Name.executeQuery('''
-select n from Name n
-where lower(n.fullName) like :query
+select n from Name n, TreeElement element, Tree tree
+where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
 and n.nameRank.sortOrder < :sortOrder
 and n.nameRank.sortOrder >= :parentSortOrder
-and exists (
-  select 1
-  from Node nd
-  where nd.root.label = :treeName
-  and nd.checkedInAt is not null
-  and nd.replacedAt is null
-  and nd.nameUriNsPart.label = 'nsl-name'
-  and nd.nameUriIdPart = cast(n.id as string)
-)
+and tree.name = :treeName
+and element.nameId = n.id
+and element.treeVersion = tree.currentTreeVersion
 order by n.sortName asc''',
                         [
-                                query          : query.toLowerCase() + '%',
+                                query          : regexTokenizeNameQueryString(query.toLowerCase()),
                                 sortOrder      : rank.sortOrder,
                                 parentSortOrder: parentSortOrder,
                                 treeName       : treeName
@@ -388,19 +382,13 @@ order by n.sortName asc''',
 
             } else {
                 return Name.executeQuery('''
-select n from Name n 
-where lower(n.fullName) like :query
-and exists (
-  select 1 
-  from Node nd
-  where nd.root.label = :treeName
-  and nd.checkedInAt is not null
-  and nd.replacedAt is null
-  and nd.nameUriNsPart.label = 'nsl-name'
-  and nd.nameUriIdPart = cast(n.id as string)
-)
+select n from Name n, TreeElement element, Tree tree 
+where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
+and tree.name = :treeName
+and element.nameId = n.id
+and element.treeVersion = tree.currentTreeVersion
 order by n.sortName asc''',
-                        [query   : query.toLowerCase() + '%',
+                        [query   : regexTokenizeNameQueryString(query.toLowerCase()),
                          treeName: treeName], [max: 15])
                            .collect { name ->
                     [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml]

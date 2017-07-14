@@ -10,7 +10,7 @@
         <g:else>
           <excluded-name title='excluded name'><a href="${preferredNameLink + '/api/apni-format'}">
             ${raw(name.fullNameHtml)}</a>
-            <af:apc apc="${apcNode}"/></excluded-name>
+            <af:onTree element="${treeElement}"/></excluded-name>
         </g:else>
         <name-status class="${name.nameStatus.name}">${name.nameStatus.name}</name-status>
         <af:branch name="${name}"><i class="fa fa-code-fork"></i></af:branch>

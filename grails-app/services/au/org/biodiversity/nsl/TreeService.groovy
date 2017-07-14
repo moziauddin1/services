@@ -23,8 +23,8 @@ class TreeService {
      * @param tree
      * @return treeElement or null if not on the tree
      */
-    TreeElement findTreeElementForName(Name name, Tree tree) {
-        findTreeElementForName(name, tree.currentTreeVersion)
+    TreeElement findCurrentElementForName(Name name, Tree tree) {
+        findElementForName(name, tree.currentTreeVersion)
     }
 
     /**
@@ -33,8 +33,28 @@ class TreeService {
      * @param treeVersion
      * @return treeElement or null if not on the tree
      */
-    TreeElement findTreeElementForName(Name name, TreeVersion treeVersion) {
+    TreeElement findElementForName(Name name, TreeVersion treeVersion) {
         TreeElement.findByNameIdAndTreeVersion(name.id, treeVersion)
+    }
+
+    /**
+     * get the TreeElement for an instance in the current version of a tree
+     * @param instance
+     * @param tree
+     * @return treeElement or null if not on the tree
+     */
+    TreeElement findCurrentElementForInstance(Instance instance, Tree tree) {
+        TreeElement.findByInstanceIdAndTreeVersion(instance.id, tree.currentTreeVersion)
+    }
+
+    /**
+     * get the TreeElement for an instance in the given version of a tree
+     * @param instance
+     * @param treeVersion
+     * @return treeElement or null if not on the tree
+     */
+    TreeElement findElementForInstance(Instance instance, TreeVersion treeVersion) {
+        TreeElement.findByInstanceIdAndTreeVersion(instance.id, treeVersion)
     }
 
     /**

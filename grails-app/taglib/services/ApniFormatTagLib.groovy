@@ -24,14 +24,13 @@ import org.apache.shiro.SecurityUtils
 class ApniFormatTagLib {
 
     def nameConstructionService
-    def nameTreePathService
     def treeService
     def instanceService
     LinkService linkService
     def configService
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     static defaultEncodeAs = 'raw'
-//    static encodeAsForTags = [replaceXics: 'raw']
 
     static namespace = "af"
 
@@ -96,10 +95,6 @@ class ApniFormatTagLib {
         }
     }
 
-    def replaceXics = { attrs ->
-        out << ApniFormatService.transformXics(attrs.text)
-    }
-
     def apcSortedInstances = { attrs, body ->
         List<Instance> instances = new ArrayList<>(attrs.instances as Set)
         String var = attrs.var ?: "instance"
@@ -136,7 +131,7 @@ class ApniFormatTagLib {
     def branch = { attrs, body ->
         Name name = attrs.name
         String treeName = attrs.tree ?: configService.classificationTreeName
-        TreeElement treeElement = treeService.findTreeElementForName(name, treeService.getTree(treeName))
+        TreeElement treeElement = treeService.findCurrentElementForName(name, treeService.getTree(treeName))
         if (treeElement) {
             out << "<branch title=\"click to see branch in $treeName.\">"
             out << body()
@@ -235,27 +230,29 @@ class ApniFormatTagLib {
         }
     }
 
-    def apc = { attrs ->
-        Node apcNode = attrs.apc
-        Instance instance = attrs.instance ?: apcNode.instance
-        if (apcNode && instance && apcNode.instance.id == instance.id) {
-            String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: apcNode.name.id)
-            String tree = ConfigService.classificationTreeName
-            out << """<a href="${link}">"""
-            switch (apcNode.typeUriIdPart) {
-                case 'ApcConcept':
-                    out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>"""
-                    break
-                case 'ApcExcluded':
-                    out << """<apc title="excluded from $tree"><i class="fa fa-ban"></i> ${tree}</apc>"""
-                    break
-                case 'DeclaredBt':
-                    out << """<apc title="Declared broader term in $tree">BT ${tree}</apc>"""
-                    break
-                case 'ApcRecord':
-                    break
+    /**
+     * add an "apc" tag with link and title for a given tree element
+     * you must provide an "element" attribute.
+     * if an "instance" attribute is supplied it is compared with the treeElement attribute to decide if to display
+     * the apc tag.
+     * This is generic and can be used on any tree.
+     */
+    def onTree = { attrs ->
+        TreeElement treeElement = attrs.element
+        Instance instance = attrs.instance ?: treeElement.instance
+        if (treeElement && instance && treeElement.instance.id == instance.id) {
+            String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: treeElement.name.id)
+            String tree = treeElement.treeVersion.tree.name
+
+            out << """<a href="${link}">""".toString()
+
+            if (treeElement.excluded) {
+                out << """<apc title="excluded from $tree"><i class="fa fa-ban"></i> ${tree}</apc>""".toString()
+            } else {
+                out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>""".toString()
             }
             out << "</a>"
         }
     }
+
 }

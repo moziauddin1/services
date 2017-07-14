@@ -52,9 +52,9 @@
       <span class="vertbar">
         <st:preferredLink target="${name}"><i title="citable link to name" class="fa fa-link"></i></st:preferredLink>
       </span>
-      <g:if test="${apc}">
+      <g:if test="${treeElement}">
         <span class="vertbar">
-          <af:apc apc="${apc}"/>
+          <af:onTree element="${treeElement}"/>
         </span>
       </g:if>
 
