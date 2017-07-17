@@ -54,7 +54,8 @@ WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, nam
     node.instance_id                                                                                     AS instance_id,
     node.name_id                                                                                         AS name_id,
     name.simple_name :: TEXT                                                                             AS simple_name,
-    '<div class="tr"> <data>' || name.full_name_html || ' ' || ref.citation_html || '</data></div>'      AS display,
+    '<div class="tr ' || rank.name || '"><data>' || name.full_name_html || ' <citation>' || ref.citation_html ||
+    '</citation></data></div>'                                                                           AS display,
     node.prev_node_id                                                                                    AS prev_node_id,
     node.id :: TEXT                                                                                      AS tree_path,
     coalesce(name.name_element, '?') :: TEXT                                                             AS name_path,
@@ -62,7 +63,7 @@ WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, nam
     '<x>'                                                                                                AS indent,
     '</x>'                                                                                               AS outdent,
     2                                                                                                    AS depth,
-    'd1'                                                                                                 AS depthclass
+    rank.name :: TEXT                                                                                    AS depthclass
 
   FROM tree_link link
     JOIN tree_node node ON link.subnode_id = node.id
@@ -98,7 +99,7 @@ WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, nam
     treewalk.indent || '<x>'                                   AS indent,
     treewalk.outdent || '</x>'                                 AS outdent,
     treewalk.depth + 1                                         AS depth,
-    treewalk.depthclass || ' d' || treewalk.depth              AS depthclass
+    treewalk.depthclass || ' ' || rank.name                    AS depthclass
   FROM treewalk
     JOIN tree_link link ON link.supernode_id = treewalk.node_id
     JOIN tree_node node ON link.subnode_id = node.id
