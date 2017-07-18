@@ -71,7 +71,7 @@ class NameConstructionService {
         }
         if (name.nameType?.nameCategory?.name == 'common') {
             String htmlNameElement = name.nameElement.encodeAsHTML()
-            String markedUpName = "<common><name id='$name.id'><element>${htmlNameElement}</element></name></common>"
+            String markedUpName = "<common><name data-id='$name.id'><element>${htmlNameElement}</element></name></common>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
         return [fullMarkedUpName: (name.nameElement?.encodeAsHTML() ?: '?'), simpleMarkedUpName: (name.nameElement.encodeAsHTML() ?: '?')]
@@ -95,7 +95,7 @@ class NameConstructionService {
         }
         bits << "<element>${htmlNameElement}</element>"
         bits << constructAuthor(name)
-        String markedUpName = "<informal><name id='$name.id'>${join(bits)}</name></informal>"
+        String markedUpName = "<informal><name data-id='$name.id'>${join(bits)}</name></informal>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
@@ -109,7 +109,7 @@ class NameConstructionService {
                 bits << filterPrecedingName(constructName(parent).simpleMarkedUpName)
             }
 
-            bits << (name.nameType.connector) ? "<hybrid id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : ''
+            bits << (name.nameType.connector) ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : ''
 
             //NSL-605
             if (name.nameType.formula) {
@@ -123,7 +123,7 @@ class NameConstructionService {
         } else {
             bits << "'<element>${htmlNameElement}</element>"
         }
-        String markedUpName = "<cultivar><name id='$name.id'>${join(bits)}</name></cultivar>"
+        String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
@@ -161,11 +161,20 @@ class NameConstructionService {
 
         String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-        List<String> fullNameParts = [precedingName.fullMarkedUpName, rank, connector, nameElement.fullMarkedUpName, author, manuscript]
-        List<String> simpleNameParts = [precedingName.simpleMarkedUpName, rank, connector, nameElement.simpleMarkedUpName, manuscript]
+        List<String> fullNameParts = [precedingName.fullMarkedUpName,
+                                      rank,
+                                      connector,
+                                      nameElement.fullMarkedUpName,
+                                      author,
+                                      manuscript]
+        List<String> simpleNameParts = [precedingName.simpleMarkedUpName,
+                                        rank,
+                                        connector,
+                                        nameElement.simpleMarkedUpName,
+                                        manuscript]
 
-        String fullMarkedUpName = "<scientific><name id='$name.id'>${join(fullNameParts)}</name></scientific>"
-        String simpleMarkedUpName = "<scientific><name id='$name.id'>${join(simpleNameParts)}</name></scientific>"
+        String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
+        String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
 
         return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
     }
@@ -200,7 +209,7 @@ class NameConstructionService {
         if ((name.nameType.connector) &&
                 !(rank && name.nameType.connector == 'x' && name.nameRank.abbrev.startsWith('notho'))
         ) {
-            return "<hybrid id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>"
+            return "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>"
         } else {
             return ''
         }
@@ -209,9 +218,9 @@ class NameConstructionService {
     String makeRankString(Name parent, Name name) {
         if (parent && name.nameRank?.visibleInName && !name.nameType.formula) {
             if (name.nameRank.useVerbatimRank && name.verbatimRank) {
-                return "<rank id='${name.nameRank?.id}'>${name.verbatimRank}</rank>"
+                return "<rank data-id='${name.nameRank?.id}'>${name.verbatimRank}</rank>"
             }
-            return "<rank id='${name.nameRank?.id}'>${name.nameRank?.abbrev}</rank>"
+            return "<rank data-id='${name.nameRank?.id}'>${name.nameRank?.abbrev}</rank>"
         }
         return ''
     }
@@ -255,17 +264,17 @@ class NameConstructionService {
         if (name.author) {
             if (name.baseAuthor) {
                 if (name.exBaseAuthor) {
-                    bits << "(<ex-base id='$name.exBaseAuthor.id' title='${name.exBaseAuthor.name.encodeAsHTML()}'>$name.exBaseAuthor.abbrev</ex-base> ex <base id='$name.baseAuthor.id' title='${name.baseAuthor.name.encodeAsHTML()}'>$name.baseAuthor.abbrev</base>)"
+                    bits << "(<ex-base data-id='$name.exBaseAuthor.id' title='${name.exBaseAuthor.name.encodeAsHTML()}'>$name.exBaseAuthor.abbrev</ex-base> ex <base data-id='$name.baseAuthor.id' title='${name.baseAuthor.name.encodeAsHTML()}'>$name.baseAuthor.abbrev</base>)"
                 } else {
-                    bits << "(<base id='$name.baseAuthor.id' title='${name.baseAuthor.name.encodeAsHTML()}'>$name.baseAuthor.abbrev</base>)"
+                    bits << "(<base data-id='$name.baseAuthor.id' title='${name.baseAuthor.name.encodeAsHTML()}'>$name.baseAuthor.abbrev</base>)"
                 }
             }
             if (name.exAuthor) {
-                bits << "<ex id='$name.exAuthor.id' title='${name.exAuthor.name.encodeAsHTML()}'>$name.exAuthor.abbrev</ex> ex"
+                bits << "<ex data-id='$name.exAuthor.id' title='${name.exAuthor.name.encodeAsHTML()}'>$name.exAuthor.abbrev</ex> ex"
             }
-            bits << "<author id='$name.author.id' title='${name.author.name.encodeAsHTML()}'>$name.author.abbrev</author>"
+            bits << "<author data-id='$name.author.id' title='${name.author.name.encodeAsHTML()}'>$name.author.abbrev</author>"
             if (name.sanctioningAuthor) {
-                bits << ": <sanctioning id='$name.sanctioningAuthor.id' title='${name.sanctioningAuthor.name.encodeAsHTML()}'>$name.sanctioningAuthor.abbrev</sanctioning>"
+                bits << ": <sanctioning data-id='$name.sanctioningAuthor.id' title='${name.sanctioningAuthor.name.encodeAsHTML()}'>$name.sanctioningAuthor.abbrev</sanctioning>"
             }
         }
         return bits.size() ? "<authors>${join(bits)}</authors>" : ''
