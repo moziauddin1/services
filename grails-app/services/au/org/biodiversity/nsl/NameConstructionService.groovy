@@ -161,8 +161,17 @@ class NameConstructionService {
 
         String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-        List<String> fullNameParts = [precedingName.fullMarkedUpName, rank, connector, nameElement.fullMarkedUpName, author, manuscript]
-        List<String> simpleNameParts = [precedingName.simpleMarkedUpName, rank, connector, nameElement.simpleMarkedUpName, manuscript]
+        List<String> fullNameParts = [precedingName.fullMarkedUpName,
+                                      rank,
+                                      connector,
+                                      nameElement.fullMarkedUpName,
+                                      author,
+                                      manuscript]
+        List<String> simpleNameParts = [precedingName.simpleMarkedUpName,
+                                        rank,
+                                        connector,
+                                        nameElement.simpleMarkedUpName,
+                                        manuscript]
 
         String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
         String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
