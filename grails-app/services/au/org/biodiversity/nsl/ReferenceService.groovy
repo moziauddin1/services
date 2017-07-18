@@ -93,19 +93,19 @@ class ReferenceService {
                     bits << parentAuthorName.wrap('<author>', '</author>')
                     bits << pubDate.wrap('<year>', '</year>').comma()
                     if (superReferenceTitle) {
-                        bits << '<title>'
+                        bits << '<ref-title>'
                         bits << referenceTitle.comma()
                         bits << "in"
                         bits << superReferenceTitle.fullStop()
-                        bits << '</title>'
+                        bits << '</ref-title>'
 
                     } else {
-                        bits << referenceTitle.fullStop().wrap('<title>', '</title>')
+                        bits << referenceTitle.fullStop().wrap('<ref-title>', '</ref-title>')
                     }
             }
 
             //middle
-            bits << parentTitle.wrap('<i>', '</i>').wrap('<title>', '</title>')
+            bits << parentTitle.wrap('<i>', '</i>').wrap('<par-title>', '</par-title>')
             bits << edition.wrap('<edition>', '</edition>')
             bits << volume.wrap('<volume>', '</volume>')
 
@@ -122,7 +122,7 @@ class ReferenceService {
             String result = bits.findAll { it }
                                 .join(' ')
                                 .removeFullStop()
-                                .wrap("<$reference.refType.name>", "</$reference.refType.name>")
+                                .wrap("<ref-${reference.refType.name.toLowerCase()}>", "</ref-${reference.refType.name.toLowerCase()}>")
                                 .wrap('<ref>', '</ref>')
             assert result != 'true'
             return result
