@@ -49,19 +49,26 @@ class ReferenceService {
 
             List<Reference> parents = parents(reference)
 
-            String authorName = (reference.author != unknownAuthor ?
-                    "${reference.author.name.trim()}${reference.refAuthorRole == editor ? ' (ed.)' : ''}" : '')
+            String authorName = ''
 
-            String parentAuthorName = (
-                    (reference.parent &&
-                            reference.parent.author != unknownAuthor &&
-                            (
-                                    reference.author != reference.parent.author ||
-                                            reference.parent?.refAuthorRole == editor
-                            )
-                    ) ? "in ${reference.parent.author.name.trim()}" : '')
+            if (reference.author != unknownAuthor) {
+                if (reference.refAuthorRole == editor) {
+                    authorName = "${reference.author.name.trim()} (ed.)"
+                } else {
+                    authorName = "${reference.author.name.trim()}"
+                }
+            }
 
-            String parentAuthorRole = ((reference.parent?.author != unknownAuthor && reference.parent?.refAuthorRole == editor) ? '(ed.)' : '')
+            String parentAuthorName = ''
+
+            if (reference.parent && reference.parent.author != unknownAuthor) {
+                if (reference.author != reference.parent.author) {
+                    parentAuthorName = "in ${reference.parent.author.name.trim()}"
+                }
+                if (reference.parent?.refAuthorRole == editor) {
+                    parentAuthorName = "in ${reference.parent.author.name.trim()} (ed.)"
+                }
+            }
 
             String pubDate = pubDate(reference)
 
@@ -82,24 +89,25 @@ class ReferenceService {
                 case 'Paper':
                 case 'Book':
                 default:
-                    bits << authorName
-                    bits << parentAuthorName
-                    bits << parentAuthorRole
-                    bits << pubDate.comma()
+                    bits << authorName.wrap('<author>', '</author>')
+                    bits << parentAuthorName.wrap('<author>', '</author>')
+                    bits << pubDate.wrap('<year>', '</year>').comma()
                     if (superReferenceTitle) {
+                        bits << '<title>'
                         bits << referenceTitle.comma()
                         bits << "in"
                         bits << superReferenceTitle.fullStop()
+                        bits << '</title>'
 
                     } else {
-                        bits << referenceTitle.fullStop()
+                        bits << referenceTitle.fullStop().wrap('<title>', '</title>')
                     }
             }
 
             //middle
-            bits << (parentTitle ? "<i>$parentTitle</i>" : '')
-            bits << edition
-            bits << volume
+            bits << parentTitle.wrap('<i>', '</i>').wrap('<title>', '</title>')
+            bits << edition.wrap('<edition>', '</edition>')
+            bits << volume.wrap('<volume>', '</volume>')
 
             //postfix
             switch (reference.refType.name) {
@@ -111,7 +119,11 @@ class ReferenceService {
                     break
             }
 
-            String result = bits.findAll { it }.join(' ').removeFullStop()
+            String result = bits.findAll { it }
+                                .join(' ')
+                                .removeFullStop()
+                                .wrap("<$reference.refType.name>", "</$reference.refType.name>")
+                                .wrap('<ref>', '</ref>')
             assert result != 'true'
             return result
         }
@@ -500,7 +512,7 @@ class ReferenceService {
         Author unknownAuthor = Author.findByName('-')
         RefAuthorRole editor = RefAuthorRole.findByName('Editor')
 
-        author.references.each {Reference reference ->
+        author.references.each { Reference reference ->
             String citationHtml = generateReferenceCitation(reference, unknownAuthor, editor)
 
             if (reference.citationHtml != citationHtml) {
@@ -545,6 +557,12 @@ class ReferenceStringCategory {
     static String comma(String string) {
         withString(string) {
             string.endsWith(',') ? string : string + ','
+        }
+    }
+
+    static String wrap(String string, String prefix, String postfix) {
+        withString(string) {
+            prefix + string + postfix
         }
     }
 }
