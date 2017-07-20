@@ -25,6 +25,10 @@ class NameConstructionService {
         string?.replaceAll(/<[^>]*>/, '')?.replaceAll(/(&lsquo;|&rsquo;)/, "'")?.decodeHTML()?.trim()
     }
 
+    static String join(List<String> bits) {
+        bits.findAll { it }.join(' ')
+    }
+
     /**
      * Make the sortName from the passed in simple name and name object.
      * We pass in simple name because it may not have been set on the name yet for new names.
@@ -39,224 +43,172 @@ class NameConstructionService {
         String abbrev = name.nameRank.abbrev
         String sortName = simpleName.toLowerCase()
                                     .replaceAll(/^x /, '') //remove hybrid marks
-                                    .replaceAll(/ (x|\+|-) /, ' ') //remove hybrid marks
+                                    .replaceAll(/ [x+-] /, ' ') //remove hybrid marks
                                     .replaceAll(" $abbrev ", ' ') //remove rank abreviations
                                     .replaceAll(/ MS$/, '') //remove manuscript
-
         return sortName
     }
 
     Map constructName(Name name) {
-        constructName(name, null, 0)
-    }
-
-    Map constructName(Name name, Integer nextRank, Integer count) {
-        constructName(name, getFirstParentName(name), nextRank, count)
-    }
-
-    Map constructName(Name name, Name parent, Integer nextRank, Integer count) {
-
         if (!name) {
             throw new NullPointerException("Name can't be null.")
         }
 
-        if (name.nameType?.scientific) {
-            return constructScientificName(name, parent, nextRank, count)
+        if (name.nameType.scientific) {
+            if (name.nameType.formula) {
+                return constructHybridFormulaScientificName(name)
+            }
+            if (name.nameType.autonym) {
+                return constructAutonymScientificName(name)
+            }
+            return constructScientificName(name)
         }
-        if (name.nameType?.cultivar) {
-            return constructCultivarName(name, parent)
+
+        if (name.nameType.cultivar) {
+            if (name.nameType.hybrid) {
+                if (name.nameType.formula) {
+                    return constructHybridFormulaCultivarName(name)
+                }
+                return constructHybridCultivarName(name)
+            }
+            return constructCultivarName(name)
         }
-        if (name.nameType?.name == 'informal') {
-            return constructInformalName(name, parent)
+
+        if (name.nameType.name == 'informal') {
+            return constructInformalName(name)
         }
-        if (name.nameType?.nameCategory?.name == 'common') {
+
+        if (name.nameType.nameCategory?.name == 'common') {
             String htmlNameElement = name.nameElement.encodeAsHTML()
             String markedUpName = "<common><name data-id='$name.id'><element>${htmlNameElement}</element></name></common>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
+
         return [fullMarkedUpName: (name.nameElement?.encodeAsHTML() ?: '?'), simpleMarkedUpName: (name.nameElement.encodeAsHTML() ?: '?')]
     }
 
-    //join only non null bits with spaces note findAll finds all non null bits.
-    private static String join(List<String> bits) {
-        bits.findAll { it }.join(' ')
-    }
+    private Map constructInformalName(Name name) {
+        List<String> bits = ["<element>${name.nameElement.encodeAsHTML()}</element>", constructAuthor(name)]
 
-    private Map constructInformalName(Name name, Name parent) {
-        List<String> bits = []
-        String htmlNameElement = name.nameElement.encodeAsHTML()
-
-        if (parent) {
-            if (parent == name) {
-                bits << '[recursive]'
-            } else {
-                bits << filterPrecedingName(constructName(parent).simpleMarkedUpName)
-            }
-        }
-        bits << "<element>${htmlNameElement}</element>"
-        bits << constructAuthor(name)
         String markedUpName = "<informal><name data-id='$name.id'>${join(bits)}</name></informal>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
-    private Map constructCultivarName(Name name, Name parent) {
+    private Map constructHybridCultivarName(Name name) {
         List<String> bits = []
-        String htmlNameElement = name.nameElement.encodeAsHTML()
-        if (parent) {
-            if (parent == name) {
-                bits << '[recursive]'
-            } else {
-                bits << filterPrecedingName(constructName(parent).simpleMarkedUpName)
-            }
-
-            bits << (name.nameType.connector) ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : ''
-
-            //NSL-605
-            if (name.nameType.formula) {
-                Name secondParent = name.secondParent
-                if (secondParent && secondParent != name) {
-                    bits << filterPrecedingName(constructName(secondParent).simpleMarkedUpName)
-                }
-            } else {
+        use(NameUtils) {
+            String htmlNameElement = name.nameElement.encodeAsHTML()
+            Name parent = name.parent.nameParent()
+            if (parent) {
+                bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
+                bits << (name.nameType.connector) ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : ''
                 bits << "<element>&lsquo;${htmlNameElement}&rsquo;</element>"
+            } else {
+                bits << "'<element>${htmlNameElement}</element>"
             }
-        } else {
-            bits << "'<element>${htmlNameElement}</element>"
         }
         String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
-    private Map constructScientificName(Name name, Name parent, Integer nextRankOrder, Integer count) {
-
-        if (!nextRankOrder && name.nameRank) {
-            nextRankOrder = determineNextRankOrder(name)
+    private Map constructHybridFormulaCultivarName(Name name) {
+        List<String> bits = []
+        use(NameUtils) {
+            Name parent = name.parent.nameParent()
+            bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
+            bits << (name.nameType.connector ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : '')
+            bits << (name.secondParent ? constructName(name.secondParent).simpleMarkedUpName?.removeManuscript() : '')
         }
-
-        Map precedingName = [:]
-        if ((name.nameRank?.sortOrder > nextRankOrder) || (parent && name.nameType.formula)) {
-            precedingName = getPrecedingName(name, parent, nextRankOrder, ++count)
-        }
-
-        String rank = makeRankString(parent, name)
-
-        String connector = makeConnectorString(name, rank)
-
-        String htmlNameElement = name.nameElement.encodeAsHTML()
-
-        String el = "<element>${htmlNameElement}</element>"
-        Map nameElement = [fullMarkedUpName: el, simpleMarkedUpName: el]
-
-        if (parent && name.nameType.formula) {
-            Name secondParent = name.secondParent
-            if (secondParent && secondParent != name) {
-                nameElement = constructName(secondParent, nextRankOrder, count)
-            } else {
-                el = "<element>?</element>"
-                nameElement = [fullMarkedUpName: el, simpleMarkedUpName: el]
-            }
-        }
-
-        String author = (!(name.nameType.formula || name.nameType.autonym)) ? constructAuthor(name) : ''
-
-        String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
-
-        List<String> fullNameParts = [precedingName.fullMarkedUpName,
-                                      rank,
-                                      connector,
-                                      nameElement.fullMarkedUpName,
-                                      author,
-                                      manuscript]
-        List<String> simpleNameParts = [precedingName.simpleMarkedUpName,
-                                        rank,
-                                        connector,
-                                        nameElement.simpleMarkedUpName,
-                                        manuscript]
-
-        String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
-        String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
-
-        return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
+        String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
+        return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
-    /**
-     * Determine the next rank up that participates in the construction of this name. This is used to determine the
-     * parent name to use.
-     *
-     * In practice this will return Family, Genus, the direct parents rank or this names rank depending on what rank
-     * this name is.
-     *
-     * @param name
-     * @return int rank sort order of the next rank up to look for.
-     */
-    private static int determineNextRankOrder(Name name) {
-        if (name.nameRank.sortOrder == 500 && name.parent) {
-            if (RankUtils.nameAtRankOrLower(name.parent, 'Genus')) {
-                return RankUtils.getRankOrder('Genus')
-            } else {
-                return name.parent.nameRank.sortOrder
-            }
-        } else if (RankUtils.nameAtRankOrLower(name, 'Genus')) {
-            return RankUtils.getRankOrder('Genus')
-        } else if (RankUtils.nameAtRankOrLower(name, 'Familia')) {
-            return RankUtils.getRankOrder('Familia')
+    private Map constructCultivarName(Name name) {
+        List<String> bits = []
+        if (name.parent) {
+            bits << (String) (constructName(name.parent).simpleMarkedUpName)?.removeManuscript()
+            bits << (name.nameType.connector ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : '')
+            bits << "<element>&lsquo;${name.nameElement.encodeAsHTML()}&rsquo;</element>"
         } else {
-            return name.nameRank.sortOrder
+            bits << "'<element>${name.nameElement.encodeAsHTML()}</element>"
+        }
+        String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
+        return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
+    }
+
+
+    private Map constructHybridFormulaScientificName(Name name) {
+        use(NameUtils) {
+            Map firstParent = name.parent ? constructName(name.parent) : [:]
+            String connector = makeConnectorString(name, null)
+            Map secondParent = name.secondParent ? constructName(name.secondParent) : [fullMarkedUpName: '<element>?</element>', simpleMarkedUpName: '<element>?</element>']
+            String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
+
+            List<String> fullNameParts = [firstParent.fullMarkedUpName.removeManuscript(),
+                                          connector,
+                                          secondParent.fullMarkedUpName.removeManuscript(), manuscript]
+            List<String> simpleNameParts = [firstParent.simpleMarkedUpName.removeManuscript(),
+                                            connector,
+                                            secondParent.simpleMarkedUpName.removeManuscript(), manuscript]
+
+            String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
+            String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
+            return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
+        }
+    }
+
+    private Map constructAutonymScientificName(Name name) {
+        use(NameUtils) {
+            Name nameParent = name.nameParent()
+            String precedingName = nameParent ? constructName(nameParent).fullMarkedUpName?.removeManuscript() : ''
+            String rank = nameParent ? makeRankString(name) : ''
+            String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
+            String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
+
+            List<String> simpleNameParts = [precedingName, rank, element, manuscript]
+
+            String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
+            return [fullMarkedUpName: simpleMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
+        }
+    }
+
+    private Map constructScientificName(Name name) {
+        use(NameUtils) {
+            Name nameParent = name.nameParent()
+            String precedingName = nameParent ? constructName(nameParent).simpleMarkedUpName?.removeManuscript() : ''
+
+            String rank = nameParent ? makeRankString(name) : ''
+            String connector = makeConnectorString(name, rank)
+            String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
+            String author = constructAuthor(name)
+            String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
+
+            List<String> fullNameParts = [precedingName, rank, connector, element, author, manuscript]
+            List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
+
+            String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
+            String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
+            return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
         }
     }
 
     String makeConnectorString(Name name, String rank) {
-        if ((name.nameType.connector) &&
-                !(rank && name.nameType.connector == 'x' && name.nameRank.abbrev.startsWith('notho'))
-        ) {
+        if (name.nameType.connector &&
+                !(rank && name.nameType.connector == 'x' && name.nameRank.abbrev.startsWith('notho'))) {
             return "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>"
         } else {
             return ''
         }
     }
 
-    String makeRankString(Name parent, Name name) {
-        if (parent && name.nameRank?.visibleInName && !name.nameType.formula) {
+    String makeRankString(Name name) {
+        if (name.nameRank?.visibleInName) {
             if (name.nameRank.useVerbatimRank && name.verbatimRank) {
                 return "<rank data-id='${name.nameRank?.id}'>${name.verbatimRank}</rank>"
             }
             return "<rank data-id='${name.nameRank?.id}'>${name.nameRank?.abbrev}</rank>"
         }
         return ''
-    }
-
-    private Map getPrecedingName(Name name, Name parent, Integer nextRank, Integer count) {
-        if (parent && (parent.nameRank.sortOrder >= nextRank)) {   //parent below or equal to the next rank
-            //mumble mumble
-            if (parent == name || count == 5) {
-                log.error "parent $parent of name $name is recursive (count $count)"
-                return [fullMarkedUpName: '[recursive]', simpleMarkedUpName: '[recursive]']
-            } else {
-                if (parent.nameType.scientific) {
-                    Map precedingNames = constructName(parent, nextRank, count)
-
-                    String fullPrecedingName = filterPrecedingName(precedingNames.fullMarkedUpName)
-                    String simplePrecedingName = filterPrecedingName(precedingNames.simpleMarkedUpName)
-
-                    if (!(name.nameType.formula || name.nameType.autonym)) {
-                        fullPrecedingName = simplePrecedingName
-                    }
-
-                    if (parent.nameType.formula && name.nameType.formula) {
-                        return [fullMarkedUpName: "($fullPrecedingName)", simpleMarkedUpName: "($simplePrecedingName)"]
-                    }
-                    return [fullMarkedUpName: fullPrecedingName, simpleMarkedUpName: simplePrecedingName]
-                } else {
-                    log.error "parent $parent of name $name is not scientific"
-                    return [fullMarkedUpName: '[non-scientific name]', simpleMarkedUpName: '[non-scientific name]']
-                }
-            }
-        }
-        return [fullMarkedUpName: '', simpleMarkedUpName: '']
-    }
-
-    private static String filterPrecedingName(String string) {
-        string.replaceAll(/ (<manuscript>MS<\/manuscript>)/, '')
     }
 
     String constructAuthor(Name name) {
@@ -279,56 +231,27 @@ class NameConstructionService {
         }
         return bits.size() ? "<authors>${join(bits)}</authors>" : ''
     }
+}
 
-    Name getFirstParentName(Name name) {
-        if (name.nameType.formula) {
-            return name.parent
-        }
-        if (name.nameRank.hasParent && name.parent) {
-            Name parent = (name.parent.nameRank == name.nameRank && name.parent.parent) ? name.parent.parent : name.parent
+class NameUtils {
 
-            //NSL-856 cultivar hybrid display genus + epithet
-            if (name.nameType.hybrid && name.nameType.cultivar) {
-                //NSL-1546 removed check for name parent == parent as that looks up tree for a name not in the tree yet
-                // This isn't necessary as getParentOfRank will always return the same, correct result.
-                return RankUtils.getParentOfRank(name.parent, 'Genus')
-            }
-            //NSL-927 cultivar display to lowest parent rank
-            if (!name.nameType.hybrid && name.nameType.cultivar) {
-                return name.parent
-            }
-            //just a scientific name
-            return findNameParent(parent)
-        }
-        return null
-    }
-
-    /**
-     * Find the "name parent" from a names direct parent
-     * @param parent the direct parent of the name
-     * @return the next major ranked parent below or equal to Genus or NULL
-     */
-    private Name findNameParent(Name parent) {
-        if (parent.nameRank.major) {
-            return parent
-        }
-        NameTreePath nameTreePath = NameTreePathService.findCurrentNameTreePath(parent, 'APNI')
-        if (nameTreePath) {
-            List<Name> namesInBranch = nameTreePath.namesInBranch()
-            return namesInBranch.reverse().find { it.nameRank.major }
-        } else {
-            log.error "no name tree path for $parent checking tree"
-            List<Name> namesInBranch = classificationService.getPathFromNameTree(parent)
-            if (namesInBranch) {
-                return namesInBranch.reverse().find {
-                    if (it) {
-                        it.nameRank.major
-                    } else {
-                        log.debug namesInBranch
+    static Name nameParent(Name name) {
+        use(RankUtils) {
+            if (name.nameLowerThanRank('Genus') || name.nameRank.visibleInName) {
+                NameRank parentRank = name.nameRank.parentRank
+                int count = 5 //count to prevent recursive parents causing issues
+                while (count-- > 0 && name?.nameLowerThanRank(parentRank)) {
+                    if (name.parent && name.parent.nameRank == parentRank) {
+                        return name.parent
                     }
+                    name = name.parent
                 }
             }
             return null
         }
+    }
+
+    static String removeManuscript(String string) {
+        string.replaceAll(/ (<manuscript>MS<\/manuscript>)/, '')
     }
 }
