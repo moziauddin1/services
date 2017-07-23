@@ -49,6 +49,7 @@ class NameService {
      * @param note
      * @return
      */
+
     def nameUpdated(Name name, Notification note) {
         if (seen.contains(note.id)) {
             log.info "seen note, skipping $note"
@@ -83,6 +84,7 @@ class NameService {
      make a name_tree_path for the name
      Intermediate step - create parent name part, and second Parent name part
      **/
+
     def nameCreated(Name name, Notification note) {
         if (seen.contains(note.id)) {
             log.info "seen note, skipping $note"
@@ -129,6 +131,7 @@ class NameService {
      * @param name
      */
     @RoleRequired('admin')
+
     Map deleteName(Name name, String reason) {
         Map canWeDelete = canDelete(name, reason)
         if (canWeDelete.ok) {
@@ -206,6 +209,7 @@ class NameService {
  * 3. replace the node with an end node
  * @param name
  */
+
     void removeNameFromApni(Name name) {
         //replace the name with an end Node.
         Arrangement apni = Arrangement.findByNamespaceAndLabel(
@@ -230,6 +234,7 @@ class NameService {
      * @param note
      * @return
      */
+
     def authorUpdated(Author author, Notification note) {
         if (seen.contains(note.id)) {
             log.info "seen note, skipping $note"
@@ -250,6 +255,7 @@ class NameService {
             updateFullName(name)
         }
     }
+
 
     private Node updateAPNITree(Name name) {
         Node node = classificationService.isNameInNameTree(name)
@@ -287,6 +293,7 @@ class NameService {
         }
         return node
     }
+
 
     private void updateFullName(Name name) {
         Map fullNameMap = nameConstructionService.constructName(name)
@@ -346,6 +353,7 @@ class NameService {
         }
     }
 
+
     def reconstructAllNames() {
         runAsync {
             String updaterWas = pollingStatus()
@@ -383,6 +391,42 @@ class NameService {
         }
     }
 
+    File checkAllNames() {
+        Closure query = { Map params ->
+            Name.listOrderById(params)
+        }
+
+        File tempFile = File.createTempFile('name-check', 'txt')
+
+        chunkThis(1000, query) { List<Name> names, bottom, top ->
+            long start = System.currentTimeMillis()
+            Name.withSession { session ->
+                names.each { Name name ->
+                    try {
+                        Map constructedNames = nameConstructionService.constructName(name)
+                        String strippedName = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
+                        if (name.fullName != strippedName) {
+                            String msg = "$name.id, \"${name.nameType.name}\", \"${name.nameRank.name}\", \"$name.fullName\", \"${strippedName}\""
+                            log.info(msg)
+                            tempFile.append("$msg\n")
+                        }
+                    } catch (e) {
+                        String msg = "error constructing name $name : $e.message"
+                        log.error(msg)
+                        tempFile.append("$msg\n")
+                        e.printStackTrace()
+                    }
+                    name.discard()
+                }
+                session.clear()
+            }
+
+            log.info "$top done. 1000 took ${System.currentTimeMillis() - start} ms"
+        }
+        return tempFile
+    }
+
+
     def reconstructSortNames() {
         runAsync {
             String updaterWas = pollingStatus()
@@ -412,6 +456,7 @@ class NameService {
             }
         }
     }
+
 
     def constructMissingNames() {
         runAsync {
@@ -447,6 +492,7 @@ or n.fullNameHtml is null""", params)
             }
         }
     }
+
 
     def addNamesNotInNameTree(String treeLabel) {
         List<Name> namesNotInApni = Name.executeQuery("""select n from Name n

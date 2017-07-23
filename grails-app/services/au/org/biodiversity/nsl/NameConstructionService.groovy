@@ -95,87 +95,89 @@ class NameConstructionService {
     }
 
     private Map constructHybridCultivarName(Name name) {
-        List<String> bits = []
         use(NameUtils) {
+            List<String> bits = []
             String htmlNameElement = name.nameElement.encodeAsHTML()
-            Name parent = name.parent.nameParent()
+            //NSL-856 cultivar hybrid display genus + epithet
+            Name parent = name.nameParentOfRank('Genus')
             if (parent) {
                 bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
                 bits << (name.nameType.connector) ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : ''
                 bits << "<element>&lsquo;${htmlNameElement}&rsquo;</element>"
             } else {
-                bits << "'<element>${htmlNameElement}</element>"
+                bits << "<element>${htmlNameElement}</element>"
             }
+            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
+            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
-        String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
-        return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
     private Map constructHybridFormulaCultivarName(Name name) {
-        List<String> bits = []
         use(NameUtils) {
-            Name parent = name.parent.nameParent()
+            List<String> bits = []
+            Name parent = name.parent
             bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
             bits << (name.nameType.connector ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : '')
             bits << (name.secondParent ? constructName(name.secondParent).simpleMarkedUpName?.removeManuscript() : '')
+            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
+            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
-        String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
-        return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
     private Map constructCultivarName(Name name) {
-        List<String> bits = []
-        if (name.parent) {
-            bits << (String) (constructName(name.parent).simpleMarkedUpName)?.removeManuscript()
-            bits << (name.nameType.connector ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : '')
-            bits << "<element>&lsquo;${name.nameElement.encodeAsHTML()}&rsquo;</element>"
-        } else {
-            bits << "'<element>${name.nameElement.encodeAsHTML()}</element>"
+        use(NameUtils) {
+            List<String> bits = []
+            //NSL-927 cultivar display to lowest parent rank
+            if (name.parent) {
+                Map n = constructName(name.parent)
+                bits << n.simpleMarkedUpName?.removeManuscript()
+                bits << (name.nameType.connector ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : '')
+                bits << "<element>&lsquo;${name.nameElement.encodeAsHTML()}&rsquo;</element>"
+            } else {
+                bits << "'<element>${name.nameElement.encodeAsHTML()}</element>"
+            }
+            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
+            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
-        String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
-        return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
 
     private Map constructHybridFormulaScientificName(Name name) {
         use(NameUtils) {
-            Map firstParent = name.parent ? constructName(name.parent) : [:]
+            String firstParent = constructPrecedingNameString(name.parent, name)
             String connector = makeConnectorString(name, null)
-            Map secondParent = name.secondParent ? constructName(name.secondParent) : [fullMarkedUpName: '<element>?</element>', simpleMarkedUpName: '<element>?</element>']
+            String secondParent = name.secondParent ? constructPrecedingNameString(name.secondParent, name) : '<element>?</element>'
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> fullNameParts = [firstParent.fullMarkedUpName.removeManuscript(),
-                                          connector,
-                                          secondParent.fullMarkedUpName.removeManuscript(), manuscript]
-            List<String> simpleNameParts = [firstParent.simpleMarkedUpName.removeManuscript(),
-                                            connector,
-                                            secondParent.simpleMarkedUpName.removeManuscript(), manuscript]
+            List<String> simpleNameParts = [firstParent, connector, secondParent, manuscript]
 
-            String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
-            String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
-            return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
+            String markedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
+            //need to remove Authors below from simple name because preceding name includes author in parent
+            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName.removeAuthors()]
         }
     }
 
     private Map constructAutonymScientificName(Name name) {
         use(NameUtils) {
             Name nameParent = name.nameParent()
-            String precedingName = nameParent ? constructName(nameParent).fullMarkedUpName?.removeManuscript() : ''
+            String precedingName = constructPrecedingNameString(nameParent, name)
             String rank = nameParent ? makeRankString(name) : ''
+            String connector = makeConnectorString(name, rank)
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> simpleNameParts = [precedingName, rank, element, manuscript]
+            List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
 
-            String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
-            return [fullMarkedUpName: simpleMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
+            String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
+            //need to remove Authors below from simple name because preceding name includes author in autonyms
+            return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: fullMarkedUpName.removeAuthors()]
         }
     }
 
     private Map constructScientificName(Name name) {
         use(NameUtils) {
             Name nameParent = name.nameParent()
-            String precedingName = nameParent ? constructName(nameParent).simpleMarkedUpName?.removeManuscript() : ''
+            String precedingName = constructPrecedingNameString(nameParent, name)
 
             String rank = nameParent ? makeRankString(name) : ''
             String connector = makeConnectorString(name, rank)
@@ -189,6 +191,25 @@ class NameConstructionService {
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
             String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
             return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
+        }
+    }
+
+    private String constructPrecedingNameString(Name parent, Name child) {
+        use(NameUtils) {
+            if (parent) {
+                Map constructedName = constructName(parent)
+                if (child.nameType.autonym) {
+                    return constructedName.fullMarkedUpName.removeManuscript()
+                }
+                if (parent.nameType.formula && child.nameType.formula) {
+                    return "(${constructedName.simpleMarkedUpName.removeManuscript()})"
+                }
+                if (child.nameType.formula) {
+                    return constructedName.fullMarkedUpName.removeManuscript()
+                }
+                return constructedName.simpleMarkedUpName.removeManuscript()
+            }
+            return ''
         }
     }
 
@@ -237,21 +258,53 @@ class NameUtils {
 
     static Name nameParent(Name name) {
         use(RankUtils) {
+            if (name.nameRank.name == '[unranked]') {
+                return firstRankedParent(name)
+            }
             if (name.nameLowerThanRank('Genus') || name.nameRank.visibleInName) {
                 NameRank parentRank = name.nameRank.parentRank
-                int count = 5 //count to prevent recursive parents causing issues
-                while (count-- > 0 && name?.nameLowerThanRank(parentRank)) {
-                    if (name.parent && name.parent.nameRank == parentRank) {
-                        return name.parent
+                if (parentRank) {
+                    int count = 5 //count to prevent recursive parents causing issues
+                    while (count-- > 0 && name?.nameLowerThanRank(parentRank)) {
+                        if (name.parent && name.parent.nameRank == parentRank) {
+                            return name.parent
+                        }
+                        name = name.parent
                     }
-                    name = name.parent
                 }
             }
             return null
         }
     }
 
+    static Name firstRankedParent(Name name) {
+        int count = 5
+        while (count-- > 0) {
+            if (name.parent.nameRank.name != '[unranked]') {
+                return name.parent
+            }
+            name = name.parent
+        }
+        return null
+    }
+
+    static Name nameParentOfRank(Name name, String rankName) {
+        Name parent = name.parent
+        int count = 5
+        while (count-- > 0) {
+            if (parent.nameRank.name == rankName) {
+                return parent
+            }
+            parent = parent.parent
+        }
+        return null
+    }
+
     static String removeManuscript(String string) {
         string.replaceAll(/ (<manuscript>MS<\/manuscript>)/, '')
+    }
+
+    static String removeAuthors(String string) {
+        string.replaceAll(/ (<authors>.*?<\/authors>)/, '')
     }
 }
