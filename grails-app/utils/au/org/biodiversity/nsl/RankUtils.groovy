@@ -69,8 +69,16 @@ class RankUtils {
         return rankOrder(rankName) <= name.nameRank.sortOrder
     }
 
+    static Boolean nameAtRankOrLower(Name name, NameRank rank) {
+        return rank.sortOrder <= name.nameRank.sortOrder
+    }
+
     static Boolean nameLowerThanRank(Name name, String rankName) {
         return rankOrder(rankName) < name.nameRank.sortOrder
+    }
+
+    static Boolean nameLowerThanRank(Name name, NameRank rank) {
+        return rank.sortOrder < name.nameRank.sortOrder
     }
 
     static Boolean nameHigherThanRank(Name name, String rankName) {

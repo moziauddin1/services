@@ -57,38 +57,7 @@ class AdminController {
 
     @RequiresRoles('admin')
     checkNames() {
-        Closure query = { Map params ->
-            Name.listOrderById(params)
-        }
-
-        File tempFile = File.createTempFile('name-check', 'txt')
-
-        NameService.chunkThis(1000, query) { List<Name> names, bottom, top ->
-            long start = System.currentTimeMillis()
-            names.each { Name name ->
-                Map constructedNames = nameConstructionService.constructName(name)
-
-                if (name.fullNameHtml != constructedNames.fullMarkedUpName) {
-                    String constStripped = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
-                    String nameStripped = nameConstructionService.stripMarkUp(name.fullNameHtml)
-                    if (constStripped != nameStripped) {
-                        String verbatim = null
-                        List<Instance> primaryInstances = instanceService.findPrimaryInstance(name)
-                        if(primaryInstances && primaryInstances.size() > 0) {
-                            verbatim = primaryInstances.first().verbatimNameString
-                        }
-                        Boolean equalsVerbatim = constStripped.toLowerCase() == verbatim?.toLowerCase()
-                        String msg = "$name.id, \"[${name.nameType.name}]\", \"${nameStripped}\", \"${constStripped}\", \"${equalsVerbatim}\", \"${verbatim}\""
-                        log.info(msg)
-                        tempFile.append("$msg\n")
-                    } else {
-                        log.info("$name.id [${name.nameType.name}]: ${name.fullNameHtml} != ${constructedNames.fullMarkedUpName}")
-                    }
-                }
-                name.discard()
-            }
-            log.info "$top done. 1000 took ${System.currentTimeMillis() - start} ms"
-        }
+        File tempFile = nameService.checkAllNames()
         render(file: tempFile, fileName: 'name-changes.csv', contentType: 'text/plain')
     }
 
