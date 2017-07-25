@@ -57,23 +57,6 @@ class NameService {
         }
         seen.add(note.id)
 
-        log.info "name $name has been updated. Checking name tree and NTP."
-        if (name.nameType.scientific || name.nameType.cultivar) {
-            if (name.parent || RankUtils.rankHigherThan(name.nameRank, 'Classis')) {
-                //we don't need domains to have a parent
-                log.debug "Checking APNI tree"
-                Node currentNode = updateAPNITree(name)
-                name = Name.get(name.id) //reload or it'll die with no session
-                if (currentNode) {
-                    log.debug "Checking NTP"
-                    NameTreePath updatedNtp = nameTreePathService.updateNameTreePathFromNode(currentNode)
-                } else {
-                    log.error "No current tree node for updated name $name, which should have one."
-                }
-            } else {
-                log.error "No parent for name $name, which should have one."
-            }
-        }
         notifyNameEvent(name, UPDATED_EVENT)
         name.discard() // make sure we don't update name in this TX
     }
@@ -92,21 +75,6 @@ class NameService {
         }
         seen.add(note.id)
         log.info "name $name created."
-        if (name.nameType.scientific || name.nameType.cultivar) {
-            //place on APNI tree
-            if (name.parent || name.nameRank.sortOrder < 10) { //we don't need domains to have a parent
-                log.info "Adding $name to name tree."
-                Node node = updateAPNITree(name)
-                if (node) {
-                    name = Name.get(name.id) //reload or it'll die with no session
-                    nameTreePathService.updateNameTreePathFromNode(node)
-                } else {
-                    log.error "error updating APNI tree with name $name"
-                }
-            } else {
-                log.error "No parent for name $name, which should have one."
-            }
-        }
         notifyNameEvent(name, CREATED_EVENT)
     }
 
@@ -137,7 +105,6 @@ class NameService {
         if (canWeDelete.ok) {
             try {
                 Name.withTransaction { TransactionStatus t ->
-                    removeNameFromApni(name)
                     name.refresh()
                     NameTreePath.findAllByName(name)*.delete()
                     Comment.findAllByName(name)*.delete()
@@ -201,32 +168,6 @@ class NameService {
         }
         return [ok: true]
     }
-/**
- * * Removing from the tree may mean:
- *
- * 1. make sure it's a leaf node (no children)
- * 2. set any FK references to the name to null
- * 3. replace the node with an end node
- * @param name
- */
-
-    void removeNameFromApni(Name name) {
-        //replace the name with an end Node.
-        Arrangement apni = Arrangement.findByNamespaceAndLabel(
-                configService.nameSpace,
-                configService.nameTreeName)
-        if (Node.countByNameAndRoot(name, apni)) { //only remove if it's in there, e.g. not a common name
-            treeOperationsService.deleteNslName(apni, name, null)
-            name.refresh() //reload the name because ... tree services
-        }
-        //set *all* the node, name references to null, even if in another tree
-        List<Node> nodeReferences = Node.findAllByName(name)
-        nodeReferences.each { Node node ->
-            log.info "Setting node $node.id name to null from $name.id"
-            node.name = null //set the name references to null
-            node.save()
-        }
-    }
 
     /**
      * IF an author is updated we need to check and update all names that author has written
@@ -255,45 +196,6 @@ class NameService {
             updateFullName(name)
         }
     }
-
-
-    private Node updateAPNITree(Name name) {
-        Node node = classificationService.isNameInNameTree(name)
-
-        if (name.parent) {
-            Node parentNode = classificationService.isNameInNameTree(name.parent)
-            if (!parentNode) {
-                updateAPNITree(name.parent)
-            }
-        }
-
-        Link parentLink = null
-        if (node) { //check the parent link of the existing node matches the current parent
-            parentLink = node.supLink.find { Link link ->
-                link.supernode.next == null && link.supernode.name == name.parent
-            }
-        }
-
-        //if the name is not on the tree or the parent changed we want to add/update it.
-        if (!node || !parentLink) {
-            log.info "$name isn't in the tree or it's parent ${name.parent} has changed. Placing it in the name tree."
-            try {
-                Name.withSession { s ->
-                    s.flush()
-                    s.clear()
-                }
-                node = classificationService.placeNameInNameTree(name.parent, name)
-                name = Name.get(name.id)
-                node = classificationService.isNameInNameTree(name)
-            } catch (e) {
-                // a service exception means that the user asked for something that
-                // is inconsistent with the current state of the tree
-                log.error "Error placing $name on APNI tree under $name.parent: $e.message"
-            }
-        }
-        return node
-    }
-
 
     private void updateFullName(Name name) {
         Map fullNameMap = nameConstructionService.constructName(name)
@@ -426,7 +328,6 @@ class NameService {
         return tempFile
     }
 
-
     def reconstructSortNames() {
         runAsync {
             String updaterWas = pollingStatus()
@@ -456,7 +357,6 @@ class NameService {
             }
         }
     }
-
 
     def constructMissingNames() {
         runAsync {
@@ -492,7 +392,6 @@ or n.fullNameHtml is null""", params)
             }
         }
     }
-
 
     def addNamesNotInNameTree(String treeLabel) {
         List<Name> namesNotInApni = Name.executeQuery("""select n from Name n

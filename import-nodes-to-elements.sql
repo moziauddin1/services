@@ -32,11 +32,6 @@ GROUP BY year, month, day
 ORDER BY latest_node_id ASC
 $$;
 
--- SELECT
---   *,
---   (year || '-' || month || '-' || day) :: TIMESTAMP
--- FROM daily_top_nodes('APC', '2016-01-01');
-
 -- get tree element data from a tree
 
 DROP FUNCTION IF EXISTS tree_element_data_from_node( BIGINT );
@@ -125,12 +120,6 @@ SELECT
   rank_path
 FROM treewalk
 $$;
-
--- SELECT
---   *
--- FROM tree_element_data_from_node(9061740) ted
---   JOIN tree_node node ON node.id = ted.node_id
--- ORDER BY name_path;
 
 VACUUM ANALYSE;
 
@@ -463,26 +452,6 @@ UPDATE tree_element
 SET names = '|' || simple_name
 WHERE names = '';
 
--- SELECT
---   element.tree_version_id,
---   element.tree_element_id,
---   name.simple_name    AS accepted_name,
---   it.name             AS syn_type,
---   synonym.simple_name AS syn_name
--- FROM Name name,
---   tree_element element,
---   Instance i,
---   Instance s
---   JOIN instance_type it ON s.instance_type_id = it.id
---   ,
---   name synonym
--- WHERE name.id = i.name_id
---       AND s.cited_by_id = i.id
---       AND i.id = element.instance_id
---       AND synonym.id = s.name_id
---       AND element.tree_version_id = 144
--- ORDER BY element.name_path;
-
 -- add synonyms jsonb data to tree_element
 
 DROP FUNCTION IF EXISTS synonyms_as_jsonb( BIGINT, BIGINT );
@@ -506,27 +475,3 @@ $$;
 
 UPDATE tree_element
 SET synonyms = synonyms_as_jsonb(tree_version_id, tree_element_id);
-
--- example synonyms search
--- SELECT
---   el.name_id,
---   el.simple_name,
---   tax_syn,
---   synonyms ->> tax_syn,
---   rank.name,
---   type.name,
---   el.names,
---   el.name_path
--- FROM tree_element el
---   JOIN name n ON el.name_id = n.id
---   JOIN name_rank rank ON n.name_rank_id = rank.id
---   JOIN name_type type ON n.name_type_id = type.id
---   ,
---       jsonb_object_keys(synonyms) AS tax_syn
--- WHERE tree_version_id = 144
---       AND el.names like '%Billardiera b%'
---       --         and rank.name = 'Species'
---       AND type.scientific
---       AND tax_syn ILIKE 'Billardiera b%'
---       AND synonyms ->> tax_syn = 'taxonomic synonym'
--- ORDER BY el.name_path;
