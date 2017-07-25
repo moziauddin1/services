@@ -201,10 +201,10 @@ class NameConstructionService {
                 if (child.nameType.autonym) {
                     return constructedName.fullMarkedUpName.removeManuscript()
                 }
-                if (parent.nameType.formula && child.nameType.formula) {
-                    return "(${constructedName.simpleMarkedUpName.removeManuscript()})"
-                }
                 if (child.nameType.formula) {
+                    if (parent.nameType.formula) {
+                        return "(${constructedName.fullMarkedUpName.removeManuscript()})"
+                    }
                     return constructedName.fullMarkedUpName.removeManuscript()
                 }
                 return constructedName.simpleMarkedUpName.removeManuscript()

@@ -392,36 +392,38 @@ class NameService {
     }
 
     File checkAllNames() {
-        Closure query = { Map params ->
-            Name.listOrderById(params)
-        }
-
         File tempFile = File.createTempFile('name-check', 'txt')
-
-        chunkThis(1000, query) { List<Name> names, bottom, top ->
-            long start = System.currentTimeMillis()
-            Name.withSession { session ->
-                names.each { Name name ->
-                    try {
-                        Map constructedNames = nameConstructionService.constructName(name)
-                        String strippedName = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
-                        if (name.fullName != strippedName) {
-                            String msg = "$name.id, \"${name.nameType.name}\", \"${name.nameRank.name}\", \"$name.fullName\", \"${strippedName}\""
-                            log.info(msg)
-                            tempFile.append("$msg\n")
-                        }
-                    } catch (e) {
-                        String msg = "error constructing name $name : $e.message"
-                        log.error(msg)
-                        tempFile.append("$msg\n")
-                        e.printStackTrace()
-                    }
-                    name.discard()
-                }
-                session.clear()
+        runAsync {
+            Closure query = { Map params ->
+                Name.listOrderById(params)
             }
 
-            log.info "$top done. 1000 took ${System.currentTimeMillis() - start} ms"
+
+            chunkThis(1000, query) { List<Name> names, bottom, top ->
+                long start = System.currentTimeMillis()
+                Name.withSession { session ->
+                    names.each { Name name ->
+                        try {
+                            Map constructedNames = nameConstructionService.constructName(name)
+                            String strippedName = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
+                            if (name.fullName != strippedName) {
+                                String msg = "$name.id, \"${name.nameType.name}\", \"${name.nameRank.name}\", \"$name.fullName\", \"${strippedName}\""
+                                log.info(msg)
+                                tempFile.append("$msg\n")
+                            }
+                        } catch (e) {
+                            String msg = "error constructing name $name : $e.message"
+                            log.error(msg)
+                            tempFile.append("$msg\n")
+                            e.printStackTrace()
+                        }
+                        name.discard()
+                    }
+                    session.clear()
+                }
+
+                log.info "$top done. 1000 took ${System.currentTimeMillis() - start} ms"
+            }
         }
         return tempFile
     }

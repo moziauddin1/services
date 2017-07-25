@@ -57,6 +57,7 @@ class AdminController {
 
     @RequiresRoles('admin')
     checkNames() {
+        log.info "check all names"
         File tempFile = nameService.checkAllNames()
         render(file: tempFile, fileName: 'name-changes.csv', contentType: 'text/plain')
     }
