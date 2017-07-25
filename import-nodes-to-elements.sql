@@ -374,20 +374,36 @@ WHERE name_type.scientific
       AND parent.name_path <> '';
 
 -- 88888 repeatedly do this until all names have been joined to an APC parent (6 times as of writing)
-UPDATE name n
-SET name_path = parent.name_path || '/' || coalesce(n.name_element, '?'),
-  family_id   = parent.family_id
-FROM (SELECT DISTINCT (name_id)
-      FROM instance) AS apni_names,
-  name_type,
-  name parent
-WHERE n.id = name_id
-      AND name_type.id = n.name_type_id
-      AND name_type.scientific
-      AND n.name_path = ''
-      AND n.parent_id IS NOT NULL
-      AND parent.id = n.parent_id
-      AND parent.name_path <> '';
+CREATE FUNCTION join_non_apc_names_back_to_apc_names()
+  RETURNS VOID AS $$
+DECLARE
+BEGIN
+  LOOP
+    UPDATE name n
+    SET name_path = parent.name_path || '/' || coalesce(n.name_element, '?'),
+      family_id   = parent.family_id
+    FROM (SELECT DISTINCT (name_id)
+          FROM instance) AS apni_names,
+      name_type,
+      name parent
+    WHERE n.id = name_id
+          AND name_type.id = n.name_type_id
+          AND name_type.scientific
+          AND n.name_path = ''
+          AND n.parent_id IS NOT NULL
+          AND parent.id = n.parent_id
+          AND parent.name_path <> '';
+    IF NOT FOUND
+    THEN
+      RETURN;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT join_non_apc_names_back_to_apc_names();
+
+DROP FUNCTION join_non_apc_names_back_to_apc_names();
 
 -- set any family that hasn't got the family set to itself
 UPDATE name n
@@ -400,12 +416,28 @@ WHERE n.name_rank_id = rank.id
 -- 88888 now we repeatedly look at parent name to see if it has a family set and use that until we update none
 -- this uses names that don't have instances because some names with instances have name parents that do not have instances
 -- after this there are about 56 names (ranked family and below) with instances that don't have a family. see NSL-2440
-UPDATE name n
-SET family_id = parent.family_id
-FROM name parent
-WHERE n.parent_id = parent.id
-      AND n.family_id IS NULL
-      AND parent.family_id IS NOT NULL;
+CREATE FUNCTION link_back_missing_family_names()
+  RETURNS VOID AS $$
+DECLARE
+BEGIN
+  LOOP
+    UPDATE name n
+    SET family_id = parent.family_id
+    FROM name parent
+    WHERE n.parent_id = parent.id
+          AND n.family_id IS NULL
+          AND parent.family_id IS NOT NULL;
+    IF NOT FOUND
+    THEN
+      RETURN;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT link_back_missing_family_names();
+
+DROP FUNCTION link_back_missing_family_names();
 
 -- get the simple name with all it's synonyms in a string
 WITH synonym_strings AS
