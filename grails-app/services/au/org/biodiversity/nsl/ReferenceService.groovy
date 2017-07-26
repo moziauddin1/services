@@ -123,7 +123,7 @@ class ReferenceService {
                                 .join(' ')
                                 .removeFullStop()
                                 .wrap("<ref-${reference.refType.name.toLowerCase()}>", "</ref-${reference.refType.name.toLowerCase()}>")
-                                .wrap('<ref>', '</ref>')
+                                .wrap("<ref data-id='${reference.id}'>", '</ref>')
             assert result != 'true'
             return result
         }
