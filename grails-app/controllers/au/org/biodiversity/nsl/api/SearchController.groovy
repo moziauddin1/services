@@ -16,13 +16,7 @@
 
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.Arrangement
-import au.org.biodiversity.nsl.CsvRenderer
-import au.org.biodiversity.nsl.FlatViewService
-import au.org.biodiversity.nsl.Name
-import au.org.biodiversity.nsl.NameTagName
-import au.org.biodiversity.nsl.Node
-import au.org.biodiversity.nsl.UriNs
+import au.org.biodiversity.nsl.*
 import grails.converters.JSON
 import grails.converters.XML
 import org.apache.shiro.SecurityUtils
@@ -38,7 +32,7 @@ class SearchController implements RequestUtil {
         String referer = request.getHeader('Referer')
         String remoteIP = remoteAddress(request)
         log.info "Search params $params, Referer: ${referer}, Remote: ${remoteIP}"
-        max = max ?: 100;
+        max = max ?: 100
 
         if (!params.product && !SecurityUtils.subject?.authenticated) {
             params.product = configService.nameTreeName
@@ -65,7 +59,16 @@ class SearchController implements RequestUtil {
         if (incMap.isEmpty() && params.search != 'true' && params.advanced != 'true' && params.nameCheck != 'true') {
             String inc = g.cookie(name: 'searchInclude')
             if (inc) {
-                incMap = JSON.parse(inc) as Map
+                if (!inc.startsWith('{')) {
+                    inc = new String(inc.decodeBase64())
+                }
+                log.debug "cookie $inc"
+                try {
+                    incMap = JSON.parse(inc) as Map
+                } catch (e) {
+                    log.error "cookie $inc caused error $e.message"
+                    incMap = [scientific: 'on']
+                }
             } else {
                 incMap = [scientific: 'on']
             }
@@ -73,7 +76,8 @@ class SearchController implements RequestUtil {
 
         params.inc = incMap
 
-        Cookie incCookie = new Cookie("searchInclude", (incMap as JSON).toString())
+        String cookieData = (incMap as JSON).toString()
+        Cookie incCookie = new Cookie("searchInclude", cookieData.encodeAsBase64())
         incCookie.maxAge = 3600 //1 hour
         response.addCookie(incCookie)
 
@@ -140,7 +144,7 @@ class SearchController implements RequestUtil {
                     'http://biodiversity.org.au/voc/nsl/Tree#'            : 'nsl-tree',
                     'http://biodiversity.org.au/voc/nsl/APC#'             : 'nsl-apc',
                     'http://biodiversity.org.au/voc/nsl/Namespace#'       : 'nsl-ns'
-            ];
+            ]
 
             // if we have an item in UriNs, then it will override these handy prefixes.
 
