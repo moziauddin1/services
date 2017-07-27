@@ -162,7 +162,7 @@ class SearchService {
             and << "treeElement.treeVersion = :treeVersion"
 
             if (params.exclSynonym == 'on') {
-                and << "n = treeElement.name"
+                and << "n.id = treeElement.nameId"
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
