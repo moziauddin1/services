@@ -205,16 +205,6 @@
           <div class="panel-body">
             <ul class="">
               <li>
-                <div>
-                  Names not in APNI NTP: ${stats.namesNotInApniTreePath}<br>
-                  Names not in APC NTP: ${stats.namesNotInApcTreePath}
-                </div>
-                <a class=""
-                   href="${g.createLink(controller: "admin", action: "makeTreePaths")}">
-                  Remake all tree paths
-                </a>
-              </li>
-              <li>
                 <a class=""
                    href="${g.createLink(controller: "admin", action: "notifyMissingApniNames")}">
                   Add names not in APNI via notifications (${stats.namesNotInApni})

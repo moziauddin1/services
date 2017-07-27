@@ -16,13 +16,13 @@
 
 package au.org.biodiversity.nsl.api
 
-import org.apache.shiro.SecurityUtils
-import org.apache.shiro.authz.annotation.RequiresRoles
+import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.tree.*
 import grails.converters.JSON
 import grails.transaction.Transactional
 import grails.validation.Validateable
-import au.org.biodiversity.nsl.*
-import au.org.biodiversity.nsl.tree.*
+import org.apache.shiro.SecurityUtils
+import org.apache.shiro.authz.annotation.RequiresRoles
 import org.springframework.context.MessageSource
 import org.springframework.http.HttpStatus
 import org.springframework.validation.FieldError
@@ -38,7 +38,6 @@ class TreeEditController {
     TreeOperationsService treeOperationsService
     QueryService queryService
     ClassificationService classificationService
-    NameTreePathService nameTreePathService
     MessageSource messageSource
     UserWorkspaceManagerService userWorkspaceManagerService
     LinkService linkService
@@ -120,9 +119,6 @@ class TreeEditController {
         log.debug "treeViewService.getInstancePlacementInTree"
         Node currentNode = classificationService.isNameInClassification(p.instance.name, apc)
 
-        // if the instance is draft currentNode will be null and updateNameTreePathFromNode will do nothing and return null
-        nameTreePathService.updateNameTreePathFromNode(currentNode)
-
         Map nodePlacementInTree = treeViewService.getInstancePlacementInTree(apc, p.instance)
         result << nodePlacementInTree
 
@@ -179,7 +175,6 @@ class TreeEditController {
 
         def result = [success: true]
         log.debug "treeViewService.getInstancePlacementInTree"
-        nameTreePathService.removeNameTreePath(p.instance.name, apc)
         Map npt = treeViewService.getInstancePlacementInTree(apc, p.instance)
         result << npt
 

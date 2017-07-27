@@ -1,12 +1,13 @@
 package au.org.biodiversity.nsl
 
+import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 
 /**
  * The 2.0 Tree service. This service is the central location for all interaction with the tree.
  */
 @Transactional
-class TreeService {
+class TreeService implements ValidationUtils {
 
     /**
      * get the named tree. This is case insensitive
@@ -14,6 +15,7 @@ class TreeService {
      * @return tree or null if not found
      */
     Tree getTree(String name) {
+        mustHave('Tree name': name)
         Tree.findByNameIlike(name)
     }
 
@@ -24,7 +26,10 @@ class TreeService {
      * @return treeElement or null if not on the tree
      */
     TreeElement findCurrentElementForName(Name name, Tree tree) {
-        findElementForName(name, tree.currentTreeVersion)
+        if (name && tree) {
+            return findElementForName(name, tree.currentTreeVersion)
+        }
+        return null
     }
 
     /**
@@ -34,7 +39,10 @@ class TreeService {
      * @return treeElement or null if not on the tree
      */
     TreeElement findElementForName(Name name, TreeVersion treeVersion) {
-        TreeElement.findByNameIdAndTreeVersion(name.id, treeVersion)
+        if (name && treeVersion) {
+            return TreeElement.findByNameIdAndTreeVersion(name.id, treeVersion)
+        }
+        return null
     }
 
     /**
@@ -44,7 +52,10 @@ class TreeService {
      * @return treeElement or null if not on the tree
      */
     TreeElement findCurrentElementForInstance(Instance instance, Tree tree) {
-        TreeElement.findByInstanceIdAndTreeVersion(instance.id, tree.currentTreeVersion)
+        if (instance && tree) {
+            return TreeElement.findByInstanceIdAndTreeVersion(instance.id, tree.currentTreeVersion)
+        }
+        return null
     }
 
     /**
@@ -54,7 +65,10 @@ class TreeService {
      * @return treeElement or null if not on the tree
      */
     TreeElement findElementForInstance(Instance instance, TreeVersion treeVersion) {
-        TreeElement.findByInstanceIdAndTreeVersion(instance.id, treeVersion)
+        if (instance && treeVersion) {
+            return TreeElement.findByInstanceIdAndTreeVersion(instance.id, treeVersion)
+        }
+        return null
     }
 
     /**
@@ -63,6 +77,7 @@ class TreeService {
      * @return List of TreeElements
      */
     List<TreeElement> getElementPath(TreeElement treeElement) {
+        mustHave(treeElement: treeElement)
         treeElement.treePath.split('/').collect { String stringElementId ->
             TreeElement key = new TreeElement(treeVersion: treeElement.treeVersion, treeElementId: stringElementId.toBigInteger())
             TreeElement.get(key)

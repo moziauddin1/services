@@ -28,9 +28,7 @@ class NameService {
     def restCallService
     def classificationService
     def nameConstructionService
-    def nameTreePathService
     def linkService
-    def treeOperationsService
     Scheduler quartzScheduler
 
     Set<String> restClients = []
@@ -42,14 +40,6 @@ class NameService {
     static String CREATED_EVENT = 'created'
     static String UPDATED_EVENT = 'updated'
 
-    /**
-     * Check if the parent of this name has changed and if so update the APNI tree and the NameTreePath then update
-     * the NslSimpleName record.
-     * @param name
-     * @param note
-     * @return
-     */
-
     def nameUpdated(Name name, Notification note) {
         if (seen.contains(note.id)) {
             log.info "seen note, skipping $note"
@@ -60,13 +50,6 @@ class NameService {
         notifyNameEvent(name, UPDATED_EVENT)
         name.discard() // make sure we don't update name in this TX
     }
-
-    /**
-     Get the name and its immediate parent in APNI
-     place the name in APNI (background task?)
-     make a name_tree_path for the name
-     Intermediate step - create parent name part, and second Parent name part
-     **/
 
     def nameCreated(Name name, Notification note) {
         if (seen.contains(note.id)) {
@@ -89,10 +72,7 @@ class NameService {
      * 2. Editor calls delete on services (with apiKey and username of user doing the delete)
      * 3. Services does check to see if OK to delete, i.e. no instances/usages, if not respond to editor with error message
      * 4. Services calls the mapper and marks the identifier as deleted
-     * 5. Somehow 'remove' the name from the APNI tree, and any other tree it is in**
-     * 6. delete any name tree paths
-     * 7. Services delete the NslSimpleName, and Name entries notify NslSimpleName subscribers that the name has been deleted
-     * 8. Services respond to editor that name has been deleted
+     * 5. Services respond to editor that name has been deleted
      *
 
      *
@@ -106,7 +86,6 @@ class NameService {
             try {
                 Name.withTransaction { TransactionStatus t ->
                     name.refresh()
-                    NameTreePath.findAllByName(name)*.delete()
                     Comment.findAllByName(name)*.delete()
                     notifyNameEvent(name, 'deleted')
                     NamePart.findAllByName(name)*.delete()
@@ -412,15 +391,6 @@ where n.simpleName is null
 or n.simpleNameHtml is null
 or n.fullName is null
 or n.fullNameHtml is null""")?.first() as Integer
-    }
-
-    Integer countNamesNotInTree(String treeLabel) {
-        Name.executeQuery("""select count(n) from Name n
-where n.parent is not null
-and n.nameType.name <> 'common'
-and not exists (select t from Node t where cast(n.id as string) = t.nameUriIdPart and t.root.label = '${
-            treeLabel
-        }')""")?.first() as Integer
     }
 
     static chunkThis(Integer chunkSize, Closure query, Closure work) {

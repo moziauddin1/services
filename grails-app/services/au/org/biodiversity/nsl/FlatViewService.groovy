@@ -26,6 +26,7 @@ package au.org.biodiversity.nsl
 import grails.transaction.Transactional
 import groovy.sql.GroovyResultSet
 import groovy.sql.Sql
+import sun.reflect.generics.reflectiveObjects.NotImplementedException
 
 
 @Transactional
@@ -260,6 +261,7 @@ FROM apni_names
     }
 
     def createNameView(String namespace, Sql sql) {
+        throw new NotImplementedException()   //todo rewrite view
         createView(namespace, NAME_VIEW, sql, nameView)
     }
 
@@ -467,6 +469,7 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
     }
 
     def createTaxonView(String namespace, Sql sql) {
+        throw new NotImplementedException() //todo rewrite view
         createView(namespace, TAXON_VIEW, sql, taxonView)
     }
 

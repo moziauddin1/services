@@ -61,7 +61,16 @@ class SearchController implements RequestUtil {
         if (incMap.isEmpty() && params.search != 'true' && params.advanced != 'true' && params.nameCheck != 'true') {
             String inc = g.cookie(name: 'searchInclude')
             if (inc) {
+                if (!inc.startsWith('{')) {
+                    inc = new String(inc.decodeBase64())
+                }
+                log.debug "cookie $inc"
+                try {
                 incMap = JSON.parse(inc) as Map
+                } catch (e) {
+                    log.error "cookie $inc caused error $e.message"
+                    incMap = [scientific: 'on']
+                }
             } else {
                 incMap = [scientific: 'on']
             }
@@ -69,7 +78,8 @@ class SearchController implements RequestUtil {
 
         params.inc = incMap
 
-        Cookie incCookie = new Cookie("searchInclude", (incMap as JSON).toString())
+        String cookieData = (incMap as JSON).toString()
+        Cookie incCookie = new Cookie("searchInclude", cookieData.encodeAsBase64())
         incCookie.maxAge = 3600 //1 hour
         response.addCookie(incCookie)
 

@@ -26,9 +26,7 @@ import static org.springframework.http.HttpStatus.OK
 @Transactional
 class AdminController {
 
-    def nameConstructionService
     def nameService
-    def nameTreePathService
     def apcTreeService
     def referenceService
     def instanceService
@@ -45,9 +43,6 @@ class AdminController {
 
 
         stats.namesNeedingConstruction = nameService.countIncompleteNameStrings()
-        stats.namesNotInNameTree = nameService.countNamesNotInTree(configService.nameTreeName)
-        stats.namesNotInApniTreePath = nameTreePathService.treePathReport(configService.nameTreeName)
-        stats.namesNotInApcTreePath = nameTreePathService.treePathReport(configService.classificationTreeName)
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         Boolean servicing = adminService.serviceMode()
         String dbInfo = postgresInfoService.connectionInfo.toString()
@@ -102,14 +97,6 @@ class AdminController {
     replaceReferenceTitleXics() {
         referenceService.replaceXICSinReferenceTitles()
         flash.message = "replacing XICs in reference titles."
-        redirect(action: 'index')
-    }
-
-    @RequiresRoles('admin')
-    makeTreePaths() {
-        log.debug "make all tree paths. ${request.getRemoteAddr()}"
-        nameTreePathService.makeAllTreePathsSql()
-        flash.message = "Making all tree paths"
         redirect(action: 'index')
     }
 

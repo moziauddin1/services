@@ -16,6 +16,10 @@
 
 package au.org.biodiversity.nsl
 /**
+ * This is best used as a Category e.g.
+ *
+ * use(RankUtils) {*     name.nameAtRankOrLower('Genus');
+ *}*
  * User: pmcneil
  * Date: 3/12/14
  *
@@ -57,20 +61,12 @@ class RankUtils {
      * @param rankName
      * @return true if rank is lower than the rank with the name rankName
      */
-    static Boolean rankLowerThan(NameRank rank, String rankName) {
-        return rank.sortOrder < 500 && rankOrder(rankName) < rank.sortOrder
-    }
-
     static Boolean nameAtRankOrHigher(Name name, String rankName) {
         return rankOrder(rankName) >= name.nameRank.sortOrder
     }
 
     static Boolean nameAtRankOrLower(Name name, String rankName) {
         return rankOrder(rankName) <= name.nameRank.sortOrder
-    }
-
-    static Boolean nameAtRankOrLower(Name name, NameRank rank) {
-        return rank.sortOrder <= name.nameRank.sortOrder
     }
 
     static Boolean nameLowerThanRank(Name name, String rankName) {
@@ -85,50 +81,8 @@ class RankUtils {
         return rankOrder(rankName) > name.nameRank.sortOrder
     }
 
-    static Integer getRankOrder(String rankName) {
-        rankOrder(rankName)
-    }
-
-    static Name getParentOfRank(Name name, String rank) {
-        getParentOfRank(name, rank, 'APNI')
-    }
-
-    static Name getParentOfRank(Name name, String rank, String treeName) {
-        if(name.parent?.nameRank?.name == rank) {
-            return name.parent
-        }
-        NameTreePath nameTreePath = NameTreePathService.findCurrentNameTreePath(name, treeName)
-        if (nameTreePath) {
-            List<Name> namesInBranch = nameTreePath.namesInBranch()
-            return namesInBranch.reverse().find { (it && it.nameRank.name == rank) }
-        }
-        return null
-    }
-
-    static Name getFamily(Name name, String treeName) {
-        NameTreePath nameTreePath = NameTreePathService.findCurrentNameTreePath(name, treeName)
-        return nameTreePath.family
-    }
-
-    static Map<String, Name> getFamilyByTrees(Name name) {
-        List<NameTreePath> paths = NameTreePath.findAllByName(name)
-        Map familyTreeMap = [:]
-        paths.each {NameTreePath nameTreePath ->
-            familyTreeMap.put(nameTreePath.tree.label,  nameTreePath.family)
-        }
-        return familyTreeMap
-    }
-
-    static previousRank(NameRank rank) {
-        return NameRank.findBySortOrderLessThan(rank.sortOrder, [sort: 'sortOrder', order: 'desc'])
-    }
-
     static nextMajorRank(NameRank rank, Boolean up = true) {
         return NameRank.findBySortOrderLessThanAndMajor(rank.sortOrder, true, [sort: 'sortOrder', order: up ? 'desc' : 'asc'])
-    }
-
-    static parentOrHigher(NameRank rank) {
-        rank.parentRank ?: previousRank(rank)
     }
 
     static parentOrMajor(NameRank rank) {
@@ -142,9 +96,4 @@ class RankUtils {
     static isRankedLowerThan(Name a, Name b) {
         !isRankedHigherThan(a, b)
     }
-
-    static isRankedEqualTo(Name a, Name b) {
-        a.nameRank.sortOrder == b.nameRank.sortOrder
-    }
-
 }

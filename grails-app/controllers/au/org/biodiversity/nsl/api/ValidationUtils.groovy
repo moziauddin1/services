@@ -16,4 +16,11 @@ trait ValidationUtils {
         return work()
     }
 
+    static mustHave(Map things) {
+        things.each { k, v ->
+            if (!v) {
+                throw new IllegalArgumentException("$k must not be null")
+            }
+        }
+    }
 }
