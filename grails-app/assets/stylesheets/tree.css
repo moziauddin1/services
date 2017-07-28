@@ -1,0 +1,103 @@
+div.tr {
+    width: 100%;
+    white-space: nowrap;
+}
+
+div.tr data {
+    display: inline-block;
+    white-space: normal;
+    padding-bottom: 0.2em;
+    padding-top: 0.2em;
+    color: #3c3c3c;
+}
+
+div.tr data scientific {
+    font-weight: bold;
+    color: black;
+}
+
+div.tr data scientific authors {
+    font-weight: bold;
+    color: #2b669a;
+}
+
+div.tr data citation {
+    color: grey;
+}
+
+div.indent div.tr x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent1 div.tr > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent2 div.tr > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent3 div.tr > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent4 div.tr > x > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent5 div.tr > x > x > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent6 div.tr > x > x > x > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent7 div.tr > x > x > x > x > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent8 div.tr > x > x > x > x > x > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent9 div.tr > x > x > x > x > x > x > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}
+
+div.indent10 div.tr > x > x > x > x > x > x > x > x > x x {
+    display: inline-block;
+    border-left: 1px solid lightblue;
+    font-style: normal;
+    padding-left: 1.4em;
+}

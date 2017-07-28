@@ -41,6 +41,8 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Reference) { Reference reference -> marshallReference(reference) }
         JSON.registerObjectMarshaller(Author) { Author author -> marshallAuthor(author) }
         JSON.registerObjectMarshaller(InstanceNote) { InstanceNote instanceNote -> marshallInstanceNote(instanceNote) }
+        JSON.registerObjectMarshaller(TreeElement) { TreeElement treeElement -> marshallTreeElement(treeElement) }
+
         JSON.registerObjectMarshaller(Node) { Node node -> marshallNode(node) }
         JSON.registerObjectMarshaller(Link) { Link link -> marshallLink(link) }
         JSON.registerObjectMarshaller(Arrangement) { Arrangement arrangement -> marshallArrangement(arrangement) }
@@ -180,10 +182,9 @@ class JsonRendererService {
         target = initializeAndUnproxy(target)
         def links = getLinks(target)
         Map inner = [
-                class    : target.class.name,
-                _links   : links,
-                audit    : getAudit(target),
-                namespace: target.namespace.name
+                class : target.class.name,
+                _links: links,
+                audit : getAudit(target),
         ]
         String targetKey = target.class.simpleName.toLowerCase()
         Map outer = [:]
@@ -383,6 +384,41 @@ class JsonRendererService {
                 instance       : getBriefInstance(instanceNote.instance)
         ]
     }
+
+    Map marshallTree(Tree tree) {
+        tree = initializeAndUnproxy(tree)
+    }
+
+    Map marshallTreeVersion(TreeVersion treeVersion) {
+        treeVersion = initializeAndUnproxy(treeVersion)
+    }
+
+    Map marshallTreeElement(TreeElement treeElement) {
+        treeElement = initializeAndUnproxy(treeElement)
+        return [treeElement:
+                        [
+                                class        : treeElement.class.name,
+                                _links       : [
+                                        elementLink      : treeElement.elementLink,
+                                        parentElementLink: treeElement.parentElement.elementLink,
+                                        nameLink         : treeElement.nameLink,
+                                        instanceLink     : treeElement.instanceLink,
+                                        sourceElementLink: treeElement.sourceElementLink,
+                                ],
+                                simpleName   : treeElement.simpleName,
+                                rankPath     : treeElement.rankPath,
+                                namePath     : treeElement.namePath,
+                                names        : treeElement.names,
+                                displayString: treeElement.displayString,
+                                sourceShard  : treeElement.sourceShard,
+                                synonyms     : treeElement.synonyms,
+                                profile      : treeElement.profile
+                        ]
+        ]
+
+    }
+
+    /*** Old tree ***************************************/
 
     Map marshallLink(Link link) {
         // links do not have mapper ids in and of themselves.
@@ -598,6 +634,8 @@ class JsonRendererService {
                 nested    : msg.nested.collect { Message it -> marshallTreeServiceMessage(it) }
         ]
     }
+
+    /** ****************************************************/
 
     @SuppressWarnings("GroovyAssignabilityCheck")
     static <T> T initializeAndUnproxy(T entity) {

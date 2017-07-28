@@ -475,3 +475,28 @@ $$;
 
 UPDATE tree_element
 SET synonyms = synonyms_as_jsonb(tree_version_id, tree_element_id);
+
+DROP FUNCTION IF EXISTS profile_as_jsonb( BIGINT, BIGINT );
+CREATE FUNCTION profile_as_jsonb(version_id BIGINT, element_id BIGINT)
+  RETURNS JSONB
+LANGUAGE SQL
+AS $$
+SELECT jsonb_object_agg(key.name, jsonb_build_object(
+    'value', note.value,
+    'created_at', note.created_at,
+    'created_by', note.created_by,
+    'updated_at', note.updated_at,
+    'updated_by', note.updated_by,
+    'source_id', note.source_id,
+    'source_system', note.source_system
+))
+FROM tree_element element
+  JOIN instance i ON element.instance_id = i.id
+  JOIN instance_note note ON i.id = note.instance_id
+  JOIN instance_note_key key ON note.instance_note_key_id = key.id
+WHERE tree_version_id = version_id
+      AND tree_element_id = element_id;
+$$;
+
+UPDATE tree_element
+SET profile = profile_as_jsonb(tree_version_id, tree_element_id);

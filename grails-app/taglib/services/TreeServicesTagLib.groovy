@@ -17,6 +17,9 @@
 package services
 
 import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.TreeElement
+import au.org.biodiversity.nsl.TreeService
+import au.org.biodiversity.nsl.TreeVersion
 import au.org.biodiversity.nsl.tree.QueryService
 
 class TreeServicesTagLib {
@@ -24,6 +27,7 @@ class TreeServicesTagLib {
     static defaultEncodeAs = [taglib: 'raw']
     static namespace = "tree"
 
+    TreeService treeService
     QueryService queryService
 
     //static encodeAsForTags = [tagName: [taglib:'html'], otherTagName: [taglib:'none']]
@@ -31,6 +35,49 @@ class TreeServicesTagLib {
     def getNodeNameAndInstance = { attrs, body ->
         Node node = attrs.node
         out << body(name: queryService.resolveName(node), instance: queryService.resolveInstance(node))
+    }
+
+    def collapsedIndent = { attrs ->
+        TreeElement element = attrs.element
+        int depth = treeService.depth(element)
+        out << "indent$depth"
+    }
+
+    def elementPath = { attrs, body ->
+        TreeElement element = attrs.element
+        String var = attrs.var
+        List<TreeElement> path = treeService.getElementPath(element)
+        String separator = ''
+        path.each { TreeElement pathElement ->
+            out << separator
+            out << body("$var": pathElement)
+            separator = attrs.separator
+        }
+    }
+
+    def profile = { attrs ->
+        Map profileData = attrs.profile
+        out << "<dl class='dl-horizontal'>"
+        profileData.each { k, v ->
+            out << "<dt>$k</dt><dd>${v.value}</dd>"
+        }
+    }
+
+    def versionStatus = { attrs ->
+        TreeVersion treeVersion = attrs.version
+        if (treeVersion == treeVersion.tree.currentTreeVersion) {
+            out << "current"
+        } else if (!treeVersion.published) {
+            out << "draft"
+        } else {
+            out << "old"
+        }
+    }
+
+    def versionStats = { attrs, body ->
+        TreeVersion treeVersion = attrs.version
+        Integer count = TreeElement.countByTreeVersion(treeVersion)
+        out << body([elements: count])
     }
 
 }

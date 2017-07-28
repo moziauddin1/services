@@ -84,4 +84,76 @@ class TreeService implements ValidationUtils {
         }
     }
 
+    /**
+     * Get the child tree Elements of this treeElement
+     * @param treeElement
+     * @return
+     */
+    List<TreeElement> childElements(TreeElement treeElement) {
+        mustHave(treeElement: treeElement)
+        TreeElement.findAllByTreeVersionAndTreePathLike(treeElement.treeVersion, "$treeElement.treePath%", [sort: 'namePath', order: 'asc'])
+    }
+
+    /**
+     * Get just the display string and link to the child tree elements.
+     * @param treeElement
+     * @return [[displayString , link], ...]
+     */
+    List<List> childDisplayElements(TreeElement treeElement) {
+        mustHave(treeElement: treeElement)
+        log.debug("getting $treeElement.treePath%")
+        TreeElement.executeQuery('''
+select displayString, elementLink 
+    from TreeElement 
+    where treeVersion = :version and treePath like :prefix 
+    order by namePath
+''', [version: treeElement.treeVersion, prefix: "$treeElement.treePath%"]) as List<List>
+    }
+
+    /**
+     * Get just the display string and link to the child tree elements to depth
+     * @param treeElement
+     * @return [[displayString , link], ...]
+     */
+    List<List> childDisplayElementsToDepth(TreeElement treeElement, int depth) {
+        mustHave(treeElement: treeElement)
+        String prefix = "^${treeElement.treePath}(/[^/]*){0,$depth}\$"
+        log.debug("getting $prefix")
+        TreeElement.executeQuery('''
+select displayString, elementLink 
+    from TreeElement 
+    where treeVersion = :version 
+        and regex(treePath, :prefix) = true 
+    order by namePath
+''', [version: treeElement.treeVersion, prefix: prefix]) as List<List>
+    }
+
+    /**
+     * Get just the display string and link to the child tree elements to depth
+     * @param treeElement
+     * @return [[displayString , link], ...]
+     */
+    List<List> displayElementsToDepth(TreeVersion treeVersion, int depth) {
+        mustHave(treeElement: treeVersion)
+        String prefix = "^[^/]*(/[^/]*){0,$depth}\$"
+        log.debug("getting $prefix")
+        TreeElement.executeQuery('''
+select displayString, elementLink 
+    from TreeElement 
+    where treeVersion = :version 
+        and regex(treePath, :prefix) = true 
+    order by namePath
+''', [version: treeVersion, prefix: prefix]) as List<List>
+    }
+
+    /**
+     * Return the depth of this treeElement down the tree , i.e. the number of levels down the tree.
+     * @param treeElement
+     * @return
+     */
+    Integer depth(TreeElement treeElement) {
+        mustHave(treeElement: treeElement)
+        treeElement.treePath.split('/').size()
+    }
+
 }

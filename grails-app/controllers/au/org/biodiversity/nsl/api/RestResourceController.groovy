@@ -30,6 +30,7 @@ class RestResourceController {
     GrailsApplication grailsApplication
     def linkService
     def apniFormatService
+    def treeService
 
     static allowedMethods = ['*': "GET", 'bulkFetch': 'POST']
 
@@ -86,23 +87,55 @@ class RestResourceController {
     }
 
     @Timed()
-    def tree(String shard, Long idNumber) {
-        Arrangement tree = Arrangement.get(idNumber)
-        if (tree == null) {
-            return notFound("No tree in $shard with id $idNumber found")
+    def tree(Long version) {
+        TreeVersion treeVersion = TreeVersion.get(version)
+        if (treeVersion == null) {
+            return notFound("We couldn't find a tree version with id $version")
         }
-        def links = linkService.getLinksForObject(tree)
-        respond tree, [model: [tree: tree, links: links], status: OK]
+        List<TreeVersion> versions = TreeVersion.findAllByTree(treeVersion.tree, [sort: 'id', order: 'desc'])
+        List<List> children = treeService.displayElementsToDepth(treeVersion, 4)
+        respond treeVersion, [model: [treeVersion: treeVersion, versions: versions, children: children], status: OK]
     }
 
     @Timed()
-    def node(String shard, Long idNumber) {
-        Node node = Node.get(idNumber)
-        if (node == null) {
-            return notFound("No node in $shard with id $idNumber found")
+    def treeElement(Long version, Long element) {
+        TreeElement treeElement = firstResult(TreeElement.executeQuery('select e from TreeElement e where e.treeVersion.id = :versionNumber and e.treeElementId = :id',
+                [id: element, versionNumber: version])) as TreeElement
+
+        if (treeElement) {
+            List<List> children = treeService.childDisplayElements(treeElement)
+            List<TreeElement> path = treeService.getElementPath(treeElement)
+            respond(treeElement, [model: [treeElement: treeElement, path: path, children: children, status: OK]])
+            return
         }
-        def links = linkService.getLinksForObject(node)
-        respond node, [model: [node: node, links: links], status: OK]
+        notFound("Couldn't find element $element in tree version $version.")
+    }
+
+    private static firstResult(List list) {
+        if (!list.empty) {
+            return list.first()
+        }
+        return null
+    }
+
+    /**
+     * This endpoint is a transation from noe to tree_element. Node id's really only gave you access to the latest
+     * version of the tree that the node participates in, not the tree from the point in time that it was referenced.
+     * The tree below the node will look the same though the rest of the tree around the node may have changed.
+     *
+     * Get the latest version of the the tree element with the tree element id given
+     * @param shard
+     * @param idNumber
+     * @return
+     */
+    @Timed()
+    def node(String shard, Long idNumber) {
+        Long latestVersion = TreeElement.executeQuery('select max(e.treeVersion.id) from TreeElement e where e.treeElementId = :id',
+                [id: idNumber]).first() as Long
+        if (latestVersion) {
+            forward(action: 'treeElement', params: [version: latestVersion, element: idNumber])
+        }
+        notFound("No node in $shard with id $idNumber found")
     }
 
     @Timed()
@@ -121,7 +154,7 @@ class RestResourceController {
     @Transactional
     def bulkFetch() {
         log.debug "Bulk Fetch request: $request.JSON"
-        return render (request.JSON.collect { uri -> linkService.getObjectForLink(uri as String) } as JSON)
+        return render(request.JSON.collect { uri -> linkService.getObjectForLink(uri as String) } as JSON)
     }
 
     private notFound(String errorText) {
