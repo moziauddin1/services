@@ -32,6 +32,8 @@ class JsonRendererService {
     def grailsApplication
     def linkService
     def instanceService
+    def treeService
+
     MessageSource messageSource
 
     def registerObjectMashallers() {
@@ -80,6 +82,21 @@ class JsonRendererService {
             return null
         }
     }
+
+    private List treeElementChildren(TreeElement treeElement) {
+        List childDisplayElements = treeService.childDisplayElements(treeElement)
+        List kids = []
+        childDisplayElements.each { items ->
+            kids.add([
+                    displayString: items[0],
+                    elementLink  : items[1],
+                    nameLink     : items[2],
+                    instanceLink : items[3]
+            ])
+        }
+        return kids
+    }
+
 
     Map getBriefNamespace(Namespace namespace) {
         [
@@ -400,7 +417,7 @@ class JsonRendererService {
                                 class        : treeElement.class.name,
                                 _links       : [
                                         elementLink      : treeElement.elementLink,
-                                        parentElementLink: treeElement.parentElement.elementLink,
+                                        parentElementLink: treeElement.parentElement?.elementLink,
                                         nameLink         : treeElement.nameLink,
                                         instanceLink     : treeElement.instanceLink,
                                         sourceElementLink: treeElement.sourceElementLink,
@@ -412,7 +429,8 @@ class JsonRendererService {
                                 displayString: treeElement.displayString,
                                 sourceShard  : treeElement.sourceShard,
                                 synonyms     : treeElement.synonyms,
-                                profile      : treeElement.profile
+                                profile      : treeElement.profile,
+                                children     : treeElementChildren(treeElement)
                         ]
         ]
 

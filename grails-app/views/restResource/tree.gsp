@@ -34,7 +34,7 @@
       <tree:versionStats version="${treeVersion}">
         ${elements} elements
       </tree:versionStats>
-      <a href="${treeVersion.id}">
+      <a href='${createLink(uri: "/tree/$treeVersion.id")}'>
         published ${treeVersion.publishedAt.dateString} by ${treeVersion.publishedBy}
       </a>
 
@@ -52,7 +52,7 @@
           ${elements} elements
         </tree:versionStats>
 
-        <a href="${currentTreeVersion.id}">
+        <a href='${createLink(uri: "/tree/$currentTreeVersion.id")}'>
           published ${currentTreeVersion.publishedAt.dateString} by ${currentTreeVersion.publishedBy}
         </a>
 
@@ -64,13 +64,16 @@
 
     <div>
       <h3>Other versions</h3>
-      <ul>
+      <table class="table">
+        <tr><th>Version</th><th>published</th><th>Notes</th></tr>
         <g:each in="${versions}" var="version">
-          <li><a
-              href="${version.id}">${version.id} published ${version.publishedAt.dateString} Notes: ${version.logEntry}</a>
-          </li>
+          <tr>
+            <td><a href='${createLink(uri: "/tree/$version.id")}'>${version.id}</a></td>
+            <td>${version.publishedAt.dateString}</td>
+            <td>${version.logEntry}</td>
+          </tr>
         </g:each>
-      </ul>
+      </table>
     </div>
 
   </div>

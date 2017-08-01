@@ -39,13 +39,19 @@
       <a href="${pathElement.elementLink}">${pathElement.simpleName}</a>
     </tree:elementPath>
     <a href="${treeElement.elementLink}">${raw(treeElement.displayString)}</a>
+    <span class="text-info">${children.size() - 1} sub taxa</span>
     <br>
     <tree:profile profile="${treeElement.profile}"/>
   </div>
 
   <div class="${tree.collapsedIndent(element: treeElement)}">
     <g:each in="${children}" var="childElement">
-      <a href="${childElement[1]}">${raw(childElement[0])}</a>
+      <div class="wrap">
+        <a href="${childElement[1]}">${raw(childElement[0])}</a>
+        <a class="vertbar" href="${childElement[2]}/api/apni-format" title="View name in APNI format.">
+          <i class="fa fa-list-alt see-through"></i>
+        </a>
+      </div>
     </g:each>
   </div>
 </div>

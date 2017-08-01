@@ -210,36 +210,36 @@ INSERT INTO tree_element
  updated_at,
  updated_by)
   (SELECT
-     v.id                                                                    AS tree_version_id,
-     el_data.node_id                                                         AS tree_element_id,
-     0 :: BIGINT                                                             AS lock_version,
-     el_data.excluded                                                        AS excluded,
-     el_data.display                                                         AS display_string,
-     'http://' || host.host_name || '/node/apni/' || el_data.node_id         AS element_link,
-     el_data.instance_id :: BIGINT                                           AS instance_id,
-     'http://' || host.host_name || '/instance/apni/' || el_data.instance_id AS instance_link,
-     el_data.name_id :: BIGINT                                               AS name_id,
-     'http://' || host.host_name || '/name/apni/' || el_data.name_id         AS name_link,
+     v.id                                                                      AS tree_version_id,
+     el_data.node_id                                                           AS tree_element_id,
+     0 :: BIGINT                                                               AS lock_version,
+     el_data.excluded                                                          AS excluded,
+     el_data.display                                                           AS display_string,
+     'http://' || host.host_name || '/tree/' || v.id || '/' || el_data.node_id AS element_link,
+     el_data.instance_id :: BIGINT                                             AS instance_id,
+     'http://' || host.host_name || '/instance/apni/' || el_data.instance_id   AS instance_link,
+     el_data.name_id :: BIGINT                                                 AS name_id,
+     'http://' || host.host_name || '/name/apni/' || el_data.name_id           AS name_link,
      CASE WHEN el_data.parent_id IS NOT NULL AND el_data.parent_id != dtn.latest_node_id
        THEN
          v.id
      ELSE NULL :: BIGINT
-     END                                                                     AS parentversionid,
+     END                                                                       AS parentversionid,
      CASE WHEN el_data.parent_id IS NOT NULL AND el_data.parent_id != dtn.latest_node_id
        THEN
          el_data.parent_id :: BIGINT
      ELSE NULL :: BIGINT
-     END                                                                     AS parentelementid,
-     NULL                                                                    AS previousversionid,
-     NULL                                                                    AS previouselementid,
-     ('{}' :: JSONB)                                                         AS profile,
-     el_data.rank_path :: JSONB                                              AS rank_path,
-     el_data.simple_name                                                     AS simple_name,
-     el_data.tree_path                                                       AS tree_path,
-     el_data.name_path                                                       AS name_path,
-     'APNI'                                                                  AS source_shard,
-     v.published_at                                                          AS updated_at,
-     v.published_by                                                          AS updated_by
+     END                                                                       AS parentelementid,
+     NULL                                                                      AS previousversionid,
+     NULL                                                                      AS previouselementid,
+     ('{}' :: JSONB)                                                           AS profile,
+     el_data.rank_path :: JSONB                                                AS rank_path,
+     el_data.simple_name                                                       AS simple_name,
+     el_data.tree_path                                                         AS tree_path,
+     el_data.name_path                                                         AS name_path,
+     'APNI'                                                                    AS source_shard,
+     v.published_at                                                            AS updated_at,
+     v.published_by                                                            AS updated_by
    FROM daily_top_nodes('APC', '2016-01-01') AS dtn,
      tree_version v,
          tree_element_data_from_node(dtn.latest_node_id) AS el_data,

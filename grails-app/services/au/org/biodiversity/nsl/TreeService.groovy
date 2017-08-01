@@ -81,7 +81,7 @@ class TreeService implements ValidationUtils {
         treeElement.treePath.split('/').collect { String stringElementId ->
             TreeElement key = new TreeElement(treeVersion: treeElement.treeVersion, treeElementId: stringElementId.toBigInteger())
             TreeElement.get(key)
-        }
+        }.findAll { it }
     }
 
     /**
@@ -97,13 +97,13 @@ class TreeService implements ValidationUtils {
     /**
      * Get just the display string and link to the child tree elements.
      * @param treeElement
-     * @return [[displayString , link], ...]
+     * @return [[displayString , link, name link, instance link], ...]
      */
     List<List> childDisplayElements(TreeElement treeElement) {
         mustHave(treeElement: treeElement)
         log.debug("getting $treeElement.treePath%")
         TreeElement.executeQuery('''
-select displayString, elementLink 
+select displayString, elementLink, nameLink, instanceLink 
     from TreeElement 
     where treeVersion = :version and treePath like :prefix 
     order by namePath

@@ -1,5 +1,6 @@
+div.wrap,
 div.tr {
-    width: 100%;
+    width: 90%;
     white-space: nowrap;
 }
 
@@ -100,4 +101,10 @@ div.indent10 div.tr > x > x > x > x > x > x > x > x > x x {
     border-left: 1px solid lightblue;
     font-style: normal;
     padding-left: 1.4em;
+}
+
+/* add links to div.tr line by wrapping it with another div */
+div.wrap div.tr {
+    width: auto;
+    display: inline-block;
 }
