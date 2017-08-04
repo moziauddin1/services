@@ -18,7 +18,6 @@ package au.org.biodiversity.nsl
 
 class NameConstructionService {
 
-    def classificationService
     static transactional = false
 
     static String stripMarkUp(String string) {

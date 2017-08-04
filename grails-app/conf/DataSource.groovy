@@ -67,7 +67,7 @@ environments {
             password = "nsldev"
             dialect = "au.org.biodiversity.nsl.ExtendedPostgreSQLDialect"
 //            dbCreate = "update"
-            url = "jdbc:postgresql://localhost:5432/nsl-test"
+            url = "jdbc:postgresql://localhost:5432/nsl"
 //            formatSql = true
 //            logSql = true
             //noinspection GroovyAssignabilityCheck

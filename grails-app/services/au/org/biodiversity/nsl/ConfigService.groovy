@@ -35,6 +35,8 @@ class ConfigService {
 
     def grailsApplication
 
+    private String nameSpaceName
+
     private static String getShardConfigOrfail(String key) {
         String value = ShardConfig.findByName(key)?.value
         if (!value) {
@@ -43,8 +45,15 @@ class ConfigService {
         return value
     }
 
+    String getNameSpaceName() {
+        if (!nameSpaceName) {
+            nameSpaceName = getShardConfigOrfail('name space')
+        }
+        return nameSpaceName
+    }
+
     Namespace getNameSpace() {
-        String nameSpaceName = getShardConfigOrfail('name space')
+        nameSpaceName = getNameSpaceName()
         Namespace nameSpace = Namespace.findByName(nameSpaceName)
         if (!nameSpace) {
             log.error "Namespace not correctly set in config. Add 'name space' to shard_config, and make sure Namespace exists."

@@ -18,6 +18,9 @@ package au.org.biodiversity.nsl
 
 import grails.plugins.rest.client.RestBuilder
 import grails.plugins.rest.client.RestResponse
+import org.codehaus.groovy.grails.web.json.JSONArray
+import org.codehaus.groovy.grails.web.json.JSONElement
+import org.codehaus.groovy.grails.web.json.JSONObject
 import org.springframework.web.client.ResourceAccessException
 
 /**
@@ -33,53 +36,166 @@ class RestCallService {
 
     private RestBuilder rest = new RestBuilder(proxy: Proxy.NO_PROXY)
 
-    def get(String uri) throws RestCallException {
-        log.debug "get json ${uri}"
-        withRest {
-            return rest.get(uri) {
-                header 'Accept', "application/json"
-            }
-        }
-    }
-
-    RestResponse nakedGet(String uri) {
-        log.debug "get json ${uri}"
+    /**
+     * Get data from a URL. If you're getting JSON data use the json method
+     * @param uri
+     * @return RestResponse
+     */
+    RestResponse nakedJsonGet(String uri) {
+        log.debug "get ${uri}"
         return rest.get(uri) {
             header 'Accept', "application/json"
         }
     }
 
-
-    def post(String uri, List params) throws RestCallException {
-        log.debug "call json ${uri} $params"
-        withRest {
-            return rest.post(uri) {
-                contentType "application/json"
-                json params
+    /**
+     * go a get request to the url ignoring the response completely. Log connection errors as information.
+     * @param url
+     */
+    void blindJsonGet(String url) {
+        log.debug "get ${url}"
+        try {
+            rest.get(url) {
+                header 'Accept', "application/json"
             }
+        } catch (Throwable e) {
+            log.info "blind get to $url failed $e"
         }
     }
 
-    def withRest(Closure restCall) throws RestCallException {
+    /**
+     * This does a JSOn get call to the url. It expects a JSON response back.
+     *
+     * It will look in the JSONObject data returned to see if there are any errors reported, and if there are errors it
+     * will call the error closure. It will not check JSONArrays for errors.
+     *
+     * If there is no JSON response it will call the ok closure with any response text [text: response.text].
+     *
+     * The closures are called with a Map or List that represents the JSON response. JSON nulls are converted to JAVA null.
+     *
+     * On a 404 we call the notFound closure with any json data received, if no JSON data then we return a map
+     * with the response text [text: response.text]. We also check any JSON response for errors and if we find
+     * them we call the error closure with those errors.
+
+     * On a !404 and !200 response we call the notOk closure with any json data received, if no JSON data then we return
+     * a map with the response text [text: response.text]. We also check any JSON response for errors and if we find
+     * them we call the error closure with those errors.
+     *
+     * @param url
+     * @param ok ( Map data | List data )
+     * @param notFound ( Map data | List data )
+     * @param notOk ( Map data | List data )
+     * @param error ( Map data , List errors )
+     * @return void
+     */
+
+    def json(String method, String url, Closure ok, Closure error, Closure notFound, Closure notOk) {
         try {
-            RestResponse resp = restCall()
-            def data = resp.json
-            if (resp.status != 200) {
-                throw new RestCallException("Error talking to Service: $resp.status. ${data?.error ?: ''}")
+            log.debug "$method json ${url}"
+            RestResponse response = rest."$method"(url) {
+                header 'Accept', "application/json"
             }
-            if (data && data instanceof Map && data.error) {
-                throw new RestCallException("Service error: ${data?.error}")
-            }
-            //noinspection ChangeToOperator for JSON must use the equals method
-            if (data.equals(null)) {
-                data = null //turn it into a real null
-            }
-            return data
+            processResponse(response, ok, error, notFound, notOk)
         }
         catch (ResourceAccessException e) {
             log.error e.message
-            throw new RestCallException("Unable to connect to the service", e)
+            throw new RestCallException("Unable to connect to the service at $url", e)
         }
+    }
+
+    def jsonPost(Map data, String url, Closure ok, Closure error, Closure notFound, Closure notOk) {
+        try {
+            log.debug "Post ${data} as json to ${url}"
+            RestResponse response = rest.post(url) {
+                header 'Accept', "application/json"
+                json(data)
+            }
+            processResponse(response, ok, error, notFound, notOk)
+        }
+        catch (ResourceAccessException e) {
+            log.error e.message
+            throw new RestCallException("Unable to connect to the service at $url", e)
+        }
+    }
+
+    private processResponse(RestResponse response, Closure ok, Closure error, Closure notFound, Closure notOk) {
+        switch (response.status) {
+            case 200:
+                processJsonResponse(response, error, ok)
+                break
+            case 404:
+                logResponseError(response)
+                processJsonResponse(response, error, notFound)
+                break
+            default:
+                logResponseError(response)
+                processJsonResponse(response, error, notOk)
+                break
+        }
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    private logResponseError(RestResponse response) {
+        log.error "Got ${response.status}. headers: ${response.headers}, body: ${response.text}"
+    }
+
+    private processJsonResponse(RestResponse response, Closure error, Closure worker) {
+        if (response.json) {
+            JSONElement json = response.json
+            if (json instanceof JSONArray) {
+                worker(convertJsonList(json as JSONArray))
+            } else {
+                Map jsonData = jsonObjectToMap(json as JSONObject)
+                List errors = getJsonErrorMessages(jsonData)
+                if (!errors.empty) {
+                    error(jsonData, errors)
+                }
+                worker(jsonData)
+            }
+        } else {
+            log.error "No JSON response: ${response.text}"
+            worker(null)
+        }
+    }
+
+
+    private List convertJsonList(JSONArray json) {
+        return json.collect { thing ->
+            if (thing instanceof JSONObject) {
+                return jsonObjectToMap(thing)
+            }
+            if (thing instanceof JSONArray) {
+                return convertJsonList(thing)
+            }
+            return thing
+        }
+    }
+
+    private static Map jsonObjectToMap(JSONObject object) {
+        Map map = [:]
+        object.keySet().each { String key ->
+            if (object[key] == JSONObject.NULL) {
+                map.put(key, null)
+            } else {
+                map.put(key, object[key])
+            }
+        }
+        return map
+    }
+
+    private static List<String> getJsonErrorMessages(Map response) {
+        List<String> errors = []
+        if (response.error) {
+            errors.add(response.error as String)
+        }
+        if (response.errors) {
+            if (response.errors instanceof String) {
+                errors.add(response.errors as String)
+            } else {
+                errors.addAll(response.errors as List<String>)
+            }
+        }
+        return errors
     }
 
 }

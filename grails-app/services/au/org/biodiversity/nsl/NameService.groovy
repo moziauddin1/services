@@ -228,7 +228,7 @@ class NameService {
             runAsync {
                 String link = linkService.getPreferredLinkForObject(name)
                 restClients.each { String uri ->
-                    restCallService.get("$uri/$type?id=${link}")
+                    restCallService.blindJsonGet("$uri/$type?id=${link}")
                 }
             }
         }

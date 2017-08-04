@@ -35,7 +35,7 @@ class PhotoService {
             String url = configService.getPhotoServiceUri()
             if (url) { //no photo service so no photos
                 log.debug(url)
-                RestResponse response = restCallService.nakedGet(url)
+                RestResponse response = restCallService.nakedJsonGet(url)
                 if (response.status == 200) {
                     String csvText = response.text
                     if (csvText) {
