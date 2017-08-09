@@ -12,8 +12,16 @@
 <g:set var="currentTreeVersion" value="${treeElement.treeVersion.tree.currentTreeVersion}"/>
 
 <div>
-  <h1>${treeElement.treeVersion.tree.name}<span
-      class="small text-info">(${treeElement.treeVersion.id})</span> element
+  <h1>
+    <g:if test="${treeElement.excluded}">
+      <apc style="font-size: 1em" title="excluded from ${treeElement.treeVersion.tree.name}"><i
+          class="fa fa-ban"></i> ${treeElement.treeVersion.tree.name}</apc>
+    </g:if>
+    <g:else>
+      ${treeElement.treeVersion.tree.name}
+    </g:else>
+    <span
+        class="small text-info">(${treeElement.treeVersion.id})</span> element
 
     <g:if test="${currentTreeVersion != treeElement.treeVersion}"><span class="small">
       <i class="fa fa-long-arrow-right"></i>
@@ -22,6 +30,7 @@
       </a>
     </span>
     </g:if>
+
 
     <help>
       <i class="fa fa-info-circle"></i>
