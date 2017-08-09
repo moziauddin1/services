@@ -137,16 +137,11 @@ class TreeService implements ValidationUtils {
 
     List<List> displayElementsToLimit(TreeVersion treeVersion, String prefix, Integer limit) {
         mustHave(treeElement: treeVersion, limit: limit)
-        int depth = 2
-        int oldCount = 0
+        int depth = 11 //pick a maximum depth - current APC has 10
         int count = countElementsAtDepth(treeVersion, prefix, depth)
-        while (depth < 11 && count < limit && oldCount != count) {
-            depth++
-            oldCount = count
-            count = countElementsAtDepth(treeVersion, prefix, depth)
-        }
-        if (count > limit) {
+        while (depth > 0 && count > limit) {
             depth--
+            count = countElementsAtDepth(treeVersion, prefix, depth)
         }
         String pattern = "$prefix(/[^/]*){0,$depth}\$"
         fetchDisplayElements(pattern, treeVersion)
