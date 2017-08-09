@@ -95,37 +95,25 @@ class TreeService implements ValidationUtils {
     }
 
     /**
-     * Get just the display string and link to the child tree elements.
+     * Get just the display string and links for all the child tree elements.
      * @param treeElement
      * @return [[displayString , link, name link, instance link], ...]
      */
     List<List> childDisplayElements(TreeElement treeElement) {
         mustHave(treeElement: treeElement)
-        log.debug("getting $treeElement.treePath%")
-        TreeElement.executeQuery('''
-select displayString, elementLink, nameLink, instanceLink 
-    from TreeElement 
-    where treeVersion = :version and treePath like :prefix 
-    order by namePath
-''', [version: treeElement.treeVersion, prefix: "$treeElement.treePath%"]) as List<List>
+        String pattern = "^${treeElement.treePath}.*"
+        fetchDisplayElements(pattern, treeElement.treeVersion)
     }
 
     /**
      * Get just the display string and link to the child tree elements to depth
      * @param treeElement
-     * @return [[displayString , link], ...]
+     * @return [displayString , link, name link, instance link], ...]
      */
     List<List> childDisplayElementsToDepth(TreeElement treeElement, int depth) {
         mustHave(treeElement: treeElement)
-        String prefix = "^${treeElement.treePath}(/[^/]*){0,$depth}\$"
-        log.debug("getting $prefix")
-        TreeElement.executeQuery('''
-select displayString, elementLink 
-    from TreeElement 
-    where treeVersion = :version 
-        and regex(treePath, :prefix) = true 
-    order by namePath
-''', [version: treeElement.treeVersion, prefix: prefix]) as List<List>
+        String pattern = "^${treeElement.treePath}(/[^/]*){0,$depth}\$"
+        fetchDisplayElements(pattern, treeElement.treeVersion)
     }
 
     /**
@@ -135,15 +123,59 @@ select displayString, elementLink
      */
     List<List> displayElementsToDepth(TreeVersion treeVersion, int depth) {
         mustHave(treeElement: treeVersion)
-        String prefix = "^[^/]*(/[^/]*){0,$depth}\$"
-        log.debug("getting $prefix")
+        String pattern = "^[^/]*(/[^/]*){0,$depth}\$"
+        fetchDisplayElements(pattern, treeVersion)
+    }
+
+    List<List> displayElementsToLimit(TreeElement treeElement, Integer limit) {
+        displayElementsToLimit(treeElement.treeVersion, "^${treeElement.treePath}", limit)
+    }
+
+    List<List> displayElementsToLimit(TreeVersion treeVersion, Integer limit) {
+        displayElementsToLimit(treeVersion, "^[^/]*", limit)
+    }
+
+    List<List> displayElementsToLimit(TreeVersion treeVersion, String prefix, Integer limit) {
+        mustHave(treeElement: treeVersion, limit: limit)
+        int depth = 2
+        int oldCount = 0
+        int count = countElementsAtDepth(treeVersion, prefix, depth)
+        while (depth < 11 && count < limit && oldCount != count) {
+            depth++
+            oldCount = count
+            count = countElementsAtDepth(treeVersion, prefix, depth)
+        }
+        if (count > limit) {
+            depth--
+        }
+        String pattern = "$prefix(/[^/]*){0,$depth}\$"
+        fetchDisplayElements(pattern, treeVersion)
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    private List<List> fetchDisplayElements(String pattern, TreeVersion treeVersion) {
+        log.debug("getting $pattern")
         TreeElement.executeQuery('''
-select displayString, elementLink 
+select displayString, elementLink, nameLink, instanceLink 
     from TreeElement 
     where treeVersion = :version 
-        and regex(treePath, :prefix) = true 
+        and regex(treePath, :pattern) = true 
     order by namePath
-''', [version: treeVersion, prefix: prefix]) as List<List>
+''', [version: treeVersion, pattern: pattern]) as List<List>
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    // can't be static because of log
+    private int countElementsAtDepth(TreeVersion treeVersion, String prefix, int depth) {
+        String pattern = "$prefix(/[^/]*){0,$depth}\$"
+        int count = TreeElement.executeQuery('''
+select count(*) 
+    from TreeElement 
+    where treeVersion = :version 
+        and regex(treePath, :pattern) = true 
+''', [version: treeVersion, pattern: pattern]).first() as int
+        log.debug "Depth sounding $depth: $count"
+        return count
     }
 
     /**

@@ -24,6 +24,24 @@ INSERT INTO mapper.match (id, uri, deprecated, updated_at, updated_by)
   FROM mapper.identifier
   WHERE object_type = 'tree' AND version_number IS NOT NULL;
 
+-- or make the insert statements from a separate DB
+-- SELECT
+--   'INSERT INTO mapper.identifier (id, id_number, version_number, name_space, object_type, deleted, reason_deleted, updated_at, updated_by, preferred_uri_id) values (nextval(''mapper.mapper_sequence''),'
+--   ||
+--   tree_element_id || ',' ||
+--   tree_version_id || ', ''apni'', ''tree'', FALSE, NULL, now(),''pmcneil'', NULL);'
+-- FROM tree_element;
+--
+-- SELECT
+--   'INSERT INTO mapper.match (id, uri, deprecated, updated_at, updated_by) values (nextval(''mapper.mapper_sequence''), '''
+--   ||
+--   (object_type || '/' || version_number || '/' || id_number :: TEXT) ||
+--   ''', FALSE, now(), ''pmcneil'');'
+-- FROM mapper.identifier
+-- WHERE object_type = 'tree' AND version_number IS NOT NULL;
+
+-------------8<--------
+
 -- set the identifier preferred uris
 UPDATE mapper.identifier i
 SET preferred_uri_id = m.id

@@ -93,12 +93,14 @@ class RestResourceController {
             return notFound("We couldn't find a tree version with id $version")
         }
         List<TreeVersion> versions = TreeVersion.findAllByTree(treeVersion.tree, [sort: 'id', order: 'desc'])
-        List<List> children = treeService.displayElementsToDepth(treeVersion, 4)
+        List<List> children = treeService.displayElementsToLimit(treeVersion, 2000)
+        log.debug "Showing ${children.size()} child elements."
         respond treeVersion, [model: [treeVersion: treeVersion, versions: versions, children: children], status: OK]
     }
 
     @Timed()
     def treeElement(Long version, Long element) {
+        log.debug "Tree Element version $version, element $element"
         TreeElement treeElement = firstResult(TreeElement.executeQuery('select e from TreeElement e where e.treeVersion.id = :versionNumber and e.treeElementId = :id',
                 [id: element, versionNumber: version])) as TreeElement
 

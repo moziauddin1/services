@@ -57,9 +57,11 @@ class TreeServicesTagLib {
 
     def profile = { attrs ->
         Map profileData = attrs.profile
-        out << "<dl class='dl-horizontal'>"
-        profileData.each { k, v ->
-            out << "<dt>$k</dt><dd>${v.value}</dd>"
+        if (profileData) {
+            out << "<dl class='dl-horizontal'>"
+            profileData.each { k, v ->
+                out << "<dt>$k</dt><dd>${v.value}</dd>"
+            }
         }
     }
 
