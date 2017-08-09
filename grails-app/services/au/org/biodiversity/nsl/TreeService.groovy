@@ -146,12 +146,17 @@ class TreeService implements ValidationUtils {
         String pattern = "$prefix(/[^/]*){0,$depth}\$"
         fetchDisplayElements(pattern, treeVersion)
     }
-
+    /**
+     * get [displayString , link, name link, instance link], ...]
+     * @param pattern
+     * @param treeVersion
+     * @return
+     */
     @SuppressWarnings("GrMethodMayBeStatic")
     private List<List> fetchDisplayElements(String pattern, TreeVersion treeVersion) {
         log.debug("getting $pattern")
         TreeElement.executeQuery('''
-select displayString, elementLink, nameLink, instanceLink 
+select displayString, elementLink, nameLink, instanceLink, excluded 
     from TreeElement 
     where treeVersion = :version 
         and regex(treePath, :pattern) = true 

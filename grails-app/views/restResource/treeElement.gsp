@@ -69,7 +69,7 @@
 
   <div class="${tree.collapsedIndent(element: treeElement)}">
     <g:each in="${children}" var="childElement">
-      <div class="wrap">
+      <div class="wrap ${childElement[4] ? 'excluded' : ''}">
         <a href="${childElement[1]}">${raw(childElement[0])}</a>
         <a class="vertbar" href="${childElement[2]}/api/apni-format" title="View name in APNI format.">
           <i class="fa fa-list-alt see-through"></i>
