@@ -8,21 +8,34 @@
 </head>
 
 <body>
+
+<g:set var="currentTreeVersion" value="${treeElement.treeVersion.tree.currentTreeVersion}"/>
+
 <div>
   <h1>${treeElement.treeVersion.tree.name}<span
-      class="small text-info">(${treeElement.treeVersion.id})</span> element <help>
-    <i class="fa fa-info-circle"></i>
+      class="small text-info">(${treeElement.treeVersion.id})</span> element
 
-    <div>
-      A tree element is an element of a classification tree structure (also known as a Node). The element holds the position
-      of a Taxon Concept in an arrangement of taxon that we refer to generically as a tree.
-      <ul>
-        <li>At the bottom of this page are the citable links to this object or just use the <i
-            class="fa fa-link"></i> icon.
-        You can "right click" in most browsers to copy it or open it in a new browser tab.</li>
-      </ul>
-    </div>
-  </help>
+    <g:if test="${currentTreeVersion != treeElement.treeVersion}"><span class="small">
+      <i class="fa fa-long-arrow-right"></i>
+      <a href='${createLink(uri: "/tree/$currentTreeVersion.id/$treeElement.treeElementId")}'>
+        current version ${currentTreeVersion.id}.
+      </a>
+    </span>
+    </g:if>
+
+    <help>
+      <i class="fa fa-info-circle"></i>
+
+      <div>
+        A tree element is an element of a classification tree structure (also known as a Node). The element holds the position
+        of a Taxon Concept in an arrangement of taxon that we refer to generically as a tree.
+        <ul>
+          <li>At the bottom of this page are the citable links to this object or just use the <i
+              class="fa fa-link"></i> icon.
+          You can "right click" in most browsers to copy it or open it in a new browser tab.</li>
+        </ul>
+      </div>
+    </help>
   </h1>
 
   <a href="." title="Go to tree version ${treeElement.treeVersion.id}">
@@ -31,6 +44,7 @@
   </a>
   <hr>
 </div>
+
 
 <div class="rest-resource-content">
 

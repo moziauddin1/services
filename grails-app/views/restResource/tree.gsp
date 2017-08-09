@@ -28,9 +28,21 @@
   </help>
   </h1>
 
+  <g:set var="currentTreeVersion" value="${treeVersion.tree.currentTreeVersion}"/>
+
   <div class="rest-resource-content col-xs-6 col-sm-6  col-md-5 col-lg-4">
     <div>
-      <h3>${treeVersion.tree.name} version ${treeVersion.id} (<tree:versionStatus version="${treeVersion}"/>)</h3>
+      <g:if test="${treeVersion == currentTreeVersion}">
+        <h3>${treeVersion.tree.name} <span class="hint">(${treeVersion.id})</span></h3>
+      </g:if>
+      <g:else>
+        <h3>Version ${treeVersion.id} of ${treeVersion.tree.name} (Old)</h3>
+
+        <p>
+          This is an old version of APC. The current version is
+          <a href='${createLink(uri: "/tree/$currentTreeVersion.id")}'>${currentTreeVersion.id}.</a>
+        </p>
+      </g:else>
       <tree:versionStats version="${treeVersion}">
         ${elements} elements
       </tree:versionStats>
@@ -43,27 +55,14 @@
       <p>${treeVersion.logEntry}</p>
     </div>
 
-    <g:if test="${treeVersion != treeVersion.tree.currentTreeVersion}">
-      <g:set var="currentTreeVersion" value="${treeVersion.tree.currentTreeVersion}"/>
-      <div>
-        <h3>Current ${treeVersion.tree.name} version ${currentTreeVersion.id}</h3>
-
-        <tree:versionStats version="${currentTreeVersion}">
-          ${elements} elements
-        </tree:versionStats>
-
-        <a href='${createLink(uri: "/tree/$currentTreeVersion.id")}'>
-          published ${currentTreeVersion.publishedAt.dateString} by ${currentTreeVersion.publishedBy}
-        </a>
-
-        <h4>Notes</h4>
-
-        <p>${currentTreeVersion.logEntry}</p>
-      </div>
-    </g:if>
-
     <div>
       <h3>Other versions</h3>
+
+      <p>Below are all revisions of the ${treeVersion.tree.name}. Versions older than
+        <a href='${createLink(uri: "/tree/$currentTreeVersion.id")}'>
+          ${currentTreeVersion.id} published ${currentTreeVersion.publishedAt.dateString}
+        </a>
+        are for reference only.</p>
       <table class="table">
         <tr><th>Version</th><th>published</th><th>Notes</th></tr>
         <g:each in="${versions}" var="version">
