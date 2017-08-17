@@ -459,7 +459,10 @@ CREATE FUNCTION synonyms_as_jsonb(version_id BIGINT, element_id BIGINT)
   RETURNS JSONB
 LANGUAGE SQL
 AS $$
-SELECT jsonb_object_agg(synonym.simple_name, it.name)
+SELECT jsonb_object_agg(synonym.simple_name, jsonb_build_object(
+    'type', it.name,
+    'name_id', synonym.id
+))
 FROM tree_element element,
   Instance i,
   Instance s

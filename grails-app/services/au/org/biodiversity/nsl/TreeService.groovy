@@ -2,12 +2,21 @@ package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
+import groovy.sql.Sql
+import org.apache.commons.lang.NotImplementedException
+import org.apache.shiro.SecurityUtils
+
+import javax.sql.DataSource
+import java.sql.Timestamp
 
 /**
  * The 2.0 Tree service. This service is the central location for all interaction with the tree.
  */
 @Transactional
 class TreeService implements ValidationUtils {
+
+    DataSource dataSource_nsl
+    def configService
 
     /**
      * get the named tree. This is case insensitive
@@ -188,4 +197,216 @@ select count(*)
         treeElement.treePath.split('/').size()
     }
 
+    /** Editing *****************************/
+
+
+    Tree createNewTree(String treeName, String groupName, Long referenceId) {
+        Tree tree = Tree.findByName(treeName)
+        if (tree) {
+            throw new ObjectExistsException("A Tree named $treeName already exists.")
+        }
+        tree = new Tree(name: treeName, groupName: groupName, referenceId: referenceId)
+        tree.save()
+        return tree
+    }
+
+    Tree editTree(Tree tree, String name, String groupName, Long referenceId) {
+        if (!(name && groupName)) {
+            throw new BadArgumentsException("Tree name ('$name') and Group name ('$groupName') must not be null.")
+        }
+        if (name != tree.name && Tree.findByName(name)) {
+            throw new ObjectExistsException("A Tree named $name already exists.")
+        }
+        tree.name = name
+        tree.groupName = groupName
+        tree.referenceId = referenceId
+        tree.save()
+
+        return tree
+    }
+
+    /**
+     * Delete a tree and all it's versions/elements
+     *
+     * Because of the nature of a delete the session is flushed and cleared, meaning any previously held domain objects
+     * need to be refreshed before use.
+     *
+     * @param tree
+     */
+    void deleteTree(Tree tree) {
+        log.debug "Delete tree $tree"
+        /*
+        Note a simple tree.delete() will work here, but hibernate looks at the ownership and will delete objects one at
+        a time, so if you have 2 versions in the tree and they have 35k elements it will issue 70k+ delete element statements.
+
+        Since that will take a long time, we'll do it using sql directly.
+         */
+        Sql sql = getSql()
+        for (TreeVersion v in tree.treeVersions) {
+            tree = deleteTreeVersion(v, sql)
+        }
+        tree.delete(flush: true)
+    }
+
+    /**
+     * This deletes a tree version and all it's elements. Because of the nature of a delete the session is flushed and
+     * cleared, so you need to refresh any objects held prior to calling this method.
+     *
+     * We return the re-loaded tree from this method as a nice way of reloading the object and helping the old object be
+     * GC'd. So if you have a reference to tree call this like:
+     *
+     * tree = treeService.deleteTreeVersion(treeVersion)
+     *
+     * @param treeVersion
+     * @param sql
+     * @return reloaded Tree object of this version.
+     */
+    Tree deleteTreeVersion(TreeVersion treeVersion, Sql sql = getSql()) {
+        log.debug "deleting version $treeVersion"
+        Long treeVersionId = treeVersion.id
+        Long treeId = treeVersion.tree.id
+        TreeVersion.withSession { s ->
+            s.flush()
+            s.clear()
+        }
+
+        sql.execute('''
+UPDATE tree_element SET parent_element_id = NULL, parent_version_id = NULL, previous_element_id = NULL, previous_version_id = NULL
+WHERE tree_version_id = :treeVersionId;
+
+UPDATE tree_element SET previous_element_id = NULL, previous_version_id = NULL
+WHERE previous_version_id = :treeVersionId;
+
+DELETE FROM tree_element
+WHERE tree_version_id = :treeVersionId;
+
+UPDATE tree_version SET previous_version_id = NULL WHERE previous_version_id = :treeVersionId;
+
+UPDATE tree SET default_draft_tree_version_id = NULL WHERE default_draft_tree_version_id = :treeVersionId;
+
+UPDATE tree SET current_tree_version_id = NULL WHERE current_tree_version_id = :treeVersionId;
+
+DELETE FROM tree_version WHERE id = :treeVersionId;
+''', [treeVersionId: treeVersionId])
+        return Tree.get(treeId)
+    }
+
+
+    TreeVersion publishTreeVersion(TreeVersion treeVersion, String publishedBy, String logEntry) {
+        log.debug "Publish tree version $treeVersion by $publishedBy, with log entry $logEntry"
+        treeVersion.published = true
+        treeVersion.logEntry = logEntry
+        treeVersion.publishedAt = new Timestamp(System.currentTimeMillis())
+        treeVersion.publishedBy = publishedBy
+        treeVersion.save()
+        treeVersion.tree.currentTreeVersion = treeVersion
+        treeVersion.tree.save()
+        return treeVersion
+    }
+
+    TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName) {
+        log.debug "create default draft version $draftName on $tree using $treeVersion"
+        tree.defaultDraftTreeVersion = createTreeVersion(tree, treeVersion, draftName)
+        tree.save()
+        return tree.defaultDraftTreeVersion
+    }
+
+    TreeVersion setDefaultDraftVersion(TreeVersion treeVersion) {
+        log.debug "set default draft version $treeVersion"
+        if (treeVersion.published) {
+            throw new BadArgumentsException("TreeVersion must be draft to set as the default draft version. $treeVersion")
+        }
+        treeVersion.tree.defaultDraftTreeVersion = treeVersion
+        treeVersion.tree.save()
+        return treeVersion
+    }
+
+    TreeVersion createTreeVersion(Tree tree, TreeVersion treeVersion, String draftName) {
+        log.debug "create tree version $draftName on $tree using $treeVersion"
+        if (!draftName) {
+            throw new BadArgumentsException("Draft name is required and can't be blank.")
+        }
+        TreeVersion fromVersion = (treeVersion ?: tree.currentTreeVersion)
+        TreeVersion newVersion = new TreeVersion(
+                tree: tree,
+                previousVersion: fromVersion,
+                draftName: draftName
+        )
+        tree.addToTreeVersions(newVersion)
+        tree.save(flush: true)
+
+        if (fromVersion) {
+            copyVersion(fromVersion, newVersion)
+            newVersion.previousVersion = fromVersion
+        }
+        return newVersion
+    }
+
+    void copyVersion(TreeVersion fromVersion, TreeVersion toVersion) {
+        if (!(fromVersion && toVersion)) {
+            throw new BadArgumentsException("A from and to version are required to copy a version.")
+        }
+        log.debug "copying ${fromVersion.treeElements.size()} elements from $fromVersion to $toVersion"
+
+        Sql sql = getSql()
+
+        sql.execute('''INSERT INTO tree_element
+(tree_version_id, tree_element_id, lock_version, excluded, display_string, element_link, instance_id, instance_link,
+ name_id, name_link, parent_version_id, parent_element_id, previous_version_id, previous_element_id, profile, rank_path,
+ simple_name, tree_path, name_path, updated_at, updated_by)
+  (SELECT
+     :toVersionId,
+     tree_element_id,
+     lock_version,
+     excluded,
+     display_string,
+     'http://' || :hostname || '/tree/' || :toVersionId || '/' || tree_element_id,
+     instance_id,
+     instance_link,
+     name_id,
+     name_link,
+     :toVersionId,
+     parent_element_id,
+     tree_version_id, -- previous version
+     tree_element_id,
+     profile,
+     rank_path,
+     simple_name,
+     tree_path,
+     name_path,
+     updated_at,
+     updated_by
+   FROM tree_element fromElement WHERE fromElement.tree_version_id = :fromVersionId
+  )
+''', [fromVersionId: fromVersion.id, toVersionId: toVersion.id, hostname: 'id.biodiversity.org.au'])
+
+        toVersion.refresh()
+        log.debug "inserted ${toVersion.treeElements.size()} elements"
+        assert fromVersion.treeElements.size() == toVersion.treeElements.size()
+    }
+
+
+    String authorizeTreeOperation(Tree tree) {
+        String groupName = tree.groupName
+        SecurityUtils.subject.checkRole(groupName)
+        return SecurityUtils.subject.principal as String
+    }
+
+    private Sql getSql() {
+        //noinspection GroovyAssignabilityCheck
+        return Sql.newInstance(dataSource_nsl)
+    }
+
+    TreeVersion editTreeVersion(TreeVersion treeVersion, String draftName) {
+        if (!draftName) {
+            throw new BadArgumentsException('Draft name must be set when editing tree version.')
+        }
+        treeVersion.draftName = draftName
+        treeVersion.save()
+        return treeVersion
+    }
+
+    TreeVersion validateTreeVersion(TreeVersion treeVersion) {
+        throw new NotImplementedException('Validate Tree Version is not implemented')
+    }
 }

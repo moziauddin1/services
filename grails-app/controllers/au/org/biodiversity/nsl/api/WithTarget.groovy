@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.JsonRendererService
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST
 import static org.springframework.http.HttpStatus.NOT_FOUND
 
 /**
@@ -44,7 +45,8 @@ trait WithTarget {
             result.error("$targetInfo not found.")
             result.status = NOT_FOUND
         }
-        respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
+
+        serviceRespond(result)
     }
 
     def withTargets(Map targets, Closure work) {
@@ -60,14 +62,47 @@ trait WithTarget {
                 result.briefObject(targets[key], key as String)
             }
         }
-        if(ok) {
+        if (ok) {
             work(result)
         } else {
             result.ok = false
         }
 
-        log.debug "result status is ${result.status}"
-        respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
+        serviceRespond(result)
+    }
+
+    ResultObject require(Map requirements) {
+        assert jsonRendererService
+        ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+        result.ok = true
+
+        for (key in requirements.keySet()) {
+            if (requirements[key] == null) {
+                result.status = BAD_REQUEST
+                result.error("$key not supplied. You must supply $key.")
+                result.ok = false
+            }
+        }
+        return result
+    }
+
+    ResultObject requireTarget(Object target, String targetInfo) {
+        assert jsonRendererService
+
+        ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+        result.ok = true
+
+        if (!target) {
+            result.error("$targetInfo not found.")
+            result.status = NOT_FOUND
+            result.ok = false
+        }
+        return result
+    }
+
+    def serviceRespond(ResultObject resultObject) {
+        log.debug "result status is ${resultObject.status}"
+        respond(resultObject, [view: '/common/serviceResult', model: [data: resultObject], status: resultObject.remove('status')])
     }
 
 }

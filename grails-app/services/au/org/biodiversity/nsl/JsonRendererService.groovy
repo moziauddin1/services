@@ -43,6 +43,8 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Reference) { Reference reference -> marshallReference(reference) }
         JSON.registerObjectMarshaller(Author) { Author author -> marshallAuthor(author) }
         JSON.registerObjectMarshaller(InstanceNote) { InstanceNote instanceNote -> marshallInstanceNote(instanceNote) }
+        JSON.registerObjectMarshaller(Tree) { Tree tree -> marshallTree(tree) }
+        JSON.registerObjectMarshaller(TreeVersion) { TreeVersion treeVersion -> marshallTreeVersion(treeVersion) }
         JSON.registerObjectMarshaller(TreeElement) { TreeElement treeElement -> marshallTreeElement(treeElement) }
 
         JSON.registerObjectMarshaller(Node) { Node node -> marshallNode(node) }
@@ -402,12 +404,55 @@ class JsonRendererService {
         ]
     }
 
+    Map briefTree(Tree tree) {
+        if (tree) {
+            tree = initializeAndUnproxy(tree)
+            return [tree:
+                            [class : tree.class.name,
+                             _links: [:],
+                             name  : tree.name
+                            ]
+            ]
+        }
+        return null
+    }
+
     Map marshallTree(Tree tree) {
         tree = initializeAndUnproxy(tree)
+        [tree:
+                 [class              : tree.class.name,
+                  _links             : [:],
+                  name               : tree.name,
+                  groupName          : tree.groupName,
+                  referenceId        : tree.referenceId,
+                  currentVersion     : briefTreeVersion(tree.currentTreeVersion),
+                  defaultDraftVersion: briefTreeVersion(tree.defaultDraftTreeVersion),
+                  versions           : tree.treeVersions.collect { TreeVersion v -> briefTreeVersion(v) }
+                 ]
+        ]
+    }
+
+    Map briefTreeVersion(TreeVersion treeVersion) {
+        if (treeVersion) {
+            treeVersion = initializeAndUnproxy(treeVersion)
+            return [
+                    versionNumber: treeVersion.id,
+                    draftName    : treeVersion.draftName
+            ]
+        }
+        return null
     }
 
     Map marshallTreeVersion(TreeVersion treeVersion) {
         treeVersion = initializeAndUnproxy(treeVersion)
+        [treeVersion:
+                 [class        : treeVersion.class.name,
+                  _links       : [:],
+                  versionNumber: treeVersion.id,
+                  draftName    : treeVersion.draftName,
+                  tree         : briefTree(treeVersion.tree)
+                 ]
+        ]
     }
 
     Map marshallTreeElement(TreeElement treeElement) {
@@ -433,7 +478,6 @@ class JsonRendererService {
                                 children     : treeElementChildren(treeElement)
                         ]
         ]
-
     }
 
     /*** Old tree ***************************************/

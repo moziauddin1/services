@@ -887,3 +887,43 @@ the moment as a tree can only have one name space. I have changed the lichen nam
 so that the current name tree works kind of....
 
 But this is going to bring up a problem we'll have to deal with where we have intersecting trees.
+
+== Query Examples
+
+This section is for documenting some query examples using the new tree structure.
+
+=== Search for synonyms of a type in a tree
+
+[source,sql]
+.search-synonyms.sql
+----
+SELECT
+  el.name_id,
+  el.simple_name,
+  tax_syn,
+  synonyms ->> tax_syn,
+  rank.name,
+  type.name,
+  el.names,
+  el.name_path
+FROM tree_element el
+  JOIN name n ON el.name_id = n.id
+  JOIN name_rank rank ON n.name_rank_id = rank.id
+  JOIN name_type type ON n.name_type_id = type.id
+  ,
+      jsonb_object_keys(synonyms) AS tax_syn
+WHERE tree_version_id = 144
+      AND el.names like '%Billardiera b%'
+      AND type.scientific
+      AND tax_syn ILIKE 'Billardiera b%'
+      AND synonyms -> tax_syn ->> 'type' = 'taxonomic synonym'
+ORDER BY el.name_path;
+----
+
+|===
+| name_id | simple_name | tax_syn | syn_data | rank | type| name_path
+|55543|Billardiera scandens|Billardiera brachyantha|"{""type"": ""taxonomic synonym"", ""name_id"": 230111}"|Species|scientific| Plantae Charophyta Equisetopsida Magnoliidae Asteranae Apiales Pittosporaceae Billardiera scandens
+|55543|Billardiera scandens|Billardiera brachyantha var. brachyantha|"{""type"": ""taxonomic synonym"", ""name_id"": 55168}"|Species|scientific|Plantae Charophyta Equisetopsida Magnoliidae Asteranae Apiales Pittosporaceae Billardiera scandens
+|84869|Marianthus bicolor|Billardiera bicolor var. lineata|"{""type"": ""taxonomic synonym"", ""name_id"": 55149}"|Species|scientific|Plantae Charophyta Equisetopsida Magnoliidae Asteranae Apiales Pittosporaceae Marianthus bicolor
+
+|===

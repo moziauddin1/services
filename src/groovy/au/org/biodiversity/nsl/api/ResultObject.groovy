@@ -1,11 +1,7 @@
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.Author
-import au.org.biodiversity.nsl.Instance
-import au.org.biodiversity.nsl.InstanceNote
-import au.org.biodiversity.nsl.JsonRendererService
-import au.org.biodiversity.nsl.Name
-import au.org.biodiversity.nsl.Reference
+import au.org.biodiversity.nsl.*
+import org.springframework.http.HttpStatus
 
 import static org.springframework.http.HttpStatus.OK
 
@@ -38,6 +34,11 @@ class ResultObject {
         }
     }
 
+    def fail(String error, HttpStatus status) {
+        data.status = status
+        this.error(error)
+    }
+
     def briefObject(Object target, String key = null) {
         if(!key) {
             key = target.class.simpleName.toLowerCase()
@@ -57,7 +58,7 @@ class ResultObject {
                     data[key] = jsonRendererService1.getBriefAuthor(target as Author)
                     break
                 case 'InstanceNote':
-                    data[key] = jsonRendererService1.getBriefInstanceNote(target as InstanceNote)
+                    data[key] = jsonRendererService1.marshallInstanceNote(target as InstanceNote)
                     break
                 default:
                     data[key] = jsonRendererService1.brief(target)

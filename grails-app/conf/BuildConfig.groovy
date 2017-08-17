@@ -76,6 +76,7 @@ grails.project.dependency.resolution = {
         }
         compile "io.jsonwebtoken:jjwt:0.7.0"
         test "org.gebish:geb-spock:0.12.2"
+        test 'cglib:cglib-nodep:2.2.2'       // For mocking classes
     }
 
     plugins {
