@@ -935,7 +935,10 @@ regarding the placement rules.
 
 This is from the point of view of attempting to place an instance on a version of a tree. The version of the tree must
 be consistent within these rules. We take it that an Instance == Concept == Taxon == Taxon concept. The Instance being
-placed as already been chosen appropriately in an editor
+placed as already been chosen appropriately in an editor.
+
+WARNING: we need to look at the difference between validating a placement, before it's been placed and validating a
+whole tree that already has been created.
 
 === The Taxon should not already be on the tree
 === A Taxon's Name can not be in the tree as an accepted name more than once

@@ -576,7 +576,7 @@ WHERE tree_version_id = :versionId
     }
 
     private TaxonData findInstanceByUri(String instanceUri) {
-        Instance taxon = linkService.getObjectForLink(taxonUri) as Instance
+        Instance taxon = linkService.getObjectForLink(instanceUri) as Instance
         TaxonData instanceData
         if (taxon) {
             instanceData = elementDataFromInstance(taxon)
