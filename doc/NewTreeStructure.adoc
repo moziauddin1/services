@@ -1,5 +1,5 @@
 = New tree structure
-v1.0, June 2015
+v1.0, June 2017
 :imagesdir: resources/images/
 :toc: left
 :toclevels: 4
@@ -927,3 +927,142 @@ ORDER BY el.name_path;
 |84869|Marianthus bicolor|Billardiera bicolor var. lineata|"{""type"": ""taxonomic synonym"", ""name_id"": 55149}"|Species|scientific|Plantae Charophyta Equisetopsida Magnoliidae Asteranae Apiales Pittosporaceae Marianthus bicolor
 
 |===
+
+== Placement Rules
+
+This is an interpretation of the results of the discussion at https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
+regarding the placement rules.
+
+This is from the point of view of attempting to place an instance on a version of a tree. The version of the tree must
+be consistent within these rules. We take it that an Instance == Concept == Taxon == Taxon concept. The Instance being
+placed as already been chosen appropriately in an editor
+
+=== The Taxon should not already be on the tree
+=== A Taxon's Name can not be in the tree as an accepted name more than once
+=== The Taxon's Name Rank must be below the parent taxon's rank
+=== A relationship instance can't be put on the tree
+=== Polynomial names must be a child of the name parent except excluded names
+
+e.g. Doodia caudata must be placed under Doodia
+
+=== Hybrid names must be a child of the first hybrid name
+
+e.g.  Blechnum cartilagineum Sw. x Doodia media R.Br. must be placed under Blechnum cartilagineum
+
+=== An accepted name can't be placed under an excluded name
+
+All names above an accepted name must also be accepted.
+
+=== illegal and illegitimate names *should not* be placed on the tree
+
+This is a warning only because there are illegitimate names used in APC because a phrase name would have to be created.
+
+
+=== A Taxon's Name or Synonyms can only be in the tree once.
+
+checking for synonyms needs to be done from a point of view. For example with Ficus virens
+(see https://biodiversity.org.au/nsl/services/search?product=APC&tree.id=1133571&name=Ficus+virens&inc._scientific=&inc.scientific=on&inc._cultivar=&inc._other=&max=100&display=apc&search=true)
+
+Ficus virens var. sublanceolata (Miq.) Corner is a synonym of Ficus virens according to CHAH 2005, but not according to
+CHAH 2016 which has them as distinct taxa (so they can both be accepted). The existing code for findSynonymOfInstance
+checks if a placed instance is cited by the instance you wish to place in any reference (other relationship instance).
+If you try to place Ficus virens Aiton (CHAH 2016) it will bring up the CHAH 2005 instance, which isn't relevant because
+you're view (sensu)  is CHAH 2016.
+
+So we should check synonomy from the point of view of the taxa being placed and then the already placed taxa back to the
+taxa being placed, e.g. from Ficus virens var. sublanceolata
+
+To warn on taxonomic synonyms we need to check the name of the instance. For example if you try to place Woodwardia Sm.
+under Blechnaceae using Mueller, F.J.H. von (1882), Systematic Census of Australian Plants which considers Doodia R.Br.
+to be a Synonym, but the instance of Doodia on the tree does not consider woodwardia a taxonmic synonym you won't see
+the apparently obvious conflict in this placement because the cited instance is not on the tree. So if the instance being
+placed cites a Name as being a synonym we should probably warn the user.
+
+* relationship instances can't be placed on the accepted tree
+* misapplication synonyms can be ignored.
+* warn if pro. parte synonyms exist elsewhere in the current tree
+
+==== Implementation within the tree
+
+The Synonyms field in the Tree Element shows the synonym name and the type. We need to use the synonyms JSON structure to
+determine if the name exists as a synonym in the context of what is on the tree currently and that no synonyms of the taxon
+being placed are on the tree.
+
+So if we try and place 'Ficus cunninghami' we might use...
+
+[source]
+.find-synonym-of.sql
+----
+SELECT
+  el.name_id,
+  el.simple_name,
+  tax_syn,
+  synonyms ->> tax_syn,
+  el.names,
+  el.name_path
+FROM tree_element el
+  JOIN name n ON el.name_id = n.id,
+      jsonb_object_keys(synonyms) AS tax_syn
+WHERE tree_version_id = 146
+      AND el.names like '%|Ficus cunninghami|%'
+      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte).*'
+  and tax_syn = 'Ficus cunninghami'
+----
+
+Which takes around 60-70ms to find Ficus virens. Note the LIKE on el.names limits the search quickly before using the slower
+jsonb queries, and is quicker than the equivalent regex.
+
+[source]
+.explain
+----
+Nested Loop  (cost=0.98..127531.08 rows=3 width=342)
+  ->  Nested Loop  (cost=0.98..127525.04 rows=3 width=310)
+        ->  Index Scan using tree_element_pkey on tree_element el  (cost=0.56..127511.69 rows=3 width=310)
+              Index Cond: (tree_version_id = 146)
+              Filter: (names ~~ '%|Ficus cunninghami|%'::text)
+        ->  Index Only Scan using name_pkey on name n  (cost=0.42..4.44 rows=1 width=8)
+              Index Cond: (id = el.name_id)
+  ->  Function Scan on jsonb_object_keys tax_syn  (cost=0.00..2.00 rows=1 width=32)
+        Filter: ((tax_syn = 'Ficus cunninghami'::text) AND (((el.synonyms -> tax_syn) ->> 'type'::text) !~ '.*(misapp|pro parte).*'::text))
+----
+
+if we repeat that search for all the names in the el.names string for the name we're trying to place, then we would have
+found all matching names both ways.
+
+So for example we can find all the clashing synonyms for an instance using:
+
+[source]
+.find_synonyms
+----
+SELECT
+  el.name_id,
+  el.simple_name,
+  tax_syn,
+  synonyms -> tax_syn ->> 'type' as syn_type,
+  synonyms -> tax_syn ->> 'name_id' as syn_id
+FROM tree_element el
+  JOIN name n ON el.name_id = n.id,
+      jsonb_object_keys(synonyms) AS tax_syn
+WHERE tree_version_id = 146
+      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte).*'
+  and tax_syn in (select synonym.simple_name as sn
+from Instance s join instance_type it on s.instance_type_id = it.id,
+  Name synonym
+where s.cited_by_id = :instance_id_to_place
+      and synonym.id = s.name_id
+  and it.misapplied = FALSE
+  and it.pro_parte = FALSE
+);
+----
+
+Using the above if we try and place Ficus virens var. sublanceolata sensu Jacobs & Packard (1981) plants of NSW instance 692695
+we get the results:
+
+|===
+|name_id|simple_name|tax_syn|syn_type|syn_id
+
+|75398|Ficus virens|Ficus cunninghamii|taxonomic synonym|90744
+|75398|Ficus virens|Ficus infectoria var. cunninghamii|taxonomic synonym|91343
+|===
+
+

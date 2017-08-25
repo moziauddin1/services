@@ -17,6 +17,8 @@ class TreeService implements ValidationUtils {
 
     DataSource dataSource_nsl
     def configService
+    def linkService
+    def restCallService
 
     /**
      * get the named tree. This is case insensitive
@@ -409,4 +411,236 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
     TreeVersion validateTreeVersion(TreeVersion treeVersion) {
         throw new NotImplementedException('Validate Tree Version is not implemented')
     }
+
+    TreeElement placeTaxonUri(TreeElement parentElement, String taxonUri, Boolean excluded) {
+
+        TaxonData taxonData = findInstanceByUri(taxonUri)
+        if (!taxonData) {
+            throw new ObjectNotFoundException("Taxon $taxonUri not found, trying to place it in $parentElement")
+        }
+        taxonData.excluded = excluded
+        validateNewElementPlacement(parentElement, taxonData)
+        null
+    }
+
+    protected List<String> validateNewElementPlacement(TreeElement parentElement, TaxonData taxonData) {
+        List<String> warnings
+
+        TreeVersion treeVersion = parentElement.treeVersion
+
+        warnings = checkNameValidity(taxonData)
+        checkInstanceOnTree(taxonData, treeVersion)
+        checkNameAlreadyOnTree(taxonData, treeVersion)
+
+        String[] parentNameElements = parentElement.namePath.split('/')
+        NameRank taxonRank = rankOfElement(taxonData.rankPathPart as Map, taxonData.nameElement as String)
+        NameRank parentRank = rankOfElement(parentElement.rankPath, parentNameElements.last())
+
+        //is rank below parent
+        if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
+            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.simpleName.")
+        }
+
+        //polynomials must be placed under parent
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentNameElements)
+
+        checkForExistingSynonyms(taxonData, treeVersion)
+
+        return warnings
+    }
+
+    private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion) {
+        //a name can't be already in the tree as a synonym
+        List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion)
+        if (!existingSynonyms.empty) {
+            String message = existingSynonyms.collect {
+                "${it.simpleName} ($it.nameId) is a $it.type of $it.synonym ($it.synonymId)"
+            }.join(',\n')
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name ${taxonData.simpleName}:\n" +
+                    message +
+                    " according to the concepts involved.")
+        }
+    }
+
+    private static void checkInstanceOnTree(TaxonData taxonData, TreeVersion treeVersion) {
+        //is instance already in the tree. We use instance link because that works across shards, there is a remote possibility instance id will clash.
+        TreeElement existingElement = TreeElement.findByInstanceLinkAndTreeVersion(taxonData.instanceLink, treeVersion)
+        if (existingElement) {
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains taxon ${taxonData.instanceLink}. See ${existingElement.elementLink}")
+        }
+    }
+
+    private static List<String> checkNameValidity(TaxonData taxonData) {
+        List<String> warnings = []
+        //name should not be invalid or illegal
+        if (taxonData.nomIlleg) {
+            warnings.add("$taxonData.simpleName is nomIlleg")
+        }
+        if (taxonData.nomInval) {
+            warnings.add("$taxonData.simpleName is nomInval")
+        }
+        return warnings
+    }
+
+    private static void checkNameAlreadyOnTree(TaxonData taxonData, TreeVersion treeVersion) {
+        //a name can't be in the tree already
+        TreeElement existingNameElement = TreeElement.findByNameLinkAndTreeVersion(taxonData.nameLink as String, treeVersion)
+        if (existingNameElement) {
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name ${taxonData.nameLink}. See ${existingNameElement.elementLink}")
+        }
+    }
+
+    protected List<Map> checkSynonyms(TaxonData taxonData, TreeVersion treeVersion, Sql sql = getSql()) {
+
+        List<Map> synonymsFound = []
+        String names = "('" + filterSynonyms(taxonData).join("','") + "')"
+
+        sql.eachRow('''
+SELECT
+  el.name_id as name_id,
+  el.simple_name as simple_name,
+  tax_syn as synonym,
+  synonyms -> tax_syn ->> 'type' as syn_type,
+  synonyms -> tax_syn ->> 'name_id' as syn_id
+FROM tree_element el
+  JOIN name n ON el.name_id = n.id,
+      jsonb_object_keys(synonyms) AS tax_syn
+WHERE tree_version_id = :versionId
+      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte).*\'
+  and tax_syn in ''' + names, [versionId: treeVersion.id]) { row ->
+            synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id]
+        }
+        return synonymsFound
+    }
+
+    protected static Set<String> filterSynonyms(TaxonData taxonData) {
+        taxonData.synonyms.findAll { Map.Entry entry ->
+            !entry.value.type.contains('pro parte') && !entry.value.type.contains('misapp')
+        }.keySet()
+    }
+
+    protected static checkPolynomialsBelowNameParent(String simpleName, Boolean excluded, NameRank taxonRank,
+                                                     String[] parentNameElements) {
+
+        if (!excluded && RankUtils.rankLowerThan(taxonRank, 'Genus')) {
+            //if this is a hybrid it takes the first part, if not it's just the name
+            String firstNamePart = simpleName.split(' x ').first()
+            String elementFound = parentNameElements.find { String nameElement ->
+                firstNamePart.contains(nameElement)
+            }
+            if (!elementFound) {
+                throw new BadArgumentsException("Polynomial name $simpleName is not under appropriate parent name. See parent name path $parentNameElements")
+            }
+        }
+    }
+
+    protected static NameRank rankOfElement(Map rankPath, String elementName) {
+        String rankName = rankPath.keySet().find { key ->
+            (rankPath[key] as Map).name == elementName
+        }
+        NameRank rank = NameRank.findByName(rankName)
+        return rank
+    }
+
+    protected TaxonData elementDataFromInstance(Instance instance) {
+
+        //can't put relationship instances on a tree
+        if (instance.instanceType.relationship) {
+            return null
+        }
+
+        Map synonyms = getSynonyms(instance)
+
+        new TaxonData(
+                nameId: instance.name.id,
+                instanceId: instance.id,
+                simpleName: instance.name.simpleName,
+                nameElement: instance.name.nameElement,
+                names: '|' + synonyms.keySet().join('|'),
+                sourceShard: configService.nameSpaceName,
+                synonyms: synonyms,
+                rankPathPart: [(instance.name.nameRank.name): [id: instance.name.id, name: instance.name.nameElement]],
+                nameLink: linkService.getPreferredLinkForObject(instance.name),
+                instanceLink: linkService.getPreferredLinkForObject(instance),
+                nomInval: instance.name.nameStatus.nomInval,
+                nomIlleg: instance.name.nameStatus.nomIlleg,
+        )
+    }
+
+    private static Map getSynonyms(Instance instance) {
+        Map resultMap = [:]
+        instance.instancesForCitedBy.each { Instance synonym ->
+            resultMap.put((synonym.name.simpleName), [type: synonym.instanceType.name, name_id: synonym.name.id])
+        }
+        return resultMap
+    }
+
+    private TaxonData findInstanceByUri(String instanceUri) {
+        Instance taxon = linkService.getObjectForLink(taxonUri) as Instance
+        TaxonData instanceData
+        if (taxon) {
+            instanceData = elementDataFromInstance(taxon)
+        } else {
+            Map instanceDataMap = fetchInstanceData(instanceUri)
+            if (instanceDataMap.success) {
+                instanceData = new TaxonData(instanceDataMap.data as Map)
+            } else {
+                instanceData = null
+            }
+        }
+        return instanceData
+    }
+
+    /**
+     * Fetch instance data from another service
+     * @param instanceUri
+     * @return
+     */
+    private Map fetchInstanceData(String instanceUri) {
+        Map result = [success: true]
+        String uri = "$instanceUri/api/tree-api/elment-data-from-instance"
+        try {
+            String failMessage = "Couldn't fetch $uri"
+            restCallService.json('get', uri,
+                    { Map data ->
+                        log.debug "Fetched $uri. Response: $data"
+                        result.data = data
+                    },
+                    { Map data, List errors ->
+                        log.error "$failMessage. Errors: $errors"
+                        result = [success: false, errors: errors]
+                    },
+                    { data ->
+                        log.error "$failMessage. Not found response: $data"
+                        result = [success: false, errors: ["$failMessage. Not found response: $data"]]
+                    },
+                    { data ->
+                        log.error "$failMessage. Response: $data"
+                        result = [success: false, errors: ["$failMessage. Response: $data"]]
+                    }
+            )
+        } catch (RestCallException e) {
+            log.error e.message
+            result = [success: false, errors: "Communication error with mapper."]
+        }
+        return result
+    }
+}
+
+class TaxonData {
+
+    Long nameId
+    Long instanceId
+    String simpleName
+    String nameElement
+    String names
+    String sourceShard
+    Map synonyms
+    Map rankPathPart
+    String nameLink
+    String instanceLink
+    Boolean nomInval
+    Boolean nomIlleg
+    Boolean excluded
+
 }

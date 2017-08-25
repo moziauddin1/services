@@ -47,6 +47,14 @@ class RankUtils {
         return rankOrder(rankName) > rank.sortOrder
     }
 
+    static Boolean rankHigherThan(NameRank rankA, NameRank rankB) {
+        return rankB.sortOrder > rankA.sortOrder
+    }
+
+    static Boolean rankLowerThan(NameRank rank, String rankName) {
+        return rankOrder(rankName) < rank.sortOrder
+    }
+
     /**
      * Checks if the NameRank provided is lower than the rank of Name rankName.
      * Lower ranks have a higher rank sort order, so Species is lower that Genus.

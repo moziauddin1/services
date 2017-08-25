@@ -1,9 +1,6 @@
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.BadArgumentsException
-import au.org.biodiversity.nsl.ObjectExistsException
-import au.org.biodiversity.nsl.Tree
-import au.org.biodiversity.nsl.TreeVersion
+import au.org.biodiversity.nsl.*
 import grails.validation.ValidationException
 import org.apache.commons.lang.NotImplementedException
 import org.apache.shiro.authz.AuthorizationException
@@ -16,35 +13,37 @@ class TreeApiController implements WithTarget {
     def jsonRendererService
 
     static responseFormats = [
-            createTree         : ['JSON'],
-            editTree           : ['JSON'],
-            copyTree           : ['JSON'],
-            deleteTree         : ['JSON'],
-            createTreeVersion  : ['JSON'],
-            editTreeVersion    : ['JSON'],
-            validateTreeVersion: ['JSON'],
-            publishTreeVersion : ['JSON'],
-            placeElement       : ['JSON'],
-            moveElement        : ['JSON'],
-            removeElement      : ['JSON'],
-            editElementProfile : ['JSON'],
-            editElementStatus  : ['JSON']
+            createTree                : ['JSON'],
+            editTree                  : ['JSON'],
+            copyTree                  : ['JSON'],
+            deleteTree                : ['JSON'],
+            createTreeVersion         : ['JSON'],
+            setDefaultDraftTreeVersion: ['JSON'],
+            editTreeVersion           : ['JSON'],
+            validateTreeVersion       : ['JSON'],
+            publishTreeVersion        : ['JSON'],
+            placeTaxon                : ['JSON'],
+            moveElement               : ['JSON'],
+            removeElement             : ['JSON'],
+            editElementProfile        : ['JSON'],
+            editElementStatus         : ['JSON']
     ]
 
     static allowedMethods = [
-            createTree         : ['PUT'],
-            editTree           : ['POST'],
-            copyTree           : ['PUT'],
-            deleteTree         : ['DELETE'],
-            createTreeVersion  : ['PUT'],
-            editTreeVersion    : ['POST'],
-            validateTreeVersion: ['GET'],
-            publishTreeVersion : ['POST'],
-            placeElement       : ['PUT'],
-            moveElement        : ['POST'],
-            removeElement      : ['DELETE'],
-            editElementProfile : ['POST'],
-            editElementStatus  : ['POST']
+            createTree                : ['PUT'],
+            editTree                  : ['POST'],
+            copyTree                  : ['PUT'],
+            deleteTree                : ['DELETE'],
+            createTreeVersion         : ['PUT'],
+            setDefaultDraftTreeVersion: ['PUT'],
+            editTreeVersion           : ['POST'],
+            validateTreeVersion       : ['GET'],
+            publishTreeVersion        : ['PUT'],
+            placeTaxon                : ['PUT'],
+            moveElement               : ['POST'],
+            removeElement             : ['DELETE'],
+            editElementProfile        : ['POST'],
+            editElementStatus         : ['POST']
     ]
     static namespace = "api"
 
@@ -99,7 +98,10 @@ class TreeApiController implements WithTarget {
         }
     }
 
-    def publishTreeVersion(TreeVersion treeVersion, String logEntry) {
+    def publishTreeVersion() {
+        Map data = request.JSON as Map
+        TreeVersion treeVersion = TreeVersion.get(data.id as Long)
+        String logEntry = data.logEntry
         ResultObject results = requireTarget(treeVersion, "Tree version $treeVersion")
         handleResults(results) {
             String user = treeService.authorizeTreeOperation(treeVersion.tree)
@@ -127,7 +129,13 @@ class TreeApiController implements WithTarget {
     }
 
 
-    def placeElement() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def placeTaxon(String treeElementUri, String taxonUri) {
+        TreeElement parentElement = TreeElement.findByElementLink(treeElementUri)
+        ResultObject results = requireTarget(treeElementUri, "Tree element with $treeElementUri")
+        handleResults(results) {
+            results.payload = treeService.placeTaxonUri(treeElementUri, taxonUri)
+        }
+    }
 
     def moveElement() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
 
@@ -168,6 +176,10 @@ class TreeApiController implements WithTarget {
                 results.ok = false
                 results.fail(notImplementedException.message, NOT_IMPLEMENTED)
                 log.error("$notImplementedException.message : $results")
+            } catch (ObjectNotFoundException notFound) {
+                results.ok = false
+                results.fail(notImplementedException.message, NOT_FOUND)
+                log.error("$notFound.message : $results")
             }
         }
         serviceRespond(results)

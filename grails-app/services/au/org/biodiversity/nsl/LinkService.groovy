@@ -101,7 +101,7 @@ class LinkService {
     }
 
     @Timed()
-    String getPreferredLinkForObject(target) {
+    String getPreferredLinkForObject(Object target) {
         doUsingCache(getLinkCache(), target?.id) {
             String link = null
             try {

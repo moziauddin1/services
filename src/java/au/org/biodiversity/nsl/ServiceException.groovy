@@ -19,6 +19,12 @@ class ObjectExistsException extends ServiceException {
     }
 }
 
+class ObjectNotFoundException extends ServiceException {
+
+    ObjectNotFoundException(String reason) {
+        super(reason)
+    }
+}
 class BadArgumentsException extends ServiceException {
 
     BadArgumentsException(String reason) {

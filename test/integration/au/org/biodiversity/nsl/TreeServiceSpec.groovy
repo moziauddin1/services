@@ -15,9 +15,11 @@ class TreeServiceSpec extends Specification {
     def grailsApplication
     DataSource dataSource_nsl
 
+
     def setup() {
         service.dataSource_nsl = dataSource_nsl
         service.configService = new ConfigService(grailsApplication: grailsApplication)
+        service.linkService = Mock(LinkService)
     }
 
     def cleanup() {
@@ -145,7 +147,7 @@ class TreeServiceSpec extends Specification {
         tree.treeVersions.contains(version)
 
         when: 'I add some test elements to the version'
-        makeTestElements(version)
+        makeTestElements(version, testElementData())
         println version.treeElements
 
         then: 'It should have 30 tree elements'
@@ -215,7 +217,7 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = service.createNewTree('aTree', 'aGroup', null)
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion)
+        makeTestElements(draftVersion, testElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
 
@@ -242,7 +244,7 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = service.createNewTree('aTree', 'aGroup', null)
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion)
+        makeTestElements(draftVersion, testElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
 
@@ -269,9 +271,178 @@ class TreeServiceSpec extends Specification {
                 [draftVersionId: draftVersion.id]).empty
     }
 
+    def "test check synonyms"() {
+        given:
+        Tree tree = Tree.findByName('APC')
+        TreeVersion treeVersion = tree.currentTreeVersion
+        Instance ficusVirensSublanceolata = Instance.get(692695)
 
-    private makeTestElements(TreeVersion version) {
-        testElementData().each { Map data ->
+        expect:
+        tree
+        treeVersion
+        ficusVirensSublanceolata
+
+        when: 'I try to place Ficus virens var. sublanceolata sensu Jacobs & Packard (1981)'
+        TaxonData taxonData = service.elementDataFromInstance(ficusVirensSublanceolata)
+        List<Map> existingSynonyms = service.checkSynonyms(taxonData, treeVersion)
+        println existingSynonyms
+
+        then: 'I get two found synonyms'
+        existingSynonyms != null
+        !existingSynonyms.empty
+        existingSynonyms.size() == 2
+        existingSynonyms.first().simpleName == 'Ficus virens'
+    }
+
+    def "test check validation, relationship instance"() {
+        when: "I try to get taxonData for a relationship instance"
+        Instance relationshipInstance = Instance.get(889353)
+        TaxonData taxonData = service.elementDataFromInstance(relationshipInstance)
+
+        then: 'I get null'
+        taxonData == null
+    }
+
+    def "test check validation, existing instance"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData])
+        Instance asperaInstance = Instance.get(781104)
+        TreeElement doodiaElement = TreeElement.findBySimpleNameAndTreeVersion('Doodia', draftVersion)
+        TreeElement asperaElement = TreeElement.findBySimpleNameAndTreeVersion('Doodia aspera', draftVersion)
+
+        //return a url that matches the name link of aspera
+        service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://something that does not match the name'
+        service.linkService.getPreferredLinkForObject(asperaInstance) >> asperaElement.instanceLink
+
+        expect:
+        tree
+        draftVersion
+        doodiaElement
+        asperaInstance
+        asperaElement
+
+        when: 'I try to place Doodia aspera'
+        TaxonData taxonData = service.elementDataFromInstance(asperaInstance)
+        service.validateNewElementPlacement(doodiaElement, taxonData)
+
+        then: 'I get bad argument, instance already on the tree'
+        def e = thrown(BadArgumentsException)
+        e.message == "$tree.name version $draftVersion.id already contains taxon $asperaElement.instanceLink. See $asperaElement.elementLink"
+
+    }
+
+    def "test check validation, ranked above parent"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData])
+        Instance doodiaInstance = Instance.get(578615)
+        TreeElement blechnaceaeElement = TreeElement.findBySimpleNameAndTreeVersion('Blechnaceae', draftVersion)
+        TreeElement asperaElement = TreeElement.findBySimpleNameAndTreeVersion('Doodia aspera', draftVersion)
+
+        //these shouldn't matter so long as they're not on the draft tree
+        service.linkService.getPreferredLinkForObject(doodiaInstance.name) >> 'http://blah/name/apni/70914'
+        service.linkService.getPreferredLinkForObject(doodiaInstance) >> 'http://blah/instance/apni/578615'
+
+        expect:
+        tree
+        draftVersion
+        draftVersion.treeElements.size() == 2
+        tree.defaultDraftTreeVersion == draftVersion
+        blechnaceaeElement
+        asperaElement
+        doodiaInstance
+
+        when: 'I try to place Doodia under Doodia aspera '
+        TaxonData taxonData = service.elementDataFromInstance(doodiaInstance)
+        service.validateNewElementPlacement(asperaElement, taxonData)
+
+        then: 'I get bad argument, doodia aspera ranked below doodia'
+        def e = thrown(BadArgumentsException)
+        e.message == 'Name Doodia of rank Genus is not below rank Species of Doodia aspera.'
+
+        when: 'I try to place Doodia under Blechnaceae'
+        taxonData = service.elementDataFromInstance(doodiaInstance)
+        service.validateNewElementPlacement(blechnaceaeElement, taxonData)
+
+        then: 'it should work'
+        notThrown(BadArgumentsException)
+    }
+
+    def "test check validation, nomIlleg nomInval"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData])
+        Instance doodiaInstance = Instance.get(578615)
+        TreeElement blechnaceaeElement = TreeElement.findBySimpleNameAndTreeVersion('Blechnaceae', draftVersion)
+
+        //these shouldn't matter so long as they're not on the draft tree
+        service.linkService.getPreferredLinkForObject(doodiaInstance.name) >> 'http://blah/name/apni/70914'
+        service.linkService.getPreferredLinkForObject(doodiaInstance) >> 'http://blah/instance/apni/578615'
+
+        expect:
+        tree
+        draftVersion
+        draftVersion.treeElements.size() == 2
+        tree.defaultDraftTreeVersion == draftVersion
+        blechnaceaeElement
+        doodiaInstance
+
+        when: 'I try to place a nomIlleg name'
+        def taxonData = service.elementDataFromInstance(doodiaInstance)
+        taxonData.nomIlleg = true
+        List<String> warnings = service.validateNewElementPlacement(blechnaceaeElement, taxonData)
+
+        then: 'I get a warning, nomIlleg'
+        warnings
+        warnings.first() == 'Doodia is nomIlleg'
+
+        when: 'I try to place a nomInval name'
+        taxonData.nomIlleg = false
+        taxonData.nomInval = true
+        warnings = service.validateNewElementPlacement(blechnaceaeElement, taxonData)
+
+        then: 'I get a warning, nomInval'
+        warnings
+        warnings.first() == 'Doodia is nomInval'
+
+    }
+
+    def "test check validation, existing name"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData])
+        Instance asperaInstance = Instance.get(781104)
+        TreeElement doodiaElement = TreeElement.findBySimpleNameAndTreeVersion('Doodia', draftVersion)
+        TreeElement asperaElement = TreeElement.findBySimpleNameAndTreeVersion('Doodia aspera', draftVersion)
+
+        //return a url that matches the name link of aspera
+        service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/70944'
+        service.linkService.getPreferredLinkForObject(asperaInstance) >> 'http://something that does not match the instance'
+
+        expect:
+        tree
+        draftVersion
+        doodiaElement
+        asperaInstance
+        asperaElement
+
+        when: 'I try to place Doodia aspera under Doodia'
+        TaxonData taxonData = service.elementDataFromInstance(asperaInstance)
+        service.validateNewElementPlacement(doodiaElement, taxonData)
+
+        then: 'I get bad argument, name is already on the tree'
+        def e = thrown(BadArgumentsException)
+        e.message == "$tree.name version $draftVersion.id already contains name $taxonData.nameLink. See $asperaElement.elementLink"
+
+    }
+
+    private static makeTestElements(TreeVersion version, List<Map> elementData) {
+        elementData.each { Map data ->
             TreeElement parent = null
             if (data.parent_element_id) {
                 parent = TreeElement.get(new TreeElement(treeVersion: version, treeElementId: data.parent_element_id))
@@ -306,7 +477,90 @@ class TreeServiceSpec extends Specification {
         version.refresh()
     }
 
-    List<Map> testElementData() {
+    private static Map doodiaElementData = [
+            "tree_version_id"    : 146,
+            "tree_element_id"    : 2910041,
+            "lock_version"       : 0,
+            "display_string"     : "<div class='tr Regnum Division Classis Subclassis Ordo Familia'><x><x><x><x><x><x><data><scientific><name id='70914'><element class='Doodia'>Doodia</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <citation>Parris, B.S. in McCarthy, P.M. (ed.) (1998), Doodia. <i>Flora of Australia</i> 48</citation></data></x></x></x></x></x></x></div>",
+            "element_link"       : "http://localhost:7070/nsl-mapper/tree/146/2910041",
+            "excluded"           : false,
+            "instance_id"        : 578615,
+            "instance_link"      : "http://localhost:7070/nsl-mapper/instance/apni/578615",
+            "name_id"            : 70914,
+            "name_link"          : "http://localhost:7070/nsl-mapper/name/apni/70914",
+            "name_path"          : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia",
+            "names"              : "|Doodia",
+            "parent_version_id"  : 146,
+            "parent_element_id"  : 8032171,
+            "previous_version_id": 145,
+            "previous_element_id": 2910041,
+            "profile"            : ['APC Dist.': ['value': 'NT, SA, Qld, NSW, LHI, NI, ACT, Vic, Tas', 'source_id': 14274, 'created_at': '2008-08-06T00:00:00+10:00', 'created_by': 'BRONWYNC', 'updated_at': '2008-08-06T00:00:00+10:00', 'updated_by': 'BRONWYNC', 'source_system': 'APC_CONCEPT'], 'APC Comment': ['value': '<i>Doodia</i> R.Br. is included in <i>Blechnum</i> L. in NSW.', 'source_id': null, 'created_at': '2016-06-10T15:22:41.742+10:00', 'created_by': 'blepschi', 'updated_at': '2016-06-10T15:23:01.201+10:00', 'updated_by': 'blepschi', 'source_system': null]],
+            "rank_path"          : ['Ordo': ['id': 223583, 'name': 'Polypodiales'], 'Genus': ['id': 70914, 'name': 'Doodia'], 'Regnum': ['id': 54717, 'name': 'Plantae'], 'Classis': ['id': 223519, 'name': 'Equisetopsida'], 'Familia': ['id': 222592, 'name': 'Blechnaceae'], 'Division': ['id': 224706, 'name': 'Charophyta'], 'Subclassis': ['id': 224852, 'name': 'Polypodiidae']],
+            "simple_name"        : "Doodia",
+            "source_element_link": null,
+            "source_shard"       : "APNI",
+            "synonyms"           : null,
+            "tree_path"          : "9284583/9284582/9284581/9134301/9032536/8032171/2910041",
+            "updated_at"         : "2017-07-11 00:00:00.000000",
+            "updated_by"         : "import"
+    ]
+
+    private static Map blechnaceaeElementData = [
+            "tree_version_id"    : 146,
+            "tree_element_id"    : 8032171,
+            "lock_version"       : 0,
+            "display_string"     : "<div class='tr Regnum Division Classis Subclassis Ordo'><x><x><x><x><x><data><scientific><name id='222592'><element class='Blechnaceae'>Blechnaceae</element> <authors><author id='8244' title='Newman, E.'>Newman</author></authors></name></scientific> <citation>CHAH (2009), <i>Australian Plant Census</i></citation></data></x></x></x></x></x></div>",
+            "element_link"       : "http://localhost:7070/nsl-mapper/tree/146/8032171",
+            "excluded"           : false,
+            "instance_id"        : 651382,
+            "instance_link"      : "http://localhost:7070/nsl-mapper/instance/apni/651382",
+            "name_id"            : 222592,
+            "name_link"          : "http://localhost:7070/nsl-mapper/name/apni/222592",
+            "name_path"          : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae",
+            "names"              : "|Blechnaceae",
+            "parent_version_id"  : 146,
+            "parent_element_id"  : 9032536,
+            "previous_version_id": 145,
+            "previous_element_id": 8032171,
+            "profile"            : ['APC Dist.': ['value': 'WA, NT, SA, Qld, NSW, LHI, NI, ACT, Vic, Tas, MI', 'source_id': 22346, 'created_at': '2009-10-27T00:00:00+11:00', 'created_by': 'KIRSTENC', 'updated_at': '2009-10-27T00:00:00+11:00', 'updated_by': 'KIRSTENC', 'source_system': 'APC_CONCEPT']],
+            "rank_path"          : ['Ordo': ['id': 223583, 'name': 'Polypodiales'], 'Regnum': ['id': 54717, 'name': 'Plantae'], 'Classis': ['id': 223519, 'name': 'Equisetopsida'], 'Familia': ['id': 222592, 'name': 'Blechnaceae'], 'Division': ['id': 224706, 'name': 'Charophyta'], 'Subclassis': ['id': 224852, 'name': 'Polypodiidae']],
+            "simple_name"        : "Blechnaceae",
+            "source_element_link": null,
+            "source_shard"       : "APNI",
+            "synonyms"           : null,
+            "tree_path"          : "9284583/9284582/9284581/9134301/9032536/8032171",
+            "updated_at"         : "2017-07-11 00:00:00.000000",
+            "updated_by"         : "import"
+    ]
+    private static Map asperaElementData = [
+            "tree_version_id"    : 146,
+            "tree_element_id"    : 2895769,
+            "lock_version"       : 0,
+            "display_string"     : "<div class='tr Regnum Division Classis Subclassis Ordo Familia Genus'><x><x><x><x><x><x><x><data><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <citation>CHAH (2014), <i>Australian Plant Census</i></citation></data></x></x></x></x></x></x></x></div>",
+            "element_link"       : "http://localhost:7070/nsl-mapper/tree/146/2895769",
+            "excluded"           : false,
+            "instance_id"        : 781104,
+            "instance_link"      : "http://localhost:7070/nsl-mapper/instance/apni/781104",
+            "name_id"            : 70944,
+            "name_link"          : "http://localhost:7070/nsl-mapper/name/apni/70944",
+            "name_path"          : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia/aspera",
+            "names"              : "|Doodia aspera|Blechnum neohollandicum|Doodia aspera var. angustifrons|Doodia aspera var. aspera|Woodwardia aspera",
+            "parent_version_id"  : 146,
+            "parent_element_id"  : 2910041,
+            "previous_version_id": 145,
+            "previous_element_id": 2895769,
+            "profile"            : ['APC Dist.': ['value': 'Qld, NSW, LHI, NI, Vic, Tas', 'source_id': 42500, 'created_at': '2014-03-25T00:00:00+11:00', 'created_by': 'KIRSTENC', 'updated_at': '2014-03-25T14:04:06+11:00', 'updated_by': 'KIRSTENC', 'source_system': 'APC_CONCEPT'], 'APC Comment': ['value': 'Treated as <i>Blechnum neohollandicum</i> Christenh. in NSW.', 'source_id': null, 'created_at': '2016-06-10T15:21:38.135+10:00', 'created_by': 'blepschi', 'updated_at': '2016-06-10T15:21:38.135+10:00', 'updated_by': 'blepschi', 'source_system': null]],
+            "rank_path"          : ['Ordo': ['id': 223583, 'name': 'Polypodiales'], 'Genus': ['id': 70914, 'name': 'Doodia'], 'Regnum': ['id': 54717, 'name': 'Plantae'], 'Classis': ['id': 223519, 'name': 'Equisetopsida'], 'Familia': ['id': 222592, 'name': 'Blechnaceae'], 'Species': ['id': 70944, 'name': 'aspera'], 'Division': ['id': 224706, 'name': 'Charophyta'], 'Subclassis': ['id': 224852, 'name': 'Polypodiidae']],
+            "simple_name"        : "Doodia aspera",
+            "source_element_link": null,
+            "source_shard"       : "APNI",
+            "synonyms"           : ['Woodwardia aspera': ['type': 'nomenclatural synonym', 'name_id': 106698], 'Blechnum neohollandicum': ['type': 'taxonomic synonym', 'name_id': 239547], 'Doodia aspera var. aspera': ['type': 'nomenclatural synonym', 'name_id': 70967], 'Doodia aspera var. angustifrons': ['type': 'taxonomic synonym', 'name_id': 70959]],
+            "tree_path"          : "9284583/9284582/9284581/9134301/9032536/8032171/2910041/2895769",
+            "updated_at"         : "2017-07-11 00:00:00.000000",
+            "updated_by"         : "import"
+    ]
+
+    private static List<Map> testElementData() {
         [
                 [
                         tree_version_id    : 146,
