@@ -259,7 +259,7 @@ class NameUtils {
     static Name nameParent(Name name) {
         use(RankUtils) {
             if (name.nameRank.name == '[unranked]') {
-                return firstRankedParent(name)
+                return firstMajorRankedParent(name)
             }
             if (name.nameLowerThanRank('Genus') || name.nameRank.visibleInName) {
                 NameRank parentRank = name.nameRank.parentRank
@@ -277,10 +277,10 @@ class NameUtils {
         }
     }
 
-    static Name firstRankedParent(Name name) {
+    static Name firstMajorRankedParent(Name name) {
         int count = 5
         while (count-- > 0) {
-            if (name.parent.nameRank.name != '[unranked]') {
+            if (name.parent.nameRank.name != '[unranked]' && name.parent.nameRank.major) {
                 return name.parent
             }
             name = name.parent
