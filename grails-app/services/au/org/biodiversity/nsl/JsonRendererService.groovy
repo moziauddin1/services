@@ -471,7 +471,7 @@ class JsonRendererService {
                                 rankPath     : treeElement.rankPath,
                                 namePath     : treeElement.namePath,
                                 names        : treeElement.names,
-                                displayString: treeElement.displayString,
+                                displayString: treeElement.displayHtml,
                                 sourceShard  : treeElement.sourceShard,
                                 synonyms     : treeElement.synonyms,
                                 profile      : treeElement.profile,

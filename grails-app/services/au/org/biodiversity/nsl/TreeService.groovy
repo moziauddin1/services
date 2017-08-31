@@ -108,9 +108,9 @@ class TreeService implements ValidationUtils {
     /**
      * Get just the display string and links for all the child tree elements.
      * @param treeElement
-     * @return [[displayString , link, name link, instance link], ...]
+     * @return List of DisplayElements
      */
-    List<List> childDisplayElements(TreeElement treeElement) {
+    List<DisplayElement> childDisplayElements(TreeElement treeElement) {
         mustHave(treeElement: treeElement)
         String pattern = "^${treeElement.treePath}.*"
         fetchDisplayElements(pattern, treeElement.treeVersion)
@@ -119,9 +119,9 @@ class TreeService implements ValidationUtils {
     /**
      * Get just the display string and link to the child tree elements to depth
      * @param treeElement
-     * @return [displayString , link, name link, instance link], ...]
+     * @return List of DisplayElements
      */
-    List<List> childDisplayElementsToDepth(TreeElement treeElement, int depth) {
+    List<DisplayElement> childDisplayElementsToDepth(TreeElement treeElement, int depth) {
         mustHave(treeElement: treeElement)
         String pattern = "^${treeElement.treePath}(/[^/]*){0,$depth}\$"
         fetchDisplayElements(pattern, treeElement.treeVersion)
@@ -130,23 +130,23 @@ class TreeService implements ValidationUtils {
     /**
      * Get just the display string and link to the child tree elements to depth
      * @param treeElement
-     * @return [[displayString , link], ...]
+     * @return List of DisplayElement
      */
-    List<List> displayElementsToDepth(TreeVersion treeVersion, int depth) {
+    List<DisplayElement> displayElementsToDepth(TreeVersion treeVersion, int depth) {
         mustHave(treeElement: treeVersion)
         String pattern = "^[^/]*(/[^/]*){0,$depth}\$"
         fetchDisplayElements(pattern, treeVersion)
     }
 
-    List<List> displayElementsToLimit(TreeElement treeElement, Integer limit) {
+    List<DisplayElement> displayElementsToLimit(TreeElement treeElement, Integer limit) {
         displayElementsToLimit(treeElement.treeVersion, "^${treeElement.treePath}", limit)
     }
 
-    List<List> displayElementsToLimit(TreeVersion treeVersion, Integer limit) {
+    List<DisplayElement> displayElementsToLimit(TreeVersion treeVersion, Integer limit) {
         displayElementsToLimit(treeVersion, "^[^/]*", limit)
     }
 
-    List<List> displayElementsToLimit(TreeVersion treeVersion, String prefix, Integer limit) {
+    List<DisplayElement> displayElementsToLimit(TreeVersion treeVersion, String prefix, Integer limit) {
         mustHave(treeElement: treeVersion, limit: limit)
         int depth = 11 //pick a maximum depth - current APC has 10
         int count = countElementsAtDepth(treeVersion, prefix, depth)
@@ -158,21 +158,21 @@ class TreeService implements ValidationUtils {
         fetchDisplayElements(pattern, treeVersion)
     }
     /**
-     * get [displayString , link, name link, instance link], ...]
+     * get a list of DisplayElements
      * @param pattern
      * @param treeVersion
      * @return
      */
     @SuppressWarnings("GrMethodMayBeStatic")
-    private List<List> fetchDisplayElements(String pattern, TreeVersion treeVersion) {
+    private List<DisplayElement> fetchDisplayElements(String pattern, TreeVersion treeVersion) {
         log.debug("getting $pattern")
         TreeElement.executeQuery('''
-select displayString, elementLink, nameLink, instanceLink, excluded 
+select displayHtml, elementLink, nameLink, instanceLink, excluded, depth, synonymsHtml 
     from TreeElement 
     where treeVersion = :version 
         and regex(treePath, :pattern) = true 
     order by namePath
-''', [version: treeVersion, pattern: pattern]) as List<List>
+''', [version: treeVersion, pattern: pattern]).collect { data -> new DisplayElement(data as List) } as List<DisplayElement>
     }
 
     @SuppressWarnings("GrMethodMayBeStatic")
@@ -353,31 +353,65 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
         Sql sql = getSql()
 
         sql.execute('''INSERT INTO tree_element
-(tree_version_id, tree_element_id, lock_version, excluded, display_string, element_link, instance_id, instance_link,
- name_id, name_link, parent_version_id, parent_element_id, previous_version_id, previous_element_id, profile, rank_path,
- simple_name, tree_path, name_path, updated_at, updated_by)
+(
+tree_version_id,    
+tree_element_id,    
+lock_version,       
+depth,              
+display_html,       
+element_link,       
+excluded,           
+instance_id,        
+instance_link,      
+name_element,       
+name_id,            
+name_link,          
+name_path,          
+parent_Version_Id,  
+parent_Element_Id,  
+previous_Version_Id,
+previous_Element_Id,
+profile,            
+rank,               
+rank_path,          
+simple_name,        
+source_element_link,
+source_shard,       
+synonyms,           
+synonyms_html,      
+tree_path,          
+updated_at,         
+updated_by         
+)
   (SELECT
-     :toVersionId,
-     tree_element_id,
-     lock_version,
-     excluded,
-     display_string,
-     'http://' || :hostname || '/tree/' || :toVersionId || '/' || tree_element_id,
-     instance_id,
-     instance_link,
-     name_id,
-     name_link,
-     :toVersionId,
-     parent_element_id,
-     tree_version_id, -- previous version
-     tree_element_id,
-     profile,
-     rank_path,
-     simple_name,
-     tree_path,
-     name_path,
-     updated_at,
-     updated_by
+    :toVersionId,
+    tree_element_id,    
+    lock_version,       
+    depth,              
+    display_html,       
+    'http://' || :hostname || '/tree/' || :toVersionId || '/' || tree_element_id,
+    excluded,           
+    instance_id,        
+    instance_link,      
+    name_element,       
+    name_id,            
+    name_link,          
+    name_path,          
+    :toVersionId,
+    parent_Element_Id,  
+    tree_version_id,    
+    tree_element_id,    
+    profile,            
+    rank,               
+    rank_path,          
+    simple_name,        
+    source_element_link,
+    source_shard,       
+    synonyms,           
+    synonyms_html,      
+    tree_path,          
+    updated_at,         
+    updated_by
    FROM tree_element fromElement WHERE fromElement.tree_version_id = :fromVersionId
   )
 ''', [fromVersionId: fromVersion.id, toVersionId: toVersion.id, hostname: 'id.biodiversity.org.au'])
@@ -412,15 +446,56 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
         throw new NotImplementedException('Validate Tree Version is not implemented')
     }
 
-    TreeElement placeTaxonUri(TreeElement parentElement, String taxonUri, Boolean excluded) {
+    TreeElement placeTaxonUri(TreeElement parentElement, String taxonUri, Boolean excluded, String userName) {
 
         TaxonData taxonData = findInstanceByUri(taxonUri)
         if (!taxonData) {
             throw new ObjectNotFoundException("Taxon $taxonUri not found, trying to place it in $parentElement")
         }
         taxonData.excluded = excluded
-        validateNewElementPlacement(parentElement, taxonData)
+        List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
+        //note above will throw exceptions for invalid placements, not warnings
+        TreeElement childElement = makeTreeElement(taxonData, parentElement, userName)
+
         null
+    }
+
+    protected makeTreeElement(TaxonData taxonData, TreeElement parentElement, String userName) {
+        Long treeElementId = generateNewElementId()
+        TreeElement treeElement = new TreeElement(
+                treeElementId: treeElementId,
+                treeVersion: parentElement.treeVersion,
+                previousElement: null,
+                parentElement: parentElement,
+                instanceId: taxonData.instanceId,
+                nameId: taxonData.nameId,
+                excluded: taxonData.excluded,
+                displayHtml: taxonData.displayHtml,
+                synonymsHtml: taxonData.synonymsHtml,
+                simpleName: taxonData.simpleName,
+                nameElement: taxonData.nameElement,
+                treePath: parentElement.treePath + "/$treeElementId",
+                namePath: parentElement.namePath + "/$taxonData.nameElement",
+                rank: taxonData.rank,
+                depth: parentElement.depth + 1,
+                sourceShard: taxonData.sourceShard,
+                synonyms: taxonData.synonyms,
+                rankPath: parentElement.rankPath << taxonData.rankPathPart,
+                profile: taxonData.profile,
+                sourceElementLink: null,
+                elementLink: 'not set',
+                nameLink: taxonData.nameLink,
+                instanceLink: taxonData.instanceLink,
+                updatedBy: userName,
+                updatedAt: new Timestamp(System.currentTimeMillis())
+        )
+        treeElement.elementLink = linkService.addTargetLink(treeElement)
+        treeElement.save()
+        return treeElement
+    }
+
+    Long generateNewElementId(Sql sql = getSql()) {
+        sql.firstRow("SELECT nextval('nsl_global_seq')")[0] as Long
     }
 
     protected List<String> validateNewElementPlacement(TreeElement parentElement, TaxonData taxonData) {
@@ -432,9 +507,8 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
         checkInstanceOnTree(taxonData, treeVersion)
         checkNameAlreadyOnTree(taxonData, treeVersion)
 
-        String[] parentNameElements = parentElement.namePath.split('/')
-        NameRank taxonRank = rankOfElement(taxonData.rankPathPart as Map, taxonData.nameElement as String)
-        NameRank parentRank = rankOfElement(parentElement.rankPath, parentNameElements.last())
+        NameRank taxonRank = rankOfElement(taxonData.rankPathPart, taxonData.nameElement)
+        NameRank parentRank = rankOfElement(parentElement.rankPath, parentElement.nameElement)
 
         //is rank below parent
         if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
@@ -442,7 +516,7 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
         }
 
         //polynomials must be placed under parent
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentNameElements)
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
 
         checkForExistingSynonyms(taxonData, treeVersion)
 
@@ -493,9 +567,13 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
     protected List<Map> checkSynonyms(TaxonData taxonData, TreeVersion treeVersion, Sql sql = getSql()) {
 
         List<Map> synonymsFound = []
-        String names = "('" + filterSynonyms(taxonData).join("','") + "')"
+        String nameIds = filterSynonyms(taxonData).collect { it.value.name_id }.join(',')
 
-        sql.eachRow('''
+        if (!nameIds) {
+            return []
+        }
+
+        sql.eachRow("""
 SELECT
   el.name_id as name_id,
   el.simple_name as simple_name,
@@ -506,17 +584,17 @@ FROM tree_element el
   JOIN name n ON el.name_id = n.id,
       jsonb_object_keys(synonyms) AS tax_syn
 WHERE tree_version_id = :versionId
-      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte).*\'
-  and tax_syn in ''' + names, [versionId: treeVersion.id]) { row ->
+      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*'
+  and (synonyms -> tax_syn ->> 'name_id') :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
             synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id]
         }
         return synonymsFound
     }
 
-    protected static Set<String> filterSynonyms(TaxonData taxonData) {
+    protected static Map filterSynonyms(TaxonData taxonData) {
         taxonData.synonyms.findAll { Map.Entry entry ->
-            !entry.value.type.contains('pro parte') && !entry.value.type.contains('misapp')
-        }.keySet()
+            !(entry.value.type ==~ '.*(misapp|pro parte|common|vernacular).*')
+        }
     }
 
     protected static checkPolynomialsBelowNameParent(String simpleName, Boolean excluded, NameRank taxonRank,
@@ -550,27 +628,52 @@ WHERE tree_version_id = :versionId
         }
 
         Map synonyms = getSynonyms(instance)
+        String synonymsHtml = makeSynonymsHtml(synonyms)
 
         new TaxonData(
                 nameId: instance.name.id,
                 instanceId: instance.id,
                 simpleName: instance.name.simpleName,
                 nameElement: instance.name.nameElement,
-                names: '|' + synonyms.keySet().join('|'),
+                displayHtml: "<data> $instance.name.fullNameHtml <citation>$instance.reference.citationHtml</citation></data>",
+                synonymsHtml: synonymsHtml,
                 sourceShard: configService.nameSpaceName,
                 synonyms: synonyms,
+                rank: instance.name.nameRank.name,
                 rankPathPart: [(instance.name.nameRank.name): [id: instance.name.id, name: instance.name.nameElement]],
                 nameLink: linkService.getPreferredLinkForObject(instance.name),
                 instanceLink: linkService.getPreferredLinkForObject(instance),
                 nomInval: instance.name.nameStatus.nomInval,
-                nomIlleg: instance.name.nameStatus.nomIlleg,
+                nomIlleg: instance.name.nameStatus.nomIlleg
         )
+    }
+
+    private static String makeSynonymsHtml(Map data) {
+        '<synonyms>' +
+                addSynType(data, 'nom') +
+                addSynType(data, 'tax') +
+                addSynType(data, 'mis') +
+                '</synonyms>'
+    }
+
+    private static String addSynType(Map data, String type) {
+        String synonymsHtml
+        data.findAll { Map.Entry entry -> entry.value[type] }.each { Map.Entry syn ->
+            synonymsHtml += "<$type>$syn.fullName</$type>"
+        }
+        return synonymsHtml
     }
 
     private static Map getSynonyms(Instance instance) {
         Map resultMap = [:]
         instance.instancesForCitedBy.each { Instance synonym ->
-            resultMap.put((synonym.name.simpleName), [type: synonym.instanceType.name, name_id: synonym.name.id])
+            resultMap.put((synonym.name.simpleName), [type     : synonym.instanceType.name,
+                                                      name_id  : synonym.name.id,
+                                                      full_name: synonym.name.fullName,
+                                                      nom      : synonym.instanceType.nomenclatural,
+                                                      tax      : synonym.instanceType.taxonomic,
+                                                      mis      : synonym.instanceType.misapplied
+            ])
         }
         return resultMap
     }
@@ -633,14 +736,40 @@ class TaxonData {
     Long instanceId
     String simpleName
     String nameElement
-    String names
+    String displayHtml
+    String synonymsHtml
     String sourceShard
     Map synonyms
+    String rank
     Map rankPathPart
+    Map profile
     String nameLink
     String instanceLink
     Boolean nomInval
     Boolean nomIlleg
     Boolean excluded
+
+}
+
+class DisplayElement {
+
+    public final String displayHtml
+    public final String elementLink
+    public final String nameLink
+    public final String instanceLink
+    public final Boolean excluded
+    public final Integer depth
+    public final String synonymsHtml
+
+    DisplayElement(List data) {
+        assert data.size() == 7
+        this.displayHtml = data[0] as String
+        this.elementLink = data[1] as String
+        this.nameLink = data[2] as String
+        this.instanceLink = data[3] as String
+        this.excluded = data[4] as Boolean
+        this.depth = data[5] as Integer
+        this.synonymsHtml = data[6] as String
+    }
 
 }

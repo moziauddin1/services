@@ -61,19 +61,24 @@
     <tree:elementPath element="${treeElement}" var="pathElement" separator="/">
       <a href="${pathElement.elementLink}">${pathElement.simpleName}</a>
     </tree:elementPath>
-    <a href="${treeElement.elementLink}">${raw(treeElement.displayString)}</a>
+    <div class="tr ${treeElement.excluded ? 'excluded' : ''}">
+      <a href="${treeElement.elementLink}">${raw(treeElement.displayHtml)}</a>
+    </div>
     <span class="text-info">${children.size() - 1} sub taxa</span>
     <br>
     <tree:profile profile="${treeElement.profile}"/>
   </div>
 
-  <div class="${tree.collapsedIndent(element: treeElement)}">
+  <div class="indented ${tree.collapsedIndent(element: treeElement)}">
     <g:each in="${children}" var="childElement">
-      <div class="wrap ${childElement[4] ? 'excluded' : ''}">
-        <a href="${childElement[1]}">${raw(childElement[0])}</a>
-        <a class="vertbar" href="${childElement[2]}/api/apni-format" title="View name in APNI format.">
-          <i class="fa fa-list-alt see-through"></i>
-        </a>
+      <div class="tr ${childElement.excluded ? 'excluded' : ''} level${childElement.depth}">
+        <div class="wrap">
+          <a href="${childElement.elementLink}">${raw(childElement.displayHtml)}</a>
+          <a href="${childElement.nameLink}/api/apni-format" title="View name in APNI format.">
+            <i class="fa fa-list-alt see-through"></i>
+          </a>
+          ${raw(childElement.synonymsHtml)}
+        </div>
       </div>
     </g:each>
   </div>

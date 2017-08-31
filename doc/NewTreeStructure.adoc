@@ -928,6 +928,71 @@ ORDER BY el.name_path;
 
 |===
 
+=== To sum the total data size of the tree_element table
+
+[source]
+.sum_tree_element.sql
+----
+select
+  pg_size_pretty(sum(pg_column_size(tree_version_id))) as tree_version_id_size,
+  pg_size_pretty(sum(pg_column_size(tree_element_id))) as tree_element_id_size,
+  pg_size_pretty(sum(pg_column_size(lock_version))) as lock_version_size,
+  pg_size_pretty(sum(pg_column_size(display_string))) as display_string_size,
+  pg_size_pretty(sum(pg_column_size(element_link))) as element_link_size,
+  pg_size_pretty(sum(pg_column_size(excluded))) as excluded_size,
+  pg_size_pretty(sum(pg_column_size(instance_id))) as instance_id_size,
+  pg_size_pretty(sum(pg_column_size(instance_link))) as instance_link_size,
+  pg_size_pretty(sum(pg_column_size(name_id))) as name_id_size,
+  pg_size_pretty(sum(pg_column_size(name_link))) as name_link_size,
+  pg_size_pretty(sum(pg_column_size(name_path))) as name_path_size,
+  pg_size_pretty(sum(pg_column_size(names))) as names_size,
+  pg_size_pretty(sum(pg_column_size(parent_version_id))) as parent_version_id_size,
+  pg_size_pretty(sum(pg_column_size(parent_element_id))) as parent_element_id_size,
+  pg_size_pretty(sum(pg_column_size(previous_version_id))) as previous_version_id_size,
+  pg_size_pretty(sum(pg_column_size(previous_element_id))) as previous_element_id_size,
+  pg_size_pretty(sum(pg_column_size(profile))) as profile_size,
+  pg_size_pretty(sum(pg_column_size(rank_path))) as rank_path_size,
+  pg_size_pretty(sum(pg_column_size(simple_name))) as simple_name_size,
+  pg_size_pretty(sum(pg_column_size(source_element_link))) as source_element_link_size,
+  pg_size_pretty(sum(pg_column_size(source_shard))) as source_shard_size,
+  pg_size_pretty(sum(pg_column_size(synonyms))) as synonyms_size,
+  pg_size_pretty(sum(pg_column_size(tree_path))) as tree_path_size,
+  pg_size_pretty(sum(pg_column_size(updated_at))) as updated_at_size,
+  pg_size_pretty(sum(pg_column_size(updated_by))) as updated_by_size
+  from tree_element;
+----
+
+=== To find the total used sizes of tables in the database
+
+[source]
+.table_size.sql
+----
+SELECT
+  *,
+  pg_size_pretty(total_bytes) AS total,
+  pg_size_pretty(index_bytes) AS INDEX,
+  pg_size_pretty(toast_bytes) AS toast,
+  pg_size_pretty(table_bytes) AS TABLE
+FROM (
+       SELECT
+         *,
+         total_bytes - index_bytes - COALESCE(toast_bytes, 0) AS table_bytes
+       FROM (
+              SELECT
+                c.oid,
+                nspname                               AS table_schema,
+                relname                               AS TABLE_NAME,
+                c.reltuples                           AS row_estimate,
+                pg_total_relation_size(c.oid)         AS total_bytes,
+                pg_indexes_size(c.oid)                AS index_bytes,
+                pg_total_relation_size(reltoastrelid) AS toast_bytes
+              FROM pg_class c
+                LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+              WHERE relkind = 'r' and nspname = 'public'
+            ) a
+     ) a;
+----
+
 == Placement Rules
 
 This is an interpretation of the results of the discussion at https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
@@ -1068,4 +1133,27 @@ we get the results:
 |75398|Ficus virens|Ficus infectoria var. cunninghamii|taxonomic synonym|91343
 |===
 
+==== Checking the validity of an existing tree
 
+Check all names in the tree for synonyms of that name in the tree:
+
+[source]
+.findSynonyms in tree
+----
+SELECT
+  e1.simple_name                    AS name1,
+  e1.name_id,
+  e2.simple_name                    AS name2,
+  e2.name_id,
+  tax_syn                           AS name2_synonym,
+  e2.synonyms -> tax_syn ->> 'type' AS type
+FROM tree_element e1, tree_element e2,
+      jsonb_object_keys(e2.synonyms) AS tax_syn
+WHERE
+  e1.tree_version_id = 146
+  AND e2.tree_version_id = 146
+  AND e1.synonyms IS NOT NULL
+  AND e2.tree_element_id <> e1.tree_element_id
+  AND tax_syn = e1.simple_name
+  AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*';
+----

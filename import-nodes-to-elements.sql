@@ -49,16 +49,13 @@ WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, nam
     node.instance_id                                                                                     AS instance_id,
     node.name_id                                                                                         AS name_id,
     name.simple_name :: TEXT                                                                             AS simple_name,
-    '<div class="tr ' || rank.name || '"><data>' || name.full_name_html || ' <citation>' || ref.citation_html ||
-    '</citation></data></div>'                                                                           AS display,
+    '<div class="tr ' || rank.name || 'level1"><data>' || name.full_name_html || ' <citation>'
+    || ref.citation_html || '</citation></data></div>'                                                   AS display,
     node.prev_node_id                                                                                    AS prev_node_id,
     node.id :: TEXT                                                                                      AS tree_path,
     coalesce(name.name_element, '?') :: TEXT                                                             AS name_path,
     jsonb_build_object(rank.name, jsonb_build_object('name', name.name_element, 'id', name.id)) :: JSONB AS rank_path,
-    '<x>'                                                                                                AS indent,
-    '</x>'                                                                                               AS outdent,
-    2                                                                                                    AS depth,
-    rank.name :: TEXT                                                                                    AS depthclass
+    2                                                                                                    AS depth
 
   FROM tree_link link
     JOIN tree_node node ON link.subnode_id = node.id
@@ -71,30 +68,21 @@ WITH RECURSIVE treewalk (tree_id, parent_id, node_id, excluded, instance_id, nam
         AND node.internal_type = 'T'
   UNION ALL
   SELECT
-    treewalk.tree_id                                           AS tree_id,
-    treewalk.node_id                                           AS parent_id,
-    node.id                                                    AS node_id,
-    (node.type_uri_id_part <>
-     'ApcConcept') :: BOOLEAN                                  AS excluded,
-    node.instance_id                                           AS instance_id,
-    node.name_id                                               AS name_id,
-    name.simple_name :: TEXT                                   AS simple_name,
-    '<div class="tr ' || treewalk.depthclass || '">' || treewalk.indent || '<data>' || name.full_name_html ||
-    ' <citation>' ||
-    ref.citation_html || '</citation></data>'
-    || treewalk.outdent || '</div>'                            AS display,
-    node.prev_node_id                                          AS prev_node_id,
-    treewalk.tree_path || '/' ||
-    node.id                                                    AS tree_path,
-    treewalk.name_path || '/' || coalesce(name.name_element,
-                                          '?')                 AS name_path,
+    treewalk.tree_id                                                                            AS tree_id,
+    treewalk.node_id                                                                            AS parent_id,
+    node.id                                                                                     AS node_id,
+    (node.type_uri_id_part <> 'ApcConcept') :: BOOLEAN                                          AS excluded,
+    node.instance_id                                                                            AS instance_id,
+    node.name_id                                                                                AS name_id,
+    name.simple_name :: TEXT                                                                    AS simple_name,
+    '<div class="tr ' || rank.name || ' level' || treewalk.depth || '"><data>'
+    || name.full_name_html || ' <citation>' || ref.citation_html || '</citation></data></div>'  AS display,
+    node.prev_node_id                                                                           AS prev_node_id,
+    treewalk.tree_path || '/' || node.id                                                        AS tree_path,
+    treewalk.name_path || '/' || coalesce(name.name_element, '?')                               AS name_path,
     treewalk.rank_path ||
-    jsonb_build_object(rank.name, jsonb_build_object('name', name.name_element, 'id',
-                                                     name.id)) AS rank_path,
-    treewalk.indent || '<x>'                                   AS indent,
-    treewalk.outdent || '</x>'                                 AS outdent,
-    treewalk.depth + 1                                         AS depth,
-    treewalk.depthclass || ' ' || rank.name                    AS depthclass
+    jsonb_build_object(rank.name, jsonb_build_object('name', name.name_element, 'id', name.id)) AS rank_path,
+    treewalk.depth + 1                                                                          AS depth
   FROM treewalk
     JOIN tree_link link ON link.supernode_id = treewalk.node_id
     JOIN tree_node node ON link.subnode_id = node.id

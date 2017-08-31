@@ -77,9 +77,13 @@
 
   </div>
 
-  <div class="col-xs-6 col-sm-6 col-md-7 col-lg-8 indent">
+  <div class="col-xs-6 col-sm-6 col-md-7 col-lg-8 indented">
     <g:each in="${children}" var="childElement">
-      <a href="${childElement[1]}">${raw(childElement[0])}</a>
+      <div class="tr ${childElement.excluded ? 'excluded' : ''} level${childElement.depth}">
+        <div class="wrap">
+          <a href="${childElement.elementLink}">${raw(childElement.displayHtml)}</a>
+        </div>
+      </div>
     </g:each>
   </div>
 </div>

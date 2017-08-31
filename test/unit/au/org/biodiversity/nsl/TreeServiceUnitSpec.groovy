@@ -22,27 +22,43 @@ class TreeServiceUnitSpec extends Specification {
     void "test filter synonyms"() {
 
         when: 'I filter a synonyms map'
-        Set<String> result = service.filterSynonyms(new TaxonData(synonyms: synonyms))
+        Map result = service.filterSynonyms(new TaxonData(synonyms: synonyms))
         println synonyms
         println result
 
         then: 'I get the result'
         result != null
-        names.empty ? result.empty : result.containsAll(names)
+        names.empty ? result.empty : result.keySet().containsAll(names.keySet())
 
         where:
-        names                                                                                                                                                      | synonyms
-        ['Calandrinia sp. Murchison-Gascoyne (F.Obbens & F.Hort FO 49/04)']                                                                                        | ['Calandrinia sp. Murchison-Gascoyne (F.Obbens & F.Hort FO 49/04)': ['type': 'taxonomic synonym', 'name_id': 215806]]
-        []                                                                                                                                                         | ['Deyeuxia setifolia': ['type': 'misapplied', 'name_id': 99882]]
-        []                                                                                                                                                         | ['Pellaea falcata var. nana': ['type': 'misapplied', 'name_id': 115321]]
-        ['Sida sp. Wiluna (A.Markey & S.Dillon 4126)']                                                                                                             | ['Sida sp. Wiluna (A.Markey & S.Dillon 4126)': ['type': 'taxonomic synonym', 'name_id': 236527]]
-        ['Gossypium taitense', 'Gossypium punctatum', 'Gossypium hirsutum var. hirsutum', 'Gossypium hirsutum var. taitense', 'Gossypium hirsutum var. punctatum'] | ['Gossypium taitense': ['type': 'taxonomic synonym', 'name_id': 244516], 'Gossypium punctatum': ['type': 'taxonomic synonym', 'name_id': 244514], 'Gossypium hirsutum var. hirsutum': ['type': 'nomenclatural synonym', 'name_id': 106461], 'Gossypium hirsutum var. taitense': ['type': 'taxonomic synonym', 'name_id': 244517], 'Gossypium hirsutum var. punctatum': ['type': 'taxonomic synonym', 'name_id': 3950649]]
-        ['Amoora spectabilis']                                                                                                                                     | ['Amoora spectabilis': ['type': 'basionym', 'name_id': 119129]]
-        ['Kentia ramsayi', 'Gulubia ramsayi', 'Gronophyllum ramsayi']                                                                                              | ['Kentia ramsayi': ['type': 'nomenclatural synonym', 'name_id': 71489], 'Gulubia ramsayi': ['type': 'basionym', 'name_id': 56463], 'Gronophyllum ramsayi': ['type': 'nomenclatural synonym', 'name_id': 79642]]
-        ['Amperea protensa var. genuina', 'Amperea protensa var. protensa', 'Amperea protensa var. tenuiramea']                                                    | ['Amperea protensa var. genuina': ['type': 'taxonomic synonym', 'name_id': 86321], 'Amperea protensa var. protensa': ['type': 'nomenclatural synonym', 'name_id': 86323], 'Amperea protensa var. tenuiramea': ['type': 'taxonomic synonym', 'name_id': 86326]]
-        ['White Speargrass']                                                                                                                                       | ['White Speargrass': ['type': 'common name', 'name_id': 440044]]
-        ['Zieria sp. G', 'Zieria buxijugum MS', 'Zieria buxijugum (Paris 9079)', 'Zieria sp. 14 (sp. \'P\'; Box Range North)']                                     | ['Zieria sp. G': ['type': 'taxonomic synonym', 'name_id': 189814], 'Zieria buxijugum MS': ['type': 'nomenclatural synonym', 'name_id': 194919], 'Zieria buxijugum (Paris 9079)': ['type': 'taxonomic synonym', 'name_id': 149417], 'Zieria sp. 14 (sp. \'P\'; Box Range North)': ['type': 'taxonomic synonym', 'name_id': 194610]]
-        ['Gratiola pumila', 'Gratiola sexdentata', 'Gratiola peruviana var. pumila', 'Gratiola peruviana var. pumilo']                                             | ['Gratiola pumila': ['type': 'orthographic variant', 'name_id': 235185], 'Gratiola sexdentata': ['type': 'doubtful taxonomic synonym', 'name_id': 60451], 'Gratiola peruviana var. pumila': ['type': 'nomenclatural synonym', 'name_id': 232932], 'Gratiola peruviana var. pumilo': ['type': 'nomenclatural synonym', 'name_id': 60378]]
+        names                                                                                                                           | synonyms
+        [a: [type: 'taxonomic synonym', name_id: 1], b: [type: 'nomenclatural synonym', name_id: 2], c: [type: 'basionym', name_id: 3]] | [a: [type: 'taxonomic synonym', name_id: 1], b: [type: 'nomenclatural synonym', name_id: 2], c: [type: 'basionym', name_id: 3]]
+        [a: [type: "alternative name", name_id: 1]]                                                                                     | [a: [type: "alternative name", name_id: 1]]
+        [a: [type: "basionym", name_id: 1]]                                                                                             | [a: [type: "basionym", name_id: 1]]
+        [b: [type: 'taxonomic synonym', name_id: 1]]                                                                                    | [a: [type: "common name", name_id: 1], b: [type: 'taxonomic synonym', name_id: 1]]
+        [b: [type: 'taxonomic synonym', name_id: 1]]                                                                                    | [a: [type: "doubtful misapplied", name_id: 1], b: [type: 'taxonomic synonym', name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "doubtful pro parte misapplied", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "doubtful pro parte synonym", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "doubtful pro parte taxonomic synonym", name_id: 1]]
+        [a: [type: "doubtful synonym", name_id: 1]]                                                                                     | [a: [type: "doubtful synonym", name_id: 1]]
+        [a: [type: "doubtful taxonomic synonym", name_id: 1]]                                                                           | [a: [type: "doubtful taxonomic synonym", name_id: 1]]
+        [a: [type: "isonym", name_id: 1]]                                                                                               | [a: [type: "isonym", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "misapplied", name_id: 1]]
+        [a: [type: "nomenclatural synonym", name_id: 1]]                                                                                | [a: [type: "nomenclatural synonym", name_id: 1]]
+        [a: [type: "orthographic variant", name_id: 1]]                                                                                 | [a: [type: "orthographic variant", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "pro parte misapplied", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "pro parte synonym", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "pro parte taxonomic synonym", name_id: 1]]
+        [a: [type: "replaced synonym", name_id: 1]]                                                                                     | [a: [type: "replaced synonym", name_id: 1]]
+        [a: [type: "synonym", name_id: 1]]                                                                                              | [a: [type: "synonym", name_id: 1]]
+        [a: [type: "taxonomic synonym", name_id: 1]]                                                                                    | [a: [type: "taxonomic synonym", name_id: 1]]
+        [a: [type: "trade name", name_id: 1]]                                                                                           | [a: [type: "trade name", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "unsourced doubtful misapplied", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "unsourced doubtful pro parte misapplied", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "unsourced misapplied", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "unsourced pro parte misapplied", name_id: 1]]
+        [:]                                                                                                                             | [a: [type: "vernacular name", name_id: 1]]
+
     }
 
     void "test check polynomial below parent"() {
@@ -112,4 +128,20 @@ class TreeServiceUnitSpec extends Specification {
         rank
         rank.name == 'Species'
     }
+
+    void "test DisplayElement"() {
+        when: "I create a DisplayElement from a list"
+        DisplayElement displayElement = new DisplayElement(['display string', 'element link', 'name link', 'instance link', false, 8, 'synonyms html'])
+
+        then: "it should work"
+        displayElement
+        !displayElement.excluded
+        displayElement.instanceLink == 'instance link'
+        displayElement.nameLink == 'name link'
+        displayElement.displayHtml == 'display string'
+        displayElement.elementLink == 'element link'
+        displayElement.depth == 8
+        displayElement.synonymsHtml == 'synonyms html'
+    }
+
 }

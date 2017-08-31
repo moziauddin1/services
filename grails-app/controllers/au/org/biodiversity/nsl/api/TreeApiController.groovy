@@ -129,11 +129,11 @@ class TreeApiController implements WithTarget {
     }
 
 
-    def placeTaxon(String treeElementUri, String taxonUri) {
+    def placeTaxon(String treeElementUri, String taxonUri, Boolean excluded) {
         TreeElement parentElement = TreeElement.findByElementLink(treeElementUri)
         ResultObject results = requireTarget(treeElementUri, "Tree element with $treeElementUri")
         handleResults(results) {
-            results.payload = treeService.placeTaxonUri(treeElementUri, taxonUri)
+            results.payload = treeService.placeTaxonUri(parentElement, taxonUri, excluded)
         }
     }
 

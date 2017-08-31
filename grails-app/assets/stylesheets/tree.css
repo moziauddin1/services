@@ -1,7 +1,23 @@
-div.wrap,
+div.wrap {
+    background-color: white;
+}
+
 div.tr {
-    width: 90%;
     white-space: nowrap;
+}
+
+div.indented {
+    overflow: hidden;
+}
+
+div.indented div.tr {
+    background: repeating-linear-gradient(
+            90deg,
+            transparent,
+            lightblue 1px,
+            white 2px,
+            white 1.0em
+    );
 }
 
 .excluded {
@@ -9,11 +25,11 @@ div.tr {
 }
 
 div.tr data {
-    display: inline-block;
     white-space: normal;
     padding-bottom: 0.2em;
     padding-top: 0.2em;
     color: #3c3c3c;
+    background-color: white;
 }
 
 div.tr data scientific {
@@ -21,11 +37,20 @@ div.tr data scientific {
     color: black;
 }
 
-div.wrap.excluded data scientific {
+div.tr data scientific element {
+    font-style: normal;
+}
+
+div.tr synonyms {
+    display: block;
+    padding-left: 2em;
+}
+
+div.tr.excluded data scientific {
     color: red;
 }
 
-div.wrap.excluded data::before {
+div.tr.excluded data::before {
     color: red;
     font-weight: bold;
     padding-right: 0.5em;
@@ -34,89 +59,101 @@ div.wrap.excluded data::before {
 }
 
 div.tr data scientific authors {
-    font-weight: bold;
-    color: #2b669a;
+    font-weight: normal;
+    /*color: #2b669a;*/
 }
 
 div.tr data citation {
     color: grey;
+    margin-left: 1em;
 }
 
-div.indent div.tr x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent1 div.tr {
+    margin-left: -1em;
 }
 
-div.indent1 div.tr > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent2 div.tr {
+    margin-left: -2em;
 }
 
-div.indent2 div.tr > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent3 div.tr {
+    margin-left: -3em;
 }
 
-div.indent3 div.tr > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent4 div.tr {
+    margin-left: -4em;
 }
 
-div.indent4 div.tr > x > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent5 div.tr {
+    margin-left: -5em;
 }
 
-div.indent5 div.tr > x > x > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent6 div.tr {
+    margin-left: -5em;
 }
 
-div.indent6 div.tr > x > x > x > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent7 div.tr {
+    margin-left: -7em;
 }
 
-div.indent7 div.tr > x > x > x > x > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent8 div.tr {
+    margin-left: -8em;
 }
 
-div.indent8 div.tr > x > x > x > x > x > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent9 div.tr {
+    margin-left: -9em;
 }
 
-div.indent9 div.tr > x > x > x > x > x > x > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent10 div.tr {
+    margin-left: -10em;
 }
 
-div.indent10 div.tr > x > x > x > x > x > x > x > x > x x {
-    display: inline-block;
-    border-left: 1px solid lightblue;
-    font-style: normal;
-    padding-left: 1.4em;
+div.indent11 div.tr {
+    margin-left: -11em;
+}
+
+div.indented div.tr.level1 {
+    padding-left: 1em;
+}
+
+div.indented div.tr.level2 {
+    padding-left: 2em;
+}
+
+div.indented div.tr.level3 {
+    padding-left: 3em;
+}
+
+div.indented div.tr.level4 {
+    padding-left: 4em;
+}
+
+div.indented div.tr.level5 {
+    padding-left: 5em;
+}
+
+div.indented div.tr.level6 {
+    padding-left: 6em;
+}
+
+div.indented div.tr.level7 {
+    padding-left: 7em;
+}
+
+div.indented div.tr.level8 {
+    padding-left: 8em;
+}
+
+div.indented div.tr.level9 {
+    padding-left: 9em;
+}
+
+div.indented div.tr.level10 {
+    padding-left: 10em;
+}
+
+div.indented div.tr.level11 {
+    padding-left: 11em;
 }
 
 /* add links to div.tr line by wrapping it with another div */
