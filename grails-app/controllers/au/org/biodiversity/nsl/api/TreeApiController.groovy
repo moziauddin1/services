@@ -133,7 +133,8 @@ class TreeApiController implements WithTarget {
         TreeElement parentElement = TreeElement.findByElementLink(treeElementUri)
         ResultObject results = requireTarget(treeElementUri, "Tree element with $treeElementUri")
         handleResults(results) {
-            results.payload = treeService.placeTaxonUri(parentElement, taxonUri, excluded)
+            String userName = treeService.authorizeTreeOperation(parentElement.treeVersion.tree)
+            results.payload = treeService.placeTaxonUri(parentElement, taxonUri, excluded, userName)
         }
     }
 

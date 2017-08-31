@@ -43,7 +43,41 @@ div.tr data scientific element {
 
 div.tr synonyms {
     display: block;
-    padding-left: 2em;
+    margin-left: 2em;
+    color: slategrey;
+}
+
+div.tr synonyms scientific {
+    color: black;
+}
+
+div.tr synonyms nom,
+div.tr synonyms tax,
+div.tr synonyms mis {
+    display: block;
+}
+
+div.tr synonyms nom:before {
+    content: '≡';
+    padding-right: 0.3em;
+    color: black;
+
+}
+
+div.tr synonyms tax:before {
+    content: '=';
+    padding-right: 0.3em;
+    color: black;
+}
+
+div.tr synonyms mis:before {
+    content: '≠';
+    padding-right: 0.3em;
+    color: black;
+}
+
+div.tr synonyms type {
+    margin-left: 0.5em;
 }
 
 div.tr.excluded data scientific {
@@ -64,7 +98,7 @@ div.tr data scientific authors {
 }
 
 div.tr data citation {
-    color: grey;
+    color: slategrey;
     margin-left: 1em;
 }
 

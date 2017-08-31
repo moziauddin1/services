@@ -446,7 +446,7 @@ updated_by
         throw new NotImplementedException('Validate Tree Version is not implemented')
     }
 
-    TreeElement placeTaxonUri(TreeElement parentElement, String taxonUri, Boolean excluded, String userName) {
+    Map placeTaxonUri(TreeElement parentElement, String taxonUri, Boolean excluded, String userName) {
 
         TaxonData taxonData = findInstanceByUri(taxonUri)
         if (!taxonData) {
@@ -456,8 +456,7 @@ updated_by
         List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
         //note above will throw exceptions for invalid placements, not warnings
         TreeElement childElement = makeTreeElement(taxonData, parentElement, userName)
-
-        null
+        return [childElement: childElement, warnings: warnings]
     }
 
     protected makeTreeElement(TaxonData taxonData, TreeElement parentElement, String userName) {
@@ -657,9 +656,13 @@ WHERE tree_version_id = :versionId
     }
 
     private static String addSynType(Map data, String type) {
-        String synonymsHtml
+        String synonymsHtml = ''
         data.findAll { Map.Entry entry -> entry.value[type] }.each { Map.Entry syn ->
-            synonymsHtml += "<$type>$syn.fullName</$type>"
+            if (type == 'mis') {
+                synonymsHtml += "<$type>$syn.full_name_html<type>$data.type</type> by <citation>${data.cites ?: ''}</citation></$type>"
+            } else {
+                synonymsHtml += "<$type>$syn.full_name_html<type>$data.type</type></$type>"
+            }
         }
         return synonymsHtml
     }
@@ -667,12 +670,13 @@ WHERE tree_version_id = :versionId
     private static Map getSynonyms(Instance instance) {
         Map resultMap = [:]
         instance.instancesForCitedBy.each { Instance synonym ->
-            resultMap.put((synonym.name.simpleName), [type     : synonym.instanceType.name,
-                                                      name_id  : synonym.name.id,
-                                                      full_name: synonym.name.fullName,
-                                                      nom      : synonym.instanceType.nomenclatural,
-                                                      tax      : synonym.instanceType.taxonomic,
-                                                      mis      : synonym.instanceType.misapplied
+            resultMap.put((synonym.name.simpleName), [type          : synonym.instanceType.name,
+                                                      name_id       : synonym.name.id,
+                                                      full_name_html: synonym.name.fullNameHtml,
+                                                      nom           : synonym.instanceType.nomenclatural,
+                                                      tax           : synonym.instanceType.taxonomic,
+                                                      mis           : synonym.instanceType.misapplied,
+                                                      cites         : synonym.instanceType.misapplied ? synonym.cites?.reference?.citationHtml : ''
             ])
         }
         return resultMap
