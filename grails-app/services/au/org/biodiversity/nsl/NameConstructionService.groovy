@@ -65,10 +65,13 @@ class NameConstructionService {
         }
 
         if (name.nameType.cultivar) {
+            if (name.nameType.formula && name.nameType.hybrid) {
+                return constructHybridFormulaCultivarName(name)
+            }
+            if (name.nameType.formula) {
+                return constructGraftChimeraName(name)
+            }
             if (name.nameType.hybrid) {
-                if (name.nameType.formula) {
-                    return constructHybridFormulaCultivarName(name)
-                }
                 return constructHybridCultivarName(name)
             }
             return constructCultivarName(name)
@@ -107,6 +110,18 @@ class NameConstructionService {
             } else {
                 bits << "<element>${htmlNameElement}</element>"
             }
+            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
+            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
+        }
+    }
+
+    private Map constructGraftChimeraName(Name name) {
+        use(NameUtils) {
+            List<String> bits = []
+            Name parent = name.parent
+            bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
+            bits << (name.nameType.connector ? "<formula data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</formula>" : '')
+            bits << (name.secondParent ? constructName(name.secondParent).simpleMarkedUpName?.removeManuscript() : '')
             String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
