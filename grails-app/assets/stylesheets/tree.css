@@ -77,7 +77,7 @@ div.tr synonyms mis:before {
 }
 
 div.tr synonyms type {
-    margin-left: 0.5em;
+    /*margin-left: 0.5em;*/
 }
 
 div.tr.excluded data scientific {

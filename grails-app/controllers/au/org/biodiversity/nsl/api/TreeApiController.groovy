@@ -11,6 +11,7 @@ class TreeApiController implements WithTarget {
 
     def treeService
     def jsonRendererService
+    def linkService
 
     static responseFormats = [
             createTree                : ['JSON'],
@@ -130,11 +131,13 @@ class TreeApiController implements WithTarget {
 
 
     def placeTaxon(String treeElementUri, String taxonUri, Boolean excluded) {
-        TreeElement parentElement = TreeElement.findByElementLink(treeElementUri)
+
         ResultObject results = requireTarget(treeElementUri, "Tree element with $treeElementUri")
+        TreeVersionElement treeVersionElement = TreeVersionElement.get(treeElementUri)
+
         handleResults(results) {
-            String userName = treeService.authorizeTreeOperation(parentElement.treeVersion.tree)
-            results.payload = treeService.placeTaxonUri(parentElement, taxonUri, excluded, userName)
+            String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+            results.payload = treeService.placeTaxonUri(treeVersionElement, taxonUri, excluded, userName)
         }
     }
 

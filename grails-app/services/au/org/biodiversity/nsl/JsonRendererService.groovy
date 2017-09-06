@@ -46,6 +46,8 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Tree) { Tree tree -> marshallTree(tree) }
         JSON.registerObjectMarshaller(TreeVersion) { TreeVersion treeVersion -> marshallTreeVersion(treeVersion) }
         JSON.registerObjectMarshaller(TreeElement) { TreeElement treeElement -> marshallTreeElement(treeElement) }
+        //todo remove
+        JSON.registerObjectMarshaller(TreeVersionElement) { TreeVersionElement treeVersionElement -> marshallTreeVersionElement(treeVersionElement) }
 
         JSON.registerObjectMarshaller(Node) { Node node -> marshallNode(node) }
         JSON.registerObjectMarshaller(Link) { Link link -> marshallLink(link) }
@@ -85,8 +87,8 @@ class JsonRendererService {
         }
     }
 
-    private List treeElementChildren(TreeElement treeElement) {
-        List childDisplayElements = treeService.childDisplayElements(treeElement)
+    private List treeElementChildren(TreeVersionElement treeVersionElement) {
+        List childDisplayElements = treeService.childDisplayElements(treeVersionElement)
         List kids = []
         childDisplayElements.each { items ->
             kids.add([
@@ -455,6 +457,32 @@ class JsonRendererService {
         ]
     }
 
+    Map marshallTreeVersionElement(TreeVersionElement treeVersionElement) {
+        treeVersionElement = initializeAndUnproxy(treeVersionElement)
+
+        TreeElement treeElement = treeVersionElement.treeElement
+        return [treeElement:
+                        [
+                                class        : treeElement.class.name,
+                                _links       : [
+                                        elementLink      : treeElement.elementLink,
+                                        parentElementLink: treeElement.parentElement?.elementLink,
+                                        nameLink         : treeElement.nameLink,
+                                        instanceLink     : treeElement.instanceLink,
+                                        sourceElementLink: treeElement.sourceElementLink,
+                                ],
+                                simpleName   : treeElement.simpleName,
+                                rankPath     : treeElement.rankPath,
+                                namePath     : treeElement.namePath,
+                                displayString: treeElement.displayHtml,
+                                sourceShard  : treeElement.sourceShard,
+                                synonyms     : treeElement.synonyms,
+                                profile      : treeElement.profile,
+                                children     : treeElementChildren(treeVersionElement)
+                        ]
+        ]
+    }
+
     Map marshallTreeElement(TreeElement treeElement) {
         treeElement = initializeAndUnproxy(treeElement)
         return [treeElement:
@@ -470,13 +498,12 @@ class JsonRendererService {
                                 simpleName   : treeElement.simpleName,
                                 rankPath     : treeElement.rankPath,
                                 namePath     : treeElement.namePath,
-                                names        : treeElement.names,
                                 displayString: treeElement.displayHtml,
                                 sourceShard  : treeElement.sourceShard,
                                 synonyms     : treeElement.synonyms,
-                                profile      : treeElement.profile,
-                                children     : treeElementChildren(treeElement)
-                        ]
+                                profile      : treeElement.profile
+                        ],
+                NOTE       : 'You probably want a TreeVersionElement'
         ]
     }
 

@@ -101,13 +101,12 @@ class RestResourceController {
     @Timed()
     def treeElement(Long version, Long element) {
         log.debug "Tree Element version $version, element $element"
-        TreeElement treeElement = firstResult(TreeElement.executeQuery('select e from TreeElement e where e.treeVersion.id = :versionNumber and e.treeElementId = :id',
-                [id: element, versionNumber: version])) as TreeElement
+        TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(version, element)
 
-        if (treeElement) {
-            List<DisplayElement> children = treeService.childDisplayElements(treeElement)
-            List<TreeElement> path = treeService.getElementPath(treeElement)
-            respond(treeElement, [model: [treeElement: treeElement, path: path, children: children, status: OK]])
+        if (TreeVersionElement) {
+            List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
+            List<TreeElement> path = treeService.getElementPath(treeVersionElement.treeElement)
+            respond(treeVersionElement, [model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
             return
         }
         notFound("Couldn't find element $element in tree version $version.")
@@ -121,7 +120,7 @@ class RestResourceController {
     }
 
     /**
-     * This endpoint is a transation from noe to tree_element. Node id's really only gave you access to the latest
+     * This endpoint is a transation from node to tree_element. Node id's really only gave you access to the latest
      * version of the tree that the node participates in, not the tree from the point in time that it was referenced.
      * The tree below the node will look the same though the rest of the tree around the node may have changed.
      *
@@ -132,12 +131,7 @@ class RestResourceController {
      */
     @Timed()
     def node(String shard, Long idNumber) {
-        Long latestVersion = TreeElement.executeQuery('select max(e.treeVersion.id) from TreeElement e where e.treeElementId = :id',
-                [id: idNumber]).first() as Long
-        if (latestVersion) {
-            forward(action: 'treeElement', params: [version: latestVersion, element: idNumber])
-        }
-        notFound("No node in $shard with id $idNumber found")
+        notFound("Deprecated Node API. Use the Node URI to access the resource. No node in $shard with id $idNumber found")
     }
 
     @Timed()

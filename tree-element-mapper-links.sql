@@ -11,7 +11,7 @@ INSERT INTO mapper.identifier (id, id_number, version_number, name_space, object
     now(),
     'pmcneil',
     NULL
-  FROM tree_element;
+  FROM tree_version_tree_elements;
 
 -- create default match links
 INSERT INTO mapper.match (id, uri, deprecated, updated_at, updated_by)
@@ -24,13 +24,43 @@ INSERT INTO mapper.match (id, uri, deprecated, updated_at, updated_by)
   FROM mapper.identifier
   WHERE object_type = 'tree' AND version_number IS NOT NULL;
 
+-- map old node ids to new tree ids
+DROP FUNCTION IF EXISTS map_nodes_element_identifiers();
+CREATE FUNCTION map_nodes_element_identifiers()
+  RETURNS TABLE(tree_element_id BIGINT, node_mid_id BIGINT, elem_mid_id BIGINT, tree_version BIGINT)
+LANGUAGE SQL
+AS $$
+SELECT
+  ipath.id,
+  node_mid.id AS node_id,
+  elem_mid.id AS elem_id,
+  max(tvte.tree_version_id)
+FROM instance_paths ipath
+  JOIN tree_version_tree_elements tvte ON tvte.tree_element_id = ipath.id
+  ,
+      jsonb_array_elements(ipath.nodes) AS node,
+  mapper.identifier node_mid,
+  mapper.identifier elem_mid
+WHERE to_jsonb(node_mid.id_number) = node
+      AND node_mid.object_type = 'node'
+      AND elem_mid.id_number = ipath.id
+      AND elem_mid.version_number = tvte.tree_version_id
+      AND elem_mid.object_type = 'tree'
+GROUP BY ipath.id, node_mid.id, elem_mid.id, node;
+$$;
+
+UPDATE mapper.identifier_identities ii
+SET identifier_id = mids.elem_mid_id
+FROM map_nodes_element_identifiers() mids
+WHERE ii.identifier_id = mids.node_mid_id;
+
 -- or make the insert statements from a separate DB
 -- SELECT
 --   'INSERT INTO mapper.identifier (id, id_number, version_number, name_space, object_type, deleted, reason_deleted, updated_at, updated_by, preferred_uri_id) values (nextval(''mapper.mapper_sequence''),'
 --   ||
 --   tree_element_id || ',' ||
 --   tree_version_id || ', ''apni'', ''tree'', FALSE, NULL, now(),''pmcneil'', NULL);'
--- FROM tree_element;
+-- FROM tree_version_tree_elements;
 --
 -- SELECT
 --   'INSERT INTO mapper.match (id, uri, deprecated, updated_at, updated_by) values (nextval(''mapper.mapper_sequence''), '''

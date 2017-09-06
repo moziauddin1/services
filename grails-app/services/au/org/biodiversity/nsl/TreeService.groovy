@@ -30,6 +30,11 @@ class TreeService implements ValidationUtils {
         Tree.findByNameIlike(name)
     }
 
+    TreeVersionElement getTreeVersionElement(Long versionId, Long elementId) {
+        TreeVersionElement.find('from TreeVersionElement where treeVersion.id = :versionId and treeElement.id = :elementId',
+                [versionId: versionId, elementId: elementId])
+    }
+
     /**
      * get the current TreeElement for a name on the given tree
      * @param name
@@ -51,7 +56,8 @@ class TreeService implements ValidationUtils {
      */
     TreeElement findElementForName(Name name, TreeVersion treeVersion) {
         if (name && treeVersion) {
-            return TreeElement.findByNameIdAndTreeVersion(name.id, treeVersion)
+            return TreeElement.find('select el from TreeElement el join el.treeVersions v where v = :treeVersion and el.nameId = :nameId',
+                    [treeVersion: treeVersion, nameId: name.id])
         }
         return null
     }
@@ -64,7 +70,7 @@ class TreeService implements ValidationUtils {
      */
     TreeElement findCurrentElementForInstance(Instance instance, Tree tree) {
         if (instance && tree) {
-            return TreeElement.findByInstanceIdAndTreeVersion(instance.id, tree.currentTreeVersion)
+            findElementForInstance(instance, tree.currentTreeVersion)
         }
         return null
     }
@@ -77,7 +83,8 @@ class TreeService implements ValidationUtils {
      */
     TreeElement findElementForInstance(Instance instance, TreeVersion treeVersion) {
         if (instance && treeVersion) {
-            return TreeElement.findByInstanceIdAndTreeVersion(instance.id, treeVersion)
+            return TreeElement.find('select el from TreeElement el join el.treeVersions v where v = :treeVersion and el.instanceId = :instanceId',
+                    [treeVersion: treeVersion, instanceId: instance.id])
         }
         return null
     }
@@ -90,8 +97,7 @@ class TreeService implements ValidationUtils {
     List<TreeElement> getElementPath(TreeElement treeElement) {
         mustHave(treeElement: treeElement)
         treeElement.treePath.split('/').collect { String stringElementId ->
-            TreeElement key = new TreeElement(treeVersion: treeElement.treeVersion, treeElementId: stringElementId.toBigInteger())
-            TreeElement.get(key)
+            stringElementId ? TreeElement.get(stringElementId as Long) : null
         }.findAll { it }
     }
 
@@ -100,9 +106,10 @@ class TreeService implements ValidationUtils {
      * @param treeElement
      * @return
      */
-    List<TreeElement> childElements(TreeElement treeElement) {
-        mustHave(treeElement: treeElement)
-        TreeElement.findAllByTreeVersionAndTreePathLike(treeElement.treeVersion, "$treeElement.treePath%", [sort: 'namePath', order: 'asc'])
+    List<TreeElement> childElements(TreeElement treeElement, TreeVersion treeVersion) {
+        mustHave(treeElement: treeElement, treeVersion: treeVersion)
+        TreeElement.findAll('select el from TreeElement el join el.treeVersions v where v = :treeVersion and el.treePath like :pathQuery',
+                [treeVersion: treeVersion, pathQuery: "$treeElement.treePath%"], [sort: 'namePath', order: 'asc'])
     }
 
     /**
@@ -110,10 +117,14 @@ class TreeService implements ValidationUtils {
      * @param treeElement
      * @return List of DisplayElements
      */
-    List<DisplayElement> childDisplayElements(TreeElement treeElement) {
+    List<DisplayElement> childDisplayElements(TreeVersionElement treeVersionElement) {
+        childDisplayElements(treeVersionElement.treeElement, treeVersionElement.treeVersion)
+    }
+
+    List<DisplayElement> childDisplayElements(TreeElement treeElement, TreeVersion treeVersion) {
         mustHave(treeElement: treeElement)
         String pattern = "^${treeElement.treePath}.*"
-        fetchDisplayElements(pattern, treeElement.treeVersion)
+        fetchDisplayElements(pattern, treeVersion)
     }
 
     /**
@@ -121,10 +132,10 @@ class TreeService implements ValidationUtils {
      * @param treeElement
      * @return List of DisplayElements
      */
-    List<DisplayElement> childDisplayElementsToDepth(TreeElement treeElement, int depth) {
+    List<DisplayElement> childDisplayElementsToDepth(TreeElement treeElement, TreeVersion treeVersion, int depth) {
         mustHave(treeElement: treeElement)
         String pattern = "^${treeElement.treePath}(/[^/]*){0,$depth}\$"
-        fetchDisplayElements(pattern, treeElement.treeVersion)
+        fetchDisplayElements(pattern, treeVersion)
     }
 
     /**
@@ -138,8 +149,8 @@ class TreeService implements ValidationUtils {
         fetchDisplayElements(pattern, treeVersion)
     }
 
-    List<DisplayElement> displayElementsToLimit(TreeElement treeElement, Integer limit) {
-        displayElementsToLimit(treeElement.treeVersion, "^${treeElement.treePath}", limit)
+    List<DisplayElement> displayElementsToLimit(TreeElement treeElement, TreeVersion treeVersion, Integer limit) {
+        displayElementsToLimit(treeVersion, "^${treeElement.treePath}", limit)
     }
 
     List<DisplayElement> displayElementsToLimit(TreeVersion treeVersion, Integer limit) {
@@ -147,7 +158,7 @@ class TreeService implements ValidationUtils {
     }
 
     List<DisplayElement> displayElementsToLimit(TreeVersion treeVersion, String prefix, Integer limit) {
-        mustHave(treeElement: treeVersion, limit: limit)
+        mustHave(treeVersion: treeVersion, limit: limit)
         int depth = 11 //pick a maximum depth - current APC has 10
         int count = countElementsAtDepth(treeVersion, prefix, depth)
         while (depth > 0 && count > limit) {
@@ -167,11 +178,11 @@ class TreeService implements ValidationUtils {
     private List<DisplayElement> fetchDisplayElements(String pattern, TreeVersion treeVersion) {
         log.debug("getting $pattern")
         TreeElement.executeQuery('''
-select displayHtml, elementLink, nameLink, instanceLink, excluded, depth, synonymsHtml 
-    from TreeElement 
-    where treeVersion = :version 
-        and regex(treePath, :pattern) = true 
-    order by namePath
+select el.displayHtml, el.elementLink, el.nameLink, el.instanceLink, el.excluded, el.depth, el.synonymsHtml 
+    from TreeElement el join el.treeVersions v 
+    where v = :version
+    and regex(el.treePath, :pattern) = true 
+    order by el.namePath
 ''', [version: treeVersion, pattern: pattern]).collect { data -> new DisplayElement(data as List) } as List<DisplayElement>
     }
 
@@ -180,10 +191,10 @@ select displayHtml, elementLink, nameLink, instanceLink, excluded, depth, synony
     private int countElementsAtDepth(TreeVersion treeVersion, String prefix, int depth) {
         String pattern = "$prefix(/[^/]*){0,$depth}\$"
         int count = TreeElement.executeQuery('''
-select count(*) 
-    from TreeElement 
-    where treeVersion = :version 
-        and regex(treePath, :pattern) = true 
+select count(el) 
+    from TreeElement el join el.treeVersions v 
+    where v = :version
+    and regex(el.treePath, :pattern) = true  
 ''', [version: treeVersion, pattern: pattern]).first() as int
         log.debug "Depth sounding $depth: $count"
         return count
@@ -273,26 +284,23 @@ select count(*)
         }
 
         sql.execute('''
-UPDATE tree_element SET parent_element_id = NULL, parent_version_id = NULL, previous_element_id = NULL, previous_version_id = NULL
-WHERE tree_version_id = :treeVersionId;
-
-UPDATE tree_element SET previous_element_id = NULL, previous_version_id = NULL
-WHERE previous_version_id = :treeVersionId;
-
-DELETE FROM tree_element
-WHERE tree_version_id = :treeVersionId;
-
-UPDATE tree_version SET previous_version_id = NULL WHERE previous_version_id = :treeVersionId;
-
-UPDATE tree SET default_draft_tree_version_id = NULL WHERE default_draft_tree_version_id = :treeVersionId;
-
-UPDATE tree SET current_tree_version_id = NULL WHERE current_tree_version_id = :treeVersionId;
+DELETE FROM tree_version_tree_elements WHERE tree_version_id = :treeVersionId;
 
 DELETE FROM tree_version WHERE id = :treeVersionId;
 ''', [treeVersionId: treeVersionId])
+        deleteOrphanedTreeElements(sql)
         return Tree.get(treeId)
     }
 
+    Integer deleteOrphanedTreeElements(Sql sql = getSql()) {
+        log.debug "deleting orphaned elements"
+        Integer count = sql.firstRow('SELECT count(*) FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_tree_elements)')[0] as Integer
+        if (count) {
+            log.debug "deleting $count elements."
+            sql.execute('DELETE FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_tree_elements)')
+        }
+        return count
+    }
 
     TreeVersion publishTreeVersion(TreeVersion treeVersion, String publishedBy, String logEntry) {
         log.debug "Publish tree version $treeVersion by $publishedBy, with log entry $logEntry"
@@ -348,76 +356,15 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
         if (!(fromVersion && toVersion)) {
             throw new BadArgumentsException("A from and to version are required to copy a version.")
         }
-        log.debug "copying ${fromVersion.treeElements.size()} elements from $fromVersion to $toVersion"
+        log.debug "copying from $fromVersion to $toVersion"
 
         Sql sql = getSql()
 
-        sql.execute('''INSERT INTO tree_element
-(
-tree_version_id,    
-tree_element_id,    
-lock_version,       
-depth,              
-display_html,       
-element_link,       
-excluded,           
-instance_id,        
-instance_link,      
-name_element,       
-name_id,            
-name_link,          
-name_path,          
-parent_Version_Id,  
-parent_Element_Id,  
-previous_Version_Id,
-previous_Element_Id,
-profile,            
-rank,               
-rank_path,          
-simple_name,        
-source_element_link,
-source_shard,       
-synonyms,           
-synonyms_html,      
-tree_path,          
-updated_at,         
-updated_by         
-)
-  (SELECT
-    :toVersionId,
-    tree_element_id,    
-    lock_version,       
-    depth,              
-    display_html,       
-    'http://' || :hostname || '/tree/' || :toVersionId || '/' || tree_element_id,
-    excluded,           
-    instance_id,        
-    instance_link,      
-    name_element,       
-    name_id,            
-    name_link,          
-    name_path,          
-    :toVersionId,
-    parent_Element_Id,  
-    tree_version_id,    
-    tree_element_id,    
-    profile,            
-    rank,               
-    rank_path,          
-    simple_name,        
-    source_element_link,
-    source_shard,       
-    synonyms,           
-    synonyms_html,      
-    tree_path,          
-    updated_at,         
-    updated_by
-   FROM tree_element fromElement WHERE fromElement.tree_version_id = :fromVersionId
-  )
-''', [fromVersionId: fromVersion.id, toVersionId: toVersion.id, hostname: 'id.biodiversity.org.au'])
+        sql.execute('''INSERT INTO tree_version_tree_elements (tree_version_id, tree_element_id) 
+  (SELECT :toVersionId, tvte.tree_element_id from tree_version_tree_elements tvte where tree_version_id = :fromVersionId)''',
+                [fromVersionId: fromVersion.id, toVersionId: toVersion.id])
 
         toVersion.refresh()
-        log.debug "inserted ${toVersion.treeElements.size()} elements"
         assert fromVersion.treeElements.size() == toVersion.treeElements.size()
     }
 
@@ -426,11 +373,6 @@ updated_by
         String groupName = tree.groupName
         SecurityUtils.subject.checkRole(groupName)
         return SecurityUtils.subject.principal as String
-    }
-
-    private Sql getSql() {
-        //noinspection GroovyAssignabilityCheck
-        return Sql.newInstance(dataSource_nsl)
     }
 
     TreeVersion editTreeVersion(TreeVersion treeVersion, String draftName) {
@@ -446,7 +388,7 @@ updated_by
         throw new NotImplementedException('Validate Tree Version is not implemented')
     }
 
-    Map placeTaxonUri(TreeElement parentElement, String taxonUri, Boolean excluded, String userName) {
+    Map placeTaxonUri(TreeVersionElement parentElement, String taxonUri, Boolean excluded, String userName) {
 
         TaxonData taxonData = findInstanceByUri(taxonUri)
         if (!taxonData) {
@@ -497,7 +439,7 @@ updated_by
         sql.firstRow("SELECT nextval('nsl_global_seq')")[0] as Long
     }
 
-    protected List<String> validateNewElementPlacement(TreeElement parentElement, TaxonData taxonData) {
+    protected List<String> validateNewElementPlacement(TreeVersionElement parentElement, TaxonData taxonData) {
         List<String> warnings
 
         TreeVersion treeVersion = parentElement.treeVersion
@@ -507,15 +449,15 @@ updated_by
         checkNameAlreadyOnTree(taxonData, treeVersion)
 
         NameRank taxonRank = rankOfElement(taxonData.rankPathPart, taxonData.nameElement)
-        NameRank parentRank = rankOfElement(parentElement.rankPath, parentElement.nameElement)
+        NameRank parentRank = rankOfElement(parentElement.treeElement.rankPath, parentElement.treeElement.nameElement)
 
         //is rank below parent
         if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
-            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.simpleName.")
+            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.treeElement.simpleName.")
         }
 
         //polynomials must be placed under parent
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.treeElement.namePath.split('/'))
 
         checkForExistingSynonyms(taxonData, treeVersion)
 
@@ -732,6 +674,12 @@ WHERE tree_version_id = :versionId
         }
         return result
     }
+
+    private Sql getSql() {
+        //noinspection GroovyAssignabilityCheck
+        return Sql.newInstance(dataSource_nsl)
+    }
+
 }
 
 class TaxonData {

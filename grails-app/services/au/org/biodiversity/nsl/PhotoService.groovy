@@ -50,7 +50,7 @@ class PhotoService {
                     log.error "Error from $url ${response.status}"
                 }
             }
-            log.debug photoNames
+            log.debug "got ${photoNames.size()} photo names"
             updating.compareAndSet(true, false)
             return photoNames
         }

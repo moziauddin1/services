@@ -208,6 +208,8 @@ current size of the APC tree 35k tree_elements are required for each copy.
 NOTE: these are updated usage figures after spiking and importing actual data, the old guesstimate has been removed.
 
 After doing the spike and adding in all the additional data to make the trees autonomous we can compare actual data sizes.
+These have been updated with the version join table instead of simple copies.
+
 
 In APNI:
 
@@ -220,12 +222,55 @@ In APNI:
 | tree_link
 | 1394MB (inc 693MB index)
 
-| tree_element (144 versions)
-| 13GB (inc 2.7GB index)
+| tree_element (152 versions)
+| ~200MB (inc 77MB index)
 |===
 
-which makes the new tree structure  ~ 8 times the size of the old one without any real optimisation.
-Extrapolating we get ~90MB per version.
+which makes the new tree structure smaller than the old one.
+
+Note: Prior to implementing the join table for version/element tree_element table was consuming ~40GB of data for 150
+versions. The totals of table columns didn't add up to this amount, but there was something else the DB was doing to
+use this space.
+
+==== Adding a link table
+
+Instead of copying the tree_elements each lime we just need to keep a link table of elements to tree versions, making
+a many to many relationship. This adds a little complexity when archiving off older versions of trees, but at the same
+time will reduce the need to archive.
+
+The link table means that tree elements that don't change do not need to be copied. To copy a tree to draft is a matter
+adding the link table rows. New elements only participate in new trees.
+
+This means we don't need to use a composite key for tree elements, we just use the element_id which can become the id.
+
+The reason why we didn't initially do this was that the old tree changes the parent node quite often based on something
+else changing on this or another branch. But... the changing parent doesn't mean something changed above that node, but
+there *may* have been a placement change.
+
+If the parent of a node does actually change in some material way we need to insert a new tree_element at the point where
+the change happens. *This is not easy.*
+
+A simpler compromise for this is to only create a new tree_element when the parent changes. this will still replicate a
+lot of redundant data.
+
+The diagram below demonstrates the problem. Nodes 5,6,7 have not changed, they have been added so that the tree from 5
+down shows the addition of node 8. Node 3 is in both trees, it just has two parent links. We just want to have a version
+(say v2) point to 1, 2, 3, 4, 8. Which for two versions we could accomplish (if nothing above 8 changes) by using the previous
+node link, but for if you look at node 9, 10, 11 it gets trickier to do.
+
+image::multi-parent-node.svg[]
+
+What we need to do is compare the data in the nodes to check the parentage, in particular we need to check the instance
+path of the node. So for each daily version we create a tree based on instance path where we have a unique tree_element
+for each instance path. We then map the tree_elements to a version.
+
+. for each top node (daily) recurse down the tree creating a table of:
+. [instance path id], instance path, node id, instance id, name id, parent instance path id, version number
+. group by instance_path, aggregate version numbers, aggregate node_ids
+. generate new tree elements for each instance path, using the parent instance path to set the parent tree_element
+. add tree elements to versions
+
+this would need a node ids field added to tree element.
 
 [source]
 .table-size.sql
@@ -256,70 +301,22 @@ FROM (
      ) a;
 ----
 
-
-We can copy all the current nodes _out of_ the database to a file and convert all the data to JSON in 0.2 seconds. Copying
-tree elements to new tree elements should not take any longer (it should be quicker).
-
 Also note that the new data structure allows us to partition and archive older versions should we need to.
 
-Copying the 35k tree_elements to a workspace takes about 12.8 seconds:
+Copying the 35k tree_elements to a workspace takes about 12.8 seconds, *however we only need to add join table
+rows to make a copy* which is much quicker, 850ms.
 
- sql> INSERT INTO tree_element
- (tree_version_id,
-  tree_element_id,
-  lock_version,
-  excluded,
-  display_string,
-  element_link,
-  instance_id,
-  instance_link,
-  name_id,
-  name_link,
-  parent_version_id,
-  parent_element_id,
-  previous_version_id,
-  previous_element_id,
-  profile,
-  rank_path,
-  simple_name,
-  tree_path,
-  name_path,
-  updated_at,
-  updated_by)
-   (SELECT
-     139,
-      tree_element_id,
-      lock_version,
-      excluded,
-      display_string,
-      '',
-      instance_id,
-      instance_link,
-      name_id,
-      name_link,
-      139,
-      parent_element_id,
-      tree_version_id, -- previous version
-      tree_element_id,
-      profile,
-      rank_path,
-      simple_name,
-      tree_path,
-      name_path,
-      updated_at,
-      updated_by
-     from tree_element where tree_version_id = 137
-   )
- [2017-06-26 18:42:38] 35334 rows affected in 12s 802ms
+ insert into tree_version_tree_elements (tree_version_id, tree_element_id)
+   SELECT 9703722, tree_element_id from tree_version_tree_elements where tree_version_id = 152;
 
 
-VM info:
-appsint1 24GB RAM (18GB used) 50GB space with ~27GB free for tomcat
-pgsql-prod1-ibis.it.csiro.au 6GB RAM (5GB used) 
-/dev/mapper/vg_data-lv_data        50G  981M   50G   2% /pg_data
-/dev/mapper/vg_back-lv_back       100G   16G   85G  16% /pg_back
-/dev/mapper/vg_tbl1-lv_tbl1       100G  8.3G   92G   9% /pg_tbl1
-/dev/mapper/vg_xlog-lv_xlog        20G  257M   20G   2% /pg_xlog
+    VM info:
+    appsint1 24GB RAM (18GB used) 50GB space with ~27GB free for tomcat
+    pgsql-prod1-ibis.it.csiro.au 6GB RAM (5GB used)
+    /dev/mapper/vg_data-lv_data        50G  981M   50G   2% /pg_data
+    /dev/mapper/vg_back-lv_back       100G   16G   85G  16% /pg_back
+    /dev/mapper/vg_tbl1-lv_tbl1       100G  8.3G   92G   9% /pg_tbl1
+    /dev/mapper/vg_xlog-lv_xlog        20G  257M   20G   2% /pg_xlog
 
 === Multiple workspaces
 
@@ -383,24 +380,71 @@ This means you can do a search for a name on a tree including the synonyms by do
 
  select * from tree_element where names like '%|Acacia mucronata var. linearis%';
 
-You can even display the synonyms without further query.
+NOTE: after implementing the names string and testing various queries the speed benefit of having the synonyms in this
+format wasn't there and the use cases need the extra information. So I have removed the names string format and just left
+the synonyms jsonb data. Greg W pointed out it might be worth splitting synonyms into synonyms and relationships.
+I have replaced that string with a synonyms_html string for displaying the nomenclatural, taxanomic and missapplications.
 
-NOTE: Greg W says to make the search useful we'll need to store the type of synonym as well. This could be stored
-in a jsonb field so we retain the speed of the trigram indexed synonyms search with the ability to filter on instance type.
+A jsonb synonyms field stores more synonym data. To do a synonym search on a JSONB field and take advantage of gin
+indexing we need to carefully structure the JSON data around a common search. This probably means grouping the synonyms
+into relationship types e.g.
 
-To do a synonym search on a JSONB field and take advantage of gin indexing we need to carefully structure the JSON data
-around a common search. This probably means grouping the synonyms into relationship types e.g.
-
-  {
-    nomenclatural: [],
-    taxonomic: [],
-    misapplied: []
-  }
+[source,javascript]
+.synonyms.json
+----
+{
+        "Isoetes drummondii var. anomala"           : {
+                "mis"           : false,
+                "nom"           : true,
+                "tax"           : false,
+                "type"          : "nomenclatural synonym",
+                "cites"         : "Britton, D.M. & Brunton, D.F.(1991), < i > Fern Gazette < /i> 14",
+                "name_id"       : 205871,
+                "full_name_html": "<scientific><name id='205871'><scientific><name id='64421'><scientific><name id='64341'><element class='Isoetes'>Isoetes</ element > < /name></ scientific > < element class = 'drummondii' > drummondii < /element></ name > < /scientific> <rank id='54412'>var.</ rank > < element class = 'anomala' > anomala < /element> <authors><ex id='7577' title='Marsden, C.R.'>C.R.Marsden</ ex > ex < author id = '5138' title = 'Britton,D.M. & amp; Brunton ,D.F.'>D.M.Britton & D.F.Brunt.</author></authors></name></scientific>"
+        },
+        "Isoetes drummondii subsp. nov. (polyploid)": {
+                "mis"           : false,
+                "nom"           : true,
+                "tax"           : false,
+                "type"          : "nomenclatural synonym",
+                "cites"         : "Ross, J.H.in Ross, J.H.(ed.)(1993), < i > A Census of the Vascular Plants of Victoria < /i> Edn. 4",
+                "name_id"       : 205964,
+                "full_name_html": "<scientific><name id='205964'><scientific><name id='64421'><scientific><name id='64341'><element class='Isoetes'>Isoetes</ element > < /name></ scientific > < element class = 'drummondii' > drummondii < /element></ name > < /scientific> <rank id='54410'>subsp.</ rank > < element class = 'nov. (polyploid)' > nov.(polyploid) < /element> <authors><author id='7781' title='Ross, J.H.'>J.H.Ross</ author > < /authors></ name > < /scientific>"
+        }
+}
+----
 
 === Profile data
 
 The Profile data will be stored as a JSON object/document field in the tree_element. This allows arbitrary extension of the
-profile data to be stored. It also provides a consistent versioned view of the Profile data.
+profile data to be stored. It also provides a consistent versioned view of the Profile data. e.g.
+
+[source,javascript]
+.profile.json
+----
+{
+        "APC Dist."  : {
+                "value"        : "Tas",
+                "source_id"    : 9928,
+                "created_at"   : "2007-06-06T00:00:00+10:00",
+                "created_by"   : "APNI-NSL MIGRATION",
+                "updated_at"   : "2007-06-06T00:00:00+10:00",
+                "updated_by"   : "APNI-NSL MIGRATION",
+                "source_system": "APC_CONCEPT"
+        },
+        "APC Comment": {
+                "value"        : "Previous references to this species on mainland Australia refer to I. muelleri (Chinnock, 1998).",
+                "source_id"    : 9928,
+                "created_at"   : "2007-06-06T00:00:00+10:00",
+                "created_by"   : "APNI-NSL MIGRATION",
+                "updated_at"   : "2007-06-06T00:00:00+10:00",
+                "updated_by"   : "APNI-NSL MIGRATION",
+                "source_system": "APC_CONCEPT"
+        }
+}
+----
+
+
 
 ==== Comments
 
@@ -435,7 +479,12 @@ archived version in a different database.
 
 This also means exporting a tree version provides 'all' the data needed to describe the tree.
 
-=== Composite keys for tree_elements
+=== [.line-through]#Composite keys for tree_elements#
+
+
+NOTE: We have moved to a join table for the elements to tree versions so we don't need a composite key. A join table
+doesn't reduce the advantages except for the identification of nodes to tree elements due to needing a unique tree_element
+id that is not related to node id.
 
 It would be worth looking at using composite keys for tree_elements made up of the tree_version id and the tree_element id
 that way we can copy the tree_elements and just change the version number.
@@ -459,8 +508,7 @@ the data doesn't change. The rest of the advantages come down to speed and effic
 
 === Auditing
 
-A single updated by and updated at field is required in the tree_element since changes are versioned. Once again the idea
-of this being copied makes the versions self contained at the expense of space.
+A single updated by and updated at field is required in the tree_element since changes are versioned.
 
 == Transition
 
@@ -556,21 +604,12 @@ unless you took a link to a changed node further up the tree, or the top node. A
 version of the tree you were looking at it was *not* intrinsic in the link.
 
 We can take existing published links and forward them to new links. Due to history only being maintained in node links
-below that node we need node links to point to the latest version that has that node id (now the tree_element_id).
+below that node we need node links to point to the latest version that has that node id.
 
-****
-https://biodiversity.org.au/nsl/services/node/apni/7845073 would point to tree_element.tree_element_id = 7845073
-with the latest tree_version_id (137 in my spike):
+With the change to using a join table we lose the node_id/tree_element relationship, so we either need to store the
+node id(s) in the tree_element or just use the mapper to map to the tree_element.
 
- select name_path, simple_name from tree_element where tree_version_id = 137 and tree_element_id = 7845073;
-
-|===
-|name_path|simple_name
-|/Plantae/Charophyta/Equisetopsida/Magnoliidae/Asteranae/Gentianales/Rubiaceae/Spermacoce | Spermacoce
-|===
-****
-
-We can update the mapper to make these links work correctly (that's what the mapper is for).
+The most appropriate solution is to use the mapper to map node URI to tree_elements.
 
 ==== new links
 
@@ -597,6 +636,10 @@ NOTE: Previously links were only created in the mapper when they were requested 
 
 The mapper currently handles around 1.15 million identities without problem, and is designed to scale out via load
 balancing if needed.
+
+NOTE: tree_elements store links to instance, name and themselves to make them self contained. With the join table this
+is complicated because a tree_element belongs to multiple versions and as such the element_link needs to be generated at
+display time depending on the version being shown.
 
 === RDF
 
@@ -660,7 +703,69 @@ image::new-tree-overview.svg[]
 
 == The model
 
-image::new-tree-structure.svg[]
+[source]
+.DDL.sql
+----
+CREATE TABLE tree (
+  id                            INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
+  lock_version                  INT8 DEFAULT 0                         NOT NULL,
+  current_tree_version_id       INT8,
+  default_draft_tree_version_id INT8,
+  group_name                    TEXT                                   NOT NULL,
+  name                          TEXT                                   NOT NULL,
+  reference_id                  INT8,
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE tree_version (
+  id                  INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
+  lock_version        INT8 DEFAULT 0                         NOT NULL,
+  draft_name          TEXT                                   NOT NULL,
+  log_entry           TEXT,
+  previous_version_id INT8,
+  published           BOOLEAN DEFAULT FALSE                  NOT NULL,
+  published_at        TIMESTAMP WITH TIME ZONE,
+  published_by        VARCHAR(100),
+  tree_id             INT8                                   NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE tree_element (
+  id                  INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
+  lock_version        INT8 DEFAULT 0                         NOT NULL,
+  depth               INT4                                   NOT NULL,
+  display_html        TEXT                                   NOT NULL,
+  element_link        TEXT                                   NOT NULL,
+  excluded            BOOLEAN DEFAULT FALSE                  NOT NULL,
+  instance_id         INT8                                   NOT NULL,
+  instance_link       TEXT                                   NOT NULL,
+  name_element        VARCHAR(255)                           NOT NULL,
+  name_id             INT8                                   NOT NULL,
+  name_link           TEXT                                   NOT NULL,
+  name_path           TEXT                                   NOT NULL,
+  parent_element_id   INT8,
+  previous_element_id INT8,
+  profile             JSONB,
+  rank                VARCHAR(50)                            NOT NULL,
+  rank_path           JSONB,
+  simple_name         TEXT                                   NOT NULL,
+  source_element_link TEXT,
+  source_shard        TEXT                                   NOT NULL,
+  synonyms            JSONB,
+  synonyms_html       TEXT                                   NOT NULL,
+  tree_path           TEXT                                   NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE tree_version_tree_elements (
+  tree_version_id INT8 NOT NULL,
+  tree_element_id INT8 NOT NULL,
+  PRIMARY KEY (tree_version_id, tree_element_id)
+);
+
+----
+
+Refer to code at https://github.com/bio-org-au/nsl-domain-plugin/blob/new-tree/web-app/sql/update-to-24.sql
 
 == User impact of change over
 
