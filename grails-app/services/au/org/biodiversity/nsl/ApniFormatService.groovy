@@ -29,9 +29,9 @@ class ApniFormatService {
         Tree tree = treeService.getTree(ConfigService.classificationTreeName)
 
         Name familyName = name.family
-        TreeElement treeElement = tree ? treeService.findCurrentElementForName(name, tree) : null
+        TreeVersionElement treeVersionElement = tree ? treeService.findCurrentElementForName(name, tree) : null
         String link = linkService.getPreferredLinkForObject(name)
-        Map model = [name: name, treeElement: treeElement, familyName: familyName, preferredNameLink: link]
+        Map model = [name: name, treeVersionElement: treeVersionElement, familyName: familyName, preferredNameLink: link]
         model.putAll(nameReferenceInstanceMap(name) as Map)
         return model
     }

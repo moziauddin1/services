@@ -52,9 +52,9 @@
                     <td colspan="2"></td>
                   </g:else>
                   <td>
-                    <g:if test="${nameData.treeElement}">
+                    <g:if test="${nameData.treeVersionElement}">
                       <a href="${g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: nameData.name.id)}">
-                        <g:if test="${!nameData.treeElement.excluded}">
+                        <g:if test="${!nameData.treeVersionElement.treeElement.excluded}">
                           <apc><i class="fa fa-check"></i>${treeName}</apc>
                         </g:if>
                         <g:else>

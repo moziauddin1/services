@@ -88,15 +88,10 @@ class JsonRendererService {
     }
 
     private List treeElementChildren(TreeVersionElement treeVersionElement) {
-        List childDisplayElements = treeService.childDisplayElements(treeVersionElement)
+        List<DisplayElement> childDisplayElements = treeService.childDisplayElements(treeVersionElement)
         List kids = []
-        childDisplayElements.each { items ->
-            kids.add([
-                    displayString: items[0],
-                    elementLink  : items[1],
-                    nameLink     : items[2],
-                    instanceLink : items[3]
-            ])
+        childDisplayElements.each { DisplayElement item ->
+            kids.add(item.asMap())
         }
         return kids
     }
@@ -459,14 +454,14 @@ class JsonRendererService {
 
     Map marshallTreeVersionElement(TreeVersionElement treeVersionElement) {
         treeVersionElement = initializeAndUnproxy(treeVersionElement)
-
+        TreeVersionElement parent = treeService.getParentTreeVersionElement(treeVersionElement)
         TreeElement treeElement = treeVersionElement.treeElement
         return [treeElement:
                         [
                                 class        : treeElement.class.name,
                                 _links       : [
-                                        elementLink      : treeElement.elementLink,
-                                        parentElementLink: treeElement.parentElement?.elementLink,
+                                        elementLink      : treeVersionElement.elementLink,
+                                        parentElementLink: parent?.elementLink,
                                         nameLink         : treeElement.nameLink,
                                         instanceLink     : treeElement.instanceLink,
                                         sourceElementLink: treeElement.sourceElementLink,

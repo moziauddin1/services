@@ -16,10 +16,7 @@
 
 package services
 
-import au.org.biodiversity.nsl.Node
-import au.org.biodiversity.nsl.TreeElement
-import au.org.biodiversity.nsl.TreeService
-import au.org.biodiversity.nsl.TreeVersion
+import au.org.biodiversity.nsl.*
 import au.org.biodiversity.nsl.tree.QueryService
 
 class TreeServicesTagLib {
@@ -37,18 +34,12 @@ class TreeServicesTagLib {
         out << body(name: queryService.resolveName(node), instance: queryService.resolveInstance(node))
     }
 
-    def collapsedIndent = { attrs ->
-        TreeElement element = attrs.element
-        int depth = treeService.depth(element)
-        out << "indent$depth"
-    }
-
     def elementPath = { attrs, body ->
-        TreeElement element = attrs.element
+        TreeVersionElement element = attrs.element
         String var = attrs.var
-        List<TreeElement> path = treeService.getElementPath(element)
+        List<TreeVersionElement> path = treeService.getElementPath(element)
         String separator = ''
-        path.each { TreeElement pathElement ->
+        path.each { TreeVersionElement pathElement ->
             out << separator
             out << body("$var": pathElement)
             separator = attrs.separator

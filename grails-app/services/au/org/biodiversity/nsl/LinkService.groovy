@@ -74,7 +74,7 @@ class LinkService {
 
     @Timed()
     String addTargetLink(target) {
-        String identity = paramString(nameSpace(), targetParams(target)) + "&" + mapperAuth()
+        String identity = new TargetParam(target, nameSpace()).paramString() + "&" + mapperAuth()
         String mapper = mapper(true)
         String newLink = null
         try {
@@ -98,6 +98,38 @@ class LinkService {
             log.error "Error $e.message adding link for $target"
         }
         return newLink
+    }
+
+    Map bulkAddTargets(Collection<TreeVersionElement> targets) {
+        List<Map> identities = targets.collect { target -> new TargetParam(target, nameSpace()).paramMap() }
+        String mapper = mapper(true)
+        Map result = [success: true]
+        try {
+            String url = "$mapper/admin/bulkAddIdentifiers?${mapperAuth()}"
+            String action = "Bulk add TreeVersionElements"
+            restCallService.jsonPost([identifiers: identities], url,
+                    { Map data ->
+                        log.debug "$action. Response: $data"
+                        result << data
+                    },
+                    { Map data, List errors ->
+                        log.error "Couldn't $action. Errors: $errors"
+                        result = [success: false, errors: errors]
+                    },
+                    { data ->
+                        log.error "Couldn't $action. Not found response: $data"
+                        result = [success: false, errors: ["Couldn't $action. Not found response: $data"]]
+                    },
+                    { data ->
+                        log.error "Couldn't $action. Response: $data"
+                        result = [success: false, errors: ["Couldn't $action. Response: $data"]]
+                    }
+            )
+        } catch (RestCallException e) {
+            log.error e.message
+            result = [success: false, errors: "Communication error with mapper."]
+        }
+        return result
     }
 
     @Timed()
@@ -246,7 +278,7 @@ class LinkService {
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {
-        String identity = paramString(nameSpace(), targetParams(target))
+        String identity = new TargetParam(target, nameSpace()).paramString()
         if (identity) {
             String mapper = mapper(internal)
             String url = "${mapper}/broker/${endPoint}?${identity}"
@@ -263,49 +295,20 @@ class LinkService {
         return "apiKey=${grailsApplication.config.services.mapper.apikey}"
     }
 
-    private static Map targetParams(Name name) {
-        [type: 'name', id: name.id, version: null]
-    }
-
-    private static Map targetParams(Author author) {
-        [type: 'author', id: author.id, version: null]
-    }
-
-    private static Map targetParams(Instance instance) {
-        [type: 'instance', id: instance.id, version: null]
-    }
-
-    private static Map targetParams(Reference reference) {
-        [type: 'reference', id: reference.id, version: null]
-    }
-
-    private static Map targetParams(InstanceNote instanceNote) {
-        [type: 'instanceNote', id: instanceNote.id, version: null]
-    }
-
-    private static Map targetParams(TreeElement treeElement) {
-        [type: 'tree', id: treeElement.treeElementId, version: treeElement.treeVersion.id]
-    }
-
-    private static String paramString(String nameSpace, Map params) {
-        return "nameSpace=${nameSpace}&objectType=${params.type}&idNumber=${params.id}&versionNumber=${params.version}"
-    }
-
-
     Map deleteNameLinks(Name name, String reason) {
-        String identity = paramString(nameSpace(), targetParams(name)) + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
+        String identity = new TargetParam(name, nameSpace()).paramString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         evictAllCache(name)
         deleteTargetLinks(identity)
     }
 
     Map deleteInstanceLinks(Instance instance, String reason) {
-        String identity = paramString(nameSpace(), targetParams(instance)) + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
+        String identity = new TargetParam(instance, nameSpace()).paramString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         evictAllCache(instance)
         deleteTargetLinks(identity)
     }
 
     Map deleteReferenceLinks(Reference reference, String reason) {
-        String identity = paramString(nameSpace(), targetParams(reference)) + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
+        String identity = new TargetParam(reference, nameSpace()).paramString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         evictAllCache(reference)
         deleteTargetLinks(identity)
     }
@@ -339,69 +342,83 @@ class LinkService {
         return result
     }
 
-    private static Map fromParamMap(String nameSpace, Map params) {
-        [fromNameSpace: nameSpace, fromObjectType: params.type, fromIdNumber: params.id, fromVersionNumber: params.version]
-    }
-
-    private static Map toParamMap(String nameSpace, Map params) {
-        [toNameSpace: nameSpace, toObjectType: params.type, toIdNumber: params.id, toVersionNumber: params.version]
-    }
-
-    Map moveTargetLinks(Object from, Object to) {
-
+    Map moveTargetLinks(Reference from, Reference to) {
         if (from && to) {
-            Map paramsMap = fromParamMap(nameSpace(), targetParams(from)) + toParamMap(nameSpace(), targetParams(to))
-
-            String mapper = mapper(true)
-            Map result = [success: true]
-            try {
-                evictAllCache(from)
-                evictAllCache(to)
-
-                String url = "$mapper/admin/moveIdentity?${mapperAuth()}"
-
-                restCallService.jsonPost(paramsMap, url,
-                        { Map data ->
-                            log.debug "Moved $from to $to. Response: $data"
-                        },
-                        { Map data, List errors ->
-                            log.error "Couldn't move $from to $to. Errors: $errors"
-                            result = [success: false, errors: errors]
-                        },
-                        { data ->
-                            log.error "Couldn't move $from to $to. Not found response: $data"
-                            result = [success: false, errors: ["Couldn't move $from to $to. Not found response: $data"]]
-                        },
-                        { data ->
-                            log.error "Couldn't move $from to $to. Response: $data"
-                            result = [success: false, errors: ["Couldn't move $from to $to. Response: $data"]]
-                        }
-                )
-
-            } catch (RestCallException e) {
-                log.error e.message
-                result = [success: false, errors: "Communication error with mapper."]
-            }
-            return result
+            Map paramsMap = new TargetParam(from, nameSpace()).paramMap('fromNameSpace', 'fromObjectType', 'fromIdNumber', 'fromVersionNumber') +
+                    new TargetParam(from, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
+            moveTargetLinks(paramsMap)
         } else {
             return [success: false, errors: "Invalid targets $from, $to."]
         }
     }
 
+    Map moveTargetLinks(Author from, Author to) {
+        if (from && to) {
+            Map paramsMap = new TargetParam(from, nameSpace()).paramMap('fromNameSpace', 'fromObjectType', 'fromIdNumber', 'fromVersionNumber') +
+                    new TargetParam(from, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
+            moveTargetLinks(paramsMap)
+        } else {
+            return [success: false, errors: "Invalid targets $from, $to."]
+        }
+    }
+
+    Map moveTargetLinks(Name from, Name to) {
+        if (from && to) {
+            Map paramsMap = new TargetParam(from, nameSpace()).paramMap('fromNameSpace', 'fromObjectType', 'fromIdNumber', 'fromVersionNumber') +
+                    new TargetParam(from, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
+            moveTargetLinks(paramsMap)
+        } else {
+            return [success: false, errors: "Invalid targets $from, $to."]
+        }
+    }
+
+    Map moveTargetLinks(Map paramsMap) {
+        String mapper = mapper(true)
+        Map result = [success: true]
+        try {
+            evictAllCache(from)
+            evictAllCache(to)
+
+            String url = "$mapper/admin/moveIdentity?${mapperAuth()}"
+
+            restCallService.jsonPost(paramsMap, url,
+                    { Map data ->
+                        log.debug "Moved $from to $to. Response: $data"
+                    },
+                    { Map data, List errors ->
+                        log.error "Couldn't move $from to $to. Errors: $errors"
+                        result = [success: false, errors: errors]
+                    },
+                    { data ->
+                        log.error "Couldn't move $from to $to. Not found response: $data"
+                        result = [success: false, errors: ["Couldn't move $from to $to. Not found response: $data"]]
+                    },
+                    { data ->
+                        log.error "Couldn't move $from to $to. Response: $data"
+                        result = [success: false, errors: ["Couldn't move $from to $to. Response: $data"]]
+                    }
+            )
+        } catch (RestCallException e) {
+            log.error e.message
+            result = [success: false, errors: "Communication error with mapper."]
+        }
+        return result
+    }
+
     Map removeNameLink(Name name, String uri) {
-        String identity = paramString(nameSpace(), targetParams(name))
+        String identity = new TargetParam(name, nameSpace()).paramString()
         evictAllCache(name)
         removeTargetLink(identity, uri)
     }
 
     Map removeInstanceLink(Instance instance, String uri) {
-        String identity = paramString(nameSpace(), targetParams(instance))
+        String identity = new TargetParam(instance, nameSpace()).paramString()
         evictAllCache(instance)
         removeTargetLink(identity, uri)
     }
 
     Map removeReferenceLink(Reference reference, String uri) {
-        String identity = paramString(nameSpace(), targetParams(reference))
+        String identity = new TargetParam(reference, nameSpace()).paramString()
         evictAllCache(reference)
         removeTargetLink(identity, uri)
     }

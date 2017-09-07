@@ -38,7 +38,7 @@
       <g:if test="${!references}">No references.</g:if>
       <g:each in="${references}" var="reference">
         <g:render template="/apniFormat/instance"
-                  model="[reference: reference, instances: instancesByRef[reference], treeElement: treeElement]"/>
+                  model="[reference: reference, instances: instancesByRef[reference], treeVersionElement: treeVersionElement]"/>
       </g:each>
       <div class="btn-group hidden-print">
         <g:if test="${photo}">

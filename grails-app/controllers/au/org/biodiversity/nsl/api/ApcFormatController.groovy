@@ -67,7 +67,7 @@ class ApcFormatController {
 
     private Map getNameModel(Name name) {
         Tree tree = treeService.getTree(ConfigService.classificationTreeName)
-        TreeElement treeElement = treeService.findCurrentElementForName(name, tree)
+        TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, tree)
         Instance apcInstance = null
         Set<Instance> synonymOf = null
         Set<Instance> misapplied = null
@@ -78,22 +78,22 @@ class ApcFormatController {
                 !i.draft && i.citedBy && treeService.findCurrentElementForInstance(i.citedBy, tree)
             }
         } else {
-            excluded = treeElement.excluded
-            apcInstance = treeElement.instance
+            excluded = treeVersionElement.treeElement.excluded
+            apcInstance = treeVersionElement.treeElement.instance
             instances = apcInstance?.instancesForCitedBy ?: []
             misapplied = name.instances.findAll { Instance i ->
                 i.cites && treeService.findCurrentElementForInstance(i.citedBy, tree)
             }
         }
         String preferredNameLink = linkService.getPreferredLinkForObject(name)
-        [name             : name,
-         treeElement      : treeElement,
-         synonymOf        : synonymOf,
-         misapplied       : misapplied,
-         apcInstance      : apcInstance,
-         instances        : instances,
-         excluded         : excluded,
-         preferredNameLink: preferredNameLink]
+        [name              : name,
+         treeVersionElement: treeVersionElement,
+         synonymOf         : synonymOf,
+         misapplied        : misapplied,
+         apcInstance       : apcInstance,
+         instances         : instances,
+         excluded          : excluded,
+         preferredNameLink : preferredNameLink]
     }
 
 }

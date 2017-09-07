@@ -11,7 +11,7 @@ INSERT INTO mapper.identifier (id, id_number, version_number, name_space, object
     now(),
     'pmcneil',
     NULL
-  FROM tree_version_tree_elements;
+  FROM tree_version_element;
 
 -- create default match links
 INSERT INTO mapper.match (id, uri, deprecated, updated_at, updated_by)
@@ -36,7 +36,7 @@ SELECT
   elem_mid.id AS elem_id,
   max(tvte.tree_version_id)
 FROM instance_paths ipath
-  JOIN tree_version_tree_elements tvte ON tvte.tree_element_id = ipath.id
+  JOIN tree_version_element tvte ON tvte.tree_element_id = ipath.id
   ,
       jsonb_array_elements(ipath.nodes) AS node,
   mapper.identifier node_mid,

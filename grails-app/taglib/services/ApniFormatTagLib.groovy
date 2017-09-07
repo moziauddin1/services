@@ -131,21 +131,21 @@ class ApniFormatTagLib {
     def branch = { attrs, body ->
         Name name = attrs.name
         String treeName = attrs.tree ?: configService.classificationTreeName
-        TreeElement treeElement = treeService.findCurrentElementForName(name, treeService.getTree(treeName))
-        if (treeElement) {
+        TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, treeService.getTree(treeName))
+        if (treeVersionElement) {
             out << "<branch title=\"click to see branch in $treeName.\">"
             out << body()
 
-            List<TreeElement> elementPath = treeService.getElementPath(treeElement)
+            List<TreeVersionElement> elementPath = treeService.getElementPath(treeVersionElement)
 
             out << '<ul>'
             out << "<li>$treeName</li>"
-            elementPath.each { TreeElement element ->
-                String link = element.elementLink
+            elementPath.each { TreeVersionElement tve ->
+                String link = tve.elementLink
                 if (link) {
-                    out << "<li><a href='${link}'>${element.name?.nameElement}</a> <span class=\"text-muted\">(${element.name?.nameRank?.abbrev})</span></li>"
+                    out << "<li><a href='${link}'>${tve.treeElement.name?.nameElement}</a> <span class=\"text-muted\">(${tve.treeElement.name?.nameRank?.abbrev})</span></li>"
                 } else {
-                    out << "<li>${element.name?.nameElement} <span class=\"text-muted\">(${element.name?.nameRank?.abbrev})</span></li>"
+                    out << "<li>${tve.treeElement.name?.nameElement} <span class=\"text-muted\">(${tve.treeElement.name?.nameRank?.abbrev})</span></li>"
                 }
             }
             out << '</ul></branch>'
@@ -233,16 +233,20 @@ class ApniFormatTagLib {
     /**
      * add an "apc" tag with link and title for a given tree element
      * you must provide an "element" attribute.
-     * if an "instance" attribute is supplied it is compared with the treeElement attribute to decide if to display
+     * if an "instance" attribute is supplied it is compared with the element attribute to decide if to display
      * the apc tag.
      * This is generic and can be used on any tree.
+     *
+     * attrs.element is a TreeVersionElement
+     *
      */
     def onTree = { attrs ->
-        TreeElement treeElement = attrs.element
+        TreeVersionElement treeVersionElement = attrs.element
+        TreeElement treeElement = treeVersionElement.treeElement
         Instance instance = attrs.instance ?: treeElement.instance
         if (treeElement && instance && treeElement.instance.id == instance.id) {
             String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: treeElement.name.id)
-            String tree = treeElement.treeVersion.tree.name
+            String tree = treeVersionElement.treeVersion.tree.name
 
             out << """<a href="${link}">""".toString()
 

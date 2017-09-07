@@ -294,6 +294,7 @@ order by n.simpleName asc''',
         withTarget(name) { ResultObject result ->
             Map nameModel = apniFormatService.getNameModel(name)
             result.name = jsonRendererService.getBriefNameWithHtml(name)
+            //TODO fix this node reference
             if (nameModel.apc != null) {
                 if (nameModel.apc.typeUriIdPart == 'ApcConcept') {
                     result.name.inAPC = true

@@ -2,30 +2,30 @@
 <html>
 <head>
   <meta name="layout" content="main">
-  <title>Tree Element ${treeElement.elementLink}</title>
+  <title>Tree Element ${treeVersionElement.elementLink}</title>
   <asset:stylesheet src="tree.css"/>
 
 </head>
 
 <body>
 
-<g:set var="currentTreeVersion" value="${treeElement.treeVersion.tree.currentTreeVersion}"/>
+<g:set var="currentTreeVersion" value="${treeVersionElement.treeVersion.tree.currentTreeVersion}"/>
 
 <div>
   <h1>
-    <g:if test="${treeElement.excluded}">
-      <apc style="font-size: 1em" title="excluded from ${treeElement.treeVersion.tree.name}"><i
-          class="fa fa-ban"></i> ${treeElement.treeVersion.tree.name}</apc>
+    <g:if test="${treeVersionElement.treeElement.excluded}">
+      <apc style="font-size: 1em" title="excluded from ${treeVersionElement.treeVersion.tree.name}"><i
+          class="fa fa-ban"></i> ${treeVersionElement.treeVersion.tree.name}</apc>
     </g:if>
     <g:else>
-      ${treeElement.treeVersion.tree.name}
+      ${treeVersionElement.treeVersion.tree.name}
     </g:else>
     <span
-        class="small text-info">(${treeElement.treeVersion.id})</span> element
+        class="small text-info">(${treeVersionElement.treeVersion.id})</span> element
 
-    <g:if test="${currentTreeVersion != treeElement.treeVersion}"><span class="small">
+    <g:if test="${currentTreeVersion != treeVersionElement.treeVersion}"><span class="small">
       <i class="fa fa-long-arrow-right"></i>
-      <a href='${createLink(uri: "/tree/$currentTreeVersion.id/$treeElement.treeElementId")}'>
+      <a href='${createLink(uri: "/tree/$currentTreeVersion.id/$treeVersionElement.treeElement.treeElementId")}'>
         current version ${currentTreeVersion.id}.
       </a>
     </span>
@@ -47,9 +47,9 @@
     </help>
   </h1>
 
-  <a href="." title="Go to tree version ${treeElement.treeVersion.id}">
-    <i class="fa fa-link"></i> ${treeElement.treeVersion.tree.name} (version ${treeElement.treeVersion.id})
-  published ${treeElement.treeVersion.publishedAt.dateString} by ${treeElement.treeVersion.publishedBy}
+  <a href="." title="Go to tree version ${treeVersionElement.treeVersion.id}">
+    <i class="fa fa-link"></i> ${treeVersionElement.treeVersion.tree.name} (version ${treeVersionElement.treeVersion.id})
+  published ${treeVersionElement.treeVersion.publishedAt.dateString} by ${treeVersionElement.treeVersion.publishedBy}
   </a>
   <hr>
 </div>
@@ -58,18 +58,18 @@
 <div class="rest-resource-content">
 
   <div>
-    <tree:elementPath element="${treeElement}" var="pathElement" separator="/">
-      <a href="${pathElement.elementLink}">${pathElement.simpleName}</a>
+    <tree:elementPath element="${treeVersionElement}" var="pathElement" separator="/">
+      <a href="${pathElement.elementLink}">${pathElement.treeElement.simpleName}</a>
     </tree:elementPath>
-    <div class="tr ${treeElement.excluded ? 'excluded' : ''}">
-      <a href="${treeElement.elementLink}">${raw(treeElement.displayHtml)}</a>
+    <div class="tr ${treeVersionElement.treeElement.excluded ? 'excluded' : ''}">
+      <a href="${treeVersionElement.elementLink}">${raw(treeVersionElement.treeElement.displayHtml)}</a>
     </div>
     <span class="text-info">${children.size() - 1} sub taxa</span>
     <br>
-    <tree:profile profile="${treeElement.profile}"/>
+    <tree:profile profile="${treeVersionElement.treeElement.profile}"/>
   </div>
 
-  <div class="indented ${tree.collapsedIndent(element: treeElement)}">
+  <div class="indented indent${treeVersionElement.treeElement.depth}">
     <g:each in="${children}" var="childElement">
       <div class="tr ${childElement.excluded ? 'excluded' : ''} level${childElement.depth}">
         <div class="wrap">
@@ -98,8 +98,8 @@
   </div>
 </help>
 </h4>
-Please cite using: <a href="${treeElement.elementLink}">
-  ${treeElement.elementLink}
+Please cite using: <a href="${treeVersionElement.elementLink}">
+  ${treeVersionElement.elementLink}
 </a> <i class="fa fa-star green"></i>
 
 </div>

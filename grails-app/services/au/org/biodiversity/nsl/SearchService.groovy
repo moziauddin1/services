@@ -323,9 +323,9 @@ order by sortName
 ''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
-                        TreeElement treeElement = treeService.findCurrentElementForName(name, treeService.getTree(ConfigService.classificationTreeName))
+                        TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, treeService.getTree(ConfigService.classificationTreeName))
                         Name family = name.family
-                        [treeElement: treeElement, name: name, family: family]
+                        [treeVersionElement: treeVersionElement, name: name, family: family]
                     }
                     [query: nameString, found: found, names: r, count: names.size()]
                 }

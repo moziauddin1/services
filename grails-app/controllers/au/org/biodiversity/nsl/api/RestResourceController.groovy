@@ -105,7 +105,7 @@ class RestResourceController {
 
         if (TreeVersionElement) {
             List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
-            List<TreeElement> path = treeService.getElementPath(treeVersionElement.treeElement)
+            List<TreeVersionElement> path = treeService.getElementPath(treeVersionElement)
             respond(treeVersionElement, [model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
             return
         }
