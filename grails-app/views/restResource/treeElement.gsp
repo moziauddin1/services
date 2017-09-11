@@ -18,15 +18,15 @@
           class="fa fa-ban"></i> ${treeVersionElement.treeVersion.tree.name}</apc>
     </g:if>
     <g:else>
-      ${treeVersionElement.treeVersion.tree.name}
+      ${treeVersionElement.treeVersion.tree.name}: ${treeVersionElement.treeElement.simpleName}
     </g:else>
-    <span
-        class="small text-info">(${treeVersionElement.treeVersion.id})</span> element
+    <span class="small text-info">(<tree:versionStatus
+        version="${treeVersionElement.treeVersion}"></tree:versionStatus>)</span>
 
     <g:if test="${currentTreeVersion != treeVersionElement.treeVersion}"><span class="small">
       <i class="fa fa-long-arrow-right"></i>
-      <a href='${createLink(uri: "/tree/$currentTreeVersion.id/$treeVersionElement.treeElement.treeElementId")}'>
-        current version ${currentTreeVersion.id}.
+      <a href='${createLink(uri: "/tree/$currentTreeVersion.id/$treeVersionElement.treeElement.id")}'>
+        current version.
       </a>
     </span>
     </g:if>
@@ -58,15 +58,11 @@
 <div class="rest-resource-content">
 
   <div>
-    <tree:elementPath element="${treeVersionElement}" var="pathElement" separator="/">
+    <tree:profile profile="${treeVersionElement.treeElement.profile}"/>
+    <tree:elementPath element="${treeVersionElement}" var="pathElement" separator="/" excludeThis="true">
       <a href="${pathElement.elementLink}">${pathElement.treeElement.simpleName}</a>
     </tree:elementPath>
-    <div class="tr ${treeVersionElement.treeElement.excluded ? 'excluded' : ''}">
-      <a href="${treeVersionElement.elementLink}">${raw(treeVersionElement.treeElement.displayHtml)}</a>
-    </div>
-    <span class="text-info">${children.size() - 1} sub taxa</span>
-    <br>
-    <tree:profile profile="${treeVersionElement.treeElement.profile}"/>
+    <div class="text-info">${children.size() - 1} sub taxa</div>
   </div>
 
   <div class="indented indent${treeVersionElement.treeElement.depth}">

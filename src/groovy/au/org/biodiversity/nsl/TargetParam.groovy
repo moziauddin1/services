@@ -47,9 +47,16 @@ class TargetParam {
         this.nameSpace = nameSpace
     }
 
+    TargetParam(TreeVersion treeVersion, String nameSpace) {
+        this.objectType = 'tree'
+        this.idNumber = 0
+        this.versionNumber = treeVersion.id
+        this.nameSpace = nameSpace
+    }
+
     TargetParam(TreeVersionElement treeVersionElement, String nameSpace) {
         this.objectType = 'tree'
-        this.idNumber = treeVersionElement.treeElement.treeElementId
+        this.idNumber = treeVersionElement.treeElement.id
         this.versionNumber = treeVersionElement.treeVersion.id
         this.nameSpace = nameSpace
     }

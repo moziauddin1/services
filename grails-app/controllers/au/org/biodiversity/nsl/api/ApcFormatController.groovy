@@ -22,7 +22,6 @@ import org.grails.plugins.metrics.groovy.Timed
 
 class ApcFormatController {
 
-    def classificationService
     def linkService
     def jsonRendererService
     TreeService treeService
@@ -73,7 +72,7 @@ class ApcFormatController {
         Set<Instance> misapplied = null
         Set<Instance> instances = []
         Boolean excluded = false
-        if (!treeElement) {
+        if (!treeVersionElement) {
             synonymOf = name.instances.findAll { Instance i ->
                 !i.draft && i.citedBy && treeService.findCurrentElementForInstance(i.citedBy, tree)
             }

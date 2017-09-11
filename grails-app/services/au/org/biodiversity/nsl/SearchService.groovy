@@ -158,8 +158,9 @@ class SearchService {
             Tree tree = Tree.get(params.tree.id as Long)
             TreeVersion treeVersion = tree.currentTreeVersion
             queryParams.treeVersion = treeVersion
+            from.add('TreeVersionElement treeVersionElement')
             from.add('TreeElement treeElement')
-            and << "treeElement.treeVersion = :treeVersion"
+            and << "treeVersionElement.treeVersion = :treeVersion and treeElement = treeVersionElement.treeElement"
 
             if (params.exclSynonym == 'on') {
                 and << "n.id = treeElement.nameId"
@@ -173,11 +174,13 @@ class SearchService {
                 NameRank inRank = NameRank.get(params.inRank?.id as Long)
                 String rankNameString = params.rankName.trim()
                 if (rankNameString) {
-                    List<Name> rankNames = Name.findAllByFullNameIlikeAndNameRank("${rankNameString}%", inRank)
+                    Set<String> rankNames = Name.findAllByFullNameIlikeAndNameRank("${rankNameString}%", inRank).collect {
+                        it.nameElement
+                    }
                     if (rankNames && !rankNames.empty) {
                         Set<String> pathOr = []
-                        rankNames.eachWithIndex { Name name, int i ->
-                            queryParams["path$i"] = "%/${name.nameElement}%"
+                        rankNames.eachWithIndex { String nameElement, int i ->
+                            queryParams["path$i"] = "%/${nameElement}%"
                             pathOr << "treeElement.namePath like :path$i"
                         }
                         and << "(${pathOr.join(' or ')})"

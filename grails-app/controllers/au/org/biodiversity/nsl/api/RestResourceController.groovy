@@ -93,30 +93,26 @@ class RestResourceController {
             return notFound("We couldn't find a tree version with id $version")
         }
         List<TreeVersion> versions = TreeVersion.findAllByTree(treeVersion.tree, [sort: 'id', order: 'desc'])
-        List<List> children = treeService.displayElementsToLimit(treeVersion, 2000)
+        List<DisplayElement> children = treeService.displayElementsToLimit(treeVersion, 2000)
         log.debug "Showing ${children.size()} child elements."
         respond treeVersion, [model: [treeVersion: treeVersion, versions: versions, children: children], status: OK]
     }
 
     @Timed()
     def treeElement(Long version, Long element) {
+        if (element == 0) {
+            forward(action: 'tree', model: [version: version])
+        }
         log.debug "Tree Element version $version, element $element"
         TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(version, element)
 
-        if (TreeVersionElement) {
+        if (treeVersionElement) {
             List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
             List<TreeVersionElement> path = treeService.getElementPath(treeVersionElement)
             respond(treeVersionElement, [model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
             return
         }
         notFound("Couldn't find element $element in tree version $version.")
-    }
-
-    private static firstResult(List list) {
-        if (!list.empty) {
-            return list.first()
-        }
-        return null
     }
 
     /**

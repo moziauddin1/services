@@ -235,6 +235,7 @@ class TreeServiceSpec extends Specification {
 
         then: 'the tree, it\'s versions and their elements are gone'
         Tree.get(tree.id) == null
+        Tree.findByName('aTree') == null
         TreeVersion.get(draftVersion.id) == null
         TreeVersion.get(publishedVersion.id) == null
         TreeVersionElement.findByTreeVersion(draftVersion) == null

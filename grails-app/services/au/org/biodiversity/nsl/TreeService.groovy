@@ -137,6 +137,7 @@ class TreeService implements ValidationUtils {
      * @return List of DisplayElements
      */
     List<DisplayElement> childDisplayElements(TreeVersionElement treeVersionElement) {
+        mustHave(TreeVersionElement: treeVersionElement)
         childDisplayElements(treeVersionElement.treeElement, treeVersionElement.treeVersion)
     }
 
@@ -234,6 +235,7 @@ select count(tve)
         }
         tree = new Tree(name: treeName, groupName: groupName, referenceId: referenceId)
         tree.save()
+        linkService.addTargetLink(tree)
         return tree
     }
 
@@ -255,29 +257,26 @@ select count(tve)
     /**
      * Delete a tree and all it's versions/elements
      *
-     * Because of the nature of a delete the session is flushed and cleared, meaning any previously held domain objects
-     * need to be refreshed before use.
+     * WARNING: Because of the nature of a delete the session is flushed and cleared, so you need to refresh any objects
+     * held prior to calling this method that you wish to re use. You should also discard anything you don't want persisted.
      *
      * @param tree
      */
     void deleteTree(Tree tree) {
         log.debug "Delete tree $tree"
-        /*
-        Note a simple tree.delete() will work here, but hibernate looks at the ownership and will delete objects one at
-        a time, so if you have 2 versions in the tree and they have 35k elements it will issue 70k+ delete element statements.
 
-        Since that will take a long time, we'll do it using sql directly.
-         */
         Sql sql = getSql()
         for (TreeVersion v in tree.treeVersions) {
             tree = deleteTreeVersion(v, sql)
         }
-        tree.delete(flush: true)
+        tree.delete()
     }
 
     /**
-     * This deletes a tree version and all it's elements. Because of the nature of a delete the session is flushed and
-     * cleared, so you need to refresh any objects held prior to calling this method.
+     * This deletes a tree version and all it's elements.
+     *
+     * WARNING: Because of the nature of a delete the session is flushed and cleared, so you need to refresh any objects
+     * held prior to calling this method that you wish to re use. You should also discard anything you don't want persisted.
      *
      * We return the re-loaded tree from this method as a nice way of reloading the object and helping the old object be
      * GC'd. So if you have a reference to tree call this like:
@@ -308,17 +307,17 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
         return Tree.get(treeId)
     }
 
-    Integer deleteOrphanedTreeElements(Sql sql = getSql()) {
+    private Integer deleteOrphanedTreeElements(Sql sql = getSql()) {
         log.debug "delete orphaned elements"
         Integer count = sql.firstRow('SELECT count(*) FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element)')[0] as Integer
         if (count) {
             log.debug "deleting $count orphaned elements."
+
             sql.execute('''
-UPDATE tree_element SET previous_element_id = NULL WHERE previous_element_id IN
-       (SELECT id FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element));
-UPDATE tree_element SET parent_element_id = NULL WHERE parent_element_id IN
-       (SELECT id FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element));
-DELETE FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element);
+SELECT id INTO TEMP orphans FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element); 
+UPDATE tree_element SET previous_element_id = NULL WHERE previous_element_id IN (SELECT id FROM orphans);
+UPDATE tree_element SET parent_element_id = NULL WHERE parent_element_id IN  (SELECT id FROM orphans);
+DELETE FROM tree_element WHERE id IN (SELECT id FROM orphans);
 ''')
         }
         return count
@@ -366,6 +365,9 @@ DELETE FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM 
         )
         tree.addToTreeVersions(newVersion)
         tree.save(flush: true)
+
+        String link = linkService.addTargetLink(newVersion)
+        log.debug "added TreeVersion link $link"
 
         if (fromVersion) {
             copyVersion(fromVersion, newVersion)
@@ -417,7 +419,7 @@ DELETE FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM 
 
     TreeVersion validateTreeVersion(TreeVersion treeVersion) {
         if (treeVersion)
-        throw new NotImplementedException('Validate Tree Version is not implemented')
+            throw new NotImplementedException('Validate Tree Version is not implemented')
         return treeVersion
     }
 

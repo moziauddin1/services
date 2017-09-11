@@ -16,7 +16,10 @@
 
 package services
 
-import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.Node
+import au.org.biodiversity.nsl.TreeService
+import au.org.biodiversity.nsl.TreeVersion
+import au.org.biodiversity.nsl.TreeVersionElement
 import au.org.biodiversity.nsl.tree.QueryService
 
 class TreeServicesTagLib {
@@ -36,8 +39,12 @@ class TreeServicesTagLib {
 
     def elementPath = { attrs, body ->
         TreeVersionElement element = attrs.element
+        Boolean excludeThis = attrs.excludeThis ?: false
         String var = attrs.var
         List<TreeVersionElement> path = treeService.getElementPath(element)
+        if (excludeThis) {
+            path.remove(element)
+        }
         String separator = ''
         path.each { TreeVersionElement pathElement ->
             out << separator
@@ -53,6 +60,7 @@ class TreeServicesTagLib {
             profileData.each { k, v ->
                 out << "<dt>$k</dt><dd>${v.value}</dd>"
             }
+            out << "</dl>"
         }
     }
 
@@ -69,7 +77,7 @@ class TreeServicesTagLib {
 
     def versionStats = { attrs, body ->
         TreeVersion treeVersion = attrs.version
-        Integer count = TreeElement.countByTreeVersion(treeVersion)
+        Integer count = TreeVersionElement.countByTreeVersion(treeVersion)
         out << body([elements: count])
     }
 
