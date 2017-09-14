@@ -16,20 +16,7 @@
 
 package services
 
-import au.org.biodiversity.nsl.Arrangement
-import au.org.biodiversity.nsl.Author
-import au.org.biodiversity.nsl.Comment
-import au.org.biodiversity.nsl.HTMLSanitiser
-import au.org.biodiversity.nsl.HibernateDomainUtils
-import au.org.biodiversity.nsl.Instance
-import au.org.biodiversity.nsl.InstanceNote
-import au.org.biodiversity.nsl.InstanceType
-import au.org.biodiversity.nsl.Name
-import au.org.biodiversity.nsl.NameStatus
-import au.org.biodiversity.nsl.NameType
-import au.org.biodiversity.nsl.RefAuthorRole
-import au.org.biodiversity.nsl.RefType
-import au.org.biodiversity.nsl.Reference
+import au.org.biodiversity.nsl.*
 
 class ServiceTagLib {
 
@@ -53,10 +40,19 @@ class ServiceTagLib {
         map.each { k, v ->
             out << "<li>"
             out << "<b>${k.encodeAsHTML()}:</b>&nbsp;"
-            out << displayValue(v: v)
+            if (k =~ /(?i)html/) {
+                out << v
+                out << '<br><pre>' + v.encodeAsHTML() + '</pre>'
+            } else {
+                out << displayValue(v: v)
+            }
             out << '</li>'
         }
         out << '</ul>'
+    }
+
+    private static String anchorLinks(String value) {
+        value.replaceAll(/(https?:\/\/[^ )]*)/, '<a href="$1">$1</a>')
     }
 
     def displayValue = { attrs ->
@@ -73,8 +69,8 @@ class ServiceTagLib {
             }
             out << '</ul>'
         } else {
-            if (v.toString().startsWith('http://')) {
-                out << "<a href='$v'>${v.encodeAsHTML()}</a>"
+            if (v.toString().contains('http')) {
+                out << anchorLinks(v.toString())
             } else {
                 out << v.encodeAsHTML()
             }
@@ -336,26 +332,26 @@ class ServiceTagLib {
 
     def diffValue = { attrs ->
         def val = attrs.value
-        if(val) {
+        if (val) {
             switch (val.class.simpleName) {
                 case 'Name':
                     Name name = (Name) val
                     String link = linkService.getPreferredLinkForObject(name) + '/api/apni-format'
                     out << "<div class='title'><a href='$link' target='audit'>Name ($name.id)</a></div>"
                     out << "<div>${name.fullNameHtml}</div>"
-                    break;
+                    break
                 case 'Author':
                     Author author = (Author) val
                     String link = linkService.getPreferredLinkForObject(author)
                     out << "<div class='title'><a href='$link' target='audit'>Author ($author.id)</a></div>"
                     out << "<div>${author.name} (${author.abbrev})</div>"
-                    break;
+                    break
                 case 'Reference':
                     Reference reference = (Reference) val
                     String link = linkService.getPreferredLinkForObject(reference)
                     out << "<div class='title'><a href='$link' target='audit'>Reference ($reference.id)</a></div>"
                     out << "<div>${reference.citationHtml}</div>"
-                    break;
+                    break
                 case 'Instance':
                     Instance instance = (Instance) val
                     String link = linkService.getPreferredLinkForObject(instance)
@@ -363,7 +359,7 @@ class ServiceTagLib {
                     out << "<ul><li>${instance.instanceType.name}</li>"
                     out << "<li>${instance.name.fullNameHtml}</li>"
                     out << "<li>${instance.reference.citationHtml}</li></ul>"
-                    break;
+                    break
                 case 'InstanceNote':
                     InstanceNote note = (InstanceNote) val
                     String link = linkService.getPreferredLinkForObject(note)
@@ -376,7 +372,7 @@ class ServiceTagLib {
                     out << "<ul><li>${instance.instanceType.name}</li>"
                     out << "<li>${instance.name.fullNameHtml}</li>"
                     out << "<li>${instance.reference.citationHtml}</li></ul>"
-                    break;
+                    break
                 case 'Comment':
                     Comment comment = (Comment) val
                     out << "<div class='title'>Comment ($comment.id)</div>"
@@ -394,28 +390,28 @@ class ServiceTagLib {
                     if (comment.reference) {
                         out << diffValue(value: comment.reference)
                     }
-                    break;
+                    break
 
                 case 'NameType':
                     NameType nameType = (NameType) val
                     out << nameType.name
-                    break;
+                    break
                 case 'NameStatus':
                     NameStatus nameStatus = (NameStatus) val
                     out << nameStatus.name
-                    break;
+                    break
                 case 'RefAuthorRole':
                     RefAuthorRole refAuthorRole = (RefAuthorRole) val
                     out << refAuthorRole.name
-                    break;
+                    break
                 case 'RefType':
                     RefType refType = (RefType) val
                     out << refType.name
-                    break;
+                    break
                 case 'InstanceType':
                     InstanceType instanceType = (InstanceType) val
                     out << instanceType.name
-                    break;
+                    break
 
                 default:
                     out << val ? val.toString() : '-'

@@ -443,16 +443,144 @@ class TreeServiceSpec extends Specification {
 
     }
 
+    def "test place taxon"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData])
+        Instance asperaInstance = Instance.get(781104)
+        TreeVersionElement doodiaElement = service.findElementBySimpleName('Doodia', draftVersion)
+        TreeVersionElement asperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
+        String instanceUri = 'http://localhost:7070/nsl-mapper/instance/apni/781104'
+
+        //return a url that matches the name link of aspera
+        service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/70944'
+        service.linkService.getPreferredLinkForObject(asperaInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/781104'
+
+        expect:
+        tree
+        draftVersion
+        doodiaElement
+        asperaInstance
+        !asperaElement
+
+        when: 'I try to place Doodia aspera under Doodia'
+        Map result = service.placeTaxonUri(doodiaElement, instanceUri, false, 'A. User')
+        println result
+
+        then: 'It should work'
+        1 * service.linkService.getObjectForLink(instanceUri) >> asperaInstance
+        1 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        result.childElement == service.findElementBySimpleName('Doodia aspera', draftVersion)
+        result.warnings.empty
+        println result.childElement.elementLink
+    }
+
+    def "test move a taxon"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        service.linkService.bulkAddTargets(_) >> [success: true]
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        TreeVersionElement anthocerotaceae = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
+        TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
+        TreeVersionElement dendrocerotaceae = service.findElementBySimpleName('Dendrocerotaceae', draftVersion)
+
+        expect:
+        tree
+        testElements.size() == 30
+        draftVersion.treeVersionElements.size() == 30
+        !draftVersion.published
+        anthocerotaceae
+        anthoceros
+        anthoceros.treeElement.parentElement == anthocerotaceae.treeElement
+        dendrocerotaceae
+
+        when: 'I try to move a taxon'
+        TreeVersionElement newAnthoceros = service.moveTaxon(anthoceros, dendrocerotaceae, 'test move taxon')
+        List<TreeVersionElement> anthocerosChildren = service.getAllChildElements(newAnthoceros)
+        List<TreeVersionElement> dendrocerotaceaeChildren = service.getAllChildElements(dendrocerotaceae)
+        for (TreeVersionElement tve in dendrocerotaceaeChildren) {
+            println tve.treeElement.namePath
+        }
+
+        then: 'It works'
+        6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        newAnthoceros
+        newAnthoceros != anthoceros
+        TreeVersionElement.get(anthoceros.elementLink) == null
+        newAnthoceros == service.findElementBySimpleName('Anthoceros', draftVersion)
+        newAnthoceros.treeVersion == draftVersion
+        newAnthoceros.treeElement != anthoceros.treeElement
+        draftVersion.treeVersionElements.size() == 30
+        anthocerosChildren.size() == 5
+        newAnthoceros.treeElement.parentElement == dendrocerotaceae.treeElement
+        anthocerosChildren[0].treeElement.nameElement == 'capricornii'
+        anthocerosChildren[1].treeElement.nameElement == 'ferdinandi-muelleri'
+        anthocerosChildren[2].treeElement.nameElement == 'fragilis'
+        anthocerosChildren[3].treeElement.nameElement == 'laminifer'
+        anthocerosChildren[4].treeElement.nameElement == 'punctatus'
+        dendrocerotaceaeChildren.containsAll(anthocerosChildren)
+
+        when: 'I publish the version then try a move'
+        service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
+        service.moveTaxon(anthoceros, anthocerotaceae, 'test move taxon')
+
+        then: 'I get a PublishedVersionException'
+        thrown(PublishedVersionException)
+    }
+
+    def "test move a taxon with multiple child levels"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        service.linkService.bulkAddTargets(_) >> [success: true]
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        TreeVersionElement anthocerotales = service.findElementBySimpleName('Anthocerotales', draftVersion)
+        TreeVersionElement dendrocerotidae = service.findElementBySimpleName('Dendrocerotidae', draftVersion)
+        TreeVersionElement anthocerotidae = service.findElementBySimpleName('Anthocerotidae', draftVersion)
+        List<TreeVersionElement> anthocerotalesChildren = service.getAllChildElements(anthocerotales)
+
+        expect:
+        tree
+        testElements.size() == 30
+        draftVersion.treeVersionElements.size() == 30
+        !draftVersion.published
+        anthocerotales
+        dendrocerotidae
+        anthocerotales.treeElement.parentElement == anthocerotidae.treeElement
+        anthocerotalesChildren.size() == 10
+
+        when: 'I move Anthocerotales under Dendrocerotidae'
+        TreeVersionElement newAnthocerotales = service.moveTaxon(anthocerotales, dendrocerotidae, 'test move taxon')
+        List<TreeVersionElement> newAnthocerotalesChildren = service.getAllChildElements(newAnthocerotales)
+        List<TreeVersionElement> dendrocerotidaeChildren = service.getAllChildElements(dendrocerotidae)
+        for (TreeVersionElement tve in dendrocerotidaeChildren) {
+            println tve.treeElement.namePath
+        }
+
+        then: 'It works'
+        11 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        newAnthocerotales
+        newAnthocerotales != anthocerotales
+        newAnthocerotales == service.findElementBySimpleName('Anthocerotales', draftVersion)
+        draftVersion.treeVersionElements.size() == 30
+        newAnthocerotalesChildren.size() == 10
+        dendrocerotidaeChildren.size() == 25
+    }
+
+
     private static List<TreeElement> makeTestElements(TreeVersion version, List<Map> elementData) {
         List<TreeElement> elements = []
+        Map<Long, Long> generatedIdMapper = [:]
         elementData.each { Map data ->
-            Long parentElementId = data.remove('parentElementId') as Long
-            if (parentElementId) {
-                data.parentElement = TreeElement.get(parentElementId)
+            if (data.parentElementId) {
+                data.parentElement = TreeElement.get(generatedIdMapper[data.parentElementId as Long])
             }
             data.remove('previousElementId')
             TreeElement e = new TreeElement(data)
             e.save()
+            generatedIdMapper.put(data.id as Long, e.id as Long)
             TreeVersionElement tve = new TreeVersionElement(treeVersion: version, treeElement: e, elementLink: "http://localhost:7070/nsl-mapper/tree/$version.id/$e.id")
             tve.save()
             elements.add(e)

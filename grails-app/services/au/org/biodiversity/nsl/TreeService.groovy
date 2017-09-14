@@ -3,7 +3,6 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import groovy.sql.Sql
-import org.apache.commons.lang.NotImplementedException
 import org.apache.shiro.SecurityUtils
 
 import javax.sql.DataSource
@@ -129,6 +128,31 @@ class TreeService implements ValidationUtils {
                 null
             }
         }.findAll { it }
+    }
+
+    List<TreeVersionElement> getChildElementsToDepth(TreeVersionElement parent, int depth) {
+        mustHave(parent: parent)
+        String pattern = "^${parent.treeElement.treePath}(/[^/]*){1,$depth}\$"
+        getElementsByPath(parent, pattern)
+    }
+
+    List<TreeVersionElement> getAllChildElements(TreeVersionElement parent) {
+        mustHave(parent: parent)
+        String pattern = "^${parent.treeElement.treePath}/.*"
+        getElementsByPath(parent, pattern)
+    }
+
+    List<TreeVersionElement> getElementsByPath(TreeVersionElement parent, String pattern) {
+        mustHave(parent: parent, pattern: pattern)
+        log.debug("getting $pattern")
+
+        TreeVersionElement.executeQuery('''
+select tve 
+    from TreeVersionElement tve 
+    where tve.treeVersion = :version
+    and regex(tve.treeElement.treePath, :pattern) = true 
+    order by tve.treeElement.namePath
+''', [version: parent.treeVersion, pattern: pattern])
     }
 
     /**
@@ -401,7 +425,6 @@ DELETE FROM tree_element WHERE id IN (SELECT id FROM orphans);
         }
     }
 
-
     String authorizeTreeOperation(Tree tree) {
         String groupName = tree.groupName
         SecurityUtils.subject.checkRole(groupName)
@@ -417,10 +440,47 @@ DELETE FROM tree_element WHERE id IN (SELECT id FROM orphans);
         return treeVersion
     }
 
-    TreeVersion validateTreeVersion(TreeVersion treeVersion) {
-        if (treeVersion)
-            throw new NotImplementedException('Validate Tree Version is not implemented')
-        return treeVersion
+    Map validateTreeVersion(TreeVersion treeVersion) {
+        Sql sql = getSql()
+        if (!treeVersion) {
+            throw new BadArgumentsException("Tree version needs to be set.")
+        }
+
+        Map problems = [:]
+
+        problems.synonyms = checkVersionSynonyms(sql, treeVersion)
+        return problems
+    }
+
+    private static List<String> checkVersionSynonyms(Sql sql, TreeVersion treeVersion) {
+        List<String> problems = []
+        sql.eachRow('''
+SELECT
+  e1.simple_name                    AS name1,
+  tve1.element_link AS link1,
+  e2.simple_name                    AS name2,
+  tve2.element_link AS link2,
+  tax_syn                           AS name2_synonym,
+  e2.synonyms -> tax_syn ->> 'type' AS type
+FROM tree_version_element tve1
+  JOIN tree_element e1 ON tve1.tree_element_id = e1.id
+  ,
+  tree_version_element tve2
+  JOIN tree_element e2 ON tve2.tree_element_id = e2.id
+  ,
+      jsonb_object_keys(e2.synonyms) AS tax_syn
+WHERE tve1.tree_version_id = :treeVersionId
+      AND tve2.tree_version_id = :treeVersionId
+      AND tve2.tree_element_id <> tve1.tree_element_id
+      AND e1.excluded = FALSE
+      AND e2.excluded = FALSE
+      AND e2.synonyms IS NOT NULL
+      AND (e2.synonyms -> tax_syn ->> 'name_id') :: BIGINT = e1.name_id
+      AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*';
+      ''', [treeVersionId: treeVersion.id]) { row ->
+            problems.add("In taxon (${row['link2']}) ${row['name2']} considers ${row['name1']} (${row['link1']}) to be a ${row['type']}.")
+        }
+        return problems
     }
 
     Map placeTaxonUri(TreeVersionElement parentElement, String taxonUri, Boolean excluded, String userName) {
@@ -429,14 +489,100 @@ DELETE FROM tree_element WHERE id IN (SELECT id FROM orphans);
         if (!taxonData) {
             throw new ObjectNotFoundException("Taxon $taxonUri not found, trying to place it in $parentElement")
         }
+        notPublished(parentElement)
         taxonData.excluded = excluded
         List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
         //note above will throw exceptions for invalid placements, not warnings
-        TreeVersionElement childElement = makeTreeVersionElement(taxonData, parentElement, userName)
+        TreeVersionElement childElement = makeVersionElementFromTaxonData(taxonData, parentElement, userName)
         return [childElement: childElement, warnings: warnings]
     }
 
-    protected TreeVersionElement makeTreeVersionElement(TaxonData taxonData, TreeVersionElement parentElement, String userName) {
+    /**
+     * Move a tree element placement from one parent to another. This requires the tree elements below the one being moved
+     * to be copied and the name and tree paths updated. The elements being copied are removed from this version
+     * of the tree.
+     *
+     * If this element is high up the tree this may result in thousands of new elements being created which may take
+     * some time.
+     *
+     * @param child - the taxon you wish to move.
+     * @param parent - the target parent that you want to move the child under.
+     * @param userName - who is making the move.
+     * @return The new child TreeVersionElement.
+     */
+    TreeVersionElement moveTaxon(TreeVersionElement child, TreeVersionElement parent, String userName) {
+        notPublished(parent)
+
+        TreeVersionElement childCopy = saveTreeVersionElement(copyTreeElement(child, parent.treeElement, userName), parent.treeVersion)
+
+        List<TreeVersionElement> kids = getChildElementsToDepth(child, 1)
+
+        copyChildElements(kids, childCopy, userName)
+
+        //delete the original treeVersionElements
+        for (TreeVersionElement kid in getAllChildElements(child)) {
+            kid.treeElement.removeFromTreeVersionElements(kid)
+            kid.treeVersion.removeFromTreeVersionElements(kid)
+            kid.delete()
+        }
+        child.treeElement.removeFromTreeVersionElements(child)
+        child.treeVersion.removeFromTreeVersionElements(child)
+        child.delete(flush: true)
+        //if this is a move of new elements in a draft we may orphan some tree elements so it pays to clean up
+        //this may be moved to a background garbage collection task if it is too slow.
+        deleteOrphanedTreeElements()
+        parent.treeVersion.refresh()
+        return childCopy
+    }
+
+    private copyChildElements(List<TreeVersionElement> kids, TreeVersionElement parent, String userName) {
+        log.debug "copying kids $kids"
+        for (TreeVersionElement kid in kids) {
+            TreeVersionElement kidCopy = saveTreeVersionElement(copyTreeElement(kid, parent.treeElement, userName), parent.treeVersion)
+            copyChildElements(getChildElementsToDepth(kid, 1), kidCopy, userName)
+        }
+    }
+
+    private TreeElement copyTreeElement(TreeVersionElement treeVersionElement, TreeElement parent, String userName) {
+        Long treeElementId = generateNewElementId()
+        TreeElement source = treeVersionElement.treeElement
+        TreeElement treeElement = new TreeElement(
+                treeElementId: treeElementId,
+                treeVersion: treeVersionElement.treeVersion,
+                previousElement: source,
+                parentElement: parent,
+                instanceId: source.instanceId,
+                nameId: source.nameId,
+                excluded: source.excluded,
+                displayHtml: source.displayHtml,
+                synonymsHtml: source.synonymsHtml,
+                simpleName: source.simpleName,
+                nameElement: source.nameElement,
+                treePath: "${parent.treePath}/$treeElementId",
+                namePath: "${parent.namePath}/$source.nameElement",
+                rank: source.rank,
+                depth: parent.depth + 1,
+                sourceShard: source.sourceShard,
+                synonyms: source.synonyms,
+                rankPath: parent.rankPath << [(source.rank): [id: source.name.id, name: source.nameElement]],
+                profile: source.profile,
+                sourceElementLink: source.sourceElementLink,
+                nameLink: source.nameLink,
+                instanceLink: source.instanceLink,
+                updatedBy: userName,
+                updatedAt: new Timestamp(System.currentTimeMillis())
+        )
+        treeElement.save()
+        return treeElement
+    }
+
+    protected static notPublished(TreeVersionElement element) {
+        if (element.treeVersion.published) {
+            throw new PublishedVersionException("You can't place a taxon in a Published tree. $element.treeVersion.tree.name version $element.treeVersion.id is already published.")
+        }
+    }
+
+    protected TreeVersionElement makeVersionElementFromTaxonData(TaxonData taxonData, TreeVersionElement parentElement, String userName) {
         Long treeElementId = generateNewElementId()
         TreeElement treeElement = new TreeElement(
                 treeElementId: treeElementId,
@@ -465,13 +611,17 @@ DELETE FROM tree_element WHERE id IN (SELECT id FROM orphans);
                 updatedAt: new Timestamp(System.currentTimeMillis())
         )
         treeElement.save()
-        TreeVersionElement treeVersionElement = new TreeVersionElement(treeElement: treeElement, treeVersion: parentElement.treeVersion)
+        return saveTreeVersionElement(treeElement, parentElement.treeVersion)
+    }
+
+    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version) {
+        TreeVersionElement treeVersionElement = new TreeVersionElement(treeElement: element, treeVersion: version)
         treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
         treeVersionElement.save()
         return treeVersionElement
     }
 
-    Long generateNewElementId(Sql sql = getSql()) {
+    private Long generateNewElementId(Sql sql = getSql()) {
         sql.firstRow("SELECT nextval('nsl_global_seq')")[0] as Long
     }
 
@@ -677,6 +827,15 @@ WHERE tve.tree_version_id = :versionId
         return instanceData
     }
 
+    TaxonData getInstanceDataByUri(String instanceUri) {
+        Instance taxon = linkService.getObjectForLink(instanceUri) as Instance
+        if (taxon) {
+            return elementDataFromInstance(taxon)
+        } else {
+            return null
+        }
+    }
+
     /**
      * Fetch instance data from another service
      * @param instanceUri
@@ -684,7 +843,7 @@ WHERE tve.tree_version_id = :versionId
      */
     private Map fetchInstanceData(String instanceUri) {
         Map result = [success: true]
-        String uri = "$instanceUri/api/tree-api/elment-data-from-instance"
+        String uri = "$instanceUri/api/tree/element-data-from-instance"
         try {
             String failMessage = "Couldn't fetch $uri"
             restCallService.json('get', uri,
@@ -738,6 +897,26 @@ class TaxonData {
     Boolean nomIlleg
     Boolean excluded
 
+    Map asMap() {
+        [
+                nameId      : nameId,
+                instanceId  : instanceId,
+                simpleName  : simpleName,
+                nameElement : nameElement,
+                displayHtml : displayHtml,
+                synonymsHtml: synonymsHtml,
+                sourceShard : sourceShard,
+                synonyms    : synonyms,
+                rank        : rank,
+                rankPathPart: rankPathPart,
+                profile     : profile,
+                nameLink    : nameLink,
+                instanceLink: instanceLink,
+                nomInval    : nomInval,
+                nomIlleg    : nomIlleg,
+                excluded    : excluded
+        ]
+    }
 }
 
 class DisplayElement {

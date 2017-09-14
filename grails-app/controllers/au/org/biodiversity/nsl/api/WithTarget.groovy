@@ -100,9 +100,4 @@ trait WithTarget {
         return result
     }
 
-    def serviceRespond(ResultObject resultObject) {
-        log.debug "result status is ${resultObject.status}"
-        respond(resultObject, [view: '/common/serviceResult', model: [data: resultObject], status: resultObject.remove('status')])
-    }
-
 }

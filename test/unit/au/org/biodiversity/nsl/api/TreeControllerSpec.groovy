@@ -16,10 +16,10 @@ import spock.lang.Specification
 /**
  * See the API for {@link grails.test.mixin.web.ControllerUnitTestMixin} for usage instructions
  */
-@TestFor(TreeApiController)
+@TestFor(TreeController)
 @TestMixin(DomainClassUnitTestMixin)
 @Mock([Tree, TreeVersion, TreeElement])
-class TreeApiControllerSpec extends Specification {
+class TreeControllerSpec extends Specification {
 
     def treeService = Mock(TreeService)
 
@@ -204,7 +204,7 @@ class TreeApiControllerSpec extends Specification {
         tree
 
         when: 'I create a new version for a tree with no version'
-        def data = jsonCall { controller.createTreeVersion(tree, null, 'my draft tree', false) }
+        def data = jsonCall { controller.createTreeVersion(tree.id, null, 'my draft tree', false) }
 
         then: 'I should get an OK response'
         1 * treeService.createTreeVersion(_, _, _) >> { Tree tree1, TreeVersion version, String draftName ->
@@ -217,7 +217,7 @@ class TreeApiControllerSpec extends Specification {
         data.payload.treeVersion
 
         when: 'I forget something like draftName'
-        data = jsonCall { controller.createTreeVersion(tree, null, '', false) }
+        data = jsonCall { controller.createTreeVersion(tree.id, null, '', false) }
 
         then: 'I get a bad argument response'
         1 * treeService.createTreeVersion(_, _, _) >> { Tree tree1, TreeVersion version, String draftName ->
@@ -228,7 +228,7 @@ class TreeApiControllerSpec extends Specification {
         data.error == 'naughty'
 
         when: 'Im not authorized'
-        data = jsonCall { controller.createTreeVersion(tree, null, '', false) }
+        data = jsonCall { controller.createTreeVersion(tree.id, null, '', false) }
 
         then: 'I get a Authorization exception'
         1 * treeService.authorizeTreeOperation(tree) >> { Tree tree1 ->
@@ -243,6 +243,7 @@ class TreeApiControllerSpec extends Specification {
         given:
         Tree tree = new Tree(name: 'aTree', groupName: 'aGroup').save()
         TreeVersion version = new TreeVersion(tree: tree, draftName: 'draft tree')
+        version.save()
         request.method = 'GET'
 
         expect:
@@ -250,18 +251,19 @@ class TreeApiControllerSpec extends Specification {
         version
 
         when: 'I validate this version'
-        def data = jsonCall { controller.validateTreeVersion(version) }
+        def data = jsonCall { controller.validateTreeVersion(version.id) }
 
         then: 'I should get an OK response'
         1 * treeService.validateTreeVersion(_) >> { TreeVersion version1 ->
-            return version1
+            return [:]
         }
         response.status == 200
         data.ok == true
-        data.payload.treeVersion
+        data.payload instanceof Map
+        data.payload.keySet().empty
 
         when: 'tree service hasnt implemented validation'
-        data = jsonCall { controller.validateTreeVersion(version) }
+        data = jsonCall { controller.validateTreeVersion(version.id) }
 
         then: 'I get a not implemented response'
         1 * treeService.validateTreeVersion(_) >> { TreeVersion version1 ->

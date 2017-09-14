@@ -7,27 +7,27 @@ import org.apache.shiro.authz.AuthorizationException
 
 import static org.springframework.http.HttpStatus.*
 
-class TreeApiController implements WithTarget {
+class TreeController implements WithTarget {
 
     def treeService
     def jsonRendererService
     def linkService
 
     static responseFormats = [
-            createTree                : ['JSON'],
-            editTree                  : ['JSON'],
-            copyTree                  : ['JSON'],
-            deleteTree                : ['JSON'],
-            createTreeVersion         : ['JSON'],
-            setDefaultDraftTreeVersion: ['JSON'],
-            editTreeVersion           : ['JSON'],
-            validateTreeVersion       : ['JSON'],
-            publishTreeVersion        : ['JSON'],
-            placeTaxon                : ['JSON'],
-            moveElement               : ['JSON'],
-            removeElement             : ['JSON'],
-            editElementProfile        : ['JSON'],
-            editElementStatus         : ['JSON']
+            createTree                : ['json', 'html'],
+            editTree                  : ['json', 'html'],
+            copyTree                  : ['json', 'html'],
+            deleteTree                : ['json', 'html'],
+            createTreeVersion         : ['json', 'html'],
+            setDefaultDraftTreeVersion: ['json', 'html'],
+            editTreeVersion           : ['json', 'html'],
+            validateTreeVersion       : ['json', 'html'],
+            publishTreeVersion        : ['json', 'html'],
+            placeTaxon                : ['json', 'html'],
+            moveElement               : ['json', 'html'],
+            removeElement             : ['json', 'html'],
+            editElementProfile        : ['json', 'html'],
+            editElementStatus         : ['json', 'html']
     ]
 
     static allowedMethods = [
@@ -48,7 +48,9 @@ class TreeApiController implements WithTarget {
     ]
     static namespace = "api"
 
-    def index() {}
+    def index() {
+        [trees: Tree.list()]
+    }
 
     def createTree(String treeName, String groupName, Long refId) {
         ResultObject results = require(['Tree Name': treeName, 'Group Name': groupName])
@@ -64,8 +66,9 @@ class TreeApiController implements WithTarget {
         }
     }
 
-    def deleteTree(Tree tree) {
-        ResultObject results = requireTarget(tree, "Tree with id: $data.id")
+    def deleteTree(Long treeId) {
+        Tree tree = Tree.get(treeId)
+        ResultObject results = requireTarget(tree, "Tree with id: $treeId")
         handleResults(results) {
             treeService.authorizeTreeOperation(tree)
             treeService.deleteTree(tree)
@@ -79,7 +82,9 @@ class TreeApiController implements WithTarget {
      * this new version. If defaultVersion is set to true then the new version becomes the default draft version.
      * @return
      */
-    def createTreeVersion(Tree tree, TreeVersion fromVersion, String draftName, Boolean defaultVersion) {
+    def createTreeVersion(Long treeId, Long fromVersionId, String draftName, Boolean defaultVersion) {
+        Tree tree = Tree.get(treeId)
+        TreeVersion fromVersion = TreeVersion.get(fromVersionId)
         ResultObject results = requireTarget(tree, "Tree with id: $tree")
         handleResults(results) {
             treeService.authorizeTreeOperation(tree)
@@ -91,8 +96,9 @@ class TreeApiController implements WithTarget {
         }
     }
 
-    def setDefaultDraftTreeVersion(TreeVersion treeVersion) {
-        ResultObject results = requireTarget(treeVersion, "Tree version $treeVersion")
+    def setDefaultDraftTreeVersion(Long version) {
+        TreeVersion treeVersion = TreeVersion.get(version)
+        ResultObject results = requireTarget(treeVersion, "Tree version $version")
         handleResults(results) {
             treeService.authorizeTreeOperation(treeVersion.tree)
             results.payload = treeService.setDefaultDraftVersion(treeVersion)
@@ -120,34 +126,60 @@ class TreeApiController implements WithTarget {
         }
     }
 
-    /* ******** Not implemented **** */
-
-    def validateTreeVersion(TreeVersion treeVersion) {
-        ResultObject results = requireTarget(treeVersion, "TreeVersion: $treeVersion")
+    def validateTreeVersion(Long version) {
+        log.debug "validate tree version $version"
+        TreeVersion treeVersion = TreeVersion.get(version)
+        ResultObject results = requireTarget(treeVersion, "TreeVersionId: $version")
         handleResults(results) {
             results.payload = treeService.validateTreeVersion(treeVersion)
         }
     }
+    /**
+     *
+     * @param parentTaxonUri the URI or link of the parent treeVersionElement
+     * @param instanceUri
+     * @param excluded
+     * @return
+     */
+    def placeTaxon(String parentTaxonUri, String instanceUri, Boolean excluded) {
 
-
-    def placeTaxon(String treeElementUri, String taxonUri, Boolean excluded) {
-
-        ResultObject results = requireTarget(treeElementUri, "Tree element with $treeElementUri")
-        TreeVersionElement treeVersionElement = TreeVersionElement.get(treeElementUri)
+        ResultObject results = requireTarget(parentTaxonUri, "Tree element with $parentTaxonUri")
+        TreeVersionElement treeVersionElement = TreeVersionElement.get(parentTaxonUri)
 
         handleResults(results) {
             String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
-            results.payload = treeService.placeTaxonUri(treeVersionElement, taxonUri, excluded, userName)
+            results.payload = treeService.placeTaxonUri(treeVersionElement, instanceUri, excluded, userName)
         }
     }
 
-    def moveElement() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def moveTaxon(String taxonUri, String newParentTaxonUri) {
+        TreeVersionElement childElement = TreeVersionElement.get(taxonUri)
+        TreeVersionElement parentElement = TreeVersionElement.get(newParentTaxonUri)
+        ResultObject results = require(['Child taxon': childElement, 'New parent taxon': parentElement])
+        handleResults(results) {
+            String userName = treeService.authorizeTreeOperation(parentElement.treeVersion.tree)
+            results.payload = treeService.moveTaxon(childElement, parentElement, userName)
+        }
+    }
 
-    def removeElement() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def removeTaxon() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
 
-    def editElementProfile() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def editTaxonProfile() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
 
-    def editElementStatus() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def editTaxonStatus() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+
+    def elementDataFromInstance(String instanceUri) {
+        ResultObject results = require('Instance URI': instanceUri)
+
+        handleResults(results) {
+            TaxonData taxonData = treeService.getInstanceDataByUri(instanceUri)
+            if (taxonData) {
+                results.payload = taxonData.asMap()
+            } else {
+                throw new ObjectNotFoundException("Instance with URI $instanceUri, is not in this shard.")
+            }
+        }
+    }
 
     private withTree(Closure work) {
         Map data = request.JSON as Map
@@ -182,11 +214,17 @@ class TreeApiController implements WithTarget {
                 log.error("$notImplementedException.message : $results")
             } catch (ObjectNotFoundException notFound) {
                 results.ok = false
-                results.fail(notImplementedException.message, NOT_FOUND)
+                results.fail(notFound.message, NOT_FOUND)
                 log.error("$notFound.message : $results")
             }
         }
         serviceRespond(results)
+    }
+
+    private serviceRespond(ResultObject resultObject) {
+        log.debug "result status is ${resultObject.status} $resultObject"
+        //noinspection GroovyAssignabilityCheck
+        respond(resultObject, [view: '/common/serviceResult', model: [data: resultObject], status: resultObject.remove('status')])
     }
 
 }

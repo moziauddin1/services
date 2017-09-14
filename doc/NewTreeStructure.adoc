@@ -1241,10 +1241,12 @@ we get the results:
 ==== Checking the validity of an existing tree
 
 Check all names in the tree for synonyms of that name in the tree:
+(See https://www.anbg.gov.au/25jira/browse/NSL-2484)
 
 [source]
 .findSynonyms in tree
 ----
+-- updated for tree_version_element join table
 SELECT
   e1.simple_name                    AS name1,
   e1.name_id,
@@ -1252,13 +1254,37 @@ SELECT
   e2.name_id,
   tax_syn                           AS name2_synonym,
   e2.synonyms -> tax_syn ->> 'type' AS type
-FROM tree_element e1, tree_element e2,
+FROM tree t,
+  tree_version_element tve1
+  JOIN tree_element e1 ON tve1.tree_element_id = e1.id
+  ,
+  tree_version_element tve2
+  JOIN tree_element e2 ON tve2.tree_element_id = e2.id
+  ,
       jsonb_object_keys(e2.synonyms) AS tax_syn
-WHERE
-  e1.tree_version_id = 146
-  AND e2.tree_version_id = 146
-  AND e1.synonyms IS NOT NULL
-  AND e2.tree_element_id <> e1.tree_element_id
-  AND tax_syn = e1.simple_name
-  AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*';
+WHERE t.name = 'APC'
+      AND tve1.tree_version_id = t.current_tree_version_id
+      AND tve2.tree_version_id = t.current_tree_version_id
+      AND tve2.tree_element_id <> tve1.tree_element_id
+      AND e1.excluded = FALSE
+      AND e2.excluded = FALSE
+      AND e2.synonyms IS NOT NULL
+      AND (e2.synonyms -> tax_syn ->> 'name_id') :: BIGINT = e1.name_id
+      AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*';
 ----
+
+NOTE: we've used the current APC tree above.
+
+== Running the migration
+
+The services will run a migration script on startup which will alter the DDL adding tables and indexes. It will then
+migrate all the nodes and versions over as well as setting the family of the names. It will use the preferred host from
+the mapper to set the links in the tree_element and tree_version_element tables, which means we probably have to manually
+do this for the moss and lichen shards.
+
+WARNING: *BEFORE you run the services/upgrade script make sure the preferred host is set correctly if you're running it locally
+or in test.*
+
+After the upgrade script has run we need to run the "tree-element-mapper-links.sql" script to add all the mapper links.
+
+NOTE: need to delete from notification due to all the changes to name.

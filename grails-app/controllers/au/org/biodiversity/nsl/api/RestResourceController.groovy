@@ -87,8 +87,13 @@ class RestResourceController {
     }
 
     @Timed()
-    def tree(Long version) {
-        TreeVersion treeVersion = TreeVersion.get(version)
+    def tree(String version) {
+        TreeVersion treeVersion
+        if (version.isLong()) {
+            treeVersion = TreeVersion.get(version as Long)
+        } else {
+            treeVersion = Tree.findByName(version)?.currentTreeVersion
+        }
         if (treeVersion == null) {
             return notFound("We couldn't find a tree version with id $version")
         }

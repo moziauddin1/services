@@ -31,3 +31,10 @@ class BadArgumentsException extends ServiceException {
         super(reason)
     }
 }
+
+class PublishedVersionException extends ServiceException {
+
+    PublishedVersionException(String reason) {
+        super(reason)
+    }
+}

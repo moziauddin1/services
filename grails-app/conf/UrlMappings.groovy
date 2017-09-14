@@ -51,6 +51,8 @@ class UrlMappings {
         "/tree/$version(.$format)?"(controller: 'restResource', action: 'tree')
         "/tree/$version/$element(.$format)?"(controller: 'restResource', action: 'treeElement')
 
+        "/tree/$version/$namespace/$action(.$format)?"(controller: 'tree')
+        "/tree/$version/$element/$namespace/$action(.$format)?"(controller: 'tree')
         "/$controller/$shard/$id/$namespace/$action(.$format)?" { }
 
 
