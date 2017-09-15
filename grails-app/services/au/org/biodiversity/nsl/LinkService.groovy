@@ -132,6 +132,38 @@ class LinkService {
         return result
     }
 
+    Map bulkRemoveTargets(Collection<TreeVersionElement> targets) {
+        List<Map> identities = targets.collect { target -> new TargetParam(target, nameSpace()).paramMap() }
+        String mapper = mapper(true)
+        Map result = [success: true]
+        try {
+            String url = "$mapper/admin/bulkRemoveIdentifiers?${mapperAuth()}"
+            String action = "Bulk remove TreeVersionElements"
+            restCallService.jsonPost([identifiers: identities], url,
+                    { Map data ->
+                        log.debug "$action. Response: $data"
+                        result << data
+                    },
+                    { Map data, List errors ->
+                        log.error "Couldn't $action. Errors: $errors"
+                        result = [success: false, errors: errors]
+                    },
+                    { data ->
+                        log.error "Couldn't $action. Not found response: $data"
+                        result = [success: false, errors: ["Couldn't $action. Not found response: $data"]]
+                    },
+                    { data ->
+                        log.error "Couldn't $action. Response: $data"
+                        result = [success: false, errors: ["Couldn't $action. Response: $data"]]
+                    }
+            )
+        } catch (RestCallException e) {
+            log.error e.message
+            result = [success: false, errors: "Communication error with mapper."]
+        }
+        return result
+    }
+
     @Timed()
     String getPreferredLinkForObject(Object target) {
         doUsingCache(getLinkCache(), target?.id) {

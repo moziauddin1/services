@@ -4,10 +4,12 @@ import au.org.biodiversity.nsl.*
 import grails.validation.ValidationException
 import org.apache.commons.lang.NotImplementedException
 import org.apache.shiro.authz.AuthorizationException
+import org.codehaus.groovy.grails.web.json.JSONArray
+import org.codehaus.groovy.grails.web.json.JSONObject
 
 import static org.springframework.http.HttpStatus.*
 
-class TreeController implements WithTarget {
+class TreeController implements WithTarget, ValidationUtils {
 
     def treeService
     def jsonRendererService
@@ -24,10 +26,10 @@ class TreeController implements WithTarget {
             validateTreeVersion       : ['json', 'html'],
             publishTreeVersion        : ['json', 'html'],
             placeTaxon                : ['json', 'html'],
-            moveElement               : ['json', 'html'],
-            removeElement             : ['json', 'html'],
-            editElementProfile        : ['json', 'html'],
-            editElementStatus         : ['json', 'html']
+            moveTaxon                 : ['json', 'html'],
+            removeTaxon               : ['json', 'html'],
+            editTaxonProfile          : ['json', 'html'],
+            editTaxonStatus           : ['json', 'html']
     ]
 
     static allowedMethods = [
@@ -41,10 +43,10 @@ class TreeController implements WithTarget {
             validateTreeVersion       : ['GET'],
             publishTreeVersion        : ['PUT'],
             placeTaxon                : ['PUT'],
-            moveElement               : ['POST'],
-            removeElement             : ['DELETE'],
-            editElementProfile        : ['POST'],
-            editElementStatus         : ['POST']
+            moveTaxon                 : ['PUT'],
+            removeTaxon               : ['DELETE'],
+            editTaxonProfile          : ['POST'],
+            editTaxonStatus           : ['POST']
     ]
     static namespace = "api"
 
@@ -119,7 +121,7 @@ class TreeController implements WithTarget {
     def editTreeVersion() {
         Map data = request.JSON as Map
         TreeVersion treeVersion = TreeVersion.get(data.id as Long)
-        ResultObject results = requireTarget(treeVersion, "TreeVersion with id: $data.id")
+        ResultObject results = requireTarget(treeVersion, "Tree version with id: $data.id")
         handleResults(results) {
             treeService.authorizeTreeOperation(treeVersion.tree)
             results.payload = treeService.editTreeVersion(treeVersion, data.draftName as String)
@@ -129,7 +131,7 @@ class TreeController implements WithTarget {
     def validateTreeVersion(Long version) {
         log.debug "validate tree version $version"
         TreeVersion treeVersion = TreeVersion.get(version)
-        ResultObject results = requireTarget(treeVersion, "TreeVersionId: $version")
+        ResultObject results = requireTarget(treeVersion, "Tree version with id: $version")
         handleResults(results) {
             results.payload = treeService.validateTreeVersion(treeVersion)
         }
@@ -143,7 +145,7 @@ class TreeController implements WithTarget {
      */
     def placeTaxon(String parentTaxonUri, String instanceUri, Boolean excluded) {
 
-        ResultObject results = requireTarget(parentTaxonUri, "Tree element with $parentTaxonUri")
+        ResultObject results = requireTarget(parentTaxonUri, "Parent taxon $parentTaxonUri")
         TreeVersionElement treeVersionElement = TreeVersionElement.get(parentTaxonUri)
 
         handleResults(results) {
@@ -162,9 +164,26 @@ class TreeController implements WithTarget {
         }
     }
 
-    def removeTaxon() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def removeTaxon(String taxonUri) {
+        TreeVersionElement treeVersionElement = TreeVersionElement.get(taxonUri)
+        ResultObject results = requireTarget(treeVersionElement, "Taxon $taxonUri")
+        handleResults(results) {
+            treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+            int count = treeService.removeTreeVersionElement(treeVersionElement)
+            results.payload = [count: count, message: "$count taxon removed, starting from $taxonUri"]
+        }
+    }
 
-    def editTaxonProfile() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def editTaxonProfile() {
+        withJsonData(request.JSON, false, ['taxonUri', 'profile']) { ResultObject results, Map data ->
+            TreeVersionElement treeVersionElement = TreeVersionElement.get(data.taxonUri as String)
+            if (!treeVersionElement) {
+                throw new ObjectNotFoundException("Can't find taxon with URI $data.taxonUri")
+            }
+            String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+            results.payload = treeService.editProfile(treeVersionElement, data.profile as Map, userName)
+        }
+    }
 
     def editTaxonStatus() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
 
@@ -177,6 +196,38 @@ class TreeController implements WithTarget {
                 results.payload = taxonData.asMap()
             } else {
                 throw new ObjectNotFoundException("Instance with URI $instanceUri, is not in this shard.")
+            }
+        }
+    }
+
+    private withJsonData(Object json, Boolean list, List<String> requiredKeys, Closure work) {
+        ResultObject results = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+        results.ok = true
+        if (!json) {
+            results.ok = false
+            results.status = BAD_REQUEST
+            results.error("JSON paramerters not supplied. You must supply JSON parameters ${list ? 'as a list' : required.keySet()}.")
+        }
+        if (list && !(json.class instanceof JSONArray)) {
+            results.ok = false
+            results.status = BAD_REQUEST
+            results.error("JSON paramerters not supplied. You must supply JSON parameters as a list.")
+        }
+        if (list) {
+            List data = RestCallService.convertJsonList(json as JSONArray)
+            handleResults(results) {
+                work(results, data)
+            }
+        } else {
+            Map data = RestCallService.jsonObjectToMap(json as JSONObject)
+            for (String key in requiredKeys) {
+                if (!data[key]) {
+                    results.ok = false
+                    results.error("$key not supplied. You must supply $key.")
+                }
+            }
+            handleResults(results) {
+                work(results, data)
             }
         }
     }

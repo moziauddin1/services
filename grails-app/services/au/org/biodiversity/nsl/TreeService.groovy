@@ -131,28 +131,27 @@ class TreeService implements ValidationUtils {
     }
 
     List<TreeVersionElement> getChildElementsToDepth(TreeVersionElement parent, int depth) {
-        mustHave(parent: parent)
+        mustHave(parent: parent, 'parent.treeElement': parent.treeElement, 'parent.treeVersion': parent.treeVersion)
         String pattern = "^${parent.treeElement.treePath}(/[^/]*){1,$depth}\$"
-        getElementsByPath(parent, pattern)
+        getElementsByPath(parent.treeVersion, pattern)
     }
 
     List<TreeVersionElement> getAllChildElements(TreeVersionElement parent) {
-        mustHave(parent: parent)
+        mustHave(parent: parent, 'parent.treeElement': parent.treeElement, 'parent.treeVersion': parent.treeVersion)
         String pattern = "^${parent.treeElement.treePath}/.*"
-        getElementsByPath(parent, pattern)
+        getElementsByPath(parent.treeVersion, pattern)
     }
 
-    List<TreeVersionElement> getElementsByPath(TreeVersionElement parent, String pattern) {
-        mustHave(parent: parent, pattern: pattern)
-        log.debug("getting $pattern")
+    int countAllChildElements(TreeVersionElement parent) {
+        mustHave(parent: parent, 'parent.treeElement': parent.treeElement, 'parent.treeVersion': parent.treeVersion)
+        String pattern = "^${parent.treeElement.treePath}/.*"
+        countElementsByPath(parent.treeVersion, pattern)
+    }
 
-        TreeVersionElement.executeQuery('''
-select tve 
-    from TreeVersionElement tve 
-    where tve.treeVersion = :version
-    and regex(tve.treeElement.treePath, :pattern) = true 
-    order by tve.treeElement.namePath
-''', [version: parent.treeVersion, pattern: pattern])
+    int countElementsAtDepth(TreeVersion treeVersion, String prefix, int depth) {
+        mustHave(treeVersion: treeVersion, prefix: prefix)
+        String pattern = "$prefix(/[^/]*){0,$depth}\$"
+        countElementsByPath(treeVersion, pattern)
     }
 
     /**
@@ -215,6 +214,7 @@ select tve
         String pattern = "$prefix(/[^/]*){0,$depth}\$"
         fetchDisplayElements(pattern, treeVersion)
     }
+
     /**
      * get a list of DisplayElements
      * @param pattern
@@ -223,7 +223,9 @@ select tve
      */
     @SuppressWarnings("GrMethodMayBeStatic")
     private List<DisplayElement> fetchDisplayElements(String pattern, TreeVersion treeVersion) {
+        mustHave(treeVersion: treeVersion, pattern: pattern)
         log.debug("getting $pattern")
+
         TreeElement.executeQuery('''
 select tve.treeElement.displayHtml, tve.elementLink, tve.treeElement.nameLink, tve.treeElement.instanceLink, 
  tve.treeElement.excluded, tve.treeElement.depth, tve.treeElement.synonymsHtml 
@@ -236,17 +238,29 @@ select tve.treeElement.displayHtml, tve.elementLink, tve.treeElement.nameLink, t
         } as List<DisplayElement>
     }
 
-    @SuppressWarnings("GrMethodMayBeStatic")
-    // can't be static because of log
-    private int countElementsAtDepth(TreeVersion treeVersion, String prefix, int depth) {
-        String pattern = "$prefix(/[^/]*){0,$depth}\$"
+    List<TreeVersionElement> getElementsByPath(TreeVersion parent, String pattern) {
+        mustHave(parent: parent, pattern: pattern)
+        log.debug("getting $pattern")
+
+        TreeVersionElement.executeQuery('''
+select tve 
+    from TreeVersionElement tve 
+    where tve.treeVersion = :version
+    and regex(tve.treeElement.treePath, :pattern) = true 
+    order by tve.treeElement.namePath
+''', [version: parent, pattern: pattern])
+    }
+
+    int countElementsByPath(TreeVersion parent, String pattern) {
+        mustHave(parent: parent, pattern: pattern)
+        log.debug("counting $pattern")
+
         int count = TreeElement.executeQuery('''
 select count(tve) 
     from TreeVersionElement tve 
     where tve.treeVersion = :version
     and regex(tve.treeElement.treePath, :pattern) = true  
-''', [version: treeVersion, pattern: pattern]).first() as int
-        log.debug "Depth sounding $depth: $count"
+''', [version: parent, pattern: pattern]).first() as int
         return count
     }
 
@@ -312,9 +326,17 @@ select count(tve)
      * @return reloaded Tree object of this version.
      */
     Tree deleteTreeVersion(TreeVersion treeVersion, Sql sql = getSql()) {
+        notPublished(treeVersion)
         log.debug "deleting version $treeVersion"
         Long treeVersionId = treeVersion.id
         Long treeId = treeVersion.tree.id
+
+        Map result = linkService.bulkRemoveTargets(treeVersion.treeVersionElements)
+        log.info result
+        if (!result.success) {
+            throw new ServiceException("Error deleting tree links from the mapper: ${result.errors}")
+        }
+
         TreeVersion.withSession { s ->
             s.flush()
             s.clear()
@@ -420,6 +442,7 @@ DELETE FROM tree_element WHERE id IN (SELECT id FROM orphans);
             throw new ServiceException("Error copying tree version $fromVersion to $toVersion. They are not the same size. ${fromVersion.treeVersionElements.size()} != ${toVersion.treeVersionElements.size()}")
         }
         Map result = linkService.bulkAddTargets(toVersion.treeVersionElements)
+        log.info result
         if (!result.success) {
             throw new ServiceException("Error adding new tree links to the mapper: ${result.errors}")
         }
@@ -519,20 +542,54 @@ WHERE tve1.tree_version_id = :treeVersionId
 
         copyChildElements(kids, childCopy, userName)
 
-        //delete the original treeVersionElements
-        for (TreeVersionElement kid in getAllChildElements(child)) {
+        removeTreeVersionElement(child)
+        return childCopy
+    }
+
+    /**
+     * Remove this tree version element and all it's children.
+     * @param treeVersionElement
+     * @return count of treeVersionElements removed.
+     */
+    int removeTreeVersionElement(TreeVersionElement treeVersionElement) {
+        notPublished(treeVersionElement)
+        TreeVersion treeVersion = treeVersionElement.treeVersion
+        int count = countAllChildElements(treeVersionElement) + 1
+        log.debug "Deleting ${count} tree version elements."
+
+        List<TreeVersionElement> elements = getAllChildElements(treeVersionElement)
+        elements.add(treeVersionElement)
+        Map result = linkService.bulkRemoveTargets(elements)
+        log.info result
+        if (!result.success) {
+            throw new ServiceException("Error deleting tree links from the mapper: ${result.errors}")
+        }
+
+        for (TreeVersionElement kid in elements) {
+            log.debug "Deleting $kid"
             kid.treeElement.removeFromTreeVersionElements(kid)
             kid.treeVersion.removeFromTreeVersionElements(kid)
-            kid.delete()
+            kid.delete(flush: true)
         }
-        child.treeElement.removeFromTreeVersionElements(child)
-        child.treeVersion.removeFromTreeVersionElements(child)
-        child.delete(flush: true)
-        //if this is a move of new elements in a draft we may orphan some tree elements so it pays to clean up
+        elements.clear()
+        //if this is removing new elements in a draft we may orphan some tree elements so it pays to clean up
         //this may be moved to a background garbage collection task if it is too slow.
         deleteOrphanedTreeElements()
-        parent.treeVersion.refresh()
-        return childCopy
+        treeVersion.refresh()
+        return count
+    }
+
+    TreeVersionElement editProfile(TreeVersionElement treeVersionElement, Map profile, String userName) {
+        mustHave(treeVersionElement: treeVersionElement, profile: profile, userName: userName)
+        notPublished(treeVersionElement)
+        // if in any other versions we need to clone the treeElement into a new one.
+        treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
+        if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
+            treeVersionElement.treeElement = copyTreeElement(treeVersionElement, treeVersionElement.treeElement.parentElement, userName)
+        }
+        treeVersionElement.treeElement.profile = profile
+        treeVersionElement.save()
+        return treeVersionElement
     }
 
     private copyChildElements(List<TreeVersionElement> kids, TreeVersionElement parent, String userName) {
@@ -577,8 +634,12 @@ WHERE tve1.tree_version_id = :treeVersionId
     }
 
     protected static notPublished(TreeVersionElement element) {
-        if (element.treeVersion.published) {
-            throw new PublishedVersionException("You can't place a taxon in a Published tree. $element.treeVersion.tree.name version $element.treeVersion.id is already published.")
+        notPublished(element.treeVersion)
+    }
+
+    protected static notPublished(TreeVersion version) {
+        if (version.published) {
+            throw new PublishedVersionException("You can't do this with a Published tree. $version.tree.name version $version.id is already published.")
         }
     }
 

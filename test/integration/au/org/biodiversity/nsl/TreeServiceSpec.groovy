@@ -215,6 +215,7 @@ class TreeServiceSpec extends Specification {
     def "test making and deleting a tree"() {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
+        service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = service.createNewTree('aTree', 'aGroup', null)
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, testElementData())
@@ -233,7 +234,15 @@ class TreeServiceSpec extends Specification {
         when: 'I delete the tree'
         service.deleteTree(tree)
 
-        then: 'the tree, it\'s versions and their elements are gone'
+        then: 'I get a published version exception'
+        thrown(PublishedVersionException)
+
+        when: 'I unpublish the published version and then delete the tree'
+        publishedVersion.published = false
+        publishedVersion.save()
+        service.deleteTree(tree)
+
+        then: "the tree, it's versions and their elements are gone"
         Tree.get(tree.id) == null
         Tree.findByName('aTree') == null
         TreeVersion.get(draftVersion.id) == null
@@ -244,6 +253,7 @@ class TreeServiceSpec extends Specification {
     def "test making and deleting a tree version"() {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
+        service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = service.createNewTree('aTree', 'aGroup', null)
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, testElementData())
@@ -263,7 +273,7 @@ class TreeServiceSpec extends Specification {
         tree = service.deleteTreeVersion(draftVersion)
         publishedVersion.refresh() //the refresh() is required by deleteTreeVersion
 
-        then: 'the tree it\'s versions and their elements are gone'
+        then: "the draft version and it's elements are gone"
         tree
         tree.currentTreeVersion == publishedVersion
         //the below should no longer exist.
@@ -505,6 +515,9 @@ class TreeServiceSpec extends Specification {
         }
 
         then: 'It works'
+        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+            [success: true]
+        }
         6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         newAnthoceros
         newAnthoceros != anthoceros
@@ -560,6 +573,9 @@ class TreeServiceSpec extends Specification {
         }
 
         then: 'It works'
+        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+            [success: true]
+        }
         11 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         newAnthocerotales
         newAnthocerotales != anthocerotales
@@ -567,6 +583,87 @@ class TreeServiceSpec extends Specification {
         draftVersion.treeVersionElements.size() == 30
         newAnthocerotalesChildren.size() == 10
         dendrocerotidaeChildren.size() == 25
+    }
+
+    def "test remove a taxon"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        service.linkService.bulkAddTargets(_) >> [success: true]
+        service.linkService.bulkRemoveTargets(_) >> [success: true]
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        TreeVersionElement anthocerotaceae = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
+        TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
+
+        expect:
+        tree
+        testElements.size() == 30
+        draftVersion.treeVersionElements.size() == 30
+        !draftVersion.published
+        anthocerotaceae
+        anthoceros
+        anthoceros.treeElement.parentElement == anthocerotaceae.treeElement
+
+        when: 'I try to move a taxon'
+        int count = service.removeTreeVersionElement(anthoceros)
+
+        then: 'It works'
+        count == 6
+        draftVersion.treeVersionElements.size() == 24
+        service.findElementBySimpleName('Anthoceros', draftVersion) == null
+    }
+
+    def "test edit taxon profile"() {
+        given:
+        service.linkService.bulkAddTargets(_) >> [success: true]
+        service.linkService.bulkRemoveTargets(_) >> [success: true]
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, testElementData())
+        TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
+        TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
+        TreeVersionElement pubAnthoceros = service.findElementBySimpleName('Anthoceros', publishedVersion)
+
+        expect:
+        tree
+        draftVersion
+        draftVersion.treeVersionElements.size() == 30
+        publishedVersion
+        publishedVersion.treeVersionElements.size() == 30
+        tree.defaultDraftTreeVersion == draftVersion
+        tree.currentTreeVersion == publishedVersion
+        pubAnthoceros
+        anthoceros.treeElement.profile == ["APC Dist.":
+                                                   [
+                                                           "value"       : "WA, NT, SA, Qld, NSW, ACT, Vic, Tas",
+                                                           "sourceid"    : 27645,
+                                                           "createdat"   : "2011-01-27T00:00:00+11:00",
+                                                           "createdby"   : "KIRSTENC",
+                                                           "updatedat"   : "2011-01-27T00:00:00+11:00",
+                                                           "updatedby"   : "KIRSTENC",
+                                                           "sourcesystem": "APCCONCEPT"
+                                                   ]
+        ]
+
+        when: 'I update the profile on the published version'
+        service.editProfile(pubAnthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
+
+        then: 'I get a PublishedVersionException'
+        thrown(PublishedVersionException)
+
+        when: 'I update a profile on the draft version'
+        TreeElement oldElement = anthoceros.treeElement
+        TreeVersionElement treeVersionElement = service.editProfile(anthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
+
+        then: 'It creates a new treeElement and updates the profile'
+        treeVersionElement
+        oldElement
+        treeVersionElement == anthoceros
+        treeVersionElement.treeElement != oldElement
+        treeVersionElement.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
+        treeVersionElement.treeElement.updatedBy == 'test edit profile'
+
     }
 
 

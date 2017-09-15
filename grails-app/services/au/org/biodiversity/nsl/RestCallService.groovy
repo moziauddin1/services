@@ -159,7 +159,7 @@ class RestCallService {
     }
 
 
-    private List convertJsonList(JSONArray json) {
+    static List convertJsonList(JSONArray json) {
         return json.collect { thing ->
             if (thing instanceof JSONObject) {
                 return jsonObjectToMap(thing)
@@ -171,7 +171,7 @@ class RestCallService {
         }
     }
 
-    private static Map jsonObjectToMap(JSONObject object) {
+    static Map jsonObjectToMap(JSONObject object) {
         Map map = [:]
         object.keySet().each { String key ->
             if (object[key] == JSONObject.NULL) {
