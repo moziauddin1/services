@@ -27,9 +27,13 @@
   <g:else>
     <dl class="dl-horizontal">
       <g:each in="${trees}" var="tree">
-        <dt>${tree.name}</dt><dd><a
-          href="${createLink(controller: 'restResource', action: 'tree', params: [version: tree.currentTreeVersion.id])}">${tree.currentTreeVersion.draftName}</a>
-      </dd>
+        <dt>${tree.name}</dt>
+        <dd>
+          <st:preferredLink target="${tree}">
+            ${tree.currentTreeVersion.draftName} published ${tree.currentTreeVersion.publishedAt.dateString} by ${tree.currentTreeVersion.publishedBy}.
+            (${tree.currentTreeVersion.logEntry})
+          </st:preferredLink>
+        </dd>
       </g:each>
     </dl>
   </g:else>

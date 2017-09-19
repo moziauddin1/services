@@ -84,8 +84,8 @@ class TreeController implements WithTarget, ValidationUtils {
      * this new version. If defaultVersion is set to true then the new version becomes the default draft version.
      * @return
      */
-    def createTreeVersion(Long treeId, Long fromVersionId, String draftName, Boolean defaultVersion) {
-        Tree tree = Tree.get(treeId)
+    def createTreeVersion(Long id, Long fromVersionId, String draftName, Boolean defaultVersion) {
+        Tree tree = Tree.get(id)
         TreeVersion fromVersion = TreeVersion.get(fromVersionId)
         ResultObject results = requireTarget(tree, "Tree with id: $tree")
         handleResults(results) {
@@ -136,6 +136,7 @@ class TreeController implements WithTarget, ValidationUtils {
             results.payload = treeService.validateTreeVersion(treeVersion)
         }
     }
+
     /**
      *
      * @param parentTaxonUri the URI or link of the parent treeVersionElement
@@ -185,7 +186,16 @@ class TreeController implements WithTarget, ValidationUtils {
         }
     }
 
-    def editTaxonStatus() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
+    def editTaxonStatus() {
+        withJsonData(request.JSON, false, ['taxonUri', 'excluded']) { ResultObject results, Map data ->
+            TreeVersionElement treeVersionElement = TreeVersionElement.get(data.taxonUri as String)
+            if (!treeVersionElement) {
+                throw new ObjectNotFoundException("Can't find taxon with URI $data.taxonUri")
+            }
+            String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+            results.payload = treeService.editExcluded(treeVersionElement, data.excluded as Map, userName)
+        }
+    }
 
     def elementDataFromInstance(String instanceUri) {
         ResultObject results = require('Instance URI': instanceUri)
@@ -257,8 +267,8 @@ class TreeController implements WithTarget, ValidationUtils {
                 results.fail(invalid.message, INTERNAL_SERVER_ERROR)
             } catch (AuthorizationException authException) {
                 results.ok = false
-                results.fail(authException.message, FORBIDDEN)
-                log.warn("You are not authorised to do this. $results")
+                results.fail("You are not authorised to ${params.action}. ${authException.message}", FORBIDDEN)
+                log.warn("You are not authorised to do this. $results.\n ${authException.message}")
             } catch (NotImplementedException notImplementedException) {
                 results.ok = false
                 results.fail(notImplementedException.message, NOT_IMPLEMENTED)

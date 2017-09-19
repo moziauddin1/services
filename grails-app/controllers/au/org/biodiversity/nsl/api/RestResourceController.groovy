@@ -32,7 +32,10 @@ class RestResourceController {
     def apniFormatService
     def treeService
 
-    static allowedMethods = ['*': "GET", 'bulkFetch': 'POST']
+//    static allowedMethods = [
+//            '*'        : 'GET',
+//            'bulkFetch': 'POST'
+//    ]
 
     @Timed()
     def name(String shard, Long idNumber) {
@@ -87,29 +90,44 @@ class RestResourceController {
     }
 
     @Timed()
-    def tree(String version) {
+    def tree(String shard, Long idNumber) {
         TreeVersion treeVersion
-        if (version.isLong()) {
-            treeVersion = TreeVersion.get(version as Long)
-        } else {
-            treeVersion = Tree.findByName(version)?.currentTreeVersion
-        }
+        treeVersion = Tree.get(idNumber)?.currentTreeVersion
         if (treeVersion == null) {
-            return notFound("We couldn't find a tree version with id $version")
+            return notFound("We couldn't find a tree version with id $shard")
+        }
+        List<TreeVersion> versions = TreeVersion.findAllByTree(treeVersion.tree, [sort: 'id', order: 'desc'])
+        if (response.format == 'html') {
+            List<DisplayElement> children = treeService.displayElementsToLimit(treeVersion, 2000)
+            log.debug "Showing ${children.size()} child elements."
+            respond treeVersion, [model: [treeVersion: treeVersion, versions: versions, children: children], status: OK]
+        } else {
+            List<DisplayElement> children = treeService.displayElementsToDepth(treeVersion, 1)
+            log.debug "Showing ${children.size()} child elements."
+            respond treeVersion, [model: [treeVersion: treeVersion, versions: versions], status: OK]
+        }
+    }
+
+    @Timed()
+    def treeVersion(String shard, Long idNumber) {
+        TreeVersion treeVersion
+        treeVersion = TreeVersion.get(idNumber)
+        if (treeVersion == null) {
+            return notFound("We couldn't find a tree version with id $idNumber")
         }
         List<TreeVersion> versions = TreeVersion.findAllByTree(treeVersion.tree, [sort: 'id', order: 'desc'])
         List<DisplayElement> children = treeService.displayElementsToLimit(treeVersion, 2000)
         log.debug "Showing ${children.size()} child elements."
-        respond treeVersion, [model: [treeVersion: treeVersion, versions: versions, children: children], status: OK]
+        respond(treeVersion, [view: 'tree', model: [treeVersion: treeVersion, versions: versions, children: children], status: OK])
     }
 
     @Timed()
-    def treeElement(Long version, Long element) {
-        if (element == 0) {
-            forward(action: 'tree', model: [version: version])
+    def treeElement(Long shard, Long idNumber) {
+        if (idNumber == 0) {
+            forward(action: 'tree', model: [version: shard])
         }
-        log.debug "Tree Element version $version, element $element"
-        TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(version, element)
+        log.debug "Tree Element version $shard, element $idNumber"
+        TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(shard, idNumber)
 
         if (treeVersionElement) {
             List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
@@ -117,7 +135,7 @@ class RestResourceController {
             respond(treeVersionElement, [model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
             return
         }
-        notFound("Couldn't find element $element in tree version $version.")
+        notFound("Couldn't find element $idNumber in tree version $shard.")
     }
 
     /**

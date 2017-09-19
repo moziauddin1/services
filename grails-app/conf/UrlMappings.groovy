@@ -45,18 +45,12 @@ class UrlMappings {
 
         "/$namespace/cgi-bin/apni"(controller: 'idMapper', action: 'apni')
 
+        "/rest/$controller/$shard/$id/$namespace/$action(.$format)?" {}
+        
         name restResource:
-        "/$action/$shard/$idNumber(.$format)?"(controller: 'restResource')
+                "/rest/$action/$shard/$idNumber?(.$format)?"(controller: 'restResource')
 
-        "/tree/$version(.$format)?"(controller: 'restResource', action: 'tree')
-        "/tree/$version/$element(.$format)?"(controller: 'restResource', action: 'treeElement')
-
-        "/tree/$version/$namespace/$action(.$format)?"(controller: 'tree')
-        "/tree/$version/$element/$namespace/$action(.$format)?"(controller: 'tree')
-        "/$controller/$shard/$id/$namespace/$action(.$format)?" { }
-
-
-        "/$namespace/$controller/$action/$id?(.$format)?" {
+        "/$namespace/$controller/$action?/$id?(.$format)?" {
             constraints {
                 // apply constraints here
             }

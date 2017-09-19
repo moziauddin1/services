@@ -40,15 +40,14 @@
 
         <p>
           This is an old version of APC. The current version is
-          <a href='${createLink(uri: "/tree/$currentTreeVersion.id")}'>${currentTreeVersion.id}.</a>
+          <st:preferredLink target="${currentTreeVersion}">${currentTreeVersion.id}</st:preferredLink>
         </p>
       </g:else>
       <tree:versionStats version="${treeVersion}">
         ${elements} elements
       </tree:versionStats>
-      <a href='${createLink(uri: "/tree/$treeVersion.id")}'>
-        published ${treeVersion.publishedAt.dateString} by ${treeVersion.publishedBy}
-      </a>
+      <st:preferredLink
+          target="${treeVersion}">published ${treeVersion.publishedAt.dateString} by ${treeVersion.publishedBy}</st:preferredLink>
 
       <h4>Notes</h4>
 
@@ -59,15 +58,14 @@
       <h3>Other versions</h3>
 
       <p>Below are all revisions of the ${treeVersion.tree.name}. Versions older than
-        <a href='${createLink(uri: "/tree/$currentTreeVersion.id")}'>
-          ${currentTreeVersion.id} published ${currentTreeVersion.publishedAt.dateString}
-        </a>
-        are for reference only.</p>
+      <st:preferredLink
+          target="${currentTreeVersion}">${currentTreeVersion.id} published ${currentTreeVersion.publishedAt.dateString}</st:preferredLink>
+      are for reference only.</p>
       <table class="table">
         <tr><th>Version</th><th>published</th><th>Notes</th></tr>
         <g:each in="${versions}" var="version">
           <tr>
-            <td><a href='${createLink(uri: "/tree/$version.id")}'>${version.id}</a></td>
+            <td><st:preferredLink target="${version}">${version.id}</st:preferredLink></td>
             <td>${version.publishedAt.dateString}</td>
             <td>${version.logEntry}</td>
           </tr>

@@ -5,6 +5,7 @@ import grails.validation.ValidationException
 import spock.lang.Specification
 
 import javax.sql.DataSource
+import java.sql.Timestamp
 
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
@@ -664,8 +665,124 @@ class TreeServiceSpec extends Specification {
         treeVersionElement.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
         treeVersionElement.treeElement.updatedBy == 'test edit profile'
 
+        when: 'I change a profile to the same thing'
+        TreeVersionElement anthocerosCapricornii = service.findElementBySimpleName('Anthoceros capricornii', draftVersion)
+        TreeVersionElement treeVersionElement1 = service.editProfile(anthocerosCapricornii, ["APC Dist.":
+                                                                                                     [
+                                                                                                             "value"       : "WA, NT",
+                                                                                                             "sourceid"    : 27646,
+                                                                                                             "createdat"   : "2011-01-27T00:00:00+11:00",
+                                                                                                             "createdby"   : "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00",
+                                                                                                             "updatedby"   : "KIRSTENC",
+                                                                                                             "sourcesystem": "APCCONCEPT"
+                                                                                                     ]
+        ], 'test edit profile')
+
+        then: 'nothing changes'
+        treeVersionElement1 == anthocerosCapricornii
+        treeVersionElement1.treeElement.updatedBy == 'import'
+        treeVersionElement1.treeElement.profile == ["APC Dist.":
+                                                            [
+                                                                    "value"       : "WA, NT",
+                                                                    "sourceid"    : 27646,
+                                                                    "createdat"   : "2011-01-27T00:00:00+11:00",
+                                                                    "createdby"   : "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00",
+                                                                    "updatedby"   : "KIRSTENC",
+                                                                    "sourcesystem": "APCCONCEPT"
+                                                            ]
+        ]
     }
 
+    def "test edit draft only taxon profile"() {
+        given:
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, testElementData())
+        TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
+
+        expect:
+        tree
+        draftVersion
+        draftVersion.treeVersionElements.size() == 30
+        tree.defaultDraftTreeVersion == draftVersion
+        tree.currentTreeVersion == null
+        anthoceros.treeElement.profile == ["APC Dist.":
+                                                   [
+                                                           "value"       : "WA, NT, SA, Qld, NSW, ACT, Vic, Tas",
+                                                           "sourceid"    : 27645,
+                                                           "createdat"   : "2011-01-27T00:00:00+11:00",
+                                                           "createdby"   : "KIRSTENC",
+                                                           "updatedat"   : "2011-01-27T00:00:00+11:00",
+                                                           "updatedby"   : "KIRSTENC",
+                                                           "sourcesystem": "APCCONCEPT"
+                                                   ]
+        ]
+
+        when: 'I update a profile on the draft version'
+        TreeElement oldElement = anthoceros.treeElement
+        Timestamp oldTimestamp = anthoceros.treeElement.updatedAt
+        TreeVersionElement treeVersionElement = service.editProfile(anthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
+
+        then: 'It creates a new treeElement and updates the profile'
+        treeVersionElement
+        oldElement
+        treeVersionElement == anthoceros
+        treeVersionElement.treeElement == oldElement
+        treeVersionElement.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
+        treeVersionElement.treeElement.updatedBy == 'test edit profile'
+        treeVersionElement.treeElement.updatedAt > oldTimestamp
+    }
+
+    def "test edit taxon excluded status"() {
+        given:
+        service.linkService.bulkAddTargets(_) >> [success: true]
+        service.linkService.bulkRemoveTargets(_) >> [success: true]
+        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        makeTestElements(draftVersion, testElementData())
+        TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
+        TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
+        TreeVersionElement pubAnthoceros = service.findElementBySimpleName('Anthoceros', publishedVersion)
+
+        expect:
+        tree
+        draftVersion
+        draftVersion.treeVersionElements.size() == 30
+        publishedVersion
+        publishedVersion.treeVersionElements.size() == 30
+        tree.defaultDraftTreeVersion == draftVersion
+        tree.currentTreeVersion == publishedVersion
+        pubAnthoceros
+        !anthoceros.treeElement.excluded
+
+        when: 'I update the profile on the published version'
+        service.editExcluded(pubAnthoceros, true, 'test edit profile')
+
+        then: 'I get a PublishedVersionException'
+        thrown(PublishedVersionException)
+
+        when: 'I update a profile on the draft version'
+        TreeElement oldElement = anthoceros.treeElement
+        TreeVersionElement treeVersionElement = service.editExcluded(anthoceros, true, 'test edit profile')
+
+        then: 'It creates a new treeElement and updates the profile'
+        treeVersionElement
+        oldElement
+        treeVersionElement == anthoceros
+        treeVersionElement.treeElement != oldElement
+        treeVersionElement.treeElement.excluded
+        treeVersionElement.treeElement.updatedBy == 'test edit profile'
+
+        when: 'I change a profile to the same thing'
+        TreeVersionElement anthocerosCapricornii = service.findElementBySimpleName('Anthoceros capricornii', draftVersion)
+        TreeVersionElement treeVersionElement1 = service.editExcluded(anthocerosCapricornii, false, 'test edit profile')
+
+        then: 'nothing changes'
+        treeVersionElement1 == anthocerosCapricornii
+        treeVersionElement1.treeElement.updatedBy == 'import'
+        !treeVersionElement1.treeElement.excluded
+    }
 
     private static List<TreeElement> makeTestElements(TreeVersion version, List<Map> elementData) {
         List<TreeElement> elements = []

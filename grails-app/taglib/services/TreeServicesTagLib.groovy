@@ -81,4 +81,19 @@ class TreeServicesTagLib {
         out << body([elements: count])
     }
 
+    def findCurrentVersion = { attrs, body ->
+        TreeVersionElement tve = attrs.element
+        TreeVersion currentVersion = tve.treeVersion.tree.currentTreeVersion
+        if (currentVersion != tve.treeVersion) {
+            TreeVersionElement currentElement = TreeVersionElement.
+                    findByTreeVersionAndTreeElement(currentVersion, tve.treeElement)
+            if (!currentElement) {
+                currentElement = treeService.findElementBySimpleName(tve.treeElement.simpleName, currentVersion)
+            }
+            if (currentElement) {
+                out << body(currentElement: currentElement)
+            }
+        }
+    }
+
 }

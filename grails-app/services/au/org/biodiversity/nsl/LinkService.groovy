@@ -74,7 +74,7 @@ class LinkService {
 
     @Timed()
     String addTargetLink(target) {
-        String identity = new TargetParam(target, nameSpace()).paramString() + "&" + mapperAuth()
+        String identity = new TargetParam(target, nameSpace()).addIdentityParamString() + "&" + mapperAuth()
         String mapper = mapper(true)
         String newLink = null
         try {
@@ -214,7 +214,7 @@ class LinkService {
             return null
         }
 
-        def domainObject = getDomainObjectFromIdentity(identity)
+        def domainObject = getDomainObjectFromIdentity(identity, uri)
 
         if (!domainObject) {
             log.error "Object for $identity not found"
@@ -232,7 +232,7 @@ class LinkService {
      * @param identity
      * @return Domain object or null if not found
      */
-    private static Object getDomainObjectFromIdentity(Map identity) {
+    private static Object getDomainObjectFromIdentity(Map identity, String uri) {
 
         Long idNumber = identity.idNumber
         Long versionNumber = identity.versionNumber
@@ -254,14 +254,12 @@ class LinkService {
                 return InstanceNote.get(idNumber)
                 break
             case 'tree':
-                if (versionNumber) {
-                    TreeVersion treeVersion = TreeVersion.get(versionNumber)
-                    if (treeVersion) {
-                        return TreeElement.get(new TreeElement(treeVersion: treeVersion, treeElementId: idNumber))
-                    }
-                }
-                return null
+                return Tree.get(idNumber)
                 break
+            case 'treeVersion':
+                return TreeVersion.get(idNumber)
+            case 'treeElement':
+                return TreeVersionElement.get(uri)
             default:
                 return null
         }
@@ -310,7 +308,7 @@ class LinkService {
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {
-        String identity = new TargetParam(target, nameSpace()).paramString()
+        String identity = new TargetParam(target, nameSpace()).identityParamString()
         if (identity) {
             String mapper = mapper(internal)
             String url = "${mapper}/broker/${endPoint}?${identity}"
@@ -328,19 +326,19 @@ class LinkService {
     }
 
     Map deleteNameLinks(Name name, String reason) {
-        String identity = new TargetParam(name, nameSpace()).paramString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
+        String identity = new TargetParam(name, nameSpace()).identityParamString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         evictAllCache(name)
         deleteTargetLinks(identity)
     }
 
     Map deleteInstanceLinks(Instance instance, String reason) {
-        String identity = new TargetParam(instance, nameSpace()).paramString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
+        String identity = new TargetParam(instance, nameSpace()).identityParamString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         evictAllCache(instance)
         deleteTargetLinks(identity)
     }
 
     Map deleteReferenceLinks(Reference reference, String reason) {
-        String identity = new TargetParam(reference, nameSpace()).paramString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
+        String identity = new TargetParam(reference, nameSpace()).identityParamString() + "&reason=${reason.encodeAsURL()}" + "&" + mapperAuth()
         evictAllCache(reference)
         deleteTargetLinks(identity)
     }
@@ -438,19 +436,19 @@ class LinkService {
     }
 
     Map removeNameLink(Name name, String uri) {
-        String identity = new TargetParam(name, nameSpace()).paramString()
+        String identity = new TargetParam(name, nameSpace()).identityParamString()
         evictAllCache(name)
         removeTargetLink(identity, uri)
     }
 
     Map removeInstanceLink(Instance instance, String uri) {
-        String identity = new TargetParam(instance, nameSpace()).paramString()
+        String identity = new TargetParam(instance, nameSpace()).identityParamString()
         evictAllCache(instance)
         removeTargetLink(identity, uri)
     }
 
     Map removeReferenceLink(Reference reference, String uri) {
-        String identity = new TargetParam(reference, nameSpace()).paramString()
+        String identity = new TargetParam(reference, nameSpace()).identityParamString()
         evictAllCache(reference)
         removeTargetLink(identity, uri)
     }

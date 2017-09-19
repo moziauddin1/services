@@ -209,10 +209,19 @@ class JsonRendererService {
     }
 
     Map getAudit(target) {
-        [
-                created: [by: target.createdBy, at: target.createdAt],
-                updated: [by: target.updatedBy, at: target.updatedAt]
-        ]
+
+        if (target.hasProperty('createdBy') && target.hasProperty('updatedBy')) {
+            return [
+                    created: [by: target.createdBy, at: target.createdAt],
+                    updated: [by: target.updatedBy, at: target.updatedAt]
+            ]
+        }
+        if (target.hasProperty('updatedBy')) {
+            return [
+                    updated: [by: target.updatedBy, at: target.updatedAt]
+            ]
+        }
+        return null
     }
 
     Map getLinks(target) {
@@ -402,30 +411,21 @@ class JsonRendererService {
     }
 
     Map briefTree(Tree tree) {
-        if (tree) {
-            tree = initializeAndUnproxy(tree)
-            return [tree:
-                            [class : tree.class.name,
-                             _links: [:],
-                             name  : tree.name
-                            ]
-            ]
-        }
-        return null
+        tree = initializeAndUnproxy(tree)
+        Map data = getBaseInfo(tree)
+        data.tree << [name: tree.name]
     }
 
     Map marshallTree(Tree tree) {
         tree = initializeAndUnproxy(tree)
-        [tree:
-                 [class              : tree.class.name,
-                  _links             : [:],
-                  name               : tree.name,
-                  groupName          : tree.groupName,
-                  referenceId        : tree.referenceId,
-                  currentVersion     : briefTreeVersion(tree.currentTreeVersion),
-                  defaultDraftVersion: briefTreeVersion(tree.defaultDraftTreeVersion),
-                  versions           : tree.treeVersions.collect { TreeVersion v -> briefTreeVersion(v) }
-                 ]
+        Map data = getBaseInfo(tree)
+        data.tree << [
+                name               : tree.name,
+                groupName          : tree.groupName,
+                referenceId        : tree.referenceId,
+                currentVersion     : briefTreeVersion(tree.currentTreeVersion),
+                defaultDraftVersion: briefTreeVersion(tree.defaultDraftTreeVersion),
+                versions           : tree.treeVersions.collect { TreeVersion v -> briefTreeVersion(v) }
         ]
     }
 
@@ -442,14 +442,14 @@ class JsonRendererService {
 
     Map marshallTreeVersion(TreeVersion treeVersion) {
         treeVersion = initializeAndUnproxy(treeVersion)
-        [treeVersion:
-                 [class        : treeVersion.class.name,
-                  _links       : [:],
-                  versionNumber: treeVersion.id,
-                  draftName    : treeVersion.draftName,
-                  tree         : briefTree(treeVersion.tree)
-                 ]
-        ]
+        Map data = getBaseInfo(treeVersion)
+        data.treeversion <<
+                [
+                        versionNumber     : treeVersion.id,
+                        draftName         : treeVersion.draftName,
+                        tree              : briefTree(treeVersion.tree),
+                        firstOrderChildren: treeService.displayElementsToDepth(treeVersion, 1)
+                ]
     }
 
     Map marshallTreeVersionElement(TreeVersionElement treeVersionElement) {
@@ -466,6 +466,7 @@ class JsonRendererService {
                                         instanceLink     : treeElement.instanceLink,
                                         sourceElementLink: treeElement.sourceElementLink,
                                 ],
+                                tree         : briefTree(treeVersionElement.treeVersion.tree),
                                 simpleName   : treeElement.simpleName,
                                 rankPath     : treeElement.rankPath,
                                 namePath     : treeElement.namePath,

@@ -35,8 +35,12 @@ class TreeService implements ValidationUtils {
     }
 
     static TreeVersionElement getParentTreeVersionElement(TreeVersionElement treeVersionElement) {
-        TreeVersionElement.find('from TreeVersionElement where treeVersion = :version and treeElement = :element',
-                [version: treeVersionElement.treeVersion, element: treeVersionElement.treeElement.parentElement])
+        if (treeVersionElement.treeElement.parentElement) {
+            TreeVersionElement.find('from TreeVersionElement where treeVersion = :version and treeElement = :element',
+                    [version: treeVersionElement.treeVersion, element: treeVersionElement.treeElement.parentElement])
+        } else {
+            null
+        }
     }
 
     static TreeVersionElement findElementBySimpleName(String simpleName, TreeVersion treeVersion) {
@@ -584,10 +588,42 @@ WHERE tve1.tree_version_id = :treeVersionId
         notPublished(treeVersionElement)
         // if in any other versions we need to clone the treeElement into a new one.
         treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
+
+        log.debug treeVersionElement.treeElement.profile.toString()
+        log.debug profile.toString()
+        if (treeVersionElement.treeElement.profile == profile) {
+            return treeVersionElement // data is equal, do nothing
+        }
+
         if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
             treeVersionElement.treeElement = copyTreeElement(treeVersionElement, treeVersionElement.treeElement.parentElement, userName)
+        } else {
+            treeVersionElement.treeElement.updatedBy = userName
+            treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
         }
         treeVersionElement.treeElement.profile = profile
+        treeVersionElement.save()
+        return treeVersionElement
+    }
+
+    TreeVersionElement editExcluded(TreeVersionElement treeVersionElement, Boolean excluded, String userName) {
+        mustHave(treeVersionElement: treeVersionElement, userName: userName)
+        notPublished(treeVersionElement)
+        // if in any other versions we need to clone the treeElement into a new one.
+        treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
+
+        if (treeVersionElement.treeElement.excluded == excluded) {
+            return treeVersionElement // data equal, do nothing
+        }
+
+        if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
+            treeVersionElement.treeElement = copyTreeElement(treeVersionElement, treeVersionElement.treeElement.parentElement, userName)
+        } else {
+            treeVersionElement.treeElement.updatedBy = userName
+            treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
+        }
+
+        treeVersionElement.treeElement.excluded = excluded
         treeVersionElement.save()
         return treeVersionElement
     }

@@ -23,13 +23,14 @@
     <span class="small text-info">(<tree:versionStatus
         version="${treeVersionElement.treeVersion}"></tree:versionStatus>)</span>
 
-    <g:if test="${currentTreeVersion != treeVersionElement.treeVersion}"><span class="small">
-      <i class="fa fa-long-arrow-right"></i>
-      <a href='${createLink(uri: "/tree/$currentTreeVersion.id/$treeVersionElement.treeElement.id")}'>
-        current version.
-      </a>
-    </span>
-    </g:if>
+    <tree:findCurrentVersion element="${treeVersionElement}">
+      <span class="small">
+        <i class="fa fa-long-arrow-right"></i>
+        <a href='${currentElement.elementLink}'>
+          current version.
+        </a>
+      </span>
+    </tree:findCurrentVersion>
 
 
     <help>
@@ -47,10 +48,12 @@
     </help>
   </h1>
 
-  <a href="." title="Go to tree version ${treeVersionElement.treeVersion.id}">
+  <st:preferredLink target="${treeVersionElement.treeVersion}"
+                    title="Go to tree version ${treeVersionElement.treeVersion.id}">
     <i class="fa fa-link"></i> ${treeVersionElement.treeVersion.tree.name} (version ${treeVersionElement.treeVersion.id})
   published ${treeVersionElement.treeVersion.publishedAt.dateString} by ${treeVersionElement.treeVersion.publishedBy}
-  </a>
+  </st:preferredLink>
+
   <hr>
 </div>
 
