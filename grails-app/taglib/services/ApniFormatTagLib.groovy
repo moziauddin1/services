@@ -242,20 +242,22 @@ class ApniFormatTagLib {
      */
     def onTree = { attrs ->
         TreeVersionElement treeVersionElement = attrs.element
-        TreeElement treeElement = treeVersionElement.treeElement
-        Instance instance = attrs.instance ?: treeElement.instance
-        if (treeElement && instance && treeElement.instance.id == instance.id) {
-            String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: treeElement.name.id)
-            String tree = treeVersionElement.treeVersion.tree.name
+        if (treeVersionElement) {
+            TreeElement treeElement = treeVersionElement.treeElement
+            Instance instance = attrs.instance ?: treeElement.instance
+            if (treeElement && instance && treeElement.instance.id == instance.id) {
+                String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: treeElement.name.id)
+                String tree = treeVersionElement.treeVersion.tree.name
 
-            out << """<a href="${link}">""".toString()
+                out << """<a href="${link}">""".toString()
 
-            if (treeElement.excluded) {
-                out << """<apc title="excluded from $tree"><i class="fa fa-ban"></i> ${tree}</apc>""".toString()
-            } else {
-                out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>""".toString()
+                if (treeElement.excluded) {
+                    out << """<apc title="excluded from $tree"><i class="fa fa-ban"></i> ${tree}</apc>""".toString()
+                } else {
+                    out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>""".toString()
+                }
+                out << "</a>"
             }
-            out << "</a>"
         }
     }
 

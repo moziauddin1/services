@@ -7,6 +7,9 @@ import org.apache.shiro.SecurityUtils
 
 import javax.sql.DataSource
 import java.sql.Timestamp
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 /**
  * The 2.0 Tree service. This service is the central location for all interaction with the tree.
@@ -18,6 +21,7 @@ class TreeService implements ValidationUtils {
     def configService
     def linkService
     def restCallService
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)
 
     /**
      * get the named tree. This is case insensitive
@@ -353,24 +357,29 @@ UPDATE tree_version SET previous_version_id = NULL WHERE previous_version_id = :
 DELETE FROM tree_version_element WHERE tree_version_id = :treeVersionId;
 DELETE FROM tree_version WHERE id = :treeVersionId;
 ''', [treeVersionId: treeVersionId])
-        deleteOrphanedTreeElements(sql)
+        deleteOrphanedTreeElements()
         return Tree.get(treeId)
     }
 
-    private Integer deleteOrphanedTreeElements(Sql sql = getSql()) {
-        log.debug "delete orphaned elements"
-        Integer count = sql.firstRow('SELECT count(*) FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element)')[0] as Integer
-        if (count) {
-            log.debug "deleting $count orphaned elements."
+    private void deleteOrphanedTreeElements() {
+        Closure work = {
+            Sql sql = getSql()
+            Integer count = sql.firstRow('SELECT count(*) FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element)')[0] as Integer
+            if (count) {
+                log.debug "deleting $count orphaned elements."
 
-            sql.execute('''
+                sql.execute('''
 SELECT id INTO TEMP orphans FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element); 
-UPDATE tree_element SET previous_element_id = NULL WHERE previous_element_id IN (SELECT id FROM orphans);
-UPDATE tree_element SET parent_element_id = NULL WHERE parent_element_id IN  (SELECT id FROM orphans);
-DELETE FROM tree_element WHERE id IN (SELECT id FROM orphans);
+UPDATE tree_element SET previous_element_id = NULL FROM orphans WHERE previous_element_id = orphans.id;
+UPDATE tree_element SET parent_element_id = NULL FROM orphans WHERE parent_element_id = orphans.id;
+DELETE FROM tree_element e USING orphans WHERE e.id = orphans.id;
+DROP TABLE IF EXISTS orphans;
 ''')
+            }
         }
-        return count
+        //We could make this a worker thread that does a GC every so often
+        log.debug "Scheduling delete orphan elements"
+        scheduler.schedule(work, 30, TimeUnit.SECONDS)
     }
 
     TreeVersion publishTreeVersion(TreeVersion treeVersion, String publishedBy, String logEntry) {
@@ -557,12 +566,11 @@ WHERE tve1.tree_version_id = :treeVersionId
      */
     int removeTreeVersionElement(TreeVersionElement treeVersionElement) {
         notPublished(treeVersionElement)
-        TreeVersion treeVersion = treeVersionElement.treeVersion
-        int count = countAllChildElements(treeVersionElement) + 1
-        log.debug "Deleting ${count} tree version elements."
 
         List<TreeVersionElement> elements = getAllChildElements(treeVersionElement)
         elements.add(treeVersionElement)
+        int count = elements.size()
+        log.debug "Deleting ${count} tree version elements."
         Map result = linkService.bulkRemoveTargets(elements)
         log.info result
         if (!result.success) {
@@ -573,13 +581,13 @@ WHERE tve1.tree_version_id = :treeVersionId
             log.debug "Deleting $kid"
             kid.treeElement.removeFromTreeVersionElements(kid)
             kid.treeVersion.removeFromTreeVersionElements(kid)
-            kid.delete(flush: true)
+            kid.delete()
         }
+
         elements.clear()
         //if this is removing new elements in a draft we may orphan some tree elements so it pays to clean up
         //this may be moved to a background garbage collection task if it is too slow.
         deleteOrphanedTreeElements()
-        treeVersion.refresh()
         return count
     }
 

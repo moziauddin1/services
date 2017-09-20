@@ -6,7 +6,6 @@ import grails.test.mixin.TestFor
 import grails.test.mixin.TestMixin
 import grails.test.mixin.domain.DomainClassUnitTestMixin
 import grails.validation.ValidationException
-import org.apache.commons.lang.NotImplementedException
 import org.apache.shiro.authz.AuthorizationException
 import org.springframework.validation.Errors
 import org.springframework.validation.FieldError
@@ -25,6 +24,7 @@ class TreeControllerSpec extends Specification {
 
     def setup() {
         controller.jsonRendererService = new JsonRendererService()
+        controller.jsonRendererService.treeService = treeService
         controller.jsonRendererService.registerObjectMashallers()
         /*
         Note treeService authorizeTreeOperation throws an unauthorized exception if not authorized. The mock returns
@@ -56,8 +56,8 @@ class TreeControllerSpec extends Specification {
         1 * treeService.createNewTree(treeName, groupName, refId) >> new Tree(name: treeName, groupName: groupName, referenceId: refId)
         response.status == 200
         data.ok == true
-        data.payload.tree.name == treeName
-        data.payload.tree.groupName == groupName
+        data.payload.name == treeName
+        data.payload.groupName == groupName
 
         when: 'I create a new tree without a groupName'
         data = jsonCall { controller.createTree(treeName, null, refId) }
@@ -140,10 +140,10 @@ class TreeControllerSpec extends Specification {
         }
         response.status == 200
         data.ok
-        data.payload.tree
-        data.payload.tree.name == 'A New Name'
-        data.payload.tree.groupName == 'aGroup'
-        data.payload.tree.referenceId == 123456
+        data.payload
+        data.payload.name == 'A New Name'
+        data.payload.groupName == 'aGroup'
+        data.payload.referenceId == 123456
 
         when: 'Im not authorized'
         data = jsonCall { controller.editTree() }
@@ -154,7 +154,7 @@ class TreeControllerSpec extends Specification {
         }
         response.status == 403
         data.ok == false
-        data.error == 'Black Hatz'
+        data.error == 'You are not authorised to null. Black Hatz'
 
     }
 
@@ -214,7 +214,8 @@ class TreeControllerSpec extends Specification {
         }
         response.status == 200
         data.ok == true
-        data.payload.treeVersion
+        data.payload
+        data.payload.draftName == 'my draft tree'
 
         when: 'I forget something like draftName'
         data = jsonCall { controller.createTreeVersion(tree.id, null, '', false) }
@@ -236,43 +237,44 @@ class TreeControllerSpec extends Specification {
         }
         response.status == 403
         data.ok == false
-        data.error == 'Black Hatz'
+        data.error == 'You are not authorised to null. Black Hatz'
     }
 
-    void "test validating a version"() {
-        given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup').save()
-        TreeVersion version = new TreeVersion(tree: tree, draftName: 'draft tree')
-        version.save()
-        request.method = 'GET'
-
-        expect:
-        tree
-        version
-
-        when: 'I validate this version'
-        def data = jsonCall { controller.validateTreeVersion(version.id) }
-
-        then: 'I should get an OK response'
-        1 * treeService.validateTreeVersion(_) >> { TreeVersion version1 ->
-            return [:]
-        }
-        response.status == 200
-        data.ok == true
-        data.payload instanceof Map
-        data.payload.keySet().empty
-
-        when: 'tree service hasnt implemented validation'
-        data = jsonCall { controller.validateTreeVersion(version.id) }
-
-        then: 'I get a not implemented response'
-        1 * treeService.validateTreeVersion(_) >> { TreeVersion version1 ->
-            throw new NotImplementedException('oops')
-        }
-        response.status == 501
-        data.ok == false
-        data.error == 'oops'
-    }
+    //todo move this to treeVersionControllerSpec
+//    void "test validating a version"() {
+//        given:
+//        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup').save()
+//        TreeVersion version = new TreeVersion(tree: tree, draftName: 'draft tree')
+//        version.save()
+//        request.method = 'GET'
+//
+//        expect:
+//        tree
+//        version
+//
+//        when: 'I validate this version'
+//        def data = jsonCall { controller.validateTreeVersion(version.id) }
+//
+//        then: 'I should get an OK response'
+//        1 * treeService.validateTreeVersion(_) >> { TreeVersion version1 ->
+//            return [:]
+//        }
+//        response.status == 200
+//        data.ok == true
+//        data.payload instanceof Map
+//        data.payload.keySet().empty
+//
+//        when: 'tree service hasnt implemented validation'
+//        data = jsonCall { controller.validateTreeVersion(version.id) }
+//
+//        then: 'I get a not implemented response'
+//        1 * treeService.validateTreeVersion(_) >> { TreeVersion version1 ->
+//            throw new NotImplementedException('oops')
+//        }
+//        response.status == 501
+//        data.ok == false
+//        data.error == 'oops'
+//    }
 
     private def jsonCall(Closure action) {
         response.reset()

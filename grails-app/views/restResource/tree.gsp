@@ -35,8 +35,16 @@
       <g:if test="${treeVersion == currentTreeVersion}">
         <h3>${treeVersion.tree.name} <span class="hint">(${treeVersion.id})</span></h3>
       </g:if>
+      <g:elseif test="${!treeVersion.published}">
+        <h3>DRAFT Version of ${treeVersion.tree.name}</h3>
+
+        <p>
+          This is a draft version of APC. The <b>current version</b> is
+        <st:preferredLink target="${currentTreeVersion}">${currentTreeVersion.id}</st:preferredLink>
+        </p>
+      </g:elseif>
       <g:else>
-        <h3>Version ${treeVersion.id} of ${treeVersion.tree.name} (Old)</h3>
+        <h3>Version ${treeVersion.id} of ${treeVersion.tree.name} (OLD)</h3>
 
         <p>
           This is an old version of APC. The current version is
@@ -46,8 +54,13 @@
       <tree:versionStats version="${treeVersion}">
         ${elements} elements
       </tree:versionStats>
-      <st:preferredLink
-          target="${treeVersion}">published ${treeVersion.publishedAt.dateString} by ${treeVersion.publishedBy}</st:preferredLink>
+
+      <g:if test="${treeVersion.published}">
+        <st:preferredLink target="${treeVersion}">
+          published ${treeVersion.publishedAt.dateString} by ${treeVersion.publishedBy}
+        </st:preferredLink>
+      </g:if>
+      <g:else>NOT PUBLISHED</g:else>
 
       <h4>Notes</h4>
 
@@ -66,8 +79,8 @@
         <g:each in="${versions}" var="version">
           <tr>
             <td><st:preferredLink target="${version}">${version.id}</st:preferredLink></td>
-            <td>${version.publishedAt.dateString}</td>
-            <td>${version.logEntry}</td>
+            <td>${version.published ? version.publishedAt.dateString : 'DRAFT'}</td>
+            <td>${version.published ? version.logEntry : version.draftName}</td>
           </tr>
         </g:each>
       </table>

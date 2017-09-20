@@ -81,6 +81,10 @@ class TargetParam {
         [nameSpace: nameSpace, objectType: objectType, idNumber: idNumber, versionNumber: versionNumber, uri: uri]
     }
 
+    Map briefParamMap() {
+        [s: nameSpace, o: objectType, i: idNumber, v: versionNumber, u: uri]
+    }
+
     Map paramMap(String nameSpaceKey, String objectTypeKey, String idNumberKey, String versionNumberKey) {
         [(nameSpaceKey): nameSpace, (objectTypeKey): objectType, (idNumberKey): idNumber, (versionNumberKey): versionNumber]
     }

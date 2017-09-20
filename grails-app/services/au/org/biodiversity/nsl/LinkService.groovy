@@ -101,7 +101,7 @@ class LinkService {
     }
 
     Map bulkAddTargets(Collection<TreeVersionElement> targets) {
-        List<Map> identities = targets.collect { target -> new TargetParam(target, nameSpace()).paramMap() }
+        List<Map> identities = targets.collect { target -> new TargetParam(target, nameSpace()).briefParamMap() }
         String mapper = mapper(true)
         Map result = [success: true]
         try {
@@ -133,7 +133,7 @@ class LinkService {
     }
 
     Map bulkRemoveTargets(Collection<TreeVersionElement> targets) {
-        List<Map> identities = targets.collect { target -> new TargetParam(target, nameSpace()).paramMap() }
+        List<Map> identities = targets.collect { target -> new TargetParam(target, nameSpace()).briefParamMap() }
         String mapper = mapper(true)
         Map result = [success: true]
         try {

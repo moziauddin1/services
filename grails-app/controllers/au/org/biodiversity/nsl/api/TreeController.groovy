@@ -21,10 +21,6 @@ class TreeController implements WithTarget, ValidationUtils {
             copyTree                  : ['json', 'html'],
             deleteTree                : ['json', 'html'],
             createTreeVersion         : ['json', 'html'],
-            setDefaultDraftTreeVersion: ['json', 'html'],
-            editTreeVersion           : ['json', 'html'],
-            validateTreeVersion       : ['json', 'html'],
-            publishTreeVersion        : ['json', 'html'],
             placeTaxon                : ['json', 'html'],
             moveTaxon                 : ['json', 'html'],
             removeTaxon               : ['json', 'html'],
@@ -38,10 +34,6 @@ class TreeController implements WithTarget, ValidationUtils {
             copyTree                  : ['PUT'],
             deleteTree                : ['DELETE'],
             createTreeVersion         : ['PUT'],
-            setDefaultDraftTreeVersion: ['PUT'],
-            editTreeVersion           : ['POST'],
-            validateTreeVersion       : ['GET'],
-            publishTreeVersion        : ['PUT'],
             placeTaxon                : ['PUT'],
             moveTaxon                 : ['PUT'],
             removeTaxon               : ['DELETE'],
@@ -87,7 +79,7 @@ class TreeController implements WithTarget, ValidationUtils {
     def createTreeVersion(Long id, Long fromVersionId, String draftName, Boolean defaultVersion) {
         Tree tree = Tree.get(id)
         TreeVersion fromVersion = TreeVersion.get(fromVersionId)
-        ResultObject results = requireTarget(tree, "Tree with id: $tree")
+        ResultObject results = requireTarget(tree, "Tree with id: $id")
         handleResults(results) {
             treeService.authorizeTreeOperation(tree)
             if (defaultVersion) {
@@ -95,45 +87,6 @@ class TreeController implements WithTarget, ValidationUtils {
             } else {
                 results.payload = treeService.createTreeVersion(tree, fromVersion, draftName)
             }
-        }
-    }
-
-    def setDefaultDraftTreeVersion(Long version) {
-        TreeVersion treeVersion = TreeVersion.get(version)
-        ResultObject results = requireTarget(treeVersion, "Tree version $version")
-        handleResults(results) {
-            treeService.authorizeTreeOperation(treeVersion.tree)
-            results.payload = treeService.setDefaultDraftVersion(treeVersion)
-        }
-    }
-
-    def publishTreeVersion() {
-        Map data = request.JSON as Map
-        TreeVersion treeVersion = TreeVersion.get(data.id as Long)
-        String logEntry = data.logEntry
-        ResultObject results = requireTarget(treeVersion, "Tree version $treeVersion")
-        handleResults(results) {
-            String user = treeService.authorizeTreeOperation(treeVersion.tree)
-            results.payload = treeService.publishTreeVersion(treeVersion, user.principal.toString(), logEntry)
-        }
-    }
-
-    def editTreeVersion() {
-        Map data = request.JSON as Map
-        TreeVersion treeVersion = TreeVersion.get(data.id as Long)
-        ResultObject results = requireTarget(treeVersion, "Tree version with id: $data.id")
-        handleResults(results) {
-            treeService.authorizeTreeOperation(treeVersion.tree)
-            results.payload = treeService.editTreeVersion(treeVersion, data.draftName as String)
-        }
-    }
-
-    def validateTreeVersion(Long version) {
-        log.debug "validate tree version $version"
-        TreeVersion treeVersion = TreeVersion.get(version)
-        ResultObject results = requireTarget(treeVersion, "Tree version with id: $version")
-        handleResults(results) {
-            results.payload = treeService.validateTreeVersion(treeVersion)
         }
     }
 
