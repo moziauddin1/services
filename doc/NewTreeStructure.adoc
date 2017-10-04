@@ -39,6 +39,8 @@ This work is designed to make the tree easy to understand and reason about, and 
  viewed.
  . A link to an element on the tree should be able to identify the version of the tree and reproduce that version.
  . You should be able to link to a _version_ of the tree and get the current tree easily.
+ .. You should be able to compare taxa in different version via an identifier. The identifier is unique to the _circumscribed_
+ or enclosed taxa below this taxa. This identifier spans multiple versions of a tree.
  . The tree must enforce strict rules about the placement of names on a tree.
  . Profile data including only Comment and Distribution data is to be stored in the tree structure.
  . Tree elements are pointers to an Instance as a representation of a Taxon Concept.
@@ -104,6 +106,7 @@ NOTE: Greg W. put this view forward too.
  . search a tree for names independent of any tree and display in APNI format - this may be an advanced search on name types
   tags, instance types, and may require knowledge of the Family.
  . Name check - a specific check against the accepted tree in a shard.
+ . check to see if a taxon is the same as another taxon i.e. encloses the same sub taxa via comparison of a taxon identifier.
 
 ===== implementation (discussion)
 
@@ -180,15 +183,32 @@ is then made to create the new workspace version.
 
 We track changes in the tree by maintaining a previous link that points to the tree_element in the previous version.
 
-Versions are grouped by a tree_version which is associated with a tree. Tree_elements are associated with a tree_version.
+Versions are grouped by a tree_version which is associated with a tree. Tree_elements are associated with a tree_version
+via a linking tree_version_element table.
 
- Tree <- [Tree_Versions] <- [Tree_Elements]
+ Tree <- [Tree_Versions]<-[Tree_Version_Elements]<- [Tree_Elements]
 
-The tree holds a pointer to the current tree and a default workspace.
+The tree holds a pointer to the current tree and a default workspace. Tree_version_element is a join table between tree
+versions and tree elements, and is the versioned object or tree_element. This structure reduces duplication of data on
+copying a tree, and holds a unique versioned identifier for an element in a tree.
 
-This concept trades storage efficiency for simplicity. Excessive numbers of versions could create a lot of copied
-tree elements, but the workspace/publish model may also lead to a more structured release of versions
+This concept is storage efficient and simple. Excessive numbers of versions could create a lot of copied
+tree version elements, but the workspace/publish model may also lead to a more structured release of versions
 (e.g. once a Day/Week/Month) instead of on the fly changes.
+
+=== User concept
+
+Versions of a tree are Publications that can be referenced or cited. You can cite a published tree (version) using an
+identifier for the _tree_version_ or using an identifier for a _tree_version_element_. This will return the element and
+then entire tree in the context of the published tree.
+
+==== taxon identifiers
+
+Each tree_version_element also has associated a _taxon identifier_ which identifies the concept of the taxon in terms of
+the data including the circumscription of the taxon (i.e. the taxa under this taxon). The taxon identifier can be used to
+compare taxon between versions, i.e. see if the concept has changed.
+
+NOTE: See <<Existing links, Existing links  >> for resolving taxon identifiers
 
 === Autonomous trees
 
@@ -214,25 +234,31 @@ These have been updated with the version join table instead of simple copies.
 In APNI:
 
 |===
-| table | total size including inexes
+| table | total size including indexes
 
 | tree_node
-| 282MB (inc 233MB index)
+| 284MB (inc 224MB index)
+
+| tree_event
+| 1328MB (inc 248kB index)
 
 | tree_link
-| 1394MB (inc 693MB index)
+| 1434MB (inc 693MB index)
 
 | tree_element (152 versions)
-| ~200MB (inc 77MB index)
+| 263MB (inc 95MB index)
+
+| tree_version_element (5.5M)
+| 4088MB (inc 2564MB index)
 |===
 
-which makes the new tree structure smaller than the old one.
+which makes the new tree structure not much larger than the old one.
 
 Note: Prior to implementing the join table for version/element tree_element table was consuming ~40GB of data for 150
 versions. The totals of table columns didn't add up to this amount, but there was something else the DB was doing to
 use this space.
 
-==== Adding a link table
+==== Tree_Version_element "link table"
 
 Instead of copying the tree_elements each lime we just need to keep a link table of elements to tree versions, making
 a many to many relationship. This adds a little complexity when archiving off older versions of trees, but at the same
@@ -270,7 +296,8 @@ for each instance path. We then map the tree_elements to a version.
 . generate new tree elements for each instance path, using the parent instance path to set the parent tree_element
 . add tree elements to versions
 
-this would need a node ids field added to tree element.
+
+==== Finding sizes
 
 [source]
 .table-size.sql
@@ -301,7 +328,7 @@ FROM (
      ) a;
 ----
 
-Also note that the new data structure allows us to partition and archive older versions should we need to.
+NOTE: The new data structure allows us to partition and archive older versions should we need to.
 
 Copying the 35k tree_elements to a workspace takes about 12.8 seconds, *however we only need to add join table
 rows to make a copy* which is much quicker, 850ms.
@@ -310,7 +337,7 @@ rows to make a copy* which is much quicker, 850ms.
    SELECT 9703722, tree_element_id from tree_version_tree_elements where tree_version_id = 152;
 
 
-    VM info:
+===== VM info:
     appsint1 24GB RAM (18GB used) 50GB space with ~27GB free for tomcat
     pgsql-prod1-ibis.it.csiro.au 6GB RAM (5GB used)
     /dev/mapper/vg_data-lv_data        50G  981M   50G   2% /pg_data
@@ -601,7 +628,8 @@ tree in the history.
 
 NOTE: A link to a node in the old structure only gives you the structure *below* it as it was when you took the link
 unless you took a link to a changed node further up the tree, or the top node. Although it is possible to find the
-version of the tree you were looking at it was *not* intrinsic in the link.
+version of the tree you were looking at it was *not* intrinsic in the link. The node identifier is effectively a taxon
+concept identifier.
 
 We can take existing published links and forward them to new links. Due to history only being maintained in node links
 below that node we need node links to point to the latest version that has that node id.
@@ -609,7 +637,8 @@ below that node we need node links to point to the latest version that has that 
 With the change to using a join table we lose the node_id/tree_element relationship, so we either need to store the
 node id(s) in the tree_element or just use the mapper to map to the tree_element.
 
-The most appropriate solution is to use the mapper to map node URI to tree_elements.
+The most appropriate solution is to use the mapper to map node URI to tree_elements. They will resolve more appropriately
+to a _taxon identifier_.
 
 ==== new links
 
@@ -621,6 +650,10 @@ storing the shard specifically in the identity structure in the mapper (it's mor
 we can use the namespace as intended and have tree element links like:
 
  .../tree/137/7845073  i.e. effectively tree/version/element
+
+WARNING: The ID of tree_element should be _GLOBALLY UNIQUE_ so it can be copied from one tree to another on different
+systems. This is also used to generate the hash for taxon identifiers, so it is important that they remain consistent. So
+if you copy a branch from one tree to another that taxon concept remains the same, even if you regenerate the hashes.
 
 this lets us map any tree version to any shard/uber service directly.
 
@@ -640,6 +673,97 @@ balancing if needed.
 NOTE: tree_elements store links to instance, name and themselves to make them self contained. With the join table this
 is complicated because a tree_element belongs to multiple versions and as such the element_link needs to be generated at
 display time depending on the version being shown.
+
+==== taxon identifiers
+
+Since taxon identifiers exist in multiple versions of different trees (since they represent the taxon concept regardless
+of version) the question becomes how do you resolve a taxon concept? In the sense of this document it becomes clear that
+a taxon concept is a fixed representation of the branch below a taxon, and the data contained within the circumscribed
+taxa. So a taxon concept is fixed or immutable and exists outside of versions (so it may not be the current concept used)
+which means we can choose the concept from any version (by definition they are the same).
+
+So we could resolve a taxon using something like:
+
+http://id.biodiversity.org.au/taxon/80dd7fffd995817fe1a4d4494c519a0c1aa38803b394f69482ab5c794318e0a9
+
+To generate the hash taxon identifier we use the tree paths of the parent and the children within that version:
+
+[source]
+.circumscribe.sql
+----
+CREATE EXTENSION pgcrypto;
+
+DROP FUNCTION IF EXISTS circumscribe( BIGINT, TEXT );
+CREATE FUNCTION circumscribe(version_id BIGINT, path_match TEXT)
+  RETURNS TEXT
+LANGUAGE SQL
+AS
+$$
+SELECT sha256_agg(paths)
+FROM (
+       SELECT e.tree_path AS paths
+       FROM tree_version_element tve
+         JOIN tree_element e ON tve.tree_element_id = e.id
+       WHERE tve.tree_version_id = version_id
+             AND e.tree_path LIKE path_match || '%'
+       ORDER BY e.tree_path
+     ) AS circumscription;
+$$;
+----
+see <<A simple sha256_agg function>>
+
+The circumscribe function above is a unique hash of all the children in order under a taxon (including that taxon). The
+current worst case time for calculation of Plantae is ~2 seconds when placing a new leaf taxon we need to take the
+tree path of that taxon and re calculate the taxon identifier hash for all the tree_version_elements in that path. Given
+about 11 levels those calculations should take less than 22 seconds, and could be updated in the background.
+
+===== More efficient method
+
+All tree_elements have a hash of the tree_path. The tree_path (and tree_element as a result) guarantees that the path
+above matches the taxon, so we only need to include the children to show difference. We also only need the leaf taxon in
+the hash, because they contain the path of the entire branch to the top of the tree.
+
+. Leaf tree_version_elements use the hash from the tree_element as taxon hash.
+. Parent tree_version_elements concatenate immediate child taxon hashes and hash that.
+. up one level and repeat.
+
+When we add a taxon (leaf) we use the tree_elements hash as the new taxon hash then follow the tree path up regenerating
+the taxon hash for each tree_version_element up the tree as above.
+
+This method would be more efficient in production, but the initial generation is trickier with a reverse tree walk.
+
+==== Even more efficient and pragmatic method (We will use this)
+
+The Hash methods have an elephant in the room, Hashes. A Hash can clash, they're good for cases where the data doesn't
+exceed the number of different hashes. Sha256 has a lot of hashes and can represent billions of separate bits of data
+but we can't guarantee there won't be a clash. The best way to use a hash is to reduce the length of the data
+represented by the hash. We can determine the uniqueness of a taxon (the circumscription of children and the taxon itself)
+using the sum of the tree_paths of the leaf tree_elements. This effectively represents the tree, in fact it's just printing
+out the tree id's in order (depth first) as a string. The above hash methods take that string and hash it. The string
+contains a lot of repetition, but it is unique to this taxon... it *is* this taxon.
+
+At last count we have 5.4 million tree_version_elements, 38 thousand tree_elements, and by the look of it around 40k
+individual taxon. *It would be simpler to just assign an ID to a new taxon.* In fact, we already use the node ID to
+identify the taxon, so we can just keep them as taxon identifiers and generate new ones when we add a taxon:
+
+. Add aleaf element and assign the tree_version_element a new taxon ID
+. use the tree_path to assign new taxon IDs to all the tree_version_elements up the branch
+. profit.
+
+===== cons?
+
+If we do this every time a taxon is added to the tree in a draft we will go through a lot of identifiers. We could check
+to see if the identifier is new to this version and only change it once per version, but that is probably unnecessary
+overhead...
+
+Lets' say we add 100 taxa in this version at forma level (about 10 levels down from Plantae) all under the same species,
+then we'll use 1100 identifiers for 110 new taxa.
+
+It doesn't intrinsically tell us if two taxa on different trees are the same. If you copy a taxa from one tree to another
+we could use the same identifier, but if you create a copy of a taxa from parts, you would have a new identifier. We can
+provide a service to compare taxa, but finding matching taxa across different trees would be relatively expensive (you
+could use a tree comparison/diff to identify matches). Once you know two taxons are the same with different IDs you then
+need to combine the identifiers somehow, perhaps in a matching service.
 
 === RDF
 
@@ -1009,7 +1133,6 @@ SELECT
   synonyms ->> tax_syn,
   rank.name,
   type.name,
-  el.names,
   el.name_path
 FROM tree_element el
   JOIN name n ON el.name_id = n.id
@@ -1018,7 +1141,6 @@ FROM tree_element el
   ,
       jsonb_object_keys(synonyms) AS tax_syn
 WHERE tree_version_id = 144
-      AND el.names like '%Billardiera b%'
       AND type.scientific
       AND tax_syn ILIKE 'Billardiera b%'
       AND synonyms -> tax_syn ->> 'type' = 'taxonomic synonym'
@@ -1032,6 +1154,161 @@ ORDER BY el.name_path;
 |84869|Marianthus bicolor|Billardiera bicolor var. lineata|"{""type"": ""taxonomic synonym"", ""name_id"": 55149}"|Species|scientific|Plantae Charophyta Equisetopsida Magnoliidae Asteranae Apiales Pittosporaceae Marianthus bicolor
 
 |===
+
+=== find leaf paths
+
+[source]
+.leaf-paths.sql
+----
+-- find leaf paths
+SELECT e.tree_path as paths
+FROM tree_version_element tve
+  JOIN tree_element e ON tve.tree_element_id = e.id
+where tve.tree_version_id = 9451356
+  and not exists(select 1 from tree_version_element ctve join tree_element ce on ctve.tree_element_id = ce.id
+where ctve.tree_version_id = 9451356 and ce.parent_element_id = e.id)
+ORDER BY e.tree_path
+----
+
+=== circumscribe a taxon at a version
+
+This function takes a tree version id and a tree_path and gives a sha256 hash of all the leaf node child paths. The
+effectively gives a comparable hash of the circumscription of this taxon which can be used as an identifier that can
+compare the taxon concept here.
+
+[source]
+.circumscribe.sql
+----
+DROP FUNCTION IF EXISTS circumscribe( BIGINT, TEXT );
+CREATE FUNCTION circumscribe(version_id BIGINT, path_match TEXT)
+  RETURNS TEXT
+LANGUAGE SQL
+AS
+$$
+SELECT encode(digest(string_agg(paths, ''), 'sha256'), 'hex')
+FROM (
+       SELECT e.tree_path AS paths
+       FROM tree_version_element tve
+         JOIN tree_element e ON tve.tree_element_id = e.id
+       WHERE tve.tree_version_id = version_id
+             AND e.tree_path LIKE path_match || '%'
+       ORDER BY e.tree_path
+     ) AS circumscription;
+$$;
+
+select circumscribe(9451356, '/9451389');
+----
+
+or better still using the simple sha256agg function
+
+[source]
+.circumscribe.sql
+----
+CREATE EXTENSION pgcrypto;
+
+DROP FUNCTION IF EXISTS circumscribe( BIGINT, TEXT );
+CREATE FUNCTION circumscribe(version_id BIGINT, path_match TEXT)
+  RETURNS TEXT
+LANGUAGE SQL
+AS
+$$
+SELECT sha256_agg(paths)
+FROM (
+       SELECT e.tree_path AS paths
+       FROM tree_version_element tve
+         JOIN tree_element e ON tve.tree_element_id = e.id
+       WHERE tve.tree_version_id = version_id
+             AND e.tree_path LIKE path_match || '%'
+       ORDER BY e.tree_path
+     ) AS circumscription;
+$$;
+----
+
+=== A simple md5_agg aggregate function
+
+[source]
+.md5_agg.sql
+----
+DROP AGGREGATE IF EXISTS md5_agg( TEXT );
+DROP FUNCTION IF EXISTS md5agg_sfunc( TEXT, TEXT );
+DROP FUNCTION IF EXISTS md5agg_finalfunc( TEXT );
+
+CREATE FUNCTION md5agg_sfunc(agg_state TEXT, el TEXT)
+  RETURNS TEXT
+IMMUTABLE
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  current_sum TEXT;
+BEGIN
+  --   RAISE NOTICE 'current state %', agg_state;
+  current_sum := md5(coalesce(agg_state, '') || el);
+  --   raise notice 'agg state %',current_sum;
+  RETURN current_sum;
+END;
+$$;
+
+CREATE FUNCTION md5agg_finalfunc(agg_state TEXT)
+  RETURNS TEXT
+IMMUTABLE
+STRICT
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN agg_state;
+END;
+$$;
+
+CREATE AGGREGATE md5_agg ( TEXT )
+(
+SFUNC = md5agg_sfunc,
+STYPE = TEXT,
+FINALFUNC = md5agg_finalfunc
+);
+----
+
+=== A simple sha256_agg function
+
+[source]
+.sha256_agg.sql
+----
+DROP AGGREGATE IF EXISTS sha256_agg( TEXT );
+DROP FUNCTION IF EXISTS sha256agg_sfunc( TEXT, TEXT );
+DROP FUNCTION IF EXISTS sha256agg_finalfunc( TEXT );
+
+CREATE FUNCTION sha256agg_sfunc(agg_state TEXT, el TEXT)
+  RETURNS TEXT
+IMMUTABLE
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  current_sum TEXT;
+BEGIN
+  --   RAISE NOTICE 'current state %', agg_state;
+  current_sum := encode(digest((coalesce(agg_state, '') || el), 'sha256'), 'hex');
+  --   raise notice 'agg state %',current_sum;
+  RETURN current_sum;
+END;
+$$;
+
+CREATE FUNCTION sha256agg_finalfunc(agg_state TEXT)
+  RETURNS TEXT
+IMMUTABLE
+STRICT
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN agg_state;
+END;
+$$;
+
+CREATE AGGREGATE sha256_agg ( TEXT )
+(
+SFUNC = sha256agg_sfunc,
+STYPE = TEXT,
+FINALFUNC = sha256agg_finalfunc
+);
+----
 
 === To sum the total data size of the tree_element table
 

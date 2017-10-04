@@ -43,8 +43,8 @@ WHERE i.object_type = 'treeElement'
 INSERT INTO mapper.identifier (id, id_number, version_number, name_space, object_type, deleted, reason_deleted, updated_at, updated_by, preferred_uri_id)
   SELECT
     nextval('mapper.mapper_sequence'),
-    0,
     id,
+    NULL,
     'apni',
     'treeVersion',
     FALSE,
@@ -58,20 +58,18 @@ INSERT INTO mapper.identifier (id, id_number, version_number, name_space, object
 INSERT INTO mapper.match (id, uri, deprecated, updated_at, updated_by)
   SELECT
     nextval('mapper.mapper_sequence'),
-    ('tree/' || version_number),
+    ('tree/' || id_number),
     FALSE,
     now(),
     'pmcneil'
   FROM mapper.identifier
-  WHERE object_type = 'tree'
-        AND version_number IS NOT NULL
-        AND id_number = 0;
+  WHERE object_type = 'treeVersion';
 
 UPDATE mapper.identifier i
 SET preferred_uri_id = m.id
 FROM mapper.match m
 WHERE i.object_type = 'treeVersion'
-      AND m.uri = ('tree/' || i.version_number);
+      AND m.uri = ('tree/' || i.id_number);
 
 -- Add tree links
 
