@@ -443,10 +443,11 @@ DROP TABLE IF EXISTS orphans;
 
         Sql sql = getSql()
 
-        sql.execute('''INSERT INTO tree_version_element (tree_version_id, tree_element_id, element_link) 
-  (SELECT :toVersionId, tvte.tree_element_id, 
-          substring(tvte.element_link, '^(.*)/[0-9]*/[0-9]+') || '/' || :toVersionId || '/' || tvte.tree_element_id
-   FROM tree_version_element tvte WHERE tree_version_id = :fromVersionId)''',
+        sql.execute('''INSERT INTO tree_version_element (tree_version_id, tree_element_id, element_link, taxon_link) 
+  (SELECT :toVersionId, tve.tree_element_id, 
+          substring(tve.element_link, '^(.*)/[0-9]*/[0-9]+') || '/' || :toVersionId || '/' || tve.tree_element_id,
+          tve.taxon_link
+   FROM tree_version_element tve WHERE tree_version_id = :fromVersionId)''',
                 [fromVersionId: fromVersion.id, toVersionId: toVersion.id])
 
         toVersion.refresh()
@@ -722,6 +723,7 @@ WHERE tve1.tree_version_id = :treeVersionId
     private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version) {
         TreeVersionElement treeVersionElement = new TreeVersionElement(treeElement: element, treeVersion: version)
         treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
+        treeVersionElement.taxonLink = 'TODO set this to a new taxon id' //todo set the taxon ID
         treeVersionElement.save()
         return treeVersionElement
     }

@@ -514,6 +514,7 @@ class TreeServiceSpec extends Specification {
         for (TreeVersionElement tve in dendrocerotaceaeChildren) {
             println tve.treeElement.namePath
         }
+        draftVersion.refresh()
 
         then: 'It works'
         1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
@@ -572,6 +573,7 @@ class TreeServiceSpec extends Specification {
         for (TreeVersionElement tve in dendrocerotidaeChildren) {
             println tve.treeElement.namePath
         }
+        draftVersion.refresh()
 
         then: 'It works'
         1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
@@ -795,7 +797,7 @@ class TreeServiceSpec extends Specification {
             TreeElement e = new TreeElement(data)
             e.save()
             generatedIdMapper.put(data.id as Long, e.id as Long)
-            TreeVersionElement tve = new TreeVersionElement(treeVersion: version, treeElement: e, elementLink: "http://localhost:7070/nsl-mapper/tree/$version.id/$e.id")
+            TreeVersionElement tve = new TreeVersionElement(treeVersion: version, treeElement: e, elementLink: "http://localhost:7070/nsl-mapper/tree/$version.id/$e.id", taxonLink: 'http://localhost:7070/nsl-mapper/node/apni/12345')
             tve.save()
             elements.add(e)
         }

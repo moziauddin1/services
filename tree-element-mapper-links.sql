@@ -131,10 +131,10 @@ WHERE to_jsonb(node_mid.id_number) = node
 GROUP BY ipath.id, node_mid.id, elem_mid.id, node;
 $$;
 
-UPDATE mapper.identifier_identities ii
-SET identifier_id = mids.elem_mid_id
-FROM map_nodes_element_identifiers() mids
-WHERE ii.identifier_id = mids.node_mid_id;
+-- UPDATE mapper.identifier_identities ii
+-- SET identifier_id = mids.elem_mid_id
+-- FROM map_nodes_element_identifiers() mids
+-- WHERE ii.identifier_id = mids.node_mid_id;
 
 -- global updates
 -- join matches to identifiers

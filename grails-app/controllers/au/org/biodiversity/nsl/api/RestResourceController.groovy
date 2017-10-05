@@ -139,18 +139,36 @@ class RestResourceController {
     }
 
     /**
-     * This endpoint is a transation from node to tree_element. Node id's really only gave you access to the latest
-     * version of the tree that the node participates in, not the tree from the point in time that it was referenced.
-     * The tree below the node will look the same though the rest of the tree around the node may have changed.
+     * Node id's really only gave you access to the latest version of the tree that the node participates in,
+     * not the tree from the point in time that it was referenced. The tree below the node will look the same
+     * though the rest of the tree around the node may have changed, including the placement of the node.
      *
-     * Get the latest version of the the tree element with the tree element id given
+     * This gets the latest version of the the tree element with the node id given and displays that.
+     *
      * @param shard
      * @param idNumber
      * @return
      */
     @Timed()
     def node(String shard, Long idNumber) {
-        notFound("Deprecated Node API. Use the Node URI to access the resource. No node in $shard with id $idNumber found")
+        List result = TreeVersionElement.executeQuery('''select tve.treeElement.id, max(tve.treeVersion.id) as mx 
+from TreeVersionElement tve 
+where taxonLink like :query
+group by tve.treeElement.id
+order by mx''', [query: "%/node/$shard/$idNumber"]).last()
+        if (result && result.size() == 2) {
+            TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(result[1] as Long, result[0] as Long)
+
+            if (treeVersionElement) {
+                List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
+                List<TreeVersionElement> path = treeService.getElementPath(treeVersionElement)
+                respond(treeVersionElement, [model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
+            } else {
+                notFound("Couldn't find element ${result[0]} in tree version ${result[1]}.")
+            }
+        } else {
+            notFound("Couldn't find node $idNumber in $shard.")
+        }
     }
 
     @Timed()

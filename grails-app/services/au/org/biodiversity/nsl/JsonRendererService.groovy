@@ -461,6 +461,7 @@ class JsonRendererService {
                                 class        : treeElement.class.name,
                                 _links       : [
                                         elementLink      : treeVersionElement.elementLink,
+                                        taxonLink        : treeVersionElement.taxonLink,
                                         parentElementLink: parent?.elementLink,
                                         nameLink         : treeElement.nameLink,
                                         instanceLink     : treeElement.instanceLink,
