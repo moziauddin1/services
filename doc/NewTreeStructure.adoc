@@ -746,7 +746,7 @@ At last count we have 5.4 million tree_version_elements, 38 thousand tree_elemen
 individual taxon. *It would be simpler to just assign an ID to a new taxon.* In fact, we already use the node ID to
 identify the taxon, so we can just keep them as taxon identifiers and generate new ones when we add a taxon:
 
-. Add aleaf element and assign the tree_version_element a new taxon ID
+. Add (or Remove) a leaf element and assign the tree_version_element a new taxon ID
 . use the tree_path to assign new taxon IDs to all the tree_version_elements up the branch
 . profit.
 

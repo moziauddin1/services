@@ -170,6 +170,7 @@ class TreeServiceSpec extends Specification {
         version.id != version2.id
         version2.previousVersion == version
         version2.treeVersionElements.size() == 30
+        versionsAreEqual(version, version2)
         version2.treeVersionElements.contains(TreeVersionElement.findByTreeElementAndTreeVersion(testElements[3], version2))
         version2.treeVersionElements.contains(TreeVersionElement.findByTreeElementAndTreeVersion(testElements[13], version2))
         version2.treeVersionElements.contains(TreeVersionElement.findByTreeElementAndTreeVersion(testElements[23], version2))
@@ -194,6 +195,7 @@ class TreeServiceSpec extends Specification {
         tree.defaultDraftTreeVersion == draftVersion
         draftVersion.previousVersion == version2published
         draftVersion.treeVersionElements.size() == 30
+        versionsAreEqual(version2, draftVersion)
         draftVersion.treeVersionElements.contains(TreeVersionElement.findByTreeElementAndTreeVersion(testElements[3], draftVersion))
         draftVersion.treeVersionElements.contains(TreeVersionElement.findByTreeElementAndTreeVersion(testElements[13], draftVersion))
         draftVersion.treeVersionElements.contains(TreeVersionElement.findByTreeElementAndTreeVersion(testElements[23], draftVersion))
@@ -211,6 +213,14 @@ class TreeServiceSpec extends Specification {
 
         then: 'It fails with bad argument'
         thrown BadArgumentsException
+    }
+
+    private static Boolean versionsAreEqual(TreeVersion v1, TreeVersion v2) {
+        v1.treeVersionElements.size() == v2.treeVersionElements.size() &&
+                v1.treeVersionElements.collect { it.treeElement.id }.containsAll(v2.treeVersionElements.collect {
+                    it.treeElement.id
+                }) &&
+                v1.treeVersionElements.collect { it.taxonId }.containsAll(v2.treeVersionElements.collect { it.taxonId })
     }
 
     def "test making and deleting a tree"() {
@@ -251,7 +261,7 @@ class TreeServiceSpec extends Specification {
         TreeVersionElement.findByTreeVersion(draftVersion) == null
     }
 
-    def "test making and deleting a tree version"() {
+    def "test making and deleting a draft tree version"() {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
@@ -269,8 +279,9 @@ class TreeServiceSpec extends Specification {
         publishedVersion.treeVersionElements.size() == 30
         tree.defaultDraftTreeVersion == draftVersion
         tree.currentTreeVersion == publishedVersion
+        versionsAreEqual(publishedVersion, draftVersion)
 
-        when: 'I delete the tree'
+        when: 'I delete the tree version'
         tree = service.deleteTreeVersion(draftVersion)
         publishedVersion.refresh() //the refresh() is required by deleteTreeVersion
 
@@ -456,13 +467,20 @@ class TreeServiceSpec extends Specification {
 
     def "test place taxon"() {
         given:
+        service.linkService.bulkAddTargets(_) >> [success: true]
         Tree tree = service.createNewTree('aTree', 'aGroup', null)
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData])
+        service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+
         Instance asperaInstance = Instance.get(781104)
+        TreeVersionElement blechnaceaeElement = service.findElementBySimpleName('Blechnaceae', draftVersion)
         TreeVersionElement doodiaElement = service.findElementBySimpleName('Doodia', draftVersion)
-        TreeVersionElement asperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
+        TreeVersionElement nullAsperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
         String instanceUri = 'http://localhost:7070/nsl-mapper/instance/apni/781104'
+        Long blechnaceaeTaxonId = blechnaceaeElement.taxonId
+        Long doodiaTaxonId = doodiaElement.taxonId
 
         //return a url that matches the name link of aspera
         service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/70944'
@@ -471,9 +489,13 @@ class TreeServiceSpec extends Specification {
         expect:
         tree
         draftVersion
+        blechnaceaeElement
+        blechnaceaeTaxonId
+        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) == 2
         doodiaElement
+        doodiaTaxonId
         asperaInstance
-        !asperaElement
+        !nullAsperaElement
 
         when: 'I try to place Doodia aspera under Doodia'
         Map result = service.placeTaxonUri(doodiaElement, instanceUri, false, 'A. User')
@@ -484,6 +506,17 @@ class TreeServiceSpec extends Specification {
         1 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         result.childElement == service.findElementBySimpleName('Doodia aspera', draftVersion)
         result.warnings.empty
+        //taxon id should be set to a unique/new positive value
+        result.childElement.taxonId != 0
+        TreeVersionElement.countByTaxonId(result.childElement.taxonId) == 1
+        //taxon id for the taxon above has changed to new IDs
+        blechnaceaeElement.taxonId != 0
+        blechnaceaeElement.taxonId != blechnaceaeTaxonId
+        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) == 1
+        doodiaElement.taxonId != 0
+        doodiaElement.taxonId != doodiaTaxonId
+        TreeVersionElement.countByTaxonId(doodiaElement.taxonId) == 1
+
         println result.childElement.elementLink
     }
 
@@ -493,9 +526,17 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
         List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
         TreeVersionElement anthocerotaceae = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
         TreeVersionElement dendrocerotaceae = service.findElementBySimpleName('Dendrocerotaceae', draftVersion)
+        List<Long> originalDendrocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(dendrocerotaceae).collect {
+            it.taxonId
+        }
+        List<Long> originalAnthocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(anthocerotaceae).collect {
+            it.taxonId
+        }
 
         expect:
         tree
@@ -506,8 +547,10 @@ class TreeServiceSpec extends Specification {
         anthoceros
         anthoceros.treeElement.parentElement == anthocerotaceae.treeElement
         dendrocerotaceae
+        originalDendrocerotaceaeParentTaxonIDs.size() == 6
+        originalAnthocerotaceaeParentTaxonIDs.size() == 6
 
-        when: 'I try to move a taxon'
+        when: 'I try to move a taxon, anthoceros under dendrocerotaceae'
         TreeVersionElement newAnthoceros = service.moveTaxon(anthoceros, dendrocerotaceae, 'test move taxon')
         List<TreeVersionElement> anthocerosChildren = service.getAllChildElements(newAnthoceros)
         List<TreeVersionElement> dendrocerotaceaeChildren = service.getAllChildElements(dendrocerotaceae)
@@ -536,6 +579,13 @@ class TreeServiceSpec extends Specification {
         anthocerosChildren[3].treeElement.nameElement == 'laminifer'
         anthocerosChildren[4].treeElement.nameElement == 'punctatus'
         dendrocerotaceaeChildren.containsAll(anthocerosChildren)
+        // all the parent taxonIds should have been updated
+        !service.getParentTreeVersionElements(dendrocerotaceae).collect { it.taxonId }.find {
+            originalDendrocerotaceaeParentTaxonIDs.contains(it)
+        }
+        !service.getParentTreeVersionElements(anthocerotaceae).collect { it.taxonId }.find {
+            originalAnthocerotaceaeParentTaxonIDs.contains(it)
+        }
 
         when: 'I publish the version then try a move'
         service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
@@ -551,10 +601,19 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
         List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+
         TreeVersionElement anthocerotales = service.findElementBySimpleName('Anthocerotales', draftVersion)
         TreeVersionElement dendrocerotidae = service.findElementBySimpleName('Dendrocerotidae', draftVersion)
         TreeVersionElement anthocerotidae = service.findElementBySimpleName('Anthocerotidae', draftVersion)
         List<TreeVersionElement> anthocerotalesChildren = service.getAllChildElements(anthocerotales)
+        List<Long> originalDendrocerotidaeTaxonIDs = service.getParentTreeVersionElements(dendrocerotidae).collect {
+            it.taxonId
+        }
+        List<Long> originalAnthocerotidaeTaxonIDs = service.getParentTreeVersionElements(anthocerotidae).collect {
+            it.taxonId
+        }
 
         expect:
         tree
@@ -565,6 +624,8 @@ class TreeServiceSpec extends Specification {
         dendrocerotidae
         anthocerotales.treeElement.parentElement == anthocerotidae.treeElement
         anthocerotalesChildren.size() == 10
+        originalDendrocerotidaeTaxonIDs.size() == 4
+        originalAnthocerotidaeTaxonIDs.size() == 4
 
         when: 'I move Anthocerotales under Dendrocerotidae'
         TreeVersionElement newAnthocerotales = service.moveTaxon(anthocerotales, dendrocerotidae, 'test move taxon')
@@ -586,6 +647,14 @@ class TreeServiceSpec extends Specification {
         draftVersion.treeVersionElements.size() == 30
         newAnthocerotalesChildren.size() == 10
         dendrocerotidaeChildren.size() == 25
+        // all the parent taxonIds should have been updated
+        !service.getParentTreeVersionElements(dendrocerotidae).collect { it.taxonId }.find {
+            originalDendrocerotidaeTaxonIDs.contains(it)
+        }
+        !service.getParentTreeVersionElements(anthocerotidae).collect { it.taxonId }.find {
+            originalAnthocerotidaeTaxonIDs.contains(it)
+        }
+
     }
 
     def "test remove a taxon"() {
@@ -595,8 +664,14 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
         List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+
         TreeVersionElement anthocerotaceae = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
+        List<Long> originalAnthocerotaceaeTaxonIDs = service.getParentTreeVersionElements(anthocerotaceae).collect {
+            it.taxonId
+        }
 
         expect:
         tree
@@ -606,6 +681,7 @@ class TreeServiceSpec extends Specification {
         anthocerotaceae
         anthoceros
         anthoceros.treeElement.parentElement == anthocerotaceae.treeElement
+        originalAnthocerotaceaeTaxonIDs.size() == 6
 
         when: 'I try to move a taxon'
         int count = service.removeTreeVersionElement(anthoceros)
@@ -614,8 +690,13 @@ class TreeServiceSpec extends Specification {
         count == 6
         draftVersion.treeVersionElements.size() == 24
         service.findElementBySimpleName('Anthoceros', draftVersion) == null
+        //The taxonIds for Anthoceros' parents should have changed
+        !service.getParentTreeVersionElements(anthocerotaceae).collect { it.taxonId }.find {
+            originalAnthocerotaceaeTaxonIDs.contains(it)
+        }
     }
 
+    //todo text taxonId changes
     def "test edit taxon profile"() {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
@@ -695,6 +776,7 @@ class TreeServiceSpec extends Specification {
         ]
     }
 
+    //todo test taxonId changes
     def "test edit draft only taxon profile"() {
         given:
         Tree tree = service.createNewTree('aTree', 'aGroup', null)
@@ -796,8 +878,19 @@ class TreeServiceSpec extends Specification {
             data.remove('previousElementId')
             TreeElement e = new TreeElement(data)
             e.save()
+            if (e.parentElement) {
+                e.treePath = e.parentElement.treePath + "/$e.id"
+            } else {
+                e.treePath = "/$e.id"
+            }
+            e.save()
             generatedIdMapper.put(data.id as Long, e.id as Long)
-            TreeVersionElement tve = new TreeVersionElement(treeVersion: version, treeElement: e, elementLink: "http://localhost:7070/nsl-mapper/tree/$version.id/$e.id", taxonLink: 'http://localhost:7070/nsl-mapper/node/apni/12345')
+            TreeVersionElement tve = new TreeVersionElement(
+                    treeVersion: version,
+                    treeElement: e,
+                    taxonId: e.id * 10, //generate a taxon id
+                    elementLink: "http://localhost:7070/nsl-mapper/tree/$version.id/$e.id",
+                    taxonLink: 'http://localhost:7070/nsl-mapper/node/apni/12345')
             tve.save()
             elements.add(e)
         }

@@ -443,8 +443,8 @@ DROP TABLE IF EXISTS orphans;
 
         Sql sql = getSql()
 
-        sql.execute('''INSERT INTO tree_version_element (tree_version_id, tree_element_id, element_link, taxon_link) 
-  (SELECT :toVersionId, tve.tree_element_id, 
+        sql.execute('''INSERT INTO tree_version_element (tree_version_id, tree_element_id, taxon_id, element_link, taxon_link) 
+  (SELECT :toVersionId, tve.tree_element_id, tve.taxon_id, 
           substring(tve.element_link, '^(.*)/[0-9]*/[0-9]+') || '/' || :toVersionId || '/' || tve.tree_element_id,
           tve.taxon_link
    FROM tree_version_element tve WHERE tree_version_id = :fromVersionId)''',
@@ -531,6 +531,7 @@ WHERE tve1.tree_version_id = :treeVersionId
         List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
         //note above will throw exceptions for invalid placements, not warnings
         TreeVersionElement childElement = makeVersionElementFromTaxonData(taxonData, parentElement, userName)
+        updateParentTaxaId(parentElement)
         return [childElement: childElement, warnings: warnings]
     }
 
@@ -549,15 +550,56 @@ WHERE tve1.tree_version_id = :treeVersionId
      */
     TreeVersionElement moveTaxon(TreeVersionElement child, TreeVersionElement parent, String userName) {
         notPublished(parent)
+        TreeVersionElement originalParent = getParentTreeVersionElement(child)
 
-        TreeVersionElement childCopy = saveTreeVersionElement(copyTreeElement(child, parent.treeElement, userName), parent.treeVersion)
+        TreeVersionElement childCopy = saveTreeVersionElement(copyTreeElement(child, parent.treeElement, userName), parent.treeVersion, child.taxonId)
 
         List<TreeVersionElement> kids = getChildElementsToDepth(child, 1)
 
         copyChildElements(kids, childCopy, userName)
 
+        updateParentTaxaId(originalParent)
+        updateParentTaxaId(parent)
+
         removeTreeVersionElement(child)
         return childCopy
+    }
+
+    /**
+     * for each treeVersionElement in the parent branch set the taxonId to a new, unique value. This can only happen in
+     * a draft tree version, so first check the taxonId is not already unique (i.e. already been updated in this version)
+     * before updating, to prevent wasting ID space.
+     *
+     * This does *not* check the draft status of the parent, so it needs to be checked before calling.
+     *
+     * @param parent
+     */
+    private void updateParentTaxaId(TreeVersionElement parent) {
+        List<TreeVersionElement> branchElements = getParentTreeVersionElements(parent)
+        Sql sql = getSql()
+        branchElements.each { TreeVersionElement element ->
+            if (!isUniqueTaxon(element)) {
+                element.taxonId = nextSequenceId(sql)
+                element.save()
+            }
+        }
+        sql.close()
+    }
+
+    private static boolean isUniqueTaxon(TreeVersionElement element) {
+        TreeVersionElement.countByTaxonId(element.taxonId) == 1
+    }
+
+    /**
+     * Fetch the tree version elements for each tree element in the tree path. This returns a List but in no guaranteed
+     * order.
+     * @param treeVersionElement
+     * @return a set of TreeVersionElements
+     */
+    protected static List<TreeVersionElement> getParentTreeVersionElements(TreeVersionElement treeVersionElement) {
+        List<Long> elementIds = treeVersionElement.treeElement.treePath[1..-1].split('/').collect { it.toLong() }
+        TreeVersionElement.findAll("from TreeVersionElement where treeVersion = :version and treeElement.id in :elements",
+                [version: treeVersionElement.treeVersion, elements: elementIds])
     }
 
     /**
@@ -567,6 +609,8 @@ WHERE tve1.tree_version_id = :treeVersionId
      */
     int removeTreeVersionElement(TreeVersionElement treeVersionElement) {
         notPublished(treeVersionElement)
+
+        TreeVersionElement parent = getParentTreeVersionElement(treeVersionElement)
 
         List<TreeVersionElement> elements = getAllChildElements(treeVersionElement)
         elements.add(treeVersionElement)
@@ -584,6 +628,8 @@ WHERE tve1.tree_version_id = :treeVersionId
             kid.treeVersion.removeFromTreeVersionElements(kid)
             kid.delete()
         }
+
+        updateParentTaxaId(parent)
 
         elements.clear()
         //if this is removing new elements in a draft we may orphan some tree elements so it pays to clean up
@@ -640,13 +686,13 @@ WHERE tve1.tree_version_id = :treeVersionId
     private copyChildElements(List<TreeVersionElement> kids, TreeVersionElement parent, String userName) {
         log.debug "copying kids $kids"
         for (TreeVersionElement kid in kids) {
-            TreeVersionElement kidCopy = saveTreeVersionElement(copyTreeElement(kid, parent.treeElement, userName), parent.treeVersion)
+            TreeVersionElement kidCopy = saveTreeVersionElement(copyTreeElement(kid, parent.treeElement, userName), parent.treeVersion, kid.taxonId)
             copyChildElements(getChildElementsToDepth(kid, 1), kidCopy, userName)
         }
     }
 
     private TreeElement copyTreeElement(TreeVersionElement treeVersionElement, TreeElement parent, String userName) {
-        Long treeElementId = generateNewElementId()
+        Long treeElementId = nextSequenceId()
         TreeElement source = treeVersionElement.treeElement
         TreeElement treeElement = new TreeElement(
                 treeElementId: treeElementId,
@@ -689,7 +735,8 @@ WHERE tve1.tree_version_id = :treeVersionId
     }
 
     protected TreeVersionElement makeVersionElementFromTaxonData(TaxonData taxonData, TreeVersionElement parentElement, String userName) {
-        Long treeElementId = generateNewElementId()
+        Long treeElementId = nextSequenceId()
+        Long taxonId = nextSequenceId()
         TreeElement treeElement = new TreeElement(
                 treeElementId: treeElementId,
                 treeVersion: parentElement.treeVersion,
@@ -717,18 +764,20 @@ WHERE tve1.tree_version_id = :treeVersionId
                 updatedAt: new Timestamp(System.currentTimeMillis())
         )
         treeElement.save()
-        return saveTreeVersionElement(treeElement, parentElement.treeVersion)
+        return saveTreeVersionElement(treeElement, parentElement.treeVersion, taxonId)
     }
 
-    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version) {
+    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version, Long taxonId) {
+
         TreeVersionElement treeVersionElement = new TreeVersionElement(treeElement: element, treeVersion: version)
         treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
-        treeVersionElement.taxonLink = 'TODO set this to a new taxon id' //todo set the taxon ID
+        treeVersionElement.taxonLink = 'TODO set this to a new taxon link' //todo set the taxon ID
+        treeVersionElement.taxonId = taxonId
         treeVersionElement.save()
         return treeVersionElement
     }
 
-    private Long generateNewElementId(Sql sql = getSql()) {
+    private Long nextSequenceId(Sql sql = getSql()) {
         sql.firstRow("SELECT nextval('nsl_global_seq')")[0] as Long
     }
 
