@@ -651,28 +651,24 @@ we can use the namespace as intended and have tree element links like:
 
  .../tree/137/7845073  i.e. effectively tree/version/element
 
-WARNING: The ID of tree_element should be _GLOBALLY UNIQUE_ so it can be copied from one tree to another on different
-systems. This is also used to generate the hash for taxon identifiers, so it is important that they remain consistent. So
-if you copy a branch from one tree to another that taxon concept remains the same, even if you regenerate the hashes.
+WARNING: The ID of tree_element should be _GLOBALLY UNIQUE_ so it *can* be copied from one tree to another on different
+systems.
 
 this lets us map any tree version to any shard/uber service directly.
 
-This change involves changing the mapper code to include a system identifier in "identifiers". This means we have to
-put in place changes to the services to ask the mapper to set the system, which we could default to the shard/namespace
-in the identifier.
+The mapper configuration handles the namespace to system mapping.
 
 This URL scheme is useful for debugging.
 
 NOTE: Previously links were only created in the mapper when they were requested by the services - This was not intended
- to be the default way to make links, but... So when a workspace is published we should do a bulk add of identifiers to
- the mapper. We need to add a bulk add api call on the mapper.
+ to be the default way to make links, but... So when a workspace is created we do a bulk add of identifiers to
+ the mapper. We need to add a bulk add api call on the mapper (done).
 
 The mapper currently handles around 1.15 million identities without problem, and is designed to scale out via load
 balancing if needed.
 
-NOTE: tree_elements store links to instance, name and themselves to make them self contained. With the join table this
-is complicated because a tree_element belongs to multiple versions and as such the element_link needs to be generated at
-display time depending on the version being shown.
+NOTE: tree_elements store links to instance and name. The tree_version_element holds the "element link" to itself. The
+element link is the primary key of the tree_version_element join table.
 
 ==== taxon identifiers
 
@@ -759,6 +755,10 @@ overhead...
 Lets' say we add 100 taxa in this version at forma level (about 10 levels down from Plantae) all under the same species,
 then we'll use 1100 identifiers for 110 new taxa.
 
+NOTE: implementation includes a uniqueness check on taxon identifiers when assigning them within a draft version. This
+does a count on tree_version_elements with the taxon identifier, if it returns just 1 then this is the only usage and is
+a draft so it can be kept as the taxon identifier as it hasn't been published.
+
 It doesn't intrinsically tell us if two taxa on different trees are the same. If you copy a taxa from one tree to another
 we could use the same identifier, but if you create a copy of a taxa from parts, you would have a new identifier. We can
 provide a service to compare taxa, but finding matching taxa across different trees would be relatively expensive (you
@@ -830,6 +830,7 @@ image::new-tree-overview.svg[]
 [source]
 .DDL.sql
 ----
+DROP TABLE IF EXISTS tree;
 CREATE TABLE tree (
   id                            INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
   lock_version                  INT8 DEFAULT 0                         NOT NULL,
@@ -841,6 +842,7 @@ CREATE TABLE tree (
   PRIMARY KEY (id)
 );
 
+DROP TABLE IF EXISTS tree_version;
 CREATE TABLE tree_version (
   id                  INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
   lock_version        INT8 DEFAULT 0                         NOT NULL,
@@ -854,12 +856,12 @@ CREATE TABLE tree_version (
   PRIMARY KEY (id)
 );
 
+DROP TABLE IF EXISTS tree_element;
 CREATE TABLE tree_element (
   id                  INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
   lock_version        INT8 DEFAULT 0                         NOT NULL,
   depth               INT4                                   NOT NULL,
   display_html        TEXT                                   NOT NULL,
-  element_link        TEXT                                   NOT NULL,
   excluded            BOOLEAN DEFAULT FALSE                  NOT NULL,
   instance_id         INT8                                   NOT NULL,
   instance_link       TEXT                                   NOT NULL,
@@ -878,13 +880,19 @@ CREATE TABLE tree_element (
   synonyms            JSONB,
   synonyms_html       TEXT                                   NOT NULL,
   tree_path           TEXT                                   NOT NULL,
+  updated_at          TIMESTAMP WITH TIME ZONE               NOT NULL,
+  updated_by          VARCHAR(255)                           NOT NULL,
   PRIMARY KEY (id)
 );
 
-CREATE TABLE tree_version_tree_elements (
-  tree_version_id INT8 NOT NULL,
+DROP TABLE IF EXISTS tree_version_element;
+CREATE TABLE tree_version_element (
+  element_link    TEXT NOT NULL,
+  taxon_id        INT8 NOT NULL,
+  taxon_link      TEXT NOT NULL,
   tree_element_id INT8 NOT NULL,
-  PRIMARY KEY (tree_version_id, tree_element_id)
+  tree_version_id INT8 NOT NULL,
+  PRIMARY KEY (element_link)
 );
 
 ----
@@ -1027,6 +1035,119 @@ Most of the following snippet is useless to anyone consuming the data.
 
 We'll replace the html page with something very similar for now and completely restructure the JSON output to better
 represent the taxon in the context of the tree.
+
+e.g.
+
+[source,javascript]
+.treeElement.js
+----
+{
+
+    "treeElement": {
+        "class": "au.org.biodiversity.nsl.TreeElement",
+        "_links": {
+            "elementLink": "http://test-id-vasc.biodiversity.org.au/tree/9476777/9479620",
+            "taxonLink": "http://test-id-vasc.biodiversity.org.au/node/apni/2908938",
+            "parentElementLink": "http://test-id-vasc.biodiversity.org.au/tree/9476777/9479431",
+            "nameLink": "http://test-id-vasc.biodiversity.org.au/name/apni/54576",
+            "instanceLink": "http://test-id-vasc.biodiversity.org.au/instance/apni/650575",
+            "sourceElementLink": null
+        },
+        "tree": {
+            "class": "au.org.biodiversity.nsl.Tree",
+            "_links": {
+                "permalinks": [
+                    {
+                        "link": "https://test-id-vasc.biodiversity.org.au/tree/apni/APC",
+                        "preferred": true,
+                        "resources": 1
+                    }
+                ]
+            },
+            "audit": null,
+            "name": "APC"
+        },
+        "simpleName": "Juncaginaceae",
+        "rankPath": {
+            "Ordo": {
+                "id": 214965.0,
+                "name": "Alismatales",
+                "name_link": "http://test-id-vasc.biodiversity.org.au/name/apni/214965"
+            },
+            "Regnum": {
+                "id": 54717.0,
+                "name": "Plantae",
+                "name_link": "http://test-id-vasc.biodiversity.org.au/name/apni/54717"
+            },
+            "Classis": {
+                "id": 223519.0,
+                "name": "Equisetopsida",
+                "name_link": "http://test-id-vasc.biodiversity.org.au/name/apni/223519"
+            },
+            "Familia": {
+                "id": 54576.0,
+                "name": "Juncaginaceae",
+                "name_link": "http://test-id-vasc.biodiversity.org.au/name/apni/54576"
+            },
+            "Division": {
+                "id": 224706.0,
+                "name": "Charophyta",
+                "name_link": "http://test-id-vasc.biodiversity.org.au/name/apni/224706"
+            },
+            "Superordo": {
+                "id": 216053.0,
+                "name": "Lilianae",
+                "name_link": "http://test-id-vasc.biodiversity.org.au/name/apni/216053"
+            },
+            "Subclassis": {
+                "id": 214954.0,
+                "name": "Magnoliidae",
+                "name_link": "http://test-id-vasc.biodiversity.org.au/name/apni/214954"
+            }
+        },
+        "namePath": "Plantae/Charophyta/Equisetopsida/Magnoliidae/Lilianae/Alismatales/Juncaginaceae",
+        "displayString": "<data><scientific><name id='54576'><element class='Juncaginaceae'>Juncaginaceae</element> <authors><author id='7128' title='Richard, L.C.M.'>Rich.</author></authors></name></scientific><citation>CHAH (2008), <i>Australian Plant Census</i></citation></data>",
+        "sourceShard": "APNI",
+        "synonyms": null,
+        "profile": {
+            "APC Dist.": {
+                "value": "WA (naturalised), NT, SA, Qld, NSW (native and naturalised), LHI, ACT, Vic (native and naturalised), Tas",
+                "created_at": "2009-09-08T00:00:00+10:00",
+                "created_by": "KIRSTENC",
+                "updated_at": "2009-09-08T00:00:00+10:00",
+                "updated_by": "KIRSTENC",
+                "source_link": "http://test-id-vasc.biodiversity.org.au/instanceNote/apni/1110848"
+            }
+        },
+        "children": [
+            {
+                "displayHtml": "<data><scientific><name id='54576'><element class='Juncaginaceae'>Juncaginaceae</element> <authors><author id='7128' title='Richard, L.C.M.'>Rich.</author></authors></name></scientific><citation>CHAH (2008), <i>Australian Plant Census</i></citation></data>",
+                "elementLink": "http://test-id-vasc.biodiversity.org.au/tree/9476777/9479620",
+                "nameLink": "http://test-id-vasc.biodiversity.org.au/name/apni/54576",
+                "instanceLink": "http://test-id-vasc.biodiversity.org.au/instance/apni/650575",
+                "excluded": false,
+                "depth": 7,
+                "synonymsHtml": "<synonyms></synonyms>"
+            },
+
+            ...
+
+            {
+                "displayHtml": "<data><scientific><name id='215455'><scientific><name id='100623'><element class='Triglochin'>Triglochin</element></name></scientific> <element class='turrifera'>turrifera</element> <authors><author id='6955' title='Ewart, A.J.'>Ewart</author></authors></name></scientific><citation>CHAH (2006), <i>Australian Plant Census</i></citation></data>",
+                "elementLink": "http://test-id-vasc.biodiversity.org.au/tree/9476777/9479645",
+                "nameLink": "http://test-id-vasc.biodiversity.org.au/name/apni/215455",
+                "instanceLink": "http://test-id-vasc.biodiversity.org.au/instance/apni/635661",
+                "excluded": false,
+                "depth": 9,
+                "synonymsHtml": "<synonyms><tax><scientific><name id='103161'><scientific><name id='100623'><element class='Triglochin'>Triglochin</element></name></scientific> <element class='turrifera'>turrifera</element> <authors><author id='6955' title='Ewart, A.J.'>Ewart</author></authors></name></scientific> <type>taxonomic synonym</type></tax><tax><scientific><name id='7377413'><scientific><name id='100623'><element class='Triglochin'>Triglochin</element></name></scientific> <element class='turrifera'>turrifera</element> <authors><author id='6833' title='Gardner, C.A.'>C.A.Gardner</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>"
+            }
+        ]
+    }
+
+}
+----
+
+
 
 ==== Editor
 
