@@ -40,7 +40,7 @@ This work is designed to make the tree easy to understand and reason about, and 
  . A link to an element on the tree should be able to identify the version of the tree and reproduce that version.
  . You should be able to link to a _version_ of the tree and get the current tree easily.
  .. You should be able to compare taxa in different version via an identifier. The identifier is unique to the _circumscribed_
- or enclosed taxa below this taxa. This identifier spans multiple versions of a tree.
+ or enclosed taxa below this taxa. This identifier spans multiple versions of a tree. See <<taxon identifiers>>
  . The tree must enforce strict rules about the placement of names on a tree.
  . Profile data including only Comment and Distribution data is to be stored in the tree structure.
  . Tree elements are pointers to an Instance as a representation of a Taxon Concept.
@@ -207,6 +207,16 @@ then entire tree in the context of the published tree.
 Each tree_version_element also has associated a _taxon identifier_ which identifies the concept of the taxon in terms of
 the data including the circumscription of the taxon (i.e. the taxa under this taxon). The taxon identifier can be used to
 compare taxon between versions, i.e. see if the concept has changed.
+
+The definition of a taxon for determining if it has changed is:
+
+* A taxon consists of the Name, it's Instance and it's children. Where an Instance defines the usage of the Name in a
+reference and it's Synonomy.
+* A taxon does *not* include the status (Excluded from this classification) or the Profile data (Comments and Distribution)
+which are part of the classification as published.
+
+A taxon will exist in many publications (versions) of a tree, so the distribution, comments and status may change over
+the publications.
 
 NOTE: See <<Existing links, Existing links  >> for resolving taxon identifiers
 

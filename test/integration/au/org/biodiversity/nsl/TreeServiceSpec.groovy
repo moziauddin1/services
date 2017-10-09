@@ -696,7 +696,6 @@ class TreeServiceSpec extends Specification {
         }
     }
 
-    //todo text taxonId changes
     def "test edit taxon profile"() {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
@@ -738,18 +737,21 @@ class TreeServiceSpec extends Specification {
 
         when: 'I update a profile on the draft version'
         TreeElement oldElement = anthoceros.treeElement
+        Long oldTaxonId = anthoceros.taxonId
         TreeVersionElement treeVersionElement = service.editProfile(anthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
 
         then: 'It creates a new treeElement and updates the profile'
         treeVersionElement
         oldElement
         treeVersionElement == anthoceros
+        treeVersionElement.taxonId == oldTaxonId
         treeVersionElement.treeElement != oldElement
         treeVersionElement.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
         treeVersionElement.treeElement.updatedBy == 'test edit profile'
 
         when: 'I change a profile to the same thing'
         TreeVersionElement anthocerosCapricornii = service.findElementBySimpleName('Anthoceros capricornii', draftVersion)
+        oldTaxonId = anthocerosCapricornii.taxonId
         TreeVersionElement treeVersionElement1 = service.editProfile(anthocerosCapricornii, ["APC Dist.":
                                                                                                      [
                                                                                                              "value"       : "WA, NT",
@@ -763,6 +765,7 @@ class TreeServiceSpec extends Specification {
 
         then: 'nothing changes'
         treeVersionElement1 == anthocerosCapricornii
+        treeVersionElement1.taxonId == oldTaxonId
         treeVersionElement1.treeElement.updatedBy == 'import'
         treeVersionElement1.treeElement.profile == ["APC Dist.":
                                                             [
@@ -776,7 +779,6 @@ class TreeServiceSpec extends Specification {
         ]
     }
 
-    //todo test taxonId changes
     def "test edit draft only taxon profile"() {
         given:
         Tree tree = service.createNewTree('aTree', 'aGroup', null)
@@ -805,12 +807,14 @@ class TreeServiceSpec extends Specification {
         when: 'I update a profile on the draft version'
         TreeElement oldElement = anthoceros.treeElement
         Timestamp oldTimestamp = anthoceros.treeElement.updatedAt
+        Long oldTaxonId = anthoceros.taxonId
         TreeVersionElement treeVersionElement = service.editProfile(anthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
 
-        then: 'It creates a new treeElement and updates the profile'
+        then: 'It creates a new treeElement and updates the profile and not the taxonId'
         treeVersionElement
         oldElement
         treeVersionElement == anthoceros
+        treeVersionElement.taxonId == oldTaxonId
         treeVersionElement.treeElement == oldElement
         treeVersionElement.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
         treeVersionElement.treeElement.updatedBy == 'test edit profile'
@@ -847,6 +851,7 @@ class TreeServiceSpec extends Specification {
         thrown(PublishedVersionException)
 
         when: 'I update a profile on the draft version'
+        Long oldTaxonId = anthoceros.taxonId
         TreeElement oldElement = anthoceros.treeElement
         TreeVersionElement treeVersionElement = service.editExcluded(anthoceros, true, 'test edit profile')
 
@@ -854,16 +859,19 @@ class TreeServiceSpec extends Specification {
         treeVersionElement
         oldElement
         treeVersionElement == anthoceros
+        treeVersionElement.taxonId == oldTaxonId
         treeVersionElement.treeElement != oldElement
         treeVersionElement.treeElement.excluded
         treeVersionElement.treeElement.updatedBy == 'test edit profile'
 
         when: 'I change a profile to the same thing'
         TreeVersionElement anthocerosCapricornii = service.findElementBySimpleName('Anthoceros capricornii', draftVersion)
+        oldTaxonId = anthocerosCapricornii.taxonId
         TreeVersionElement treeVersionElement1 = service.editExcluded(anthocerosCapricornii, false, 'test edit profile')
 
         then: 'nothing changes'
         treeVersionElement1 == anthocerosCapricornii
+        treeVersionElement1.taxonId == oldTaxonId
         treeVersionElement1.treeElement.updatedBy == 'import'
         !treeVersionElement1.treeElement.excluded
     }
