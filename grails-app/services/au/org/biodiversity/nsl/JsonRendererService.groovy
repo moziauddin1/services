@@ -425,6 +425,9 @@ class JsonRendererService {
                 referenceId        : tree.referenceId,
                 currentVersion     : briefTreeVersion(tree.currentTreeVersion),
                 defaultDraftVersion: briefTreeVersion(tree.defaultDraftTreeVersion),
+                descriptionHtml    : tree.descriptionHtml,
+                linkToHomePage     : tree.linkToHomePage,
+                acceptedTree       : tree.acceptedTree,
                 versions           : tree.treeVersions.collect { TreeVersion v -> briefTreeVersion(v) }
         ]
     }

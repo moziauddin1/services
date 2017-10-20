@@ -150,6 +150,7 @@ class TreeService implements ValidationUtils {
         getElementsByPath(parent.treeVersion, pattern)
     }
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     int countAllChildElements(TreeVersionElement parent) {
         mustHave(parent: parent, 'parent.treeElement': parent.treeElement, 'parent.treeVersion': parent.treeVersion)
         String pattern = "^${parent.treeElement.treePath}/.*"
@@ -274,27 +275,47 @@ select count(tve)
 
     /** Editing *****************************/
 
-    Tree createNewTree(String treeName, String groupName, Long referenceId) {
+    Tree createNewTree(String treeName, String groupName, Long referenceId, String descriptionHtml,
+                       String linkToHomePage, Boolean acceptedTree) {
         Tree tree = Tree.findByName(treeName)
         if (tree) {
             throw new ObjectExistsException("A Tree named $treeName already exists.")
         }
-        tree = new Tree(name: treeName, groupName: groupName, referenceId: referenceId)
+        tree = new Tree(
+                name: treeName,
+                groupName: groupName,
+                referenceId: referenceId,
+                descriptionHtml: descriptionHtml,
+                linkToHomePage: linkToHomePage,
+                acceptedTree: acceptedTree
+        )
         tree.save()
         linkService.addTargetLink(tree)
         return tree
     }
 
-    Tree editTree(Tree tree, String name, String groupName, Long referenceId) {
-        if (!(name && groupName)) {
-            throw new BadArgumentsException("Tree name ('$name') and Group name ('$groupName') must not be null.")
+    Tree editTree(Tree tree, String treeName, String groupName, Long referenceId, String descriptionHtml,
+                  String linkToHomePage, Boolean acceptedTree) {
+        if (!(treeName && groupName)) {
+            throw new BadArgumentsException("Tree name ('$treeName') and Group name ('$groupName') must not be null.")
         }
-        if (name != tree.name && Tree.findByName(name)) {
-            throw new ObjectExistsException("A Tree named $name already exists.")
+        if (treeName != tree.name && Tree.findByName(treeName)) {
+            throw new ObjectExistsException("A Tree named $treeName already exists.")
         }
-        tree.name = name
+
+        if (acceptedTree) {
+            //there can only be one. Don't set the current tree to false as this will all be done within a session
+            // and transaction.
+            Tree.executeUpdate('update Tree set acceptedTree = false where id <> :treeId', [treeId: tree.id])
+        }
+
+        tree.name = treeName
         tree.groupName = groupName
         tree.referenceId = referenceId
+        tree.descriptionHtml = descriptionHtml
+        tree.linkToHomePage = linkToHomePage
+
+        tree.acceptedTree = acceptedTree
         tree.save()
 
         return tree
@@ -389,6 +410,9 @@ DROP TABLE IF EXISTS orphans;
         treeVersion.publishedAt = new Timestamp(System.currentTimeMillis())
         treeVersion.publishedBy = publishedBy
         treeVersion.save()
+        if (treeVersion.tree.defaultDraftTreeVersion == treeVersion) {
+            treeVersion.tree.defaultDraftTreeVersion = null
+        }
         treeVersion.tree.currentTreeVersion = treeVersion
         treeVersion.tree.save()
         return treeVersion
@@ -465,6 +489,11 @@ DROP TABLE IF EXISTS orphans;
     String authorizeTreeOperation(Tree tree) {
         String groupName = tree.groupName
         SecurityUtils.subject.checkRole(groupName)
+        return SecurityUtils.subject.principal as String
+    }
+
+    String authorizeTreeBuilder() {
+        SecurityUtils.subject.checkRole('treeBuilder')
         return SecurityUtils.subject.principal as String
     }
 
@@ -552,7 +581,7 @@ WHERE tve1.tree_version_id = :treeVersionId
         notPublished(parent)
         TreeVersionElement originalParent = getParentTreeVersionElement(child)
 
-        TreeVersionElement childCopy = saveTreeVersionElement(copyTreeElement(child, parent.treeElement, userName), parent.treeVersion, child.taxonId)
+        TreeVersionElement childCopy = saveTreeVersionElement(copyTreeElement(child, parent.treeElement, userName), parent.treeVersion, child.taxonId, child.taxonLink)
 
         List<TreeVersionElement> kids = getChildElementsToDepth(child, 1)
 
@@ -568,7 +597,7 @@ WHERE tve1.tree_version_id = :treeVersionId
     /**
      * for each treeVersionElement in the parent branch set the taxonId to a new, unique value. This can only happen in
      * a draft tree version, so first check the taxonId is not already unique (i.e. already been updated in this version)
-     * before updating, to prevent wasting ID space.
+     * before updating, to prevent wasting ID space and links.
      *
      * This does *not* check the draft status of the parent, so it needs to be checked before calling.
      *
@@ -580,6 +609,7 @@ WHERE tve1.tree_version_id = :treeVersionId
         branchElements.each { TreeVersionElement element ->
             if (!isUniqueTaxon(element)) {
                 element.taxonId = nextSequenceId(sql)
+                element.taxonLink = linkService.addTaxonIdentifier(element)
                 element.save()
             }
         }
@@ -686,7 +716,7 @@ WHERE tve1.tree_version_id = :treeVersionId
     private copyChildElements(List<TreeVersionElement> kids, TreeVersionElement parent, String userName) {
         log.debug "copying kids $kids"
         for (TreeVersionElement kid in kids) {
-            TreeVersionElement kidCopy = saveTreeVersionElement(copyTreeElement(kid, parent.treeElement, userName), parent.treeVersion, kid.taxonId)
+            TreeVersionElement kidCopy = saveTreeVersionElement(copyTreeElement(kid, parent.treeElement, userName), parent.treeVersion, kid.taxonId, kid.taxonLink)
             copyChildElements(getChildElementsToDepth(kid, 1), kidCopy, userName)
         }
     }
@@ -767,12 +797,12 @@ WHERE tve1.tree_version_id = :treeVersionId
         return saveTreeVersionElement(treeElement, parentElement.treeVersion, taxonId)
     }
 
-    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version, Long taxonId) {
+    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version, Long taxonId, String taxonLink = null) {
 
         TreeVersionElement treeVersionElement = new TreeVersionElement(treeElement: element, treeVersion: version)
-        treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
-        treeVersionElement.taxonLink = 'TODO set this to a new taxon link' //todo set the taxon ID
         treeVersionElement.taxonId = taxonId
+        treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
+        treeVersionElement.taxonLink = taxonLink ?: linkService.addTaxonIdentifier(treeVersionElement)
         treeVersionElement.save()
         return treeVersionElement
     }

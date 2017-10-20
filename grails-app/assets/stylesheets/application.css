@@ -72,6 +72,10 @@ div.logo {
     display: inline;
 }
 
+.ui-autocomplete {
+    z-index: 10000;
+}
+
 @media(min-width:992px) and (max-width:1100px){
     div.logo img {
         -ms-transform: rotate(90deg) translate(50px, 50px);

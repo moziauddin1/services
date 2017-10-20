@@ -23,16 +23,15 @@ class TreeVersionController implements WithTarget, ValidationUtils {
 
     static allowedMethods = [
             createTreeVersion         : ['PUT'],
-            deleteTreeVersion         : ['DELETE'],
+            delete                    : ['DELETE', 'POST'],
             setDefaultDraftTreeVersion: ['PUT'],
             editTreeVersion           : ['POST'],
-            validateTreeVersion       : ['GET'],
+            validate                  : ['GET'],
             publishTreeVersion        : ['PUT'],
     ]
     static namespace = "api"
 
-
-    def deleteTreeVersion(Long id) {
+    def delete(Long id) {
         TreeVersion treeVersion = TreeVersion.get(id)
         ResultObject results = requireTarget(treeVersion, "Tree version with id: $id")
         handleResults(results) {
@@ -50,28 +49,37 @@ class TreeVersionController implements WithTarget, ValidationUtils {
         }
     }
 
-    def publishTreeVersion() {
+    def publish() {
         Map data = request.JSON as Map
-        TreeVersion treeVersion = TreeVersion.get(data.id as Long)
+        Long versionId = (data.versionId ?: null) as Long
         String logEntry = data.logEntry
-        ResultObject results = requireTarget(treeVersion, "Tree version $treeVersion")
+
+        TreeVersion treeVersion = TreeVersion.get(versionId)
+        ResultObject results = requireTarget(treeVersion, "Tree version with id: $versionId")
         handleResults(results) {
-            String user = treeService.authorizeTreeOperation(treeVersion.tree)
-            results.payload = treeService.publishTreeVersion(treeVersion, user.principal.toString(), logEntry)
+            String userName = treeService.authorizeTreeOperation(treeVersion.tree)
+            results.payload = treeService.publishTreeVersion(treeVersion, userName, logEntry)
         }
     }
 
-    def editTreeVersion() {
+    def edit() {
         Map data = request.JSON as Map
-        TreeVersion treeVersion = TreeVersion.get(data.id as Long)
-        ResultObject results = requireTarget(treeVersion, "Tree version with id: $data.id")
+        Long versionId = (data.versionId ?: null) as Long
+        String draftName = data.draftName
+        Boolean defaultVersion = data.defaultDraft
+
+        TreeVersion treeVersion = TreeVersion.get(versionId)
+        ResultObject results = requireTarget(treeVersion, "Tree version with id: $versionId")
         handleResults(results) {
             treeService.authorizeTreeOperation(treeVersion.tree)
-            results.payload = treeService.editTreeVersion(treeVersion, data.draftName as String)
+            results.payload = treeService.editTreeVersion(treeVersion, draftName)
+            if (defaultVersion) {
+                treeService.setDefaultDraftVersion(treeVersion)
+            }
         }
     }
 
-    def validateTreeVersion(Long version) {
+    def validate(Long version) {
         log.debug "validate tree version $version"
         TreeVersion treeVersion = TreeVersion.get(version)
         ResultObject results = requireTarget(treeVersion, "Tree version with id: $version")

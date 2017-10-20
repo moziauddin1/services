@@ -92,11 +92,18 @@ class RestResourceController {
     @Timed()
     def tree(String shard, Long idNumber) {
         TreeVersion treeVersion
-        treeVersion = Tree.get(idNumber)?.currentTreeVersion
-        if (treeVersion == null) {
-            return notFound("We couldn't find a tree version with id $shard")
+        Tree tree = Tree.get(idNumber)
+        if (tree == null) {
+            return notFound("We couldn't find a tree with id $idNumber in $shard")
         }
-        List<TreeVersion> versions = TreeVersion.findAllByTree(treeVersion.tree, [sort: 'id', order: 'desc'])
+
+        List<TreeVersion> versions = TreeVersion.findAllByTree(tree, [sort: 'id', order: 'desc'])
+
+        if (!versions) {
+            return notFound("We couldn't find any versions for $tree.name. You need to create one.")
+        }
+        treeVersion = tree.currentTreeVersion ?: versions.first()
+
         if (response.format == 'html') {
             List<DisplayElement> children = treeService.displayElementsToLimit(treeVersion, 2000)
             log.debug "Showing ${children.size()} child elements."

@@ -28,7 +28,7 @@ class TreeServiceSpec extends Specification {
 
     void "test create new tree"() {
         when: 'I create a new unique tree'
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = service.createNewTree('aTree', 'aGroup', null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'It should work'
         tree
@@ -40,25 +40,25 @@ class TreeServiceSpec extends Specification {
         tree.id != null
 
         when: 'I try and create another tree with the same name'
-        service.createNewTree('aTree', 'aGroup', null)
+        service.createNewTree('aTree', 'aGroup', null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'It will fail with an exception'
         thrown ObjectExistsException
 
         when: 'I try and create another tree with null name'
-        service.createNewTree(null, 'aGroup', null)
+        service.createNewTree(null, 'aGroup', null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'It will fail with an exception'
         thrown ValidationException
 
         when: 'I try and create another tree with null group name'
-        service.createNewTree('aNotherTree', null, null)
+        service.createNewTree('aNotherTree', null, null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'It will fail with an exception'
         thrown ValidationException
 
         when: 'I try and create another tree with reference ID'
-        Tree tree2 = service.createNewTree('aNotherTree', 'aGroup', 12345l)
+        Tree tree2 = service.createNewTree('aNotherTree', 'aGroup', 12345l, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'It will work'
         tree2
@@ -69,8 +69,8 @@ class TreeServiceSpec extends Specification {
 
     void "Test editing tree"() {
         given:
-        Tree atree = new Tree(name: 'aTree', groupName: 'aGroup').save()
-        Tree btree = new Tree(name: 'b tree', groupName: 'aGroup').save()
+        Tree atree = makeATestTree() //new Tree(name: 'aTree', groupName: 'aGroup').save()
+        Tree btree = makeBTestTree() //new Tree(name: 'b tree', groupName: 'aGroup').save()
         Long treeId = atree.id
 
         expect:
@@ -78,10 +78,10 @@ class TreeServiceSpec extends Specification {
         treeId
         atree.name == 'aTree'
         btree
-        btree.name == 'b tree'
+        btree.name == 'bTree'
 
         when: 'I change the name of a tree'
-        Tree tree2 = service.editTree(atree, 'A new name', atree.groupName, 123456)
+        Tree tree2 = service.editTree(atree, 'A new name', atree.groupName, 123456, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'The name and referenceID are changed'
         atree == tree2
@@ -91,7 +91,7 @@ class TreeServiceSpec extends Specification {
 
         when: 'I change nothing'
 
-        Tree tree3 = service.editTree(atree, 'A new name', atree.groupName, 123456)
+        Tree tree3 = service.editTree(atree, 'A new name', atree.groupName, 123456, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'everything remains the same'
         atree == tree3
@@ -101,7 +101,7 @@ class TreeServiceSpec extends Specification {
 
         when: 'I change the group and referenceId'
 
-        Tree tree4 = service.editTree(atree, atree.name, 'A different group', null)
+        Tree tree4 = service.editTree(atree, atree.name, 'A different group', null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'changes as expected'
         atree == tree4
@@ -111,21 +111,21 @@ class TreeServiceSpec extends Specification {
 
         when: 'I give a null name'
 
-        service.editTree(atree, null, atree.groupName, null)
+        service.editTree(atree, null, atree.groupName, null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'I get a bad argument exception'
         thrown BadArgumentsException
 
         when: 'I give a null group name'
 
-        service.editTree(atree, atree.name, null, null)
+        service.editTree(atree, atree.name, null, null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'I get a bad argument exception'
         thrown BadArgumentsException
 
         when: 'I give a name that is the same as another tree'
 
-        service.editTree(atree, btree.name, atree.groupName, null)
+        service.editTree(atree, btree.name, atree.groupName, null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
         then: 'I get a object exists exception'
         thrown ObjectExistsException
@@ -133,7 +133,7 @@ class TreeServiceSpec extends Specification {
 
     def "test creating a tree version"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
 
         expect:
@@ -227,7 +227,7 @@ class TreeServiceSpec extends Specification {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, testElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
@@ -265,7 +265,7 @@ class TreeServiceSpec extends Specification {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, testElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
@@ -329,7 +329,7 @@ class TreeServiceSpec extends Specification {
 
     def "test check validation, existing instance"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData])
         Instance asperaInstance = Instance.get(781104)
@@ -359,7 +359,7 @@ class TreeServiceSpec extends Specification {
 
     def "test check validation, ranked above parent"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData])
         Instance doodiaInstance = Instance.get(578615)
@@ -397,7 +397,7 @@ class TreeServiceSpec extends Specification {
 
     def "test check validation, nomIlleg nomInval"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData])
         Instance doodiaInstance = Instance.get(578615)
@@ -437,7 +437,7 @@ class TreeServiceSpec extends Specification {
 
     def "test check validation, existing name"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData])
         Instance asperaInstance = Instance.get(781104)
@@ -468,7 +468,7 @@ class TreeServiceSpec extends Specification {
     def "test place taxon"() {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData])
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
@@ -504,25 +504,32 @@ class TreeServiceSpec extends Specification {
         then: 'It should work'
         1 * service.linkService.getObjectForLink(instanceUri) >> asperaInstance
         1 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        3 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
+            println "Adding taxonIdentifier for $tve"
+            "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
+        }
         result.childElement == service.findElementBySimpleName('Doodia aspera', draftVersion)
         result.warnings.empty
         //taxon id should be set to a unique/new positive value
         result.childElement.taxonId != 0
         TreeVersionElement.countByTaxonId(result.childElement.taxonId) == 1
+        result.childElement.taxonLink == "http://localhost:7070/nsl-mapper/taxon/apni/${result.childElement.taxonId}"
         //taxon id for the taxon above has changed to new IDs
         blechnaceaeElement.taxonId != 0
         blechnaceaeElement.taxonId != blechnaceaeTaxonId
         TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) == 1
+        blechnaceaeElement.taxonLink == "http://localhost:7070/nsl-mapper/taxon/apni/$blechnaceaeElement.taxonId"
         doodiaElement.taxonId != 0
         doodiaElement.taxonId != doodiaTaxonId
         TreeVersionElement.countByTaxonId(doodiaElement.taxonId) == 1
+        doodiaElement.taxonLink == "http://localhost:7070/nsl-mapper/taxon/apni/$doodiaElement.taxonId"
 
         println result.childElement.elementLink
     }
 
     def "test move a taxon"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
         List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
@@ -564,8 +571,14 @@ class TreeServiceSpec extends Specification {
             [success: true]
         }
         6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        9 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
+            println "Adding taxonIdentifier for $tve"
+            "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
+        }
         newAnthoceros
         newAnthoceros != anthoceros
+        newAnthoceros.taxonId == anthoceros.taxonId
+        newAnthoceros.taxonLink == anthoceros.taxonLink
         TreeVersionElement.get(anthoceros.elementLink) == null
         newAnthoceros == service.findElementBySimpleName('Anthoceros', draftVersion)
         newAnthoceros.treeVersion == draftVersion
@@ -597,7 +610,7 @@ class TreeServiceSpec extends Specification {
 
     def "test move a taxon with multiple child levels"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
         List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
@@ -641,8 +654,14 @@ class TreeServiceSpec extends Specification {
             [success: true]
         }
         11 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        5 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
+            println "Adding taxonIdentifier for $tve"
+            "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
+        }
         newAnthocerotales
         newAnthocerotales != anthocerotales
+        newAnthocerotales.taxonId == anthocerotales.taxonId
+        newAnthocerotales.taxonLink == anthocerotales.taxonLink
         newAnthocerotales == service.findElementBySimpleName('Anthocerotales', draftVersion)
         draftVersion.treeVersionElements.size() == 30
         newAnthocerotalesChildren.size() == 10
@@ -659,7 +678,7 @@ class TreeServiceSpec extends Specification {
 
     def "test remove a taxon"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
@@ -687,6 +706,10 @@ class TreeServiceSpec extends Specification {
         int count = service.removeTreeVersionElement(anthoceros)
 
         then: 'It works'
+        6 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
+            println "Adding taxonIdentifier for $tve"
+            "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
+        }
         count == 6
         draftVersion.treeVersionElements.size() == 24
         service.findElementBySimpleName('Anthoceros', draftVersion) == null
@@ -700,7 +723,7 @@ class TreeServiceSpec extends Specification {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, testElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
@@ -781,7 +804,7 @@ class TreeServiceSpec extends Specification {
 
     def "test edit draft only taxon profile"() {
         given:
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, testElementData())
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
@@ -825,7 +848,7 @@ class TreeServiceSpec extends Specification {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
-        Tree tree = service.createNewTree('aTree', 'aGroup', null)
+        Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
         makeTestElements(draftVersion, testElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
@@ -876,6 +899,14 @@ class TreeServiceSpec extends Specification {
         !treeVersionElement1.treeElement.excluded
     }
 
+    private Tree makeATestTree() {
+        service.createNewTree('aTree', 'aGroup', null, '<p>A description</p>', 'http://trees.org/aTree', false)
+    }
+
+    private Tree makeBTestTree() {
+        service.createNewTree('bTree', 'aGroup', null, '<p>B description</p>', 'http://trees.org/bTree', false)
+    }
+
     private static List<TreeElement> makeTestElements(TreeVersion version, List<Map> elementData) {
         List<TreeElement> elements = []
         Map<Long, Long> generatedIdMapper = [:]
@@ -898,7 +929,7 @@ class TreeServiceSpec extends Specification {
                     treeElement: e,
                     taxonId: e.id * 10, //generate a taxon id
                     elementLink: "http://localhost:7070/nsl-mapper/tree/$version.id/$e.id",
-                    taxonLink: 'http://localhost:7070/nsl-mapper/node/apni/12345')
+                    taxonLink: "http://localhost:7070/nsl-mapper/taxon/apni/${e.id * 10}")
             tve.save()
             elements.add(e)
         }

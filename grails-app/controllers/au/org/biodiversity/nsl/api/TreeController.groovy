@@ -16,29 +16,29 @@ class TreeController implements WithTarget, ValidationUtils {
     def linkService
 
     static responseFormats = [
-            createTree                : ['json', 'html'],
-            editTree                  : ['json', 'html'],
-            copyTree                  : ['json', 'html'],
-            deleteTree                : ['json', 'html'],
-            createTreeVersion         : ['json', 'html'],
-            placeTaxon                : ['json', 'html'],
-            moveTaxon                 : ['json', 'html'],
-            removeTaxon               : ['json', 'html'],
-            editTaxonProfile          : ['json', 'html'],
-            editTaxonStatus           : ['json', 'html']
+            createTree      : ['json', 'html'],
+            editTree        : ['json', 'html'],
+            copyTree        : ['json', 'html'],
+            deleteTree      : ['json', 'html'],
+            createVersion   : ['json', 'html'],
+            placeTaxon      : ['json', 'html'],
+            moveTaxon       : ['json', 'html'],
+            removeTaxon     : ['json', 'html'],
+            editTaxonProfile: ['json', 'html'],
+            editTaxonStatus : ['json', 'html']
     ]
 
     static allowedMethods = [
-            createTree                : ['PUT'],
-            editTree                  : ['POST'],
-            copyTree                  : ['PUT'],
-            deleteTree                : ['DELETE'],
-            createTreeVersion         : ['PUT'],
-            placeTaxon                : ['PUT'],
-            moveTaxon                 : ['PUT'],
-            removeTaxon               : ['DELETE'],
-            editTaxonProfile          : ['POST'],
-            editTaxonStatus           : ['POST']
+            createTree      : ['PUT'],
+            editTree        : ['POST'],
+            copyTree        : ['PUT'],
+            deleteTree      : ['DELETE'],
+            createVersion   : ['PUT'],
+            placeTaxon      : ['PUT'],
+            moveTaxon       : ['PUT'],
+            removeTaxon     : ['DELETE'],
+            editTaxonProfile: ['POST'],
+            editTaxonStatus : ['POST']
     ]
     static namespace = "api"
 
@@ -46,17 +46,31 @@ class TreeController implements WithTarget, ValidationUtils {
         [trees: Tree.list()]
     }
 
-    def createTree(String treeName, String groupName, Long refId) {
-        ResultObject results = require(['Tree Name': treeName, 'Group Name': groupName])
-        handleResults(results) {
-            results.payload = treeService.createNewTree(treeName, groupName, refId)
+    def createTree() {
+        withJsonData(request.JSON, false, ['treeName', 'descriptionHtml']) { ResultObject results, Map data ->
+            String treeName = data.treeName
+            String groupName = data.groupName
+            Long referenceId = data.referenceId
+            String descriptionHtml = data.descriptionHtml
+            String linkToHomePage = data.linkToHomePage
+            Boolean acceptedTree = data.acceptedTree
+
+            String userName = treeService.authorizeTreeBuilder()
+            results.payload = treeService.createNewTree(treeName, groupName ?: userName, referenceId, descriptionHtml, linkToHomePage, acceptedTree)
         }
     }
 
     def editTree() {
         withTree { ResultObject results, Tree tree, Map data ->
             treeService.authorizeTreeOperation(tree)
-            results.payload = treeService.editTree(tree, (String) data.name, (String) data.groupName, (Long) data.referenceId)
+            results.payload = treeService.editTree(tree,
+                    (String) data.treeName,
+                    (String) data.groupName,
+                    (Long) data.referenceId,
+                    (String) data.descriptionHtml,
+                    (String) data.linkToHomePage,
+                    (Boolean) data.acceptedTree
+            )
         }
     }
 
@@ -76,16 +90,26 @@ class TreeController implements WithTarget, ValidationUtils {
      * this new version. If defaultVersion is set to true then the new version becomes the default draft version.
      * @return
      */
-    def createTreeVersion(Long id, Long fromVersionId, String draftName, Boolean defaultVersion) {
-        Tree tree = Tree.get(id)
-        TreeVersion fromVersion = TreeVersion.get(fromVersionId)
-        ResultObject results = requireTarget(tree, "Tree with id: $id")
-        handleResults(results) {
-            treeService.authorizeTreeOperation(tree)
-            if (defaultVersion) {
-                results.payload = treeService.createDefaultDraftVersion(tree, fromVersion, draftName)
+    def createVersion() {
+        withJsonData(request.JSON, false, ['treeId', 'draftName']) { ResultObject results, Map data ->
+            Long treeId = data.treeId
+            Long fromVersionId = data.fromVersionId
+            String draftName = data.draftName
+            Boolean defaultVersion = data.defaultDraft
+
+            Tree tree = Tree.get(treeId)
+            if (tree) {
+                treeService.authorizeTreeOperation(tree)
+
+                TreeVersion fromVersion = TreeVersion.get(fromVersionId)
+                if (defaultVersion) {
+                    results.payload = treeService.createDefaultDraftVersion(tree, fromVersion, draftName)
+                } else {
+                    results.payload = treeService.createTreeVersion(tree, fromVersion, draftName)
+                }
             } else {
-                results.payload = treeService.createTreeVersion(tree, fromVersion, draftName)
+                results.ok = false
+                results.fail("Tree with id $treeId not found", NOT_FOUND)
             }
         }
     }
@@ -168,13 +192,12 @@ class TreeController implements WithTarget, ValidationUtils {
         results.ok = true
         if (!json) {
             results.ok = false
-            results.status = BAD_REQUEST
-            results.error("JSON paramerters not supplied. You must supply JSON parameters ${list ? 'as a list' : required.keySet()}.")
+            results.fail("JSON paramerters not supplied. You must supply JSON parameters ${list ? 'as a list' : required.keySet()}.",
+                    BAD_REQUEST)
         }
         if (list && !(json.class instanceof JSONArray)) {
             results.ok = false
-            results.status = BAD_REQUEST
-            results.error("JSON paramerters not supplied. You must supply JSON parameters as a list.")
+            results.fail("JSON paramerters not supplied. You must supply JSON parameters as a list.", BAD_REQUEST)
         }
         if (list) {
             List data = RestCallService.convertJsonList(json as JSONArray)
@@ -186,7 +209,7 @@ class TreeController implements WithTarget, ValidationUtils {
             for (String key in requiredKeys) {
                 if (!data[key]) {
                     results.ok = false
-                    results.error("$key not supplied. You must supply $key.")
+                    results.fail("$key not supplied. You must supply $key.", BAD_REQUEST)
                 }
             }
             handleResults(results) {

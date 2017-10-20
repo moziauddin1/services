@@ -1,6 +1,7 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.*
+import grails.converters.JSON
 import grails.test.mixin.Mock
 import grails.test.mixin.TestFor
 import grails.test.mixin.TestMixin
@@ -44,50 +45,94 @@ class TreeControllerSpec extends Specification {
 
     void "test creating a tree"() {
         given:
-        String treeName = 'aTree'
-        String groupName = 'aGroup'
-        Long refId = null
-        request.method = 'PUT'
+        Map req = [treeName       : 'aTree',
+                   groupName      : 'aGroup',
+                   referenceId    : null,
+                   descriptionHtml: '<p>description</p>'
+        ]
 
         when: 'I create a new tree'
-        def data = jsonCall { controller.createTree(treeName, groupName, refId) }
+        def data = jsonCall('PUT', req) { controller.createTree() }
 
         then: 'I get an OK response'
-        1 * treeService.createNewTree(treeName, groupName, refId) >> new Tree(name: treeName, groupName: groupName, referenceId: refId)
+        1 * treeService.createNewTree(req.treeName, req.groupName, req.referenceId, req.descriptionHtml, null, null) >> {
+            new Tree(name: req.treeName, groupName: req.groupName, referenceId: req.referenceId, descriptionHtml: req.descriptionHtml)
+        }
         response.status == 200
         data.ok == true
-        data.payload.name == treeName
-        data.payload.groupName == groupName
+        data.payload.name == req.treeName
+        data.payload.groupName == req.groupName
+    }
+
+    void "test creating a tree sans group name"() {
+        given:
+        Map req = [treeName       : 'aTree',
+                   groupName      : null,
+                   referenceId    : null,
+                   descriptionHtml: '<p>description</p>'
+        ]
 
         when: 'I create a new tree without a groupName'
-        data = jsonCall { controller.createTree(treeName, null, refId) }
+        def data = jsonCall('PUT', req) { controller.createTree() }
 
-        then: 'I get a fail'
-        response.status == 400
-        data.ok == false
-        data.error == 'Group Name not supplied. You must supply Group Name.'
+        then: 'It replaces the null group with username'
+        1 * treeService.authorizeTreeBuilder() >> 'username'
+        1 * treeService.createNewTree(req.treeName, 'username', req.referenceId, req.descriptionHtml, null, null) >> {
+            new Tree(name: req.treeName, groupName: 'username', referenceId: req.referenceId, descriptionHtml: req.descriptionHtml)
+        }
+        response.status == 200
+        data.ok == true
+        data.payload.name == req.treeName
+        data.payload.groupName == 'username'
+    }
+
+    void "test creating a tree sans tree name"() {
+        given:
+        Map req = [treeName       : null,
+                   groupName      : 'aGroup',
+                   referenceId    : null,
+                   descriptionHtml: '<p>description</p>'
+        ]
 
         when: 'I create a new tree without a treeName'
-        data = jsonCall { controller.createTree(null, groupName, refId) }
+        def data = jsonCall('PUT', req) { controller.createTree() }
 
         then: 'I get a fail'
         response.status == 400
         data.ok == false
-        data.error == 'Tree Name not supplied. You must supply Tree Name.'
+        data.error == 'treeName not supplied. You must supply treeName.'
+    }
+
+    void "test creating a tree sans description html"() {
+        given:
+        Map req = [treeName       : 'aTree',
+                   groupName      : 'aGroup',
+                   referenceId    : null,
+                   descriptionHtml: null
+        ]
+
+        when: 'I create a new tree without a treeName'
+        def data = jsonCall('PUT', req) { controller.createTree() }
+
+        then: 'I get a fail'
+        response.status == 400
+        data.ok == false
+        data.error == 'descriptionHtml not supplied. You must supply descriptionHtml.'
     }
 
     void "test creating a tree that exists"() {
         given:
-        String name = 'aTree'
-        String group = 'aGroup'
-        Long ref = null
-        request.method = 'PUT'
-        treeService.createNewTree(name, group, ref) >> { String treeName, String groupName, Long refId ->
+        Map req = [treeName       : 'aTree',
+                   groupName      : 'aGroup',
+                   referenceId    : null,
+                   descriptionHtml: 'desc'
+        ]
+        treeService.createNewTree(_, _, _, _, _, _) >> {
             throw new ObjectExistsException('Object exists')
         }
 
         when: 'I create a new tree with a name that exists'
-        def data = jsonCall { controller.createTree(name, group, ref) }
+        def data = jsonCall('PUT', req) { controller.createTree() }
 
         then: 'I get a CONFLICT fail response with object exists'
         response.status == 409
@@ -97,17 +142,18 @@ class TreeControllerSpec extends Specification {
 
     void "test creating a tree that clashes with db validation"() {
         given:
-        String name = 'aTree'
-        String group = 'aGroup'
-        Long ref = null
-        request.method = 'PUT'
-        treeService.createNewTree(name, group, ref) >> { String treeName, String groupName, Long refId ->
+        Map req = [treeName       : 'aTree',
+                   groupName      : 'aGroup',
+                   referenceId    : null,
+                   descriptionHtml: 'desc'
+        ]
+        treeService.createNewTree(_, _, _, _, _, _) >> {
             Errors errors = mockErrors()
             throw new ValidationException('validation error', errors)
         }
 
         when: 'I create a new tree with a name that exists'
-        def data = jsonCall { controller.createTree(name, group, ref) }
+        def data = jsonCall('PUT', req) { controller.createTree() }
 
         then: 'I get an Fail response with object exists'
         response.status == 500
@@ -117,10 +163,16 @@ class TreeControllerSpec extends Specification {
 
     void "test editing a tree"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup').save()
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
         Long treeId = tree.id
-        request.method = 'POST'
-        request.json = "{\"id\": $treeId, \"name\": \"A New Name\", \"referenceId\": 123456, \"groupName\": \"aGroup\"}".toString()
+        Map req = [id             : treeId,
+                   treeName       : 'A New Name',
+                   referenceId    : 123456,
+                   groupName      : 'aGroup',
+                   descriptionHtml: '<p>description</p>',
+                   linkToHomePage : 'http://something.com',
+                   acceptedTree   : true
+        ]
 
         expect:
         tree
@@ -128,25 +180,37 @@ class TreeControllerSpec extends Specification {
         tree.name == 'aTree'
 
         when: 'I change the name of a tree'
-        def data = jsonCall { controller.editTree() }
+        def data = jsonCall('POST', req) { controller.editTree() }
 
         then: 'It works'
-        1 * treeService.editTree(tree, 'A New Name', 'aGroup', 123456) >> { Tree tree2, String name, String group, Long refId ->
+
+        1 * treeService.editTree(tree, req.treeName,
+                req.groupName,
+                req.referenceId,
+                req.descriptionHtml,
+                req.linkToHomePage,
+                req.acceptedTree) >> { Tree tree2, String name, String group, Long refId, String desc, String link, Boolean acc ->
             tree2.name = name
             tree2.referenceId = refId
             tree2.groupName = group
+            tree2.descriptionHtml = desc
+            tree2.linkToHomePage = link
+            tree2.acceptedTree = acc
             tree2.save()
             return tree2
         }
         response.status == 200
         data.ok
         data.payload
-        data.payload.name == 'A New Name'
-        data.payload.groupName == 'aGroup'
-        data.payload.referenceId == 123456
+        data.payload.name == req.treeName
+        data.payload.groupName == req.groupName
+        data.payload.referenceId == req.referenceId
+        data.payload.linkToHomePage == req.linkToHomePage
+        data.payload.descriptionHtml == req.descriptionHtml
+        data.payload.acceptedTree == req.acceptedTree
 
         when: 'Im not authorized'
-        data = jsonCall { controller.editTree() }
+        data = jsonCall('POST', req) { controller.editTree() }
 
         then: 'I get a Authorization exception'
         1 * treeService.authorizeTreeOperation(tree) >> { Tree tree1 ->
@@ -160,17 +224,24 @@ class TreeControllerSpec extends Specification {
 
     void "test validation error editing a tree"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup').save()
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
         Long treeId = tree.id
-        request.method = 'POST'
-        request.json = "{\"id\": $treeId, \"name\": \"A New Name\", \"referenceId\": 123456, \"groupName\": \"aGroup\"}".toString()
-        treeService.editTree(_, _, _, _) >> { Tree tree2, String name, String group, Long refId ->
+        Map req = [id             : treeId,
+                   treeName       : 'A New Name',
+                   referenceId    : 123456,
+                   groupName      : 'aGroup',
+                   descriptionHtml: '<p>description</p>',
+                   linkToHomePage : 'http://something.com',
+                   acceptedTree   : true
+        ]
+
+        treeService.editTree(_, _, _, _, _, _, _) >> { Tree tree2, String name, String group, Long refId, String desc, String link, Boolean acc ->
             Errors errors = mockErrors()
             throw new ValidationException('validation error', errors)
         }
 
-        when: 'I do something gets a validation exception'
-        def data = jsonCall { controller.editTree() }
+        when: 'I do something that gets a validation exception'
+        def data = jsonCall('POST', req) { controller.editTree() }
 
         then: 'It gives a validation error'
         response.status == 500
@@ -180,14 +251,20 @@ class TreeControllerSpec extends Specification {
 
     void "test non existent tree editing a tree"() {
         given:
-        request.method = 'POST'
-        request.json = "{\"id\": 23, \"name\": \"A New Name\", \"referenceId\": 123456, \"groupName\": \"aGroup\"}".toString()
-        treeService.editTree(_, _, _, _) >> { Tree tree2, String name, String group, Long refId ->
+        Map req = [id             : 23,
+                   treeName       : 'A New Name',
+                   referenceId    : 123456,
+                   groupName      : 'aGroup',
+                   descriptionHtml: '<p>description</p>',
+                   linkToHomePage : 'http://something.com',
+                   acceptedTree   : true
+        ]
+        treeService.editTree(_, _, _, _, _, _, _) >> { Tree tree2, String name, String group, Long refId, String desc, String link, Boolean acc ->
             fail('shouldn\'t call edit tree')
         }
 
         when: 'I edit a non existent tree'
-        def data = jsonCall { controller.editTree() }
+        def data = jsonCall('POST', req) { controller.editTree() }
 
         then: 'It gives a not found error'
         response.status == 404
@@ -197,14 +274,15 @@ class TreeControllerSpec extends Specification {
 
     void "test creating a new version"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup').save()
-        request.method = 'PUT'
-
-        expect:
-        tree
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Map req = [treeId       : tree.id,
+                   fromVersionId: null,
+                   draftName    : 'my draft tree',
+                   defaultDraft : false
+        ]
 
         when: 'I create a new version for a tree with no version'
-        def data = jsonCall { controller.createTreeVersion(tree.id, null, 'my draft tree', false) }
+        def data = jsonCall('PUT', req) { controller.createVersion() }
 
         then: 'I should get an OK response'
         1 * treeService.createTreeVersion(_, _, _) >> { Tree tree1, TreeVersion version, String draftName ->
@@ -216,23 +294,40 @@ class TreeControllerSpec extends Specification {
         data.ok == true
         data.payload
         data.payload.draftName == 'my draft tree'
+    }
+
+    void "test creating a new version no draft name"() {
+        given:
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Map req = [treeId       : tree.id,
+                   fromVersionId: null,
+                   draftName    : null,
+                   defaultDraft : false
+        ]
 
         when: 'I forget something like draftName'
-        data = jsonCall { controller.createTreeVersion(tree.id, null, '', false) }
+        def data = jsonCall('PUT', req) { controller.createVersion() }
 
         then: 'I get a bad argument response'
-        1 * treeService.createTreeVersion(_, _, _) >> { Tree tree1, TreeVersion version, String draftName ->
-            throw new BadArgumentsException('naughty')
-        }
         response.status == 400
         data.ok == false
-        data.error == 'naughty'
+        data.error == 'draftName not supplied. You must supply draftName.'
+    }
+
+    void "test creating a new version unauthorized"() {
+        given:
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Map req = [treeId       : tree.id,
+                   fromVersionId: null,
+                   draftName    : 'blargh',
+                   defaultDraft : false
+        ]
 
         when: 'Im not authorized'
-        data = jsonCall { controller.createTreeVersion(tree.id, null, '', false) }
+        def data = jsonCall('PUT', req) { controller.createVersion() }
 
         then: 'I get a Authorization exception'
-        1 * treeService.authorizeTreeOperation(tree) >> { Tree tree1 ->
+        1 * treeService.authorizeTreeOperation(_) >> { Tree tree1 ->
             throw new AuthorizationException('Black Hatz')
         }
         response.status == 403
@@ -276,8 +371,12 @@ class TreeControllerSpec extends Specification {
 //        data.error == 'oops'
 //    }
 
-    private def jsonCall(Closure action) {
+    private def jsonCall(String method, Map dataMap, Closure action) {
         response.reset()
+        String jsonData = (dataMap as JSON).toString()
+        println "JSON data sent: $jsonData"
+        request.method = method
+        request.json = jsonData
         response.format = 'json'
         action()
         println "response: ${response.text}"

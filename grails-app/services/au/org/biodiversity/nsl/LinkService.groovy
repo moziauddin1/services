@@ -75,6 +75,10 @@ class LinkService {
     @Timed()
     String addTargetLink(target) {
         String identity = new TargetParam(target, nameSpace()).addIdentityParamString() + "&" + mapperAuth()
+        return addIdentifier(identity, target.toString())
+    }
+
+    private String addIdentifier(String identity, String target) {
         String mapper = mapper(true)
         String newLink = null
         try {
@@ -98,6 +102,17 @@ class LinkService {
             log.error "Error $e.message adding link for $target"
         }
         return newLink
+    }
+
+    /**
+     * taxon identifier is a synthetic object, or a tag identifier and relates to many tree_version_elements. This creates
+     * a taxon object type identifier of the form host/taxon/namespace/123456 where namespace is more a service identifier.
+     * @param treeVersionElement
+     * @return
+     */
+    String addTaxonIdentifier(TreeVersionElement treeVersionElement) {
+        String identity = "nameSpace=${nameSpace()}&objectType=taxon&idNumber=${treeVersionElement.taxonId}"
+        return addIdentifier(identity, "Taxon ID ${treeVersionElement.taxonId}")
     }
 
     Map bulkAddTargets(Collection<TreeVersionElement> targets) {
