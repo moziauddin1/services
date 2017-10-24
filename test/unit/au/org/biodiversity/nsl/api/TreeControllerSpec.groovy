@@ -275,7 +275,7 @@ class TreeControllerSpec extends Specification {
     void "test creating a new version"() {
         given:
         Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
-        Map req = [treeId       : tree.id,
+        Map req = [treeId       : tree.id.toString(),
                    fromVersionId: null,
                    draftName    : 'my draft tree',
                    defaultDraft : false

@@ -174,13 +174,28 @@ class RestCallService {
     static Map jsonObjectToMap(JSONObject object) {
         Map map = [:]
         object.keySet().each { String key ->
-            if (object[key] == JSONObject.NULL) {
-                map.put(key, null)
-            } else {
-                map.put(key, object[key])
-            }
+            map.put(key, intelligentType(object, key))
         }
         return map
+    }
+
+    private static def intelligentType(JSONObject jsonObject, String key) {
+        if (jsonObject.isNull(key)) {
+            return null
+        }
+        def thing = jsonObject.get(key)
+        if (thing instanceof JSONArray) {
+            convertJsonList(thing)
+        }
+        if (thing instanceof JSONObject) {
+            jsonObjectToMap(thing)
+        }
+        if (thing instanceof String) {
+            if (thing.isLong()) {
+                return thing.toLong()
+            }
+        }
+        return thing
     }
 
     private static List<String> getJsonErrorMessages(Map response) {
