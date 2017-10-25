@@ -190,7 +190,10 @@ class RestCallService {
         if (thing instanceof JSONObject) {
             jsonObjectToMap(thing)
         }
-        if (thing instanceof String) {
+        if (key.endsWith('Id') && thing instanceof String) {
+            if (thing.isEmpty()) {
+                return null
+            }
             if (thing.isLong()) {
                 return thing.toLong()
             }
