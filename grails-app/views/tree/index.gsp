@@ -286,24 +286,6 @@
     </button>
   </shiro:hasRole>
 
-  <h2>API end points</h2>
-  <dl class="dl-horizontal">
-    <dt>createTree</dt> <dd>['PUT']</dd>
-    <dt>editTree</dt> <dd>['POST']</dd>
-    <dt>copyTree</dt> <dd>['PUT']</dd>
-    <dt>deleteTree</dt> <dd>['DELETE']</dd>
-    <dt>createTreeVersion</dt> <dd>['PUT']</dd>
-    <dt>setDefaultDraftTreeVersion</dt> <dd>['PUT']</dd>
-    <dt>editTreeVersion</dt> <dd>['POST']</dd>
-    <dt>validateTreeVersion</dt> <dd>['GET']</dd>
-    <dt>publishTreeVersion</dt> <dd>['PUT']</dd>
-    <dt>placeTaxon</dt> <dd>['PUT']</dd>
-    <dt>moveElement</dt> <dd>['POST']</dd>
-    <dt>removeElement</dt> <dd>['DELETE']</dd>
-    <dt>editElementProfile</dt> <dd>['POST']</dd>
-    <dt>editElementStatus</dt> <dd>['POST']</dd>
-  </dl>
-
 </div>
 </body>
 </html>
