@@ -99,11 +99,11 @@
                   model="[instances: instance.instancesForCitedBy.findAll { it.instanceType.synonym }]"/>
         <g:render template="/apniFormat/missapplication"
                   model="[instances: instance.instancesForCitedBy.findAll {
-                    it.instanceType.name.contains('misapplied')
+                    it.instanceType.misapplied && !it.instanceType.unsourced
                   }]"/>
       %{--other synonyms--}%
         <g:render template="/apniFormat/hasSynonym" model="[instances: instance.instancesForCitedBy.findAll {
-          (!it.instanceType.synonym && !it.instanceType.name.contains('misapplied'))
+          (!it.instanceType.synonym && !it.instanceType.misapplied)
         }]"/>
       </g:if>
 
@@ -136,7 +136,9 @@
         </af:sortedInstances>
 
         <g:render template="/apniFormat/missapplication"
-                  model="[instances: instance.instancesForCites.findAll { it.instanceType.misapplied }]"/>
+                  model="[instances: instance.instancesForCites.findAll {
+                    it.instanceType.misapplied && !it.instanceType.unsourced
+                  }]"/>
       </g:if>
 
     </instance>
