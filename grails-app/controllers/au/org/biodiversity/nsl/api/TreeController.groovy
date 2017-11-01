@@ -170,7 +170,7 @@ class TreeController implements WithTarget, ValidationUtils {
                 throw new ObjectNotFoundException("Can't find taxon with URI $data.taxonUri")
             }
             String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
-            results.payload = treeService.editExcluded(treeVersionElement, data.excluded as Map, userName)
+            results.payload = treeService.editExcluded(treeVersionElement, data.excluded as Boolean, userName)
         }
     }
 
