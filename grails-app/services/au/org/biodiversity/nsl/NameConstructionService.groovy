@@ -64,10 +64,13 @@ class NameConstructionService {
         }
 
         if (name.nameType.cultivar) {
+            if (name.nameType.formula && name.nameType.hybrid) {
+                return constructHybridFormulaCultivarName(name)
+            }
+            if (name.nameType.formula) {
+                return constructGraftChimeraName(name)
+            }
             if (name.nameType.hybrid) {
-                if (name.nameType.formula) {
-                    return constructHybridFormulaCultivarName(name)
-                }
                 return constructHybridCultivarName(name)
             }
             return constructCultivarName(name)
@@ -106,6 +109,18 @@ class NameConstructionService {
             } else {
                 bits << "<element>${htmlNameElement}</element>"
             }
+            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
+            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
+        }
+    }
+
+    private Map constructGraftChimeraName(Name name) {
+        use(NameUtils) {
+            List<String> bits = []
+            Name parent = name.parent
+            bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
+            bits << (name.nameType.connector ? "<formula data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</formula>" : '')
+            bits << (name.secondParent ? constructName(name.secondParent).simpleMarkedUpName?.removeManuscript() : '')
             String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
             return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
         }
@@ -258,7 +273,7 @@ class NameUtils {
     static Name nameParent(Name name) {
         use(RankUtils) {
             if (name.nameRank.name == '[unranked]') {
-                return firstRankedParent(name)
+                return firstMajorRankedParent(name)
             }
             if (name.nameLowerThanRank('Genus') || name.nameRank.visibleInName) {
                 NameRank parentRank = name.nameRank.parentRank
@@ -276,10 +291,10 @@ class NameUtils {
         }
     }
 
-    static Name firstRankedParent(Name name) {
+    static Name firstMajorRankedParent(Name name) {
         int count = 5
         while (count-- > 0) {
-            if (name.parent.nameRank.name != '[unranked]') {
+            if (name.parent.nameRank.name != '[unranked]' && name.parent.nameRank.major) {
                 return name.parent
             }
             name = name.parent

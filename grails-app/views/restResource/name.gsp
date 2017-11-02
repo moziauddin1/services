@@ -138,7 +138,9 @@
                 </af:sortedInstances>
 
                 <g:render template="/apniFormat/missapplication"
-                          model="[instances: instance.instancesForCites.findAll { it.instanceType.misapplied }]"/>
+                          model="[instances: instance.instancesForCites.findAll {
+                            it.instanceType.misapplied && !it.instanceType.unsourced
+                          }]"/>
               </g:if>
 
             </instance>
