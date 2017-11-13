@@ -327,11 +327,6 @@ shard {
     temp.file.directory = "/tmp"
 }
 
-nslTreePlugin {
-    nslInstanceNamespace = 'nsl-instance'
-    nslNameNamespace = 'nsl-name'
-}
-
 services {
     mapper.apikey = 'not set'
     link {

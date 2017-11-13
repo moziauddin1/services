@@ -9,18 +9,13 @@ import org.codehaus.groovy.grails.web.json.JSONObject
 
 import static org.springframework.http.HttpStatus.*
 
-class TreeController implements WithTarget, ValidationUtils {
+class TreeElementController implements WithTarget, ValidationUtils {
 
     def treeService
     def jsonRendererService
     def linkService
 
     static responseFormats = [
-            createTree      : ['json', 'html'],
-            editTree        : ['json', 'html'],
-            copyTree        : ['json', 'html'],
-            deleteTree      : ['json', 'html'],
-            createVersion   : ['json', 'html'],
             placeTaxon      : ['json', 'html'],
             moveTaxon       : ['json', 'html'],
             removeTaxon     : ['json', 'html'],
@@ -29,11 +24,6 @@ class TreeController implements WithTarget, ValidationUtils {
     ]
 
     static allowedMethods = [
-            createTree      : ['PUT'],
-            editTree        : ['POST'],
-            copyTree        : ['PUT'],
-            deleteTree      : ['DELETE'],
-            createVersion   : ['PUT'],
             placeTaxon      : ['PUT'],
             moveTaxon       : ['PUT'],
             removeTaxon     : ['DELETE', 'POST'],
@@ -42,74 +32,95 @@ class TreeController implements WithTarget, ValidationUtils {
     ]
     static namespace = "api"
 
-    def index() {
-        [trees: Tree.list()]
-    }
-
-    def createTree() {
-        withJsonData(request.JSON, false, ['treeName', 'descriptionHtml']) { ResultObject results, Map data ->
-            String treeName = data.treeName
-            String groupName = data.groupName
-            Long referenceId = data.referenceId
-            String descriptionHtml = data.descriptionHtml
-            String linkToHomePage = data.linkToHomePage
-            Boolean acceptedTree = data.acceptedTree
-
-            String userName = treeService.authorizeTreeBuilder()
-            results.payload = treeService.createNewTree(treeName, groupName ?: userName, referenceId, descriptionHtml, linkToHomePage, acceptedTree)
-        }
-    }
-
-    def editTree() {
-        withTree { ResultObject results, Tree tree, Map data ->
-            treeService.authorizeTreeOperation(tree)
-            results.payload = treeService.editTree(tree,
-                    (String) data.treeName,
-                    (String) data.groupName,
-                    (Long) data.referenceId,
-                    (String) data.descriptionHtml,
-                    (String) data.linkToHomePage,
-                    (Boolean) data.acceptedTree
-            )
-        }
-    }
-
-    def deleteTree(Long treeId) {
-        Tree tree = Tree.get(treeId)
-        ResultObject results = requireTarget(tree, "Tree with id: $treeId")
-        handleResults(results) {
-            treeService.authorizeTreeOperation(tree)
-            treeService.deleteTree(tree)
-        }
-    }
-
-    def copyTree() { respond(['Not implemented'], status: NOT_IMPLEMENTED) }
-
     /**
-     * Creates a new draft tree version. If there is a currently published version it copies that versions elements to
-     * this new version. If defaultVersion is set to true then the new version becomes the default draft version.
+     *
+     * @param parentTaxonUri the URI or link of the parent treeVersionElement
+     * @param instanceUri
+     * @param excluded
      * @return
      */
-    def createVersion() {
-        withJsonData(request.JSON, false, ['treeId', 'draftName']) { ResultObject results, Map data ->
-            Long treeId = data.treeId
-            Long fromVersionId = data.fromVersionId
-            String draftName = data.draftName
-            Boolean defaultVersion = data.defaultDraft
+    def placeTaxon() {
+        withJsonData(request.JSON, false, ['parentTaxonUri', 'instanceUri', 'excluded']) { ResultObject results, Map data ->
 
-            Tree tree = Tree.get(treeId)
-            if (tree) {
-                treeService.authorizeTreeOperation(tree)
-
-                TreeVersion fromVersion = TreeVersion.get(fromVersionId)
-                if (defaultVersion) {
-                    results.payload = treeService.createDefaultDraftVersion(tree, fromVersion, draftName)
-                } else {
-                    results.payload = treeService.createTreeVersion(tree, fromVersion, draftName)
-                }
+            String parentTaxonUri = data.parentTaxonUri
+            String instanceUri = data.instanceUri
+            Boolean excluded = data.excluded
+            TreeVersionElement treeVersionElement = TreeVersionElement.get(parentTaxonUri)
+            if (treeVersionElement) {
+                String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+                results.payload = treeService.placeTaxonUri(treeVersionElement, instanceUri, excluded, userName)
             } else {
                 results.ok = false
-                results.fail("Tree with id $treeId not found", NOT_FOUND)
+                results.fail("Parent taxon with id $parentTaxonUri not found", NOT_FOUND)
+            }
+        }
+    }
+
+    def moveTaxon() {
+        withJsonData(request.JSON, false, ['taxonUri', 'newParentTaxonUri']) { ResultObject results, Map data ->
+            String taxonUri = data.taxonUri
+            String newParentTaxonUri = data.newParentTaxonUri
+
+            TreeVersionElement childElement = TreeVersionElement.get(taxonUri)
+            TreeVersionElement parentElement = TreeVersionElement.get(newParentTaxonUri)
+
+            if (childElement && parentElement) {
+                String userName = treeService.authorizeTreeOperation(parentElement.treeVersion.tree)
+                results.payload = treeService.moveTaxon(childElement, parentElement, userName)
+            } else {
+                results.ok = false
+                results.fail("taxon with ids $taxonUri, $newParentTaxonUri not found", NOT_FOUND)
+            }
+        }
+    }
+
+    def removeTaxon() {
+        withJsonData(request.JSON, false, ['taxonUri']) { ResultObject results, Map data ->
+            String taxonUri = data.taxonUri
+            TreeVersionElement treeVersionElement = TreeVersionElement.get(taxonUri)
+
+            if (treeVersionElement) {
+                treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+                int count = treeService.removeTreeVersionElement(treeVersionElement)
+                results.payload = [count: count, message: "$count taxon removed, starting from $taxonUri"]
+            } else {
+                results.ok = false
+                results.fail("taxon with id $taxonUri not found", NOT_FOUND)
+            }
+        }
+    }
+
+    def editTaxonProfile() {
+        withJsonData(request.JSON, false, ['taxonUri', 'profile']) { ResultObject results, Map data ->
+            TreeVersionElement treeVersionElement = TreeVersionElement.get(data.taxonUri as String)
+            if (!treeVersionElement) {
+                throw new ObjectNotFoundException("Can't find taxon with URI $data.taxonUri")
+            }
+            String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+            results.payload = treeService.editProfile(treeVersionElement, data.profile as Map, userName)
+        }
+    }
+
+    def editTaxonStatus() {
+        withJsonData(request.JSON, false, ['taxonUri', 'excluded']) { ResultObject results, Map data ->
+            TreeVersionElement treeVersionElement = TreeVersionElement.get(data.taxonUri as String)
+            if (!treeVersionElement) {
+                throw new ObjectNotFoundException("Can't find taxon with URI $data.taxonUri")
+            }
+            String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+            results.payload = treeService.editExcluded(treeVersionElement, data.excluded as Boolean, userName)
+        }
+    }
+
+    def elementDataFromInstance(String instanceUri) {
+        ResultObject results = require('Instance URI': instanceUri)
+
+        handleResults(results) {
+            TaxonData taxonData = treeService.getInstanceDataByUri(instanceUri)
+            if (taxonData) {
+                results.payload = taxonData.asMap()
+            } else {
+                throw new ObjectNotFoundException("Instance with URI $instanceUri, is not in this shard.")
             }
         }
     }
@@ -144,15 +155,6 @@ class TreeController implements WithTarget, ValidationUtils {
             handleResults(results) {
                 work(results, data)
             }
-        }
-    }
-
-    private withTree(Closure work) {
-        Map data = request.JSON as Map
-        Tree tree = Tree.get(data.id as Long)
-        ResultObject results = requireTarget(tree, "Tree with id: $data.id")
-        handleResults(results) {
-            work(results, tree, data)
         }
     }
 

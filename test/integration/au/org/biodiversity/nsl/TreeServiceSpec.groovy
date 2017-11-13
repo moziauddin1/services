@@ -587,6 +587,7 @@ class TreeServiceSpec extends Specification {
         anthocerosChildren.size() == 5
         newAnthoceros.treeElement.parentElement == dendrocerotaceae.treeElement
         anthocerosChildren[0].treeElement.nameElement == 'capricornii'
+        anthocerosChildren[0].treeElement.parentElement == newAnthoceros.treeElement
         anthocerosChildren[1].treeElement.nameElement == 'ferdinandi-muelleri'
         anthocerosChildren[2].treeElement.nameElement == 'fragilis'
         anthocerosChildren[3].treeElement.nameElement == 'laminifer'

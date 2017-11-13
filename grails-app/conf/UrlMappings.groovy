@@ -20,6 +20,7 @@ class UrlMappings {
 
     static mappings = {
 
+        //TODO remove these
 //        "/tree/$treeLabel"(controller: 'treeView', action: 'index')
 //        "/tree/$treeLabel/name/$nameId"(controller: 'treeView', action: 'index')
 //
@@ -35,7 +36,7 @@ class UrlMappings {
 //        "/api/tree/remove-apni-name"(controller: 'treeEdit', action: 'removeApniName')
 //        "/api/tree/remove-apc-instance"(controller: 'treeEdit', action: 'removeApcInstance')
 
-        "/api/bulk-fetch"(controller: 'restResource', action: 'bulkFetch')
+//        "/api/bulk-fetch"(controller: 'restResource', action: 'bulkFetch')
 
         "/search"(controller: 'search', action: 'search')
         "/search/form"(controller: 'search', action: 'searchForm')

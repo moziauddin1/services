@@ -688,11 +688,38 @@ a taxon concept is a fixed representation of the branch below a taxon, and the d
 taxa. So a taxon concept is fixed or immutable and exists outside of versions (so it may not be the current concept used)
 which means we can choose the concept from any version (by definition they are the same).
 
+WARNING: There are significant questions regarding use of taxon ID. Ideally the instance ID *is* the taxon ID
+but the child taxa are not defined within an instance, they are described on a tree. If you change the sub taxa
+the instance should change, but if you just haven't fully described the concept represented by the instance then the
+taxon is the same. A taxon ID as described here represents what has been described in this tree so far, not what the
+concept represents.
+
+.*_CONCLUSION_*
+
+****
+I have decided for the purposes of getting a working tree that is manageable that we should *not* track and create
+taxon IDs as such. We can provide a comparison service end point (even a database function) to compare taxa in trees
+at a point. The user can compare Instance IDs as the definition of a Concept of a taxon, then compare two trees
+representation of that taxon and all it's sub taxa. Just because the representation in a tree is slightly different
+the taxon they are *trying* to represent may be the same, they just made a mistake or haven't completed the task.
+
+It can be left as a later excercise to create services that track taxa and validate their use, i.e. if someone re-uses
+an instance in another tree, does it contain *only* the same taxa in the same order?
+****
+
+===== A circumscription hash
+
 So we could resolve a taxon using something like:
 
 http://id.biodiversity.org.au/taxon/80dd7fffd995817fe1a4d4494c519a0c1aa38803b394f69482ab5c794318e0a9
 
-To generate the hash taxon identifier we use the tree paths of the parent and the children within that version:
+To generate the hash taxon identifier we use the [.line-through]#tree paths# instance paths of the parent and the
+children within that version:
+
+NOTE: We changed from the tree path to the instance path above because the tree element id changes on editing and it
+becomes very tricky to track taxon changes, or element changes that have no net effect, e.g. moving a taxon to another
+family and then moving it back. By using the instance id path we can use the query below to check if a taxon has changed
+because the instance should not have changed.
 
 [source]
 .circumscribe.sql
@@ -707,11 +734,11 @@ AS
 $$
 SELECT sha256_agg(paths)
 FROM (
-       SELECT e.tree_path AS paths
+       SELECT e.instance_path AS paths
        FROM tree_version_element tve
          JOIN tree_element e ON tve.tree_element_id = e.id
        WHERE tve.tree_version_id = version_id
-             AND e.tree_path LIKE path_match || '%'
+             AND e.instance_path LIKE path_match || '%'
        ORDER BY e.tree_path
      ) AS circumscription;
 $$;
@@ -722,6 +749,32 @@ The circumscribe function above is a unique hash of all the children in order un
 current worst case time for calculation of Plantae is ~2 seconds when placing a new leaf taxon we need to take the
 tree path of that taxon and re calculate the taxon identifier hash for all the tree_version_elements in that path. Given
 about 11 levels those calculations should take less than 22 seconds, and could be updated in the background.
+
+We can drop the hash and use a simple array of instance ids for comparisons e.g.
+
+[source]
+.circumscribe.sql
+----
+DROP FUNCTION IF EXISTS circumscribe( BIGINT, TEXT );
+CREATE FUNCTION circumscribe(version_id BIGINT, path_match TEXT)
+  RETURNS BIGINT[]
+LANGUAGE SQL
+AS
+$$
+SELECT array_agg(paths)
+FROM (
+  SELECT e.instance_id paths
+  FROM tree_version_element tve
+    JOIN tree_element e ON tve.tree_element_id = e.id
+  WHERE tve.tree_version_id = version_id
+        AND e.instance_path LIKE path_match || '%'
+  ORDER BY e.instance_path
+) AS circumscription;
+$$;
+----
+
+The difference in speed is around 300ms which would be significant in bulk operations, and this provides real
+data that can be used (instance ids).
 
 ===== More efficient method
 
@@ -738,7 +791,7 @@ the taxon hash for each tree_version_element up the tree as above.
 
 This method would be more efficient in production, but the initial generation is trickier with a reverse tree walk.
 
-==== Even more efficient and pragmatic method (We will use this)
+==== Even more efficient and pragmatic method
 
 The Hash methods have an elephant in the room, Hashes. A Hash can clash, they're good for cases where the data doesn't
 exceed the number of different hashes. Sha256 has a lot of hashes and can represent billions of separate bits of data
@@ -774,6 +827,10 @@ we could use the same identifier, but if you create a copy of a taxa from parts,
 provide a service to compare taxa, but finding matching taxa across different trees would be relatively expensive (you
 could use a tree comparison/diff to identify matches). Once you know two taxons are the same with different IDs you then
 need to combine the identifiers somehow, perhaps in a matching service.
+
+NOTE: We have added instance path to tree_elements to help us track/compare taxon. This is because the above method means
+a new taxon identifier will be generated when you move a taxon somewhere else then move it back to where it was. There
+is no way to check that it's actually the same taxon. So we can use <<A circumscription hash>> on instance_path.
 
 === RDF
 

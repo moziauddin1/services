@@ -488,6 +488,7 @@ DROP TABLE IF EXISTS orphans;
 
     String authorizeTreeOperation(Tree tree) {
         String groupName = tree.groupName
+        log.debug("checking ${SecurityUtils.subject.principal} has role ${groupName}")
         SecurityUtils.subject.checkRole(groupName)
         return SecurityUtils.subject.principal as String
     }
@@ -580,6 +581,11 @@ WHERE tve1.tree_version_id = :treeVersionId
     TreeVersionElement moveTaxon(TreeVersionElement child, TreeVersionElement parent, String userName) {
         notPublished(parent)
         TreeVersionElement originalParent = getParentTreeVersionElement(child)
+
+        if (originalParent.elementLink == parent.elementLink) {
+            //do nothing
+            return child
+        }
 
         TreeVersionElement childCopy = saveTreeVersionElement(copyTreeElement(child, parent.treeElement, userName), parent.treeVersion, child.taxonId, child.taxonLink)
 

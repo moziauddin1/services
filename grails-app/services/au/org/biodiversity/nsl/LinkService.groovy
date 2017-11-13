@@ -74,7 +74,7 @@ class LinkService {
 
     @Timed()
     String addTargetLink(target) {
-        String identity = new TargetParam(target, nameSpace()).addIdentityParamString() + "&" + mapperAuth()
+        String identity = new TargetParam(target, nameSpace()).addIdentityParamString()
         return addIdentifier(identity, target.toString())
     }
 
@@ -82,7 +82,7 @@ class LinkService {
         String mapper = mapper(true)
         String newLink = null
         try {
-            String uri = "$mapper/admin/addIdentifier?$identity"
+            String uri = "$mapper/admin/addIdentifier?$identity" + "&" + mapperAuth()
 
             restCallService.json('put', uri,
                     { data ->

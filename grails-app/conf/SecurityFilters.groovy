@@ -68,7 +68,7 @@ class SecurityFilters {
                         SecurityUtils.subject.login(authToken)
 
                         // TODO: make a new permission "mayRunAsAnyUser"
-                        String runAs = params.remove('runAs')
+                        String runAs = params.remove('as')
                         if (runAs) {
                             log.debug("${SecurityUtils.subject.principal} is running as ${runAs}")
                             SecurityUtils.subject.runAs(new SimplePrincipalCollection(runAs, ""))
