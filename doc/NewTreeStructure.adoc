@@ -1620,6 +1620,10 @@ placed cites a Name as being a synonym we should probably warn the user.
 * misapplication synonyms can be ignored.
 * warn if pro. parte synonyms exist elsewhere in the current tree
 
+=== A name once on the tree should always be accounted for on the tree
+
+A name *should* not be removed from a tree, it should be accounted for within the accepted names or synonyms.
+
 ==== Implementation within the tree
 
 The Synonyms field in the Tree Element shows the synonym name and the type. We need to use the synonyms JSON structure to

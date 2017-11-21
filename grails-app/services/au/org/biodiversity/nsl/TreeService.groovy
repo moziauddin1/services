@@ -542,19 +542,20 @@ WHERE tve1.tree_version_id = :treeVersionId
       AND e1.excluded = FALSE
       AND e2.excluded = FALSE
       AND e2.synonyms IS NOT NULL
-      AND (e2.synonyms -> tax_syn ->> 'name_id') :: BIGINT = e1.name_id
+      AND (e2.synonyms -> tax_syn ->> 'name_id') ::NUMERIC:: BIGINT = e1.name_id
       AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*';
       ''', [treeVersionId: treeVersion.id]) { row ->
-            problems.add("In taxon (${row['link2']}) ${row['name2']} considers ${row['name1']} (${row['link1']}) to be a ${row['type']}.")
+            problems.add("Taxon concept <a href=\"${row['link2']}\" title=\"tree link\">${row['name2']}</a> " +
+                    "considers <a href=\"${row['link1']}\" title=\"tree link\">${row['name1']}</a> to be a ${row['type']}.")
         }
         return problems
     }
 
-    Map placeTaxonUri(TreeVersionElement parentElement, String taxonUri, Boolean excluded, String userName) {
+    Map placeTaxonUri(TreeVersionElement parentElement, String instanceUri, Boolean excluded, String userName) {
 
-        TaxonData taxonData = findInstanceByUri(taxonUri)
+        TaxonData taxonData = findInstanceByUri(instanceUri)
         if (!taxonData) {
-            throw new ObjectNotFoundException("Taxon $taxonUri not found, trying to place it in $parentElement")
+            throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in $parentElement")
         }
         notPublished(parentElement)
         taxonData.excluded = excluded
@@ -562,42 +563,58 @@ WHERE tve1.tree_version_id = :treeVersionId
         //note above will throw exceptions for invalid placements, not warnings
         TreeVersionElement childElement = makeVersionElementFromTaxonData(taxonData, parentElement, userName)
         updateParentTaxaId(parentElement)
-        return [childElement: childElement, warnings: warnings]
+        return [childElement: childElement, warnings: warnings, message: "Placed ${childElement.treeElement.name.fullName}"]
     }
 
     /**
-     * Move a tree element placement from one parent to another. This requires the tree elements below the one being moved
-     * to be copied and the name and tree paths updated. The elements being copied are removed from this version
-     * of the tree.
+     * Replace an existing Taxon Concept with another one and possibly move it's placement on the tree.
+     * This moves the child taxa from the replaced taxon to this new one.
      *
-     * If this element is high up the tree this may result in thousands of new elements being created which may take
-     * some time.
+     * A new taxon (tree element) is created with a new instance and placed on the tree under the desired
+     * parent element. The child elements are copied to new elements under the new taxon (since they have a new
+     * parent path) but keep their taxon identifiers.
      *
-     * @param child - the taxon you wish to move.
-     * @param parent - the target parent that you want to move the child under.
-     * @param userName - who is making the move.
-     * @return The new child TreeVersionElement.
+     * This will copy the status and profile information from the replaced taxon.
+     *
+     * The old tree element will be removed from the current version of the tree.
+     *
+     * @param currentElement
+     * @param parentElement
+     * @param instanceUri
+     * @param userName
+     * @return
      */
-    TreeVersionElement moveTaxon(TreeVersionElement child, TreeVersionElement parent, String userName) {
-        notPublished(parent)
-        TreeVersionElement originalParent = getParentTreeVersionElement(child)
+    Map replaceTaxon(TreeVersionElement currentElement, TreeVersionElement parentElement, String instanceUri, String userName) {
+        notPublished(parentElement)
 
-        if (originalParent.elementLink == parent.elementLink) {
-            //do nothing
-            return child
+        if (currentElement.treeElement.instanceLink == instanceUri) {
+            Map problems = validateTreeVersion(replacementElement.treeVersion)
+            return [replacementElement: currentElement, problems: problems]
         }
 
-        TreeVersionElement childCopy = saveTreeVersionElement(copyTreeElement(child, parent.treeElement, userName), parent.treeVersion, child.taxonId, child.taxonLink)
+        TaxonData taxonData = findInstanceByUri(instanceUri)
+        if (!taxonData) {
+            throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in $parentElement")
+        }
 
-        List<TreeVersionElement> kids = getChildElementsToDepth(child, 1)
+        TreeVersionElement originalParent = getParentTreeVersionElement(currentElement)
 
-        copyChildElements(kids, childCopy, userName)
+        taxonData.excluded = currentElement.treeElement.excluded
+
+        List<String> warnings = validateReplacementElement(parentElement, taxonData)
+        TreeVersionElement replacementElement = makeVersionElementFromTaxonData(taxonData, parentElement, userName)
+
+        List<TreeVersionElement> kids = getChildElementsToDepth(currentElement, 1)
+
+        copyChildElements(kids, replacementElement, userName)
 
         updateParentTaxaId(originalParent)
-        updateParentTaxaId(parent)
+        updateParentTaxaId(parentElement)
 
-        removeTreeVersionElement(child)
-        return childCopy
+        removeTreeVersionElement(currentElement)
+        Map problems = validateTreeVersion(replacementElement.treeVersion)
+        problems.put('warnings', warnings)
+        return [replacementElement: replacementElement, problems: problems]
     }
 
     /**
@@ -743,6 +760,7 @@ WHERE tve1.tree_version_id = :treeVersionId
                 simpleName: source.simpleName,
                 nameElement: source.nameElement,
                 treePath: "${parent.treePath}/$treeElementId",
+                instancePath: "${parent.instancePath}/$source.instanceId",
                 namePath: "${parent.namePath}/$source.nameElement",
                 rank: source.rank,
                 depth: parent.depth + 1,
@@ -771,36 +789,53 @@ WHERE tve1.tree_version_id = :treeVersionId
     }
 
     protected TreeVersionElement makeVersionElementFromTaxonData(TaxonData taxonData, TreeVersionElement parentElement, String userName) {
-        Long treeElementId = nextSequenceId()
-        Long taxonId = nextSequenceId()
-        TreeElement treeElement = new TreeElement(
-                treeElementId: treeElementId,
-                treeVersion: parentElement.treeVersion,
-                previousElement: null,
+        TreeElement treeElement = findTreeElement(taxonData, parentElement)
+        if (!treeElement) { //then make a new one
+            Long treeElementId = nextSequenceId()
+            treeElement = new TreeElement(
+                    treeElementId: treeElementId,
+                    previousElement: null,
+                    parentElement: parentElement.treeElement,
+                    instanceId: taxonData.instanceId,
+                    nameId: taxonData.nameId,
+                    excluded: taxonData.excluded,
+                    displayHtml: taxonData.displayHtml,
+                    synonymsHtml: taxonData.synonymsHtml,
+                    simpleName: taxonData.simpleName,
+                    nameElement: taxonData.nameElement,
+                    treePath: parentElement.treeElement.treePath + "/$treeElementId",
+                    instancePath: parentElement.treeElement.instancePath + "/$taxonData.instanceId",
+                    namePath: parentElement.treeElement.namePath + "/$taxonData.nameElement",
+                    rank: taxonData.rank,
+                    depth: parentElement.treeElement.depth + 1,
+                    sourceShard: taxonData.sourceShard,
+                    synonyms: taxonData.synonyms,
+                    rankPath: parentElement.treeElement.rankPath << taxonData.rankPathPart,
+                    profile: taxonData.profile,
+                    sourceElementLink: null,
+                    nameLink: taxonData.nameLink,
+                    instanceLink: taxonData.instanceLink,
+                    updatedBy: userName,
+                    updatedAt: new Timestamp(System.currentTimeMillis())
+            )
+            treeElement.save()
+        }
+        return saveTreeVersionElement(treeElement, parentElement.treeVersion, nextSequenceId())
+    }
+
+    private static findTreeElement(TaxonData taxonData, TreeVersionElement parentElement) {
+        TreeElement.findWhere(
                 parentElement: parentElement.treeElement,
                 instanceId: taxonData.instanceId,
                 nameId: taxonData.nameId,
                 excluded: taxonData.excluded,
-                displayHtml: taxonData.displayHtml,
-                synonymsHtml: taxonData.synonymsHtml,
                 simpleName: taxonData.simpleName,
                 nameElement: taxonData.nameElement,
-                treePath: parentElement.treeElement.treePath + "/$treeElementId",
+                instancePath: parentElement.treeElement.instancePath + "/$taxonData.instanceId",
                 namePath: parentElement.treeElement.namePath + "/$taxonData.nameElement",
-                rank: taxonData.rank,
-                depth: parentElement.treeElement.depth + 1,
                 sourceShard: taxonData.sourceShard,
-                synonyms: taxonData.synonyms,
-                rankPath: parentElement.treeElement.rankPath << taxonData.rankPathPart,
-                profile: taxonData.profile,
-                sourceElementLink: null,
-                nameLink: taxonData.nameLink,
-                instanceLink: taxonData.instanceLink,
-                updatedBy: userName,
-                updatedAt: new Timestamp(System.currentTimeMillis())
+                synonyms: taxonData.synonyms
         )
-        treeElement.save()
-        return saveTreeVersionElement(treeElement, parentElement.treeVersion, taxonId)
     }
 
     private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version, Long taxonId, String taxonLink = null) {
@@ -825,6 +860,30 @@ WHERE tve1.tree_version_id = :treeVersionId
         warnings = checkNameValidity(taxonData)
         checkInstanceOnTree(taxonData, treeVersion)
         checkNameAlreadyOnTree(taxonData, treeVersion)
+
+        NameRank taxonRank = rankOfElement(taxonData.rankPathPart, taxonData.nameElement)
+        NameRank parentRank = rankOfElement(parentElement.treeElement.rankPath, parentElement.treeElement.nameElement)
+
+        //is rank below parent
+        if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
+            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.treeElement.simpleName.")
+        }
+
+        //polynomials must be placed under parent
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.treeElement.namePath.split('/'))
+
+        checkForExistingSynonyms(taxonData, treeVersion)
+
+        return warnings
+    }
+
+    protected List<String> validateReplacementElement(TreeVersionElement parentElement, TaxonData taxonData) {
+        List<String> warnings
+
+        TreeVersion treeVersion = parentElement.treeVersion
+
+        warnings = checkNameValidity(taxonData)
+        checkInstanceOnTree(taxonData, treeVersion)
 
         NameRank taxonRank = rankOfElement(taxonData.rankPathPart, taxonData.nameElement)
         NameRank parentRank = rankOfElement(parentElement.treeElement.rankPath, parentElement.treeElement.nameElement)
@@ -904,7 +963,7 @@ FROM tree_element el join tree_version_element tve on el.id = tve.tree_element_i
       jsonb_object_keys(synonyms) AS tax_syn
 WHERE tve.tree_version_id = :versionId
       AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*'
-      and (synonyms -> tax_syn ->> 'name_id') :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
+      and (synonyms -> tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
             synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id]
         }
         return synonymsFound
@@ -926,7 +985,9 @@ WHERE tve.tree_version_id = :versionId
                 firstNamePart.contains(nameElement)
             }
             if (!elementFound) {
-                throw new BadArgumentsException("Polynomial name $simpleName is not under appropriate parent name. See parent name path $parentNameElements")
+                throw new BadArgumentsException("Polynomial name $simpleName is not under an appropriate parent name." +
+                        "It should probably be under ${firstNamePart.split(' ').first()} which isn't in this parents name path:\n" +
+                        "$parentNameElements")
             }
         }
     }
@@ -988,16 +1049,18 @@ WHERE tve.tree_version_id = :versionId
         return synonymsHtml
     }
 
-    private static Map getSynonyms(Instance instance) {
+    private Map getSynonyms(Instance instance) {
         Map resultMap = [:]
         instance.instancesForCitedBy.each { Instance synonym ->
+            String nameLink = linkService.getPreferredLinkForObject(synonym.name)
             resultMap.put((synonym.name.simpleName), [type          : synonym.instanceType.name,
                                                       name_id       : synonym.name.id,
+                                                      name_link     : nameLink,
                                                       full_name_html: synonym.name.fullNameHtml,
                                                       nom           : synonym.instanceType.nomenclatural,
                                                       tax           : synonym.instanceType.taxonomic,
                                                       mis           : synonym.instanceType.misapplied,
-                                                      cites         : synonym.instanceType.misapplied ? synonym.cites?.reference?.citationHtml : ''
+                                                      cites         : synonym.cites ? synonym.cites.reference.citationHtml : ''
             ])
         }
         return resultMap

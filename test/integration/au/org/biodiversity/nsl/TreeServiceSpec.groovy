@@ -2,6 +2,7 @@ package au.org.biodiversity.nsl
 
 import grails.test.mixin.TestFor
 import grails.validation.ValidationException
+import org.hibernate.engine.spi.Status
 import spock.lang.Specification
 
 import javax.sql.DataSource
@@ -527,7 +528,7 @@ class TreeServiceSpec extends Specification {
         println result.childElement.elementLink
     }
 
-    def "test move a taxon"() {
+    def "test replace a taxon"() {
         given:
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
@@ -535,81 +536,94 @@ class TreeServiceSpec extends Specification {
         List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
-        TreeVersionElement anthocerotaceae = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
-        TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
-        TreeVersionElement dendrocerotaceae = service.findElementBySimpleName('Dendrocerotaceae', draftVersion)
-        List<Long> originalDendrocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(dendrocerotaceae).collect {
+        TreeVersionElement anthocerotaceaeTve = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
+        TreeVersionElement anthocerosTve = service.findElementBySimpleName('Anthoceros', draftVersion)
+        TreeVersionElement dendrocerotaceaeTve = service.findElementBySimpleName('Dendrocerotaceae', draftVersion)
+        List<Long> originalDendrocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(dendrocerotaceaeTve).collect {
             it.taxonId
         }
-        List<Long> originalAnthocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(anthocerotaceae).collect {
+        List<Long> originalAnthocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(anthocerotaceaeTve).collect {
             it.taxonId
         }
+        Instance replacementAnthocerosInstance = Instance.get(753948)
+        TreeElement anthocerosTe = anthocerosTve.treeElement
+        Long dendrocerotaceaeInitialTaxonId = dendrocerotaceaeTve.taxonId
+
+        printTve(dendrocerotaceaeTve)
+        printTve(anthocerotaceaeTve)
 
         expect:
         tree
         testElements.size() == 30
         draftVersion.treeVersionElements.size() == 30
         !draftVersion.published
-        anthocerotaceae
-        anthoceros
-        anthoceros.treeElement.parentElement == anthocerotaceae.treeElement
-        dendrocerotaceae
+        anthocerotaceaeTve
+        anthocerosTve
+        anthocerosTve.treeElement.parentElement == anthocerotaceaeTve.treeElement
+        dendrocerotaceaeTve
         originalDendrocerotaceaeParentTaxonIDs.size() == 6
         originalAnthocerotaceaeParentTaxonIDs.size() == 6
 
         when: 'I try to move a taxon, anthoceros under dendrocerotaceae'
-        TreeVersionElement newAnthoceros = service.moveTaxon(anthoceros, dendrocerotaceae, 'test move taxon')
-        List<TreeVersionElement> anthocerosChildren = service.getAllChildElements(newAnthoceros)
-        List<TreeVersionElement> dendrocerotaceaeChildren = service.getAllChildElements(dendrocerotaceae)
-        for (TreeVersionElement tve in dendrocerotaceaeChildren) {
-            println tve.treeElement.namePath
-        }
+        Map result = service.replaceTaxon(anthocerosTve, dendrocerotaceaeTve,
+                'http://localhost:7070/nsl-mapper/instance/apni/753948',
+                'test move taxon')
+        println "\n*** $result\n"
+        List<TreeVersionElement> anthocerosChildren = service.getAllChildElements(result.replacementElement)
+        List<TreeVersionElement> dendrocerotaceaeChildren = service.getAllChildElements(dendrocerotaceaeTve)
+
+        printTve(dendrocerotaceaeTve)
+        printTve(anthocerotaceaeTve)
         draftVersion.refresh()
 
         then: 'It works'
         1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
             [success: true]
         }
+        1 * service.linkService.getObjectForLink(_) >> replacementAnthocerosInstance
+        1 * service.linkService.getPreferredLinkForObject(replacementAnthocerosInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/121601'
+        1 * service.linkService.getPreferredLinkForObject(replacementAnthocerosInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/753948'
         6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
-        9 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
+        10 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
             println "Adding taxonIdentifier for $tve"
             "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
         }
-        newAnthoceros
-        newAnthoceros != anthoceros
-        newAnthoceros.taxonId == anthoceros.taxonId
-        newAnthoceros.taxonLink == anthoceros.taxonLink
-        TreeVersionElement.get(anthoceros.elementLink) == null
-        newAnthoceros == service.findElementBySimpleName('Anthoceros', draftVersion)
-        newAnthoceros.treeVersion == draftVersion
-        newAnthoceros.treeElement != anthoceros.treeElement
+        deleted(anthocerosTve) //deleted
+        !deleted(anthocerosTe) // not deleted because it's referenced elsewhere
+        result.replacementElement
+        result.replacementElement == service.findElementBySimpleName('Anthoceros', draftVersion)
+        result.replacementElement.treeVersion == draftVersion
+        result.replacementElement.treeElement != anthocerosTe
+        dendrocerotaceaeTve.taxonId != dendrocerotaceaeInitialTaxonId
         draftVersion.treeVersionElements.size() == 30
         anthocerosChildren.size() == 5
-        newAnthoceros.treeElement.parentElement == dendrocerotaceae.treeElement
+        result.replacementElement.treeElement.parentElement == dendrocerotaceaeTve.treeElement
         anthocerosChildren[0].treeElement.nameElement == 'capricornii'
-        anthocerosChildren[0].treeElement.parentElement == newAnthoceros.treeElement
+        anthocerosChildren[0].treeElement.parentElement == result.replacementElement.treeElement
         anthocerosChildren[1].treeElement.nameElement == 'ferdinandi-muelleri'
         anthocerosChildren[2].treeElement.nameElement == 'fragilis'
         anthocerosChildren[3].treeElement.nameElement == 'laminifer'
         anthocerosChildren[4].treeElement.nameElement == 'punctatus'
         dendrocerotaceaeChildren.containsAll(anthocerosChildren)
         // all the parent taxonIds should have been updated
-        !service.getParentTreeVersionElements(dendrocerotaceae).collect { it.taxonId }.find {
+        !service.getParentTreeVersionElements(dendrocerotaceaeTve).collect { it.taxonId }.find {
             originalDendrocerotaceaeParentTaxonIDs.contains(it)
         }
-        !service.getParentTreeVersionElements(anthocerotaceae).collect { it.taxonId }.find {
+        !service.getParentTreeVersionElements(anthocerotaceaeTve).collect { it.taxonId }.find {
             originalAnthocerotaceaeParentTaxonIDs.contains(it)
         }
 
         when: 'I publish the version then try a move'
         service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
-        service.moveTaxon(anthoceros, anthocerotaceae, 'test move taxon')
+        service.replaceTaxon(anthocerosTve, anthocerotaceaeTve,
+                'http://localhost:7070/nsl-mapper/instance/apni/753948',
+                'test move taxon')
 
         then: 'I get a PublishedVersionException'
         thrown(PublishedVersionException)
     }
 
-    def "test move a taxon with multiple child levels"() {
+    def "test replace a taxon with multiple child levels"() {
         given:
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
@@ -618,60 +632,70 @@ class TreeServiceSpec extends Specification {
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
 
-        TreeVersionElement anthocerotales = service.findElementBySimpleName('Anthocerotales', draftVersion)
-        TreeVersionElement dendrocerotidae = service.findElementBySimpleName('Dendrocerotidae', draftVersion)
-        TreeVersionElement anthocerotidae = service.findElementBySimpleName('Anthocerotidae', draftVersion)
-        List<TreeVersionElement> anthocerotalesChildren = service.getAllChildElements(anthocerotales)
-        List<Long> originalDendrocerotidaeTaxonIDs = service.getParentTreeVersionElements(dendrocerotidae).collect {
+        TreeVersionElement anthocerotalesTve = service.findElementBySimpleName('Anthocerotales', draftVersion)
+        TreeVersionElement dendrocerotidaeTve = service.findElementBySimpleName('Dendrocerotidae', draftVersion)
+        TreeVersionElement anthocerotidaeTve = service.findElementBySimpleName('Anthocerotidae', draftVersion)
+        List<TreeVersionElement> anthocerotalesChildren = service.getAllChildElements(anthocerotalesTve)
+        List<Long> originalDendrocerotidaeTaxonIDs = service.getParentTreeVersionElements(dendrocerotidaeTve).collect {
             it.taxonId
         }
-        List<Long> originalAnthocerotidaeTaxonIDs = service.getParentTreeVersionElements(anthocerotidae).collect {
+        List<Long> originalAnthocerotidaeTaxonIDs = service.getParentTreeVersionElements(anthocerotidaeTve).collect {
             it.taxonId
         }
+        Instance replacementAnthocerotalesInstance = Instance.get(753978)
+        printTve(anthocerotidaeTve)
+        printTve(dendrocerotidaeTve)
 
         expect:
         tree
         testElements.size() == 30
         draftVersion.treeVersionElements.size() == 30
         !draftVersion.published
-        anthocerotales
-        dendrocerotidae
-        anthocerotales.treeElement.parentElement == anthocerotidae.treeElement
+        anthocerotalesTve
+        dendrocerotidaeTve
+        replacementAnthocerotalesInstance
+        anthocerotalesTve.treeElement.parentElement == anthocerotidaeTve.treeElement
         anthocerotalesChildren.size() == 10
         originalDendrocerotidaeTaxonIDs.size() == 4
         originalAnthocerotidaeTaxonIDs.size() == 4
 
         when: 'I move Anthocerotales under Dendrocerotidae'
-        TreeVersionElement newAnthocerotales = service.moveTaxon(anthocerotales, dendrocerotidae, 'test move taxon')
-        List<TreeVersionElement> newAnthocerotalesChildren = service.getAllChildElements(newAnthocerotales)
-        List<TreeVersionElement> dendrocerotidaeChildren = service.getAllChildElements(dendrocerotidae)
-        for (TreeVersionElement tve in dendrocerotidaeChildren) {
-            println tve.treeElement.namePath
-        }
+        Map result = service.replaceTaxon(anthocerotalesTve, dendrocerotidaeTve,
+                'http://localhost:7070/nsl-mapper/instance/apni/753978',
+                'test move taxon')
+        println "\n*** $result\n"
+        List<TreeVersionElement> newAnthocerotalesChildren = service.getAllChildElements(result.replacementElement)
+        List<TreeVersionElement> dendrocerotidaeChildren = service.getAllChildElements(dendrocerotidaeTve)
+        printTve(anthocerotidaeTve)
+        printTve(dendrocerotidaeTve)
         draftVersion.refresh()
 
         then: 'It works'
         1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
             [success: true]
         }
+        1 * service.linkService.getObjectForLink(_) >> replacementAnthocerotalesInstance
+        1 * service.linkService.getPreferredLinkForObject(replacementAnthocerotalesInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/142301'
+        1 * service.linkService.getPreferredLinkForObject(replacementAnthocerotalesInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/753978'
         11 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
-        5 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
+        6 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
             println "Adding taxonIdentifier for $tve"
             "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
         }
-        newAnthocerotales
-        newAnthocerotales != anthocerotales
-        newAnthocerotales.taxonId == anthocerotales.taxonId
-        newAnthocerotales.taxonLink == anthocerotales.taxonLink
-        newAnthocerotales == service.findElementBySimpleName('Anthocerotales', draftVersion)
+
+        deleted(anthocerotalesTve) //deleted
+        result.replacementElement
+        result.replacementElement == service.findElementBySimpleName('Anthocerotales', draftVersion)
+        result.replacementElement.treeVersion == draftVersion
+
         draftVersion.treeVersionElements.size() == 30
         newAnthocerotalesChildren.size() == 10
         dendrocerotidaeChildren.size() == 25
         // all the parent taxonIds should have been updated
-        !service.getParentTreeVersionElements(dendrocerotidae).collect { it.taxonId }.find {
+        !service.getParentTreeVersionElements(dendrocerotidaeTve).collect { it.taxonId }.find {
             originalDendrocerotidaeTaxonIDs.contains(it)
         }
-        !service.getParentTreeVersionElements(anthocerotidae).collect { it.taxonId }.find {
+        !service.getParentTreeVersionElements(anthocerotidaeTve).collect { it.taxonId }.find {
             originalAnthocerotidaeTaxonIDs.contains(it)
         }
 
@@ -900,6 +924,19 @@ class TreeServiceSpec extends Specification {
         !treeVersionElement1.treeElement.excluded
     }
 
+    private printTve(TreeVersionElement target) {
+        println "*** Taxon $target.taxonId: $target.treeElement.name.simpleName Children ***"
+        for (TreeVersionElement tve in service.getAllChildElements(target)) {
+            println "Taxon: $tve.taxonId, Names: $tve.treeElement.namePath, Instances: $tve.treeElement.instancePath"
+        }
+    }
+
+    private static deleted(domainObject) {
+        Name.withSession { session ->
+            session.persistenceContext.getEntry(domainObject)?.status in [null, Status.DELETED]
+        }
+    }
+
     private Tree makeATestTree() {
         service.createNewTree('aTree', 'aGroup', null, '<p>A description</p>', 'http://trees.org/aTree', false)
     }
@@ -962,6 +999,7 @@ class TreeServiceSpec extends Specification {
             synonyms         : null,
             synonymsHtml     : "<synonyms></synonyms>",
             treePath         : "/9434380/9434381/9434382/9434511/9434834/9435044/9435080",
+            instancePath     : "/9434380/9434381/9434382/9434511/9434834/9435044/9435080",
             updatedAt        : "2017-09-07 10:54:20.736603",
             updatedBy        : "import"
     ]
@@ -989,15 +1027,16 @@ class TreeServiceSpec extends Specification {
             synonyms         : null,
             synonymsHtml     : "<synonyms></synonyms>",
             treePath         : "/9434380/9434381/9434382/9434511/9434834/9435044",
+            instancePath     : "/9434380/9434381/9434382/9434511/9434834/9435044",
             updatedAt        : "2017-09-07 10:54:20.736603",
             updatedBy        : "import"
     ]
 
     private static Map asperaElementData = [
-            id               : 9435081,
-            lockVersion      : 0,
-            depth            : 8,
-            displayHtml      : "<data><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific><citation>CHAH (2014), <i>Australian Plant Census</i></citation></data>",
+            id          : 9435081,
+            lockVersion : 0,
+            depth       : 8,
+            displayHtml : "<data><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific><citation>CHAH (2014), <i>Australian Plant Census</i></citation></data>",
             excluded         : false,
             instanceId       : 781104,
             instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/781104",
@@ -1014,10 +1053,11 @@ class TreeServiceSpec extends Specification {
             sourceElementLink: null,
             sourceShard      : "APNI",
             synonyms         : ["Woodwardia aspera": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Mettenius, G.H. (1856), <i>Filices Horti Botanici Lipsiensis</i>", "nameid": 106698, "fullnamehtml": "<scientific><name id='106698'><scientific><name id='106675'><element class='Woodwardia'>Woodwardia</element></name></scientific> <element class='aspera'>aspera</element> <authors>(<base id='1441' title='Brown, R.'>R.Br.</base>) <author id='7081' title='Mettenius, G.H.'>Mett.</author></authors></name></scientific>"], "Blechnum neohollandicum": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Christenhusz, M.J.M., Zhang, X.C. & Schneider, H. (2011), A linear sequence of extant families and genera of lycophytes and ferns. <i>Phytotaxa</i> 19", "nameid": 239547, "fullnamehtml": "<scientific><name id='239547'><scientific><name id='56340'><element class='Blechnum'>Blechnum</element></name></scientific> <element class='neohollandicum'>neohollandicum</element> <authors><author id='6422' title='Christenhusz, M.J.M.'>Christenh.</author></authors></name></scientific>"], "Doodia aspera var. aspera": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Bailey, F.M. (1881), <i>The fern world of Australia</i>", "nameid": 70967, "fullnamehtml": "<scientific><name id='70967'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <rank id='54412'>var.</rank> <element class='aspera'>aspera</element></name></scientific>"], "Doodia aspera var. angustifrons": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Domin, K. (1915), Beitrage zur Flora und Pflanzengeographie Australiens. <i>Bibliotheca Botanica</i> 20(85)", "nameid": 70959, "fullnamehtml": "<scientific><name id='70959'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element></name></scientific> <rank id='54412'>var.</rank> <element class='angustifrons'>angustifrons</element> <authors><author id='6860' title='Domin, K.'>Domin</author></authors></name></scientific>"]],
-            synonymsHtml     : "<synonyms><nom><scientific><name id='106698'><scientific><name id='106675'><element class='Woodwardia'>Woodwardia</element></name></scientific> <element class='aspera'>aspera</element> <authors>(<base id='1441' title='Brown, R.'>R.Br.</base>) <author id='7081' title='Mettenius, G.H.'>Mett.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='70967'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <rank id='54412'>var.</rank> <element class='aspera'>aspera</element></name></scientific> <type>nomenclatural synonym</type></nom><tax><scientific><name id='70959'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element></name></scientific> <rank id='54412'>var.</rank> <element class='angustifrons'>angustifrons</element> <authors><author id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax><tax><scientific><name id='239547'><scientific><name id='56340'><element class='Blechnum'>Blechnum</element></name></scientific> <element class='neohollandicum'>neohollandicum</element> <authors><author id='6422' title='Christenhusz, M.J.M.'>Christenh.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
-            treePath         : "/9434380/9434381/9434382/9434511/9434834/9435044/9435080/9435081",
-            updatedAt        : "2017-09-07 10:54:20.736603",
-            updatedBy        : "import"
+            synonymsHtml: "<synonyms><nom><scientific><name id='106698'><scientific><name id='106675'><element class='Woodwardia'>Woodwardia</element></name></scientific> <element class='aspera'>aspera</element> <authors>(<base id='1441' title='Brown, R.'>R.Br.</base>) <author id='7081' title='Mettenius, G.H.'>Mett.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='70967'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <rank id='54412'>var.</rank> <element class='aspera'>aspera</element></name></scientific> <type>nomenclatural synonym</type></nom><tax><scientific><name id='70959'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element></name></scientific> <rank id='54412'>var.</rank> <element class='angustifrons'>angustifrons</element> <authors><author id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax><tax><scientific><name id='239547'><scientific><name id='56340'><element class='Blechnum'>Blechnum</element></name></scientific> <element class='neohollandicum'>neohollandicum</element> <authors><author id='6422' title='Christenhusz, M.J.M.'>Christenh.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
+            treePath    : "/9434380/9434381/9434382/9434511/9434834/9435044/9435080/9435081",
+            instancePath: "/9434380/9434381/9434382/9434511/9434834/9435044/9435080/9435081",
+            updatedAt   : "2017-09-07 10:54:20.736603",
+            updatedBy   : "import"
     ]
 
     private static List<Map> testElementData() {
@@ -1045,6 +1085,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380",
+                        instancePath     : "/9434380",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1071,6 +1112,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131",
+                        instancePath     : "/9434380/9472131",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1097,6 +1139,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132",
+                        instancePath     : "/9434380/9472131/9472132",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1123,6 +1166,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133",
+                        instancePath     : "/9434380/9472131/9472132/9472133",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1149,6 +1193,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133/9472134",
+                        instancePath     : "/9434380/9472131/9472132/9472133/9472134",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1175,6 +1220,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135",
+                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1201,14 +1247,15 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136",
+                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472137,
-                        lockVersion      : 0,
-                        depth            : 8,
-                        displayHtml      : "<data><scientific><name id='144273'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='capricornii'>capricornii</element> <authors><author id='1771' title='Cargill, D.C. &amp; Scott, G.A.M.'>Cargill & G.A.M.Scott</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
+                        id          : 9472137,
+                        lockVersion : 0,
+                        depth       : 8,
+                        displayHtml : "<data><scientific><name id='144273'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='capricornii'>capricornii</element> <authors><author id='1771' title='Cargill, D.C. &amp; Scott, G.A.M.'>Cargill & G.A.M.Scott</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 621662,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/621662",
@@ -1225,10 +1272,11 @@ class TreeServiceSpec extends Specification {
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : ["Anthoceros adscendens": ["mis": true, "nom": false, "tax": false, "type": "pro parte misapplied", "cites": "Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4", "nameid": 162382, "fullnamehtml": "<scientific><name id='162382'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='adscendens'>adscendens</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific>"]],
-                        synonymsHtml     : "<synonyms><mis><scientific><name id='162382'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='adscendens'>adscendens</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>pro parte misapplied</type> by <citation>Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4</citation></mis></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472137",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
-                        updatedBy        : "import"
+                        synonymsHtml: "<synonyms><mis><scientific><name id='162382'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='adscendens'>adscendens</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>pro parte misapplied</type> by <citation>Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4</citation></mis></synonyms>",
+                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472137",
+                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472137",
+                        updatedAt   : "2017-09-07 10:54:20.736603",
+                        updatedBy   : "import"
                 ],
                 [
                         id               : 9472138,
@@ -1253,14 +1301,15 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472138",
+                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472138",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472141,
-                        lockVersion      : 0,
-                        depth            : 8,
-                        displayHtml      : "<data><scientific><name id='142232'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fragilis'>fragilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>Cargill, D.C., Söderström, L., Hagborg, A. & Konrat, M. von (2013), Notes on Early Land Plants Today. 23. A new synonym in Anthoceros (Anthocerotaceae, Anthocerotophyta). <i>Phytotaxa</i> 76(3)</citation></data>",
+                        id          : 9472141,
+                        lockVersion : 0,
+                        depth       : 8,
+                        displayHtml : "<data><scientific><name id='142232'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fragilis'>fragilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>Cargill, D.C., Söderström, L., Hagborg, A. & Konrat, M. von (2013), Notes on Early Land Plants Today. 23. A new synonym in Anthoceros (Anthocerotaceae, Anthocerotophyta). <i>Phytotaxa</i> 76(3)</citation></data>",
                         excluded         : false,
                         instanceId       : 760852,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/760852",
@@ -1276,11 +1325,12 @@ class TreeServiceSpec extends Specification {
                         simpleName       : "Anthoceros fragilis",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms         : ["Anthoceros fertilis": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 209870, "fullnamehtml": "<scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml     : "<synonyms><tax><scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472141",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
-                        updatedBy        : "import"
+                        synonyms    : ["Anthoceros fertilis": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 209870, "fullnamehtml": "<scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
+                        synonymsHtml: "<synonyms><tax><scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
+                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472141",
+                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472141",
+                        updatedAt   : "2017-09-07 10:54:20.736603",
+                        updatedBy   : "import"
                 ],
                 [
                         id               : 9472139,
@@ -1305,6 +1355,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472139",
+                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472139",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1331,6 +1382,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472140",
+                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472140",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1357,14 +1409,15 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142",
+                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472143,
-                        lockVersion      : 0,
-                        depth            : 8,
-                        displayHtml      : "<data><scientific><name id='143486'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors>(<base id='8996' title='Montagne, J.P.F.C.'>Mont.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>Bhardwaj, D.C. (1975), <i>Geophytology</i> 5</citation></data>",
+                        id          : 9472143,
+                        lockVersion : 0,
+                        depth       : 8,
+                        displayHtml : "<data><scientific><name id='143486'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors>(<base id='8996' title='Montagne, J.P.F.C.'>Mont.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>Bhardwaj, D.C. (1975), <i>Geophytology</i> 5</citation></data>",
                         excluded         : false,
                         instanceId       : 621673,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/621673",
@@ -1380,17 +1433,18 @@ class TreeServiceSpec extends Specification {
                         simpleName       : "Folioceros fuciformis",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms         : ["Anthoceros fuciformis": ["mis": false, "nom": true, "tax": false, "type": "basionym", "cites": "Montagne, J.P.F.C. (1843), <i>Annales des Sciences Naturelles; Botanique</i> 20", "nameid": 142253, "fullnamehtml": "<scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific>"]],
-                        synonymsHtml     : "<synonyms><nom><scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific> <type>basionym</type></nom></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472143",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
-                        updatedBy        : "import"
+                        synonyms    : ["Anthoceros fuciformis": ["mis": false, "nom": true, "tax": false, "type": "basionym", "cites": "Montagne, J.P.F.C. (1843), <i>Annales des Sciences Naturelles; Botanique</i> 20", "nameid": 142253, "fullnamehtml": "<scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific>"]],
+                        synonymsHtml: "<synonyms><nom><scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific> <type>basionym</type></nom></synonyms>",
+                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472143",
+                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472143",
+                        updatedAt   : "2017-09-07 10:54:20.736603",
+                        updatedBy   : "import"
                 ],
                 [
-                        id               : 9472144,
-                        lockVersion      : 0,
-                        depth            : 8,
-                        displayHtml      : "<data><scientific><name id='134991'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
+                        id          : 9472144,
+                        lockVersion : 0,
+                        depth       : 8,
+                        displayHtml : "<data><scientific><name id='134991'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 669234,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/669234",
@@ -1407,10 +1461,11 @@ class TreeServiceSpec extends Specification {
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : ["Anthoceros glandulosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4", "nameid": 129589, "fullnamehtml": "<scientific><name id='129589'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific>"], "Aspiromitus glandulosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 209879, "fullnamehtml": "<scientific><name id='209879'><scientific><name id='172172'><element class='Aspiromitus'>Aspiromitus</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml     : "<synonyms><nom><scientific><name id='129589'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='209879'><scientific><name id='172172'><element class='Aspiromitus'>Aspiromitus</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472144",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
-                        updatedBy        : "import"
+                        synonymsHtml: "<synonyms><nom><scientific><name id='129589'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='209879'><scientific><name id='172172'><element class='Aspiromitus'>Aspiromitus</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
+                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472144",
+                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472144",
+                        updatedAt   : "2017-09-07 10:54:20.736603",
+                        updatedBy   : "import"
                 ],
                 [
                         id               : 9472155,
@@ -1435,6 +1490,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155",
+                        instancePath     : "/9434380/9472131/9472132/9472155",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1461,6 +1517,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1487,6 +1544,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1513,6 +1571,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1539,6 +1598,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1565,14 +1625,15 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472160",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472160",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472161,
-                        lockVersion      : 0,
-                        depth            : 9,
-                        displayHtml      : "<data><scientific><name id='178505'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='crispatus'>crispatus</element> <authors>(<base id='6851' title='Hooker, W.J.'>Hook.</base>) <author id='6893' title='Nees von Esenbeck, C.G.D.'>Nees</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
+                        id          : 9472161,
+                        lockVersion : 0,
+                        depth       : 9,
+                        displayHtml : "<data><scientific><name id='178505'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='crispatus'>crispatus</element> <authors>(<base id='6851' title='Hooker, W.J.'>Hook.</base>) <author id='6893' title='Nees von Esenbeck, C.G.D.'>Nees</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 622823,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/622823",
@@ -1588,11 +1649,12 @@ class TreeServiceSpec extends Specification {
                         simpleName       : "Dendroceros crispatus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms         : ["Monoclea crispata": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Hooker, W.J. in Hooker, W.J. (ed.) (1830), <i>Botanical Miscellany</i> 1", "nameid": 210309, "fullnamehtml": "<scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific>"]],
-                        synonymsHtml     : "<synonyms><nom><scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472161",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
-                        updatedBy        : "import"
+                        synonyms    : ["Monoclea crispata": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Hooker, W.J. in Hooker, W.J. (ed.) (1830), <i>Botanical Miscellany</i> 1", "nameid": 210309, "fullnamehtml": "<scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific>"]],
+                        synonymsHtml: "<synonyms><nom><scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
+                        treePath    : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472161",
+                        instancePath: "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472161",
+                        updatedAt   : "2017-09-07 10:54:20.736603",
+                        updatedBy   : "import"
                 ],
                 [
                         id               : 9472165,
@@ -1617,6 +1679,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472165",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472165",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1643,14 +1706,15 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472162",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472162",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472166,
-                        lockVersion      : 0,
-                        depth            : 9,
-                        displayHtml      : "<data><scientific><name id='210313'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='muelleri'>muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
+                        id          : 9472166,
+                        lockVersion : 0,
+                        depth       : 9,
+                        displayHtml : "<data><scientific><name id='210313'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='muelleri'>muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 772246,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/772246",
@@ -1666,11 +1730,12 @@ class TreeServiceSpec extends Specification {
                         simpleName       : "Dendroceros muelleri",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms         : ["Dendroceros ferdinandi-muelleri": ["mis": false, "nom": false, "tax": false, "type": "orthographic variant", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 210312, "fullnamehtml": "<scientific><name id='210312'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='ferdinandi-muelleri'>ferdinandi-muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472166",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
-                        updatedBy        : "import"
+                        synonyms    : ["Dendroceros ferdinandi-muelleri": ["mis": false, "nom": false, "tax": false, "type": "orthographic variant", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 210312, "fullnamehtml": "<scientific><name id='210312'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='ferdinandi-muelleri'>ferdinandi-muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
+                        synonymsHtml: "<synonyms></synonyms>",
+                        treePath    : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472166",
+                        instancePath: "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472166",
+                        updatedAt   : "2017-09-07 10:54:20.736603",
+                        updatedBy   : "import"
                 ],
                 [
                         id               : 9472163,
@@ -1695,6 +1760,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472163",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472163",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1721,6 +1787,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472164",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472164",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
@@ -1747,14 +1814,15 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472168,
-                        lockVersion      : 0,
-                        depth            : 9,
-                        displayHtml      : "<data><scientific><name id='175653'><scientific><name id='124930'><element class='Megaceros'>Megaceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors>(<base id='1435' title='Stephani, F.'>Steph.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
+                        id          : 9472168,
+                        lockVersion : 0,
+                        depth       : 9,
+                        displayHtml : "<data><scientific><name id='175653'><scientific><name id='124930'><element class='Megaceros'>Megaceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors>(<base id='1435' title='Stephani, F.'>Steph.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 624477,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/624477",
@@ -1771,10 +1839,11 @@ class TreeServiceSpec extends Specification {
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : ["Anthoceros carnosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Stephani, F. (1889), Hepaticae Australiae. <i>Hedwigia</i> 28", "nameid": 175654, "fullnamehtml": "<scientific><name id='175654'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml     : "<synonyms><nom><scientific><name id='175654'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472168",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
-                        updatedBy        : "import"
+                        synonymsHtml: "<synonyms><nom><scientific><name id='175654'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
+                        treePath    : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472168",
+                        instancePath: "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472168",
+                        updatedAt   : "2017-09-07 10:54:20.736603",
+                        updatedBy   : "import"
                 ],
                 [
                         id               : 9472169,
@@ -1799,6 +1868,7 @@ class TreeServiceSpec extends Specification {
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
                         treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472169",
+                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472169",
                         updatedAt        : "2017-09-07 10:54:20.736603",
                         updatedBy        : "import"
                 ]

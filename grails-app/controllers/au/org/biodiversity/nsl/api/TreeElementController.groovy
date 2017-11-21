@@ -39,10 +39,10 @@ class TreeElementController implements WithTarget, ValidationUtils {
      * @param excluded
      * @return
      */
-    def placeTaxon() {
-        withJsonData(request.JSON, false, ['parentTaxonUri', 'instanceUri', 'excluded']) { ResultObject results, Map data ->
+    def placeElement() {
+        withJsonData(request.JSON, false, ['parentElementUri', 'instanceUri', 'excluded']) { ResultObject results, Map data ->
 
-            String parentTaxonUri = data.parentTaxonUri
+            String parentTaxonUri = data.parentElementUri
             String instanceUri = data.instanceUri
             Boolean excluded = data.excluded
             TreeVersionElement treeVersionElement = TreeVersionElement.get(parentTaxonUri)
@@ -56,25 +56,26 @@ class TreeElementController implements WithTarget, ValidationUtils {
         }
     }
 
-    def moveTaxon() {
-        withJsonData(request.JSON, false, ['taxonUri', 'newParentTaxonUri']) { ResultObject results, Map data ->
-            String taxonUri = data.taxonUri
-            String newParentTaxonUri = data.newParentTaxonUri
+    def replaceElement() {
+        withJsonData(request.JSON, false, ['currentElementUri', 'newParentElementUri', 'instanceUri']) { ResultObject results, Map data ->
+            String instanceUri = data.instanceUri
+            String currentElementUri = data.currentElementUri
+            String newParentElementUri = data.newParentElementUri
 
-            TreeVersionElement childElement = TreeVersionElement.get(taxonUri)
-            TreeVersionElement parentElement = TreeVersionElement.get(newParentTaxonUri)
+            TreeVersionElement currentElement = TreeVersionElement.get(currentElementUri)
+            TreeVersionElement newParentElement = TreeVersionElement.get(newParentElementUri)
 
-            if (childElement && parentElement) {
-                String userName = treeService.authorizeTreeOperation(parentElement.treeVersion.tree)
-                results.payload = treeService.moveTaxon(childElement, parentElement, userName)
+            if (currentElement && newParentElement && instanceUri) {
+                String userName = treeService.authorizeTreeOperation(newParentElement.treeVersion.tree)
+                results.payload = treeService.replaceTaxon(currentElement, newParentElement, instanceUri, userName)
             } else {
                 results.ok = false
-                results.fail("taxon with ids $taxonUri, $newParentTaxonUri not found", NOT_FOUND)
+                results.fail("Elements with ids $instanceUri, $currentElementUri, $newParentElementUri not found", NOT_FOUND)
             }
         }
     }
 
-    def removeTaxon() {
+    def removeElement() {
         withJsonData(request.JSON, false, ['taxonUri']) { ResultObject results, Map data ->
             String taxonUri = data.taxonUri
             TreeVersionElement treeVersionElement = TreeVersionElement.get(taxonUri)
@@ -90,7 +91,7 @@ class TreeElementController implements WithTarget, ValidationUtils {
         }
     }
 
-    def editTaxonProfile() {
+    def editElementProfile() {
         withJsonData(request.JSON, false, ['taxonUri', 'profile']) { ResultObject results, Map data ->
             TreeVersionElement treeVersionElement = TreeVersionElement.get(data.taxonUri as String)
             if (!treeVersionElement) {
@@ -101,7 +102,7 @@ class TreeElementController implements WithTarget, ValidationUtils {
         }
     }
 
-    def editTaxonStatus() {
+    def editElementStatus() {
         withJsonData(request.JSON, false, ['taxonUri', 'excluded']) { ResultObject results, Map data ->
             TreeVersionElement treeVersionElement = TreeVersionElement.get(data.taxonUri as String)
             if (!treeVersionElement) {
@@ -147,7 +148,7 @@ class TreeElementController implements WithTarget, ValidationUtils {
         } else {
             Map data = RestCallService.jsonObjectToMap(json as JSONObject)
             for (String key in requiredKeys) {
-                if (!data[key]) {
+                if (data[key] == null) {
                     results.ok = false
                     results.fail("$key not supplied. You must supply $key.", BAD_REQUEST)
                 }

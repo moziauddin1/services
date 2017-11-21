@@ -95,7 +95,7 @@ Method: GET
 
 * InstanceId
 
-== Place taxon
+== Place taxon element
 
 Take an instance URI and create a tree element to place under the supplied element
 This will place a taxon from any NSL shard on the tree. It can only place a taxon under an
@@ -109,7 +109,7 @@ Method: PUT
 * treeElementUri - the element to place it under
 * taxonUri - the instance URI to use to create the tree-element
 
-== Place a top level taxon
+== Place a top level taxon element
 
 Take an instance URI and place it in a tree version with no parent element
 This will place a taxon from any NSL shard on the tree. It can only place a taxon under
@@ -118,10 +118,23 @@ a tree version controlled by this service.
 * treeVersionId - the element to place it under
 * taxonUri - the instance URI to use to create the tree-element
 
-== Move taxon
+== Replace a taxon element
 
-Take an existing tree element (taxon) from it's existing location on a tree version
-and move it to a new location.
+Replace an existing Taxon Concept with another one and possibly move it's placement on the tree.
+This moves the child taxa from the replaced taxon to this new one.
 
-* treeElementUri - the element you want to move
+A new taxon (tree element) is created with a new instance and placed on the tree under the desired
+parent element. The child elements are copied to new elements under the new taxon (since they have a new
+parent path) but keep their taxon identifiers.
+
+This will copy the status and profile information from the replaced taxon.
+
+The old tree element will be removed from the current version of the tree.
+
+* treeElementUri - the element you want to replace
+* instanceUri - the new instanceUri you want to replace it with
 * newElementParentUri - the new parent to place it under
+
+== Delete a taxon element
+
+Remove a taxon element from the classification
