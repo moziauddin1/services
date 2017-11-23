@@ -16,10 +16,7 @@
 
 package services
 
-import au.org.biodiversity.nsl.Node
-import au.org.biodiversity.nsl.TreeService
-import au.org.biodiversity.nsl.TreeVersion
-import au.org.biodiversity.nsl.TreeVersionElement
+import au.org.biodiversity.nsl.*
 import au.org.biodiversity.nsl.tree.QueryService
 
 class TreeServicesTagLib {
@@ -93,6 +90,14 @@ class TreeServicesTagLib {
             if (currentElement) {
                 out << body(currentElement: currentElement)
             }
+        }
+    }
+
+    def drafts = { attrs, body ->
+        Tree tree = attrs.tree
+        List<TreeVersion> drafts = TreeVersion.findAllWhere(tree: tree, published: false)
+        drafts.each { TreeVersion draft ->
+            out << body(draft: draft, defaultDraft: draft.id == tree.defaultDraftTreeVersion.id)
         }
     }
 

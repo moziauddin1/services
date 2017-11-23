@@ -48,6 +48,10 @@
              href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.classificationTreeName])}"><i
               class="fa fa-search"></i> Taxonomy (<st:primaryClassification/>)</a>
         </li>
+        <li class="${params.controller == 'tree' ? 'active' : ''}">
+          <a href="${createLink(namespace: 'api', controller: 'tree')}">Classifications</a>
+        </li>
+
       </ul>
 
       <ul class="nav navbar-nav navbar-right">

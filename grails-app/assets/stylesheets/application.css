@@ -72,6 +72,17 @@ div.logo {
     display: inline;
 }
 
+/* data table */
+div.row {
+    display: table-row;
+}
+
+span.cell {
+    display: table-cell;
+    padding: 0.5em;
+    border-top: 1px solid grey;
+}
+
 .ui-autocomplete {
     z-index: 10000;
 }

@@ -9,10 +9,10 @@
 
 <body>
 <div class="rest-resource-content tree-gsp">
-  <h1>Tree Services</h1>
+  <h1>Classifications</h1>
 
   <div>
-    <p>A &quot;tree&quot; is a list, classification or arrangement of taxon in a tree structure. A tree structure arranges
+    <p>A Classification is an arrangement of taxon in a tree structure. A tree structure arranges
     taxa in a parent/child relationship. The tree has elements that hold the position of a Taxon Concept, and it's metadata
     in an arrangement of taxon that we refer to generically as a tree.</p>
 
@@ -222,56 +222,59 @@
             <g:else>
               Not currently published.
             </g:else>
-
-            <a href="${tree.linkToHomePage}">Home page</a>
           </div>
 
+          <div>
+            <strong>Web page:</strong> <a href="${tree.linkToHomePage}">${tree.linkToHomePage}</a>
+          </div>
           <div>
             <strong>Log entry:</strong> ${tree.currentTreeVersion?.logEntry}
           </div>
 
           <div>
-            <strong>Draft:</strong>
+            <strong>drafts:</strong>
+            <tree:drafts tree="${tree}">
+              <div class="row">
+                <span
+                    class="cell">${raw(defaultDraft ? '<i class="fa fa-check"></i>' : '')} ${tree.name}: ${draft.draftName}</span>
+                <span class="cell">&nbsp;
+                  <shiro:hasRole name="${tree.groupName}">
+                    <button type="button" class="btn btn-primary" data-toggle="modal"
+                            data-target="#editDraft"
+                            data-version-id="${draft.id}"
+                            data-name="${draft.draftName}"
+                            data-default-draft="true"
+                            title="Edit draft ${draft.draftName}.">
+                      edit
+                    </button>
+                    <button type="button" class="btn btn-danger" data-toggle="modal"
+                            data-target="#deleteDraft"
+                            data-url="${createLink(namespace: 'api', controller: 'treeVersion', action: 'delete', id: draft.id)}"
+                            data-draft-name="${draft.draftName}"
+                            title="Delete Draft ${draft.draftName}.">
+                      delete
+                    </button>
+                    <button type="button" class="btn btn-primary" data-toggle="modal"
+                            data-target="#publishDraft"
+                            data-version-id="${draft.id}"
+                            data-default-draft="true"
+                            title="Publish Draft ${draft.draftName}.">
+                      publish
+                    </button>
+                  </shiro:hasRole>
+                </span>
+              </div>
+            </tree:drafts>
 
-            <g:if test="${tree.defaultDraftTreeVersion}">
-              ${tree.defaultDraftTreeVersion.draftName}
-              <shiro:hasRole name="${tree.groupName}">
-                <button type="button" class="btn btn-primary" data-toggle="modal"
-                        data-target="#editDraft"
-                        data-version-id="${tree.defaultDraftTreeVersion.id}"
-                        data-name="${tree.defaultDraftTreeVersion.draftName}"
-                        data-default-draft="true"
-                        title="Edit draft ${tree.defaultDraftTreeVersion.draftName}.">
-                  <i class="fa fa-edit"></i>
-                </button>
-                <button type="button" class="btn btn-primary" data-toggle="modal"
-                        data-target="#deleteDraft"
-                        data-url="${createLink(namespace: 'api', controller: 'treeVersion', action: 'delete', id: tree.defaultDraftTreeVersion.id)}"
-                        data-draft-name="${tree.defaultDraftTreeVersion.draftName}"
-                        title="Delete Draft ${tree.defaultDraftTreeVersion.draftName}.">
-                  <i class="fa fa-minus"></i>
-                </button>
-                <button type="button" class="btn btn-primary" data-toggle="modal"
-                        data-target="#publishDraft"
-                        data-version-id="${tree.defaultDraftTreeVersion.id}"
-                        data-default-draft="true"
-                        title="Publish Draft ${tree.defaultDraftTreeVersion.draftName}.">
-                  <i class="fa fa-share-square-o"></i>
-                </button>
-              </shiro:hasRole>
-            </g:if>
-            <g:else>
-              (No draft)
-              <shiro:hasRole name="${tree.groupName}">
-                <button type="button" class="btn btn-primary" data-toggle="modal"
-                        data-target="#editDraft"
-                        data-tree-id="${tree.id}"
-                        data-default-draft="true"
-                        title="Make a draft tree. (This can take a while)">
-                  <i class="fa fa-plus"></i>
-                </button>
-              </shiro:hasRole>
-            </g:else>
+            <shiro:hasRole name="${tree.groupName}">
+              <button type="button" class="btn btn-primary" data-toggle="modal"
+                      data-target="#editDraft"
+                      data-tree-id="${tree.id}"
+                      data-default-draft="true"
+                      title="Make a draft tree. (This can take a while)">
+                Add a draft of ${tree.name} <i class="fa fa-plus"></i>
+              </button>
+            </shiro:hasRole>
           </div>
           <hr>
         </dd>

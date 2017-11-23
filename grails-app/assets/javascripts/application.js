@@ -53,9 +53,9 @@ function editTreeData(event) {
         };
 
         if (data.id && data.id !== "") {
-            send(data, 'POST', "tree/editTree");
+            send(data, 'POST', baseContextPath + "/api/tree/editTree");
         } else {
-            send(data, 'PUT', "tree/createTree");
+            send(data, 'PUT', baseContextPath + "/api/tree/createTree");
         }
     }
 }
@@ -75,9 +75,9 @@ function editDraftData(event) {
         };
 
         if (data.versionId && data.versionId !== "") {
-            send(data, "POST", "treeVersion/edit");
+            send(data, "POST", baseContextPath + "/api/treeVersion/edit");
         } else {
-            send(data, 'PUT', "tree/createVersion");
+            send(data, 'PUT', baseContextPath + "/api/tree/createVersion");
         }
 
     }
@@ -93,7 +93,7 @@ function publishDraftData(event) {
             logEntry: form.find('#logEntry').val()
         };
 
-        send(data, "POST", "treeVersion/publish");
+        send(data, "POST", baseContextPath + "/api/treeVersion/publish");
     }
 }
 
