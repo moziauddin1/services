@@ -1,10 +1,10 @@
-<%@ page import="au.org.biodiversity.nsl.ConfigService; org.apache.shiro.SecurityUtils" %>
+<%@ page import="org.apache.shiro.SecurityUtils" %>
 
 <div class="imageAndText">
-  <asset:image src="${ConfigService.bannerImage}" class="align-right"/>
+  <asset:image src="${st.bannerImage()}" class="align-right"/>
   <div class="col">
     <div class="col-sm-12">
-    <h1>${ConfigService.bannerText}
+    <h1><st:bannerText/>
       <g:if test="${params?.product}">
         <span class="small">${params.product} - <st:productBrief product="${params.product}"/></span></h1>
       </g:if>
@@ -38,14 +38,14 @@
                 class="fa fa-search"></i> Search</a>
           </li>
         </g:if>
-        <li class="${params.product == ConfigService.nameTreeName ? 'active' : ''}">
+        <li class="${params.product == st.nameTree() ? 'active' : ''}">
           <a class="search"
-             href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.nameTreeName])}"><i
+             href="${createLink(controller: 'search', action: 'search', params: [product: st.nameTree()])}"><i
               class="fa fa-search"></i> Names (<st:nameTree/>)</a>
         </li>
-        <li class="${params.product == ConfigService.classificationTreeName ? 'active' : ''}">
+        <li class="${params.product == st.primaryClassification() ? 'active' : ''}">
           <a class="search"
-             href="${createLink(controller: 'search', action: 'search', params: [product: ConfigService.classificationTreeName])}"><i
+             href="${createLink(controller: 'search', action: 'search', params: [product: st.primaryClassification()])}"><i
               class="fa fa-search"></i> Taxonomy (<st:primaryClassification/>)</a>
         </li>
         <li class="${params.controller == 'tree' ? 'active' : ''}">

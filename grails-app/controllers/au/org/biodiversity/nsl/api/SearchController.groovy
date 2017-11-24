@@ -184,8 +184,8 @@ class SearchController implements RequestUtil {
 
     def nameCheck(Integer max) {
         List<Map> results = searchService.nameCheck(params, max)
-        params.product = ConfigService.nameTreeName
-        String treeName = ConfigService.classificationTreeName
+        params.product = configService.nameTreeName
+        String treeName = configService.classificationTreeName
         if (params.csv) {
             render(file: renderCsvResults(results).bytes, contentType: 'text/csv', fileName: 'name-check.csv')
         } else {

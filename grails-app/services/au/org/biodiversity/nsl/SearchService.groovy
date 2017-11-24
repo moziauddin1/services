@@ -326,7 +326,10 @@ order by sortName
 ''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
-                        TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, treeService.getTree(ConfigService.classificationTreeName))
+                        TreeVersionElement treeVersionElement = treeService.
+                                findCurrentElementForName(name,
+                                        treeService.getTree(configService.classificationTreeName)
+                                )
                         Name family = name.family
                         [treeVersionElement: treeVersionElement, name: name, family: family]
                     }
@@ -352,7 +355,7 @@ order by sortName
     def registerSuggestions() {
         // add apc name search
         suggestService.addSuggestionHandler('apc-search') { String subject, String query, Map params ->
-            String treeName = ConfigService.classificationTreeName
+            String treeName = configService.classificationTreeName
 
             log.debug "apc-search suggestion handler params: $params"
             Instance instance

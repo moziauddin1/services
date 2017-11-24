@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <reference data-referenceId="${reference.id}">
 
   <af:sortedInstances instances="${instances}" var="instance">

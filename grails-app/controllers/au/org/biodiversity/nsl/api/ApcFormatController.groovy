@@ -22,6 +22,7 @@ import org.grails.plugins.metrics.groovy.Timed
 
 class ApcFormatController {
 
+    def configService
     def linkService
     def jsonRendererService
     TreeService treeService
@@ -38,7 +39,7 @@ class ApcFormatController {
     @Timed()
     display(Name name) {
         if (name) {
-            params.product = ConfigService.classificationTreeName
+            params.product = configService.classificationTreeName
             String inc = g.cookie(name: 'searchInclude')
             if (inc) {
                 params.inc = JSON.parse(inc) as Map
@@ -46,7 +47,7 @@ class ApcFormatController {
                 params.inc = [scientific: 'on']
             }
 
-            getNameModel(name) << [query: [name: "$name.fullName", product: ConfigService.classificationTreeName, inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
+            getNameModel(name) << [query: [name: "$name.fullName", product: configService.classificationTreeName, inc: params.inc], stats: [:], names: [name], count: 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')
@@ -56,7 +57,7 @@ class ApcFormatController {
     @Timed()
     name(Name name) {
         if (name) {
-            log.info "getting ${ConfigService.classificationTreeName} name $name"
+            log.info "getting ${configService.classificationTreeName} name $name"
             ResultObject model = new ResultObject(getNameModel(name))
             render(view: '_name', model: model)
         } else {
@@ -65,7 +66,7 @@ class ApcFormatController {
     }
 
     private Map getNameModel(Name name) {
-        Tree tree = treeService.getTree(ConfigService.classificationTreeName)
+        Tree tree = treeService.getTree(configService.classificationTreeName)
         TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, tree)
         Instance apcInstance = null
         Set<Instance> synonymOf = null

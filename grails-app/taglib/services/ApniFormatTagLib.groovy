@@ -185,7 +185,7 @@ class ApniFormatTagLib {
         } else {
             //if not logged in force to name tree name
             if (!SecurityUtils.subject?.principal) {
-                params << [product: ConfigService.nameTreeName]
+                params << [product: configService.nameTreeName]
             }
         }
         out << g.createLink(absolute: true, controller: 'search', action: 'search', params: params)

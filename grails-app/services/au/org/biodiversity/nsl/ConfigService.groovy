@@ -16,8 +16,11 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
+import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
 import org.apache.commons.logging.LogFactory
+
+import javax.sql.DataSource
 
 /**
  * This is a helper service for abstracting, accessing and managing configuration of the services.
@@ -33,12 +36,16 @@ import org.apache.commons.logging.LogFactory
 @Transactional
 class ConfigService {
 
+    DataSource dataSource_nsl
+
     def grailsApplication
 
     private String nameSpaceName
 
-    private static String getShardConfigOrfail(String key) {
-        String value = ShardConfig.findByName(key)?.value
+    private String getShardConfigOrfail(String key) {
+        Sql sql = getSqlForNSLDB()
+        GroovyRowResult row = sql.firstRow('SELECT * FROM shard_config WHERE name = :name', [name: key])
+        String value = row.value
         if (!value) {
             throw new Exception("Config error. Add '$key' to shard_config.")
         }
@@ -61,11 +68,11 @@ class ConfigService {
         return nameSpace
     }
 
-    static String getNameTreeName() {
+    String getNameTreeName() {
         return getShardConfigOrfail('name tree label')
     }
 
-    static String getClassificationTreeName() {
+    String getClassificationTreeName() {
         try {
             return getShardConfigOrfail('classification tree key')
         } catch (e) {
@@ -74,27 +81,27 @@ class ConfigService {
         return getShardConfigOrfail('classification tree label')
     }
 
-    static String getShardDescriptionHtml() {
+    String getShardDescriptionHtml() {
         return getShardConfigOrfail('description html')
     }
 
-    static String getPageTitle() {
+    String getPageTitle() {
         return getShardConfigOrfail('page title')
     }
 
-    static String getBannerText() {
+    String getBannerText() {
         return getShardConfigOrfail('banner text')
     }
 
-    static String getBannerImage() {
+    String getBannerImage() {
         return getShardConfigOrfail('banner image')
     }
 
-    static String getCardImage() {
+    String getCardImage() {
         return getShardConfigOrfail('card image')
     }
 
-    static String getProductDescription(String productName) {
+    String getProductDescription(String productName) {
         return getShardConfigOrfail("$productName description")
     }
 
@@ -135,12 +142,8 @@ class ConfigService {
 
 
     Sql getSqlForNSLDB() {
-        String dbUrl = grailsApplication.config.dataSource_nsl.url
-        String username = grailsApplication.config.dataSource_nsl.username
-        String password = grailsApplication.config.dataSource_nsl.password
-        String driverClassName = grailsApplication.config.dataSource_nsl.driverClassName
-        log.debug "Getting sql for $dbUrl, $username, $password, $driverClassName"
-        Sql.newInstance(dbUrl, username, password, driverClassName)
+        //noinspection GroovyAssignabilityCheck
+        return Sql.newInstance(dataSource_nsl)
     }
 
     String getWebUserName() {

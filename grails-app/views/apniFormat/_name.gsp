@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <div class="name" id="${name.id}">
   <family>
     <g:if test="${familyName}">
@@ -13,7 +12,7 @@
     </accepted-name><name-status class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
       class="${name.nameType.name}">, ${name.nameType.name}</name-type>
     <g:if test="${!familyName}">
-      <af:branch name="${name}" tree="${ConfigService.classificationTreeName}"><i class="fa fa-code-fork"></i></af:branch>
+      <af:branch name="${name}" tree="${st.primaryClassification()}"><i class="fa fa-code-fork"></i></af:branch>
     </g:if>
     <g:each in="${name.tags}" var="tag">
       <name-tag>${tag.tag.name}<i class="fa fa-tag"></i></name-tag>

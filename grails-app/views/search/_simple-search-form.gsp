@@ -48,7 +48,7 @@
                 class="fa fa-external-link"></i></a>
           </label>
         </div>
-        <g:if test="${params.product != au.org.biodiversity.nsl.ConfigService.classificationTreeName}">
+        <g:if test="${params.product != st.primaryClassification()}">
         <div class="checkbox">
           <label><g:checkBox name="inc.other" value="${query.inc?.other}"/>Other names, e.g. common</label>
         </div>

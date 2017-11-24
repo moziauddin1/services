@@ -2,7 +2,6 @@
   User: pmcneil
   Date: 16/09/14
 --%>
-<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <%@ page contentType="text/html;charset=UTF-8" %>
 
 <div class="panel  ${(params.product == 'APC' ? 'panel-success' : 'panel-info')} ">

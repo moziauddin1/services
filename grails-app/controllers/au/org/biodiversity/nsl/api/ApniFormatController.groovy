@@ -16,7 +16,6 @@
 
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.ConfigService
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.RankUtils
 import grails.converters.JSON
@@ -31,6 +30,7 @@ class ApniFormatController {
     def apniFormatService
     def jsonRendererService
     def photoService
+    def configService
 
     static responseFormats = [
             display: ['html'],
@@ -48,7 +48,7 @@ class ApniFormatController {
     @Timed()
     display(Name name) {
         if (name) {
-            params.product = ConfigService.nameTreeName
+            params.product = configService.nameTreeName
             String inc = g.cookie(name: 'searchInclude')
             if (inc) {
                 params.inc = JSON.parse(inc) as Map
@@ -62,7 +62,7 @@ class ApniFormatController {
             }
 
             apniFormatService.getNameModel(name) << [
-                    query: [name: "$name.fullName", product: ConfigService.nameTreeName, inc: params.inc],
+                    query: [name: "$name.fullName", product: configService.nameTreeName, inc: params.inc],
                     stats: [:],
                     names: [name],
                     photo: photoSearch,
@@ -76,7 +76,7 @@ class ApniFormatController {
     @Timed()
     name(Name name) {
         if (name) {
-            log.info "getting ${ConfigService.nameTreeName} name $name"
+            log.info "getting ${configService.nameTreeName} name $name"
             ResultObject model = new ResultObject(apniFormatService.getNameModel(name))
             String photoSearch = null
             if (RankUtils.nameAtRankOrLower(name, 'Species') && photoService.hasPhoto(name.simpleName)) {

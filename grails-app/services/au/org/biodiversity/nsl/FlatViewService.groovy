@@ -40,7 +40,7 @@ class FlatViewService implements WithSql{
 
 
     Closure nameView = { namespace ->
-        String classificationTreeName = ConfigService.classificationTreeName
+        String classificationTreeName = configService.classificationTreeName
         return """
 CREATE MATERIALIZED VIEW ${NAME_VIEW} AS
 WITH RECURSIVE
@@ -287,7 +287,7 @@ FROM apni_names
     }
 
     Closure taxonView = { namespace ->
-        String classificationTreeName = ConfigService.classificationTreeName
+        String classificationTreeName = configService.classificationTreeName
         return """
 CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
 
@@ -503,11 +503,11 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
 
 
     File exportTaxonToCSV() {
-        exportToCSV(TAXON_VIEW, "${ConfigService.classificationTreeName}-taxon", taxonView)
+        exportToCSV(TAXON_VIEW, "${configService.classificationTreeName}-taxon", taxonView)
     }
 
     File exportNamesToCSV() {
-        exportToCSV(NAME_VIEW, "${ConfigService.nameTreeName}-names", nameView)
+        exportToCSV(NAME_VIEW, "${configService.nameTreeName}-names", nameView)
     }
 
     private File exportToCSV(String viewName, String namePrefix, Closure viewDefn) {

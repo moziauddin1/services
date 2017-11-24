@@ -1,4 +1,4 @@
-<%@ page import="au.org.biodiversity.nsl.Instance; au.org.biodiversity.nsl.ConfigService" %>
+<%@ page import="au.org.biodiversity.nsl.Instance" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -49,10 +49,10 @@
 
     <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.taxonUriIdPart == instance.id.toString()}">
       <g:if test="${(apc as au.org.biodiversity.nsl.Node)?.typeUriIdPart == 'ApcConcept'}">
-        <apc><i class="fa fa-check"></i>${ConfigService.classificationTreeName}</apc>
+        <apc><i class="fa fa-check"></i>${st.primaryClassification()}</apc>
       </g:if>
       <g:else>
-        <apc><i class="fa fa-ban"></i>${ConfigService.classificationTreeName}</apc>
+        <apc><i class="fa fa-ban"></i>${st.primaryClassification()}</apc>
       </g:else>
     </g:if>
     <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>

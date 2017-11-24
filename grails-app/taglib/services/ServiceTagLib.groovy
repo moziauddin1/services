@@ -313,6 +313,26 @@ class ServiceTagLib {
         out << configService.getProductDescription(attrs.product)
     }
 
+    def shardDescription = { attrs ->
+        out << configService.getShardDescriptionHtml()
+    }
+
+    def bannerText = { attrs ->
+        out << configService.getBannerText()
+    }
+
+    def bannerImage = { attrs ->
+        out << configService.getBannerImage()
+    }
+
+    def pageTitle = { attrs ->
+        out << configService.getPageTitle()
+    }
+
+    def cardImage = { attrs ->
+        out << configService.getCardImage()
+    }
+
     def randomName = { attrs ->
         String q = attrs.q
         if (q) {

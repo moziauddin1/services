@@ -1,7 +1,6 @@
-<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <g:if test="${params.product}">
   <g:set var="alertClass"
-         value="${((params.product == ConfigService.classificationTreeName) ? 'alert-success' : 'alert-info')}"/>
+         value="${((params.product == st.primaryClassification()) ? 'alert-success' : 'alert-info')}"/>
 
   <div id="productDescription" data-product="${params.product}" class="alert ${alertClass} alert-dismissible text-default" role="alert">
     <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span>

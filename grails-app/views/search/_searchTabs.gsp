@@ -1,6 +1,5 @@
-<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <g:set var="panelClass"
-       value="panel ${((params.product == ConfigService.classificationTreeName) ? 'panel-success' : 'panel-info')}"/>
+       value="panel ${((params.product == st.primaryClassification()) ? 'panel-success' : 'panel-info')}"/>
 <g:render template="/search/common-search-heading"/>
 
 <div role="tabpanel">

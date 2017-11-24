@@ -26,7 +26,7 @@ class ApniFormatService {
     TreeService treeService
 
     Map getNameModel(Name name) {
-        Tree tree = treeService.getTree(ConfigService.classificationTreeName)
+        Tree tree = treeService.getTree(configService.classificationTreeName)
 
         Name familyName = name.family
         TreeVersionElement treeVersionElement = tree ? treeService.findCurrentElementForName(name, tree) : null

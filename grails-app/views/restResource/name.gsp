@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.Name; au.org.biodiversity.nsl.ConfigService" %>
 <!DOCTYPE html>
 <html>
 <head>

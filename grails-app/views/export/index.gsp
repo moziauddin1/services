@@ -2,7 +2,7 @@
   User: pmcneil
   Date: 15/09/14
 --%>
-<%@ page import="au.org.biodiversity.nsl.ConfigService" contentType="text/html;charset=UTF-8" %>
+<%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
   <meta name="layout" content="main">
