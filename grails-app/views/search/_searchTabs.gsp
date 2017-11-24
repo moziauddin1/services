@@ -1,5 +1,5 @@
 <g:set var="panelClass"
-       value="panel ${((params.product == st.primaryClassification()) ? 'panel-success' : 'panel-info')}"/>
+       value="panel ${st.panelClass(product: params.product)}"/>
 <g:render template="/search/common-search-heading"/>
 
 <div role="tabpanel">

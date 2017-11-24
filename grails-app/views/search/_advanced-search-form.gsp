@@ -182,7 +182,7 @@
           <label><g:checkBox name="inc.autonym" value="${query.inc?.autonym}"/>Autonyms</label>
         </div>
 
-        <g:if test="${params.product != st.primaryClassification()}">
+        <g:if test="${params.product != st.primaryClassification().toString()}">
           <div class="checkbox">
             <label><g:checkBox name="inc.other" value="${query.inc?.other}"/>Other names, e.g. common</label>
           </div>

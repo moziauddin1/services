@@ -1,7 +1,7 @@
 <%@ page import="org.apache.shiro.SecurityUtils" %>
 
 <div class="imageAndText">
-  <asset:image src="${st.bannerImage()}" class="align-right"/>
+  <asset:image src="${st.bannerImage().toString()}" class="align-right"/>
   <div class="col">
     <div class="col-sm-12">
     <h1><st:bannerText/>
@@ -38,14 +38,14 @@
                 class="fa fa-search"></i> Search</a>
           </li>
         </g:if>
-        <li class="${params.product == st.nameTree() ? 'active' : ''}">
+        <li class="${params.product == st.nameTree().toString() ? 'active' : ''}">
           <a class="search"
-             href="${createLink(controller: 'search', action: 'search', params: [product: st.nameTree()])}"><i
+             href="${createLink(controller: 'search', action: 'search', params: [product: st.nameTree().toString()])}"><i
               class="fa fa-search"></i> Names (<st:nameTree/>)</a>
         </li>
-        <li class="${params.product == st.primaryClassification() ? 'active' : ''}">
+        <li class="${params.product == st.primaryClassification().toString() ? 'active' : ''}">
           <a class="search"
-             href="${createLink(controller: 'search', action: 'search', params: [product: st.primaryClassification()])}"><i
+             href="${createLink(controller: 'search', action: 'search', params: [product: st.primaryClassification().toString()])}"><i
               class="fa fa-search"></i> Taxonomy (<st:primaryClassification/>)</a>
         </li>
         <li class="${params.controller == 'tree' ? 'active' : ''}">

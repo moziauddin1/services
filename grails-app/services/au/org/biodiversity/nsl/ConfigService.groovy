@@ -16,7 +16,6 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
-import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
 import org.apache.commons.logging.LogFactory
 
@@ -41,15 +40,27 @@ class ConfigService {
     def grailsApplication
 
     private String nameSpaceName
+    private Map shardConfig = null
 
     private String getShardConfigOrfail(String key) {
-        Sql sql = getSqlForNSLDB()
-        GroovyRowResult row = sql.firstRow('SELECT * FROM shard_config WHERE name = :name', [name: key])
-        String value = row.value
-        if (!value) {
+        if (shardConfig == null) {
+            fetchShardConfig()
+        }
+        if (shardConfig.containsKey(key)) {
+            shardConfig[key]
+        } else {
             throw new Exception("Config error. Add '$key' to shard_config.")
         }
-        return value
+    }
+
+    private fetchShardConfig() {
+        Sql sql = getSqlForNSLDB()
+        shardConfig = [:]
+        sql.eachRow('SELECT * FROM shard_config') { row ->
+            shardConfig.put(row.name, row.value)
+            log.debug "read config: $row.name: $row.value"
+        }
+        sql.close()
     }
 
     String getNameSpaceName() {

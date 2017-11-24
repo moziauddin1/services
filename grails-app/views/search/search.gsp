@@ -24,7 +24,7 @@
   <g:render template="/search/searchTabs"/>
   <g:if test="${params.search || params.advanced}">
     <g:if test="${names}">
-      <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
+      <div class="panel  ${st.panelClass(product: params.product)} ">
       <div class="panel-heading">
         <g:if test="${names}">
           <strong>Found ${total} names

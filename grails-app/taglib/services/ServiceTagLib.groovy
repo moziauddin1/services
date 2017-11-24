@@ -333,6 +333,16 @@ class ServiceTagLib {
         out << configService.getCardImage()
     }
 
+    def panelClass = { attrs ->
+        String product = attrs.product
+        out << (product == configService.classificationTreeName ? 'panel-success' : 'panel-info')
+    }
+
+    def alertClass = { attrs ->
+        String product = attrs.product
+        out << (product == configService.classificationTreeName ? 'alert-success' : 'alert-info')
+    }
+
     def randomName = { attrs ->
         String q = attrs.q
         if (q) {
