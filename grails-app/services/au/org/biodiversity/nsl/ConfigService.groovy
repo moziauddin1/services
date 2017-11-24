@@ -142,8 +142,11 @@ class ConfigService {
 
 
     Sql getSqlForNSLDB() {
-        //noinspection GroovyAssignabilityCheck
-        return Sql.newInstance(dataSource_nsl)
+        String dbUrl = grailsApplication.config.dataSource_nsl.url
+        String username = grailsApplication.config.dataSource_nsl.username
+        String password = grailsApplication.config.dataSource_nsl.password
+        String driverClassName = grailsApplication.config.dataSource_nsl.driverClassName
+        Sql.newInstance(dbUrl, username, password, driverClassName)
     }
 
     String getWebUserName() {

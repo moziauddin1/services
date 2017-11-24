@@ -1,6 +1,7 @@
 import grails.util.Environment
 import io.jsonwebtoken.impl.crypto.MacProvider
 import org.quartz.Scheduler
+import groovy.sql.Sql
 
 /*
     Copyright 2015 Australian National Botanic Gardens
@@ -31,10 +32,12 @@ class BootStrap {
     def init = { servletContext ->
         if(!nslDomainService.checkUpToDate()) {
             Map scriptParams = configService.getUpdateScriptParams()
-            if(!nslDomainService.updateToCurrentVersion(configService.sqlForNSLDB, scriptParams)) {
+            Sql sql = configService.getSqlForNSLDB()
+            if(!nslDomainService.updateToCurrentVersion(sql, scriptParams)) {
                 log.error "Database is not up to date. Run update script on the DB before restarting."
                 throw new Exception('Database not at expected version.')
             }
+            sql.close()
         }
         searchService.registerSuggestions()
         jsonRendererService.registerObjectMashallers()
