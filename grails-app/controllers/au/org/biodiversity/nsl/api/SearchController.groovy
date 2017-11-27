@@ -33,6 +33,7 @@ class SearchController implements RequestUtil {
         String remoteIP = remoteAddress(request)
         log.info "Search params $params, Referer: ${referer}, Remote: ${remoteIP}"
         max = max ?: 100
+        List<Tree> trees = Tree.list()
 
         if (!params.product && !SecurityUtils.subject?.authenticated) {
             params.product = configService.nameTreeName
@@ -66,7 +67,7 @@ class SearchController implements RequestUtil {
                 }
                 log.debug "cookie $inc"
                 try {
-                incMap = JSON.parse(inc) as Map
+                    incMap = JSON.parse(inc) as Map
                 } catch (e) {
                     log.error "cookie $inc caused error $e.message"
                     incMap = [scientific: 'on']
@@ -101,7 +102,10 @@ class SearchController implements RequestUtil {
                                     total         : results.total,
                                     queryTime     : results.queryTime,
                                     max           : max,
-                                    displayFormats: displayFormats])
+                                    displayFormats: displayFormats,
+                                    trees         : trees
+                            ]
+                    )
                 }
                 json {
                     return render(contentType: 'application/json') { models }
@@ -155,8 +159,7 @@ class SearchController implements RequestUtil {
 
             return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: [:]]
         }
-
-        return [query: params, max: max, displayFormats: displayFormats, treeSearch: treeSearch]
+        return [query: params, max: max, displayFormats: displayFormats, treeSearch: treeSearch, trees: trees]
 
     }
 
