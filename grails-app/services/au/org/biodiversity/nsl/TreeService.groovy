@@ -129,6 +129,7 @@ class TreeService implements ValidationUtils {
     static List<TreeVersionElement> getElementPath(TreeVersionElement treeVersionElement) {
         mustHave(treeVersionElement: treeVersionElement)
         treeVersionElement.treeElement.treePath.split('/').collect { String stringElementId ->
+            println stringElementId
             if (stringElementId) {
                 TreeVersionElement.find('from TreeVersionElement tve where tve.treeElement.id = :elementId and treeVersion = :version',
                         [elementId: stringElementId as Long, version: treeVersionElement.treeVersion])
@@ -391,9 +392,9 @@ DELETE FROM tree_version WHERE id = :treeVersionId;
 
                 sql.execute('''
 SELECT id INTO TEMP orphans FROM tree_element WHERE id NOT IN (SELECT DISTINCT(tree_element_id) FROM tree_version_element); 
-UPDATE tree_element SET previous_element_id = NULL FROM orphans WHERE previous_element_id = orphans.id;
-UPDATE tree_element SET parent_element_id = NULL FROM orphans WHERE parent_element_id = orphans.id;
-DELETE FROM tree_element e USING orphans WHERE e.id = orphans.id;
+UPDATE tree_element SET previous_element_id = NULL FROM orphans o WHERE previous_element_id = o.id;
+UPDATE tree_element SET parent_element_id = NULL FROM orphans o WHERE parent_element_id = o.id;
+DELETE FROM tree_element e USING orphans o WHERE e.id = o.id;
 DROP TABLE IF EXISTS orphans;
 ''')
             }
@@ -588,7 +589,7 @@ WHERE tve1.tree_version_id = :treeVersionId
         notPublished(parentElement)
 
         if (currentElement.treeElement.instanceLink == instanceUri) {
-            Map problems = validateTreeVersion(replacementElement.treeVersion)
+            Map problems = validateTreeVersion(currentElement.treeVersion)
             return [replacementElement: currentElement, problems: problems]
         }
 
@@ -604,14 +605,12 @@ WHERE tve1.tree_version_id = :treeVersionId
         List<String> warnings = validateReplacementElement(parentElement, taxonData)
         TreeVersionElement replacementElement = makeVersionElementFromTaxonData(taxonData, parentElement, userName)
 
-        List<TreeVersionElement> kids = getChildElementsToDepth(currentElement, 1)
-
-        copyChildElements(kids, replacementElement, userName)
+        copyKidsOf(currentElement, replacementElement, userName)
 
         updateParentTaxaId(originalParent)
         updateParentTaxaId(parentElement)
 
-        removeTreeVersionElement(currentElement)
+        deleteTreeVersionElement(currentElement)
         Map problems = validateTreeVersion(replacementElement.treeVersion)
         problems.put('warnings', warnings)
         return [replacementElement: replacementElement, problems: problems]
@@ -694,7 +693,6 @@ WHERE tve1.tree_version_id = :treeVersionId
     TreeVersionElement editProfile(TreeVersionElement treeVersionElement, Map profile, String userName) {
         mustHave(treeVersionElement: treeVersionElement, profile: profile, userName: userName)
         notPublished(treeVersionElement)
-        // if in any other versions we need to clone the treeElement into a new one.
         treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
 
         log.debug treeVersionElement.treeElement.profile.toString()
@@ -703,8 +701,11 @@ WHERE tve1.tree_version_id = :treeVersionId
             return treeVersionElement // data is equal, do nothing
         }
 
+        // if tree element is in any other versions we need to copy the tree element, and it's children, creating all
+        // new tree version elements
         if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
-            treeVersionElement.treeElement = copyTreeElement(treeVersionElement, treeVersionElement.treeElement.parentElement, userName)
+            treeVersionElement = copyBranch(treeVersionElement, userName)
+            //don't update taxonId above as the taxon hasn't changed
         } else {
             treeVersionElement.treeElement.updatedBy = userName
             treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
@@ -724,8 +725,11 @@ WHERE tve1.tree_version_id = :treeVersionId
             return treeVersionElement // data equal, do nothing
         }
 
+        // if tree element is in any other versions we need to copy the tree element, and it's children, creating all
+        // new tree version elements
         if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
-            treeVersionElement.treeElement = copyTreeElement(treeVersionElement, treeVersionElement.treeElement.parentElement, userName)
+            treeVersionElement = copyBranch(treeVersionElement, userName)
+            //don't update taxonId above as the taxon hasn't changed
         } else {
             treeVersionElement.treeElement.updatedBy = userName
             treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
@@ -736,22 +740,93 @@ WHERE tve1.tree_version_id = :treeVersionId
         return treeVersionElement
     }
 
-    private copyChildElements(List<TreeVersionElement> kids, TreeVersionElement parent, String userName) {
-        log.debug "copying kids $kids"
-        for (TreeVersionElement kid in kids) {
-            TreeVersionElement kidCopy = saveTreeVersionElement(copyTreeElement(kid, parent.treeElement, userName), parent.treeVersion, kid.taxonId, kid.taxonLink)
-            copyChildElements(getChildElementsToDepth(kid, 1), kidCopy, userName)
+    private TreeVersionElement copyBranch(TreeVersionElement fromTve, String userName) {
+        log.debug "Copying branch from $fromTve"
+        TreeElement copiedElement = copyTreeElement(fromTve.treeElement, fromTve.treeElement.parentElement, userName)
+        TreeVersionElement replacementTve = saveTreeVersionElement(copiedElement, fromTve.treeVersion, fromTve.taxonId, fromTve.taxonLink)
+        copyKidsOf(fromTve, replacementTve, userName)
+        deleteTreeVersionElement(fromTve)
+        return replacementTve
+    }
+
+    private copyKidsOf(TreeVersionElement fromParent, TreeVersionElement toParent, String username) {
+        // first copy all the tree elements and keep the ids then create the tree version elements
+        List<Long> elementsInOtherVersions = elementsInOtherVersions(toParent.treeVersion)
+        Map<Long, CopyElementHolder> childElements = getChildTreeElements(fromParent)
+        // iterate by key order so parents get copied first
+        childElements.keySet().each { key ->
+            CopyElementHolder h = childElements[key]
+            TreeElement kid = h.sourceElement
+            assert kid.parentElement
+            TreeElement parent
+            if (kid.parentElement == fromParent.treeElement) {
+                parent = toParent.treeElement
+            } else {
+                parent = childElements[kid.parentElement.id]?.copiedElement
+            }
+            assert parent
+            if (elementsInOtherVersions.contains(kid.id)) {
+                log.debug "copying element $key"
+                childElements[key].copiedElement = copyTreeElement(kid, parent, username)
+            } else {
+                log.debug "updating element $key"
+                childElements[key].copiedElement = updateTreeElement(kid, parent, username)
+            }
+        }
+        //only create new TVE for copied elements. Can't reuse TVEs because the ID elementLink changes
+        TreeVersionElement.withSession { s -> s.flush() }
+        childElements.keySet().each { key ->
+            CopyElementHolder h = childElements[key]
+            if (h.copiedElement != h.sourceElement) {
+                saveTreeVersionElement(h.copiedElement,
+                        toParent.treeVersion,
+                        h.taxonId,
+                        h.taxonUri)
+                log.debug "deleting $h.elementLink"
+                deleteTreeVersionElement(h.elementLink)
+            }
         }
     }
 
-    private TreeElement copyTreeElement(TreeVersionElement treeVersionElement, TreeElement parent, String userName) {
-        Long treeElementId = nextSequenceId()
-        TreeElement source = treeVersionElement.treeElement
+    private static deleteTreeVersionElement(String elementLink) {
+        deleteTreeVersionElement(TreeVersionElement.get(elementLink))
+    }
+
+    private static deleteTreeVersionElement(TreeVersionElement target) {
+        target.treeElement.removeFromTreeVersionElements(target)
+        target.treeVersion.removeFromTreeVersionElements(target)
+        target.delete()
+    }
+
+    private static List<Long> elementsInOtherVersions(TreeVersion version) {
+        TreeVersionElement.executeQuery('''
+select distinct(tve.treeElement.id) 
+from TreeVersionElement tve
+where treeVersion <> :version''', [version: version]).collect {
+            it as Long
+        }
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    private Map<Long, CopyElementHolder> getChildTreeElements(TreeVersionElement parent) {
+        String pattern = ".*/${parent.treeElement.id}/"
+        log.debug "getting all children of ${parent}"
+        LinkedHashMap results = [:]
+        TreeElement.executeQuery('''
+select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink 
+    from TreeVersionElement tve 
+    where tve.treeVersion = :version
+    and regex(tve.treeElement.treePath, :pattern) = true 
+    order by tve.treeElement.namePath
+''', [version: parent.treeVersion, pattern: pattern]).each { data ->
+            CopyElementHolder h = new CopyElementHolder(data)
+            results.put(h.sourceElement.id, h)
+        }
+        return results
+    }
+
+    private static TreeElement copyTreeElement(TreeElement source, TreeElement parent, String userName) {
         TreeElement treeElement = new TreeElement(
-                treeElementId: treeElementId,
-                treeVersion: treeVersionElement.treeVersion,
-                previousElement: source,
-                parentElement: parent,
                 instanceId: source.instanceId,
                 nameId: source.nameId,
                 excluded: source.excluded,
@@ -759,7 +834,7 @@ WHERE tve1.tree_version_id = :treeVersionId
                 synonymsHtml: source.synonymsHtml,
                 simpleName: source.simpleName,
                 nameElement: source.nameElement,
-                treePath: "${parent.treePath}/$treeElementId",
+                treePath: 'not set',
                 instancePath: "${parent.instancePath}/$source.instanceId",
                 namePath: "${parent.namePath}/$source.nameElement",
                 rank: source.rank,
@@ -775,7 +850,42 @@ WHERE tve1.tree_version_id = :treeVersionId
                 updatedAt: new Timestamp(System.currentTimeMillis())
         )
         treeElement.save()
+        // setting these references here because of a bug? setting in the map above where the parentElement
+        // changes to this new element.
+        treeElement.previousElement = source
+        treeElement.parentElement = parent
+        treeElement.treePath = "${parent.treePath}/${treeElement.id}"
+        treeElement.save()
         return treeElement
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    private TreeElement updateTreeElement(TreeElement source, TreeElement parent, String userName) {
+        source.previousElement = source
+        source.parentElement = parent
+        source.instanceId = source.instanceId
+        source.nameId = source.nameId
+        source.excluded = source.excluded
+        source.displayHtml = source.displayHtml
+        source.synonymsHtml = source.synonymsHtml
+        source.simpleName = source.simpleName
+        source.nameElement = source.nameElement
+        source.treePath = "${parent.treePath}/$source.id"
+        source.instancePath = "${parent.instancePath}/$source.instanceId"
+        source.namePath = "${parent.namePath}/$source.nameElement"
+        source.rank = source.rank
+        source.depth = parent.depth + 1
+        source.sourceShard = source.sourceShard
+        source.synonyms = source.synonyms
+        source.rankPath = parent.rankPath << [(source.rank): [id: source.name.id, name: source.nameElement]]
+        source.profile = source.profile
+        source.sourceElementLink = source.sourceElementLink
+        source.nameLink = source.nameLink
+        source.instanceLink = source.instanceLink
+        source.updatedBy = userName
+        source.updatedAt = new Timestamp(System.currentTimeMillis())
+        source.save()
+        return source
     }
 
     protected static notPublished(TreeVersionElement element) {
@@ -791,11 +901,7 @@ WHERE tve1.tree_version_id = :treeVersionId
     protected TreeVersionElement makeVersionElementFromTaxonData(TaxonData taxonData, TreeVersionElement parentElement, String userName) {
         TreeElement treeElement = findTreeElement(taxonData, parentElement)
         if (!treeElement) { //then make a new one
-            Long treeElementId = nextSequenceId()
             treeElement = new TreeElement(
-                    treeElementId: treeElementId,
-                    previousElement: null,
-                    parentElement: parentElement.treeElement,
                     instanceId: taxonData.instanceId,
                     nameId: taxonData.nameId,
                     excluded: taxonData.excluded,
@@ -803,7 +909,7 @@ WHERE tve1.tree_version_id = :treeVersionId
                     synonymsHtml: taxonData.synonymsHtml,
                     simpleName: taxonData.simpleName,
                     nameElement: taxonData.nameElement,
-                    treePath: parentElement.treeElement.treePath + "/$treeElementId",
+                    treePath: "not set",
                     instancePath: parentElement.treeElement.instancePath + "/$taxonData.instanceId",
                     namePath: parentElement.treeElement.namePath + "/$taxonData.nameElement",
                     rank: taxonData.rank,
@@ -818,6 +924,9 @@ WHERE tve1.tree_version_id = :treeVersionId
                     updatedBy: userName,
                     updatedAt: new Timestamp(System.currentTimeMillis())
             )
+            treeElement.save()
+            treeElement.parentElement = parentElement.treeElement
+            treeElement.treePath = parentElement.treeElement.treePath + "/${treeElement.id}"
             treeElement.save()
         }
         return saveTreeVersionElement(treeElement, parentElement.treeVersion, nextSequenceId())
@@ -839,7 +948,6 @@ WHERE tve1.tree_version_id = :treeVersionId
     }
 
     private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersion version, Long taxonId, String taxonLink = null) {
-
         TreeVersionElement treeVersionElement = new TreeVersionElement(treeElement: element, treeVersion: version)
         treeVersionElement.taxonId = taxonId
         treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
@@ -1213,4 +1321,26 @@ class DisplayElement {
                 synonymsHtml: synonymsHtml
         ]
     }
+}
+
+class CopyElementHolder {
+
+    @SuppressWarnings("GrFinalVariableAccess")
+    final TreeElement sourceElement
+    @SuppressWarnings("GrFinalVariableAccess")
+    final Long taxonId
+    @SuppressWarnings("GrFinalVariableAccess")
+    final String taxonUri
+    @SuppressWarnings("GrFinalVariableAccess")
+    final String elementLink
+    TreeElement copiedElement
+
+    CopyElementHolder(Object[] data) {
+        assert data.size() == 4
+        this.sourceElement = data[0] as TreeElement
+        this.taxonId = data[1] as Long
+        this.taxonUri = data[2] as String
+        this.elementLink = data[3] as String
+    }
+
 }

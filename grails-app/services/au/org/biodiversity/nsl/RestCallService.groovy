@@ -105,7 +105,7 @@ class RestCallService {
 
     def jsonPost(Map data, String url, Closure ok, Closure error, Closure notFound, Closure notOk) {
         try {
-            log.debug "Post ${data} as json to ${url}"
+            log.debug "Post ${data.toMapString(200)} as json to ${url}"
             RestResponse response = rest.post(url) {
                 header 'Accept', "application/json"
                 json(data)

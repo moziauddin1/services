@@ -65,7 +65,7 @@
 
   <div>
     <tree:profile profile="${treeVersionElement.treeElement.profile}"/>
-    <tree:elementPath element="${treeVersionElement}" var="pathElement" separator="/" excludeThis="true">
+    <tree:elementPath element="${treeVersionElement}" var="pathElement" separator="/" excludeThis="false">
       <a href="${pathElement.elementLink}">${pathElement.treeElement.simpleName}</a>
     </tree:elementPath>
     <div class="text-info">${children.size() - 1} sub taxa</div>

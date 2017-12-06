@@ -39,6 +39,7 @@ class TreeServicesTagLib {
         Boolean excludeThis = attrs.excludeThis ?: false
         String var = attrs.var
         List<TreeVersionElement> path = treeService.getElementPath(element)
+        log.debug "Path $path"
         if (excludeThis) {
             path.remove(element)
         }
@@ -97,7 +98,7 @@ class TreeServicesTagLib {
         Tree tree = attrs.tree
         List<TreeVersion> drafts = TreeVersion.findAllWhere(tree: tree, published: false)
         drafts.each { TreeVersion draft ->
-            out << body(draft: draft, defaultDraft: draft.id == tree.defaultDraftTreeVersion.id)
+            out << body(draft: draft, defaultDraft: draft.id == tree.defaultDraftTreeVersion?.id)
         }
     }
 
