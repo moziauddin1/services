@@ -577,7 +577,7 @@ class TreeServiceSpec extends Specification {
         draftVersion.refresh()
 
         then: 'It works'
-        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+        6 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
             [success: true]
         }
         1 * service.linkService.getObjectForLink(_) >> replacementAnthocerosInstance
@@ -671,7 +671,7 @@ class TreeServiceSpec extends Specification {
         draftVersion.refresh()
 
         then: 'It works'
-        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+        11 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
             [success: true]
         }
         1 * service.linkService.getObjectForLink(_) >> replacementAnthocerotalesInstance
@@ -785,22 +785,19 @@ class TreeServiceSpec extends Specification {
 
         when: 'I update a profile on the draft version'
         TreeElement oldElement = anthoceros.treeElement
+        Timestamp oldUpdatedAt = anthoceros.treeElement.updatedAt
         Long oldTaxonId = anthoceros.taxonId
         TreeVersionElement treeVersionElement = service.editProfile(anthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
 
-        then: 'It creates a new treeElement and updates the profile'
-        6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
-        6 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
-            println "Adding taxonIdentifier for $tve"
-            "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
-        }
+        then: 'It updates the treeElement profile'
         oldElement
-        deleted(anthoceros)
+        !deleted(anthoceros)
         treeVersionElement
         treeVersionElement.taxonId == oldTaxonId
-        treeVersionElement.treeElement != oldElement
+        treeVersionElement.treeElement == oldElement
         treeVersionElement.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
         treeVersionElement.treeElement.updatedBy == 'test edit profile'
+        treeVersionElement.treeElement.updatedAt.after(oldUpdatedAt)
 
         when: 'I change a profile to the same thing'
         TreeVersionElement anthocerosCapricornii = service.findElementBySimpleName('Anthoceros capricornii', draftVersion)
@@ -909,12 +906,11 @@ class TreeServiceSpec extends Specification {
         TreeElement oldElement = anthoceros.treeElement
         TreeVersionElement treeVersionElement = service.editExcluded(anthoceros, true, 'test edit profile')
 
-        then: 'It creates a new treeVersion and treeElement copies the children and updates the profile'
-        6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
-        6 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
-            println "Adding taxonIdentifier for $tve"
-            "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
+        then: 'It creates a new treeVersionElement and treeElement copies the children and updates the profile'
+        6 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+            [success: true]
         }
+        6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         treeVersionElement
         oldElement
         deleted(anthoceros)

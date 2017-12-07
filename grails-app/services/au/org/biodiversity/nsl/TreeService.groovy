@@ -700,8 +700,9 @@ WHERE tve1.tree_version_id = :treeVersionId
             return treeVersionElement // data is equal, do nothing
         }
 
-
         treeVersionElement.treeElement.profile = profile
+        treeVersionElement.treeElement.updatedBy = userName
+        treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
         treeVersionElement.save()
         return treeVersionElement
     }
