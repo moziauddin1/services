@@ -129,7 +129,6 @@ class TreeService implements ValidationUtils {
     static List<TreeVersionElement> getElementPath(TreeVersionElement treeVersionElement) {
         mustHave(treeVersionElement: treeVersionElement)
         treeVersionElement.treeElement.treePath.split('/').collect { String stringElementId ->
-            println stringElementId
             if (stringElementId) {
                 TreeVersionElement.find('from TreeVersionElement tve where tve.treeElement.id = :elementId and treeVersion = :version',
                         [elementId: stringElementId as Long, version: treeVersionElement.treeVersion])
@@ -701,15 +700,7 @@ WHERE tve1.tree_version_id = :treeVersionId
             return treeVersionElement // data is equal, do nothing
         }
 
-        // if tree element is in any other versions we need to copy the tree element, and it's children, creating all
-        // new tree version elements
-        if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
-            treeVersionElement = copyBranch(treeVersionElement, userName)
-            //don't update taxonId above as the taxon hasn't changed
-        } else {
-            treeVersionElement.treeElement.updatedBy = userName
-            treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
-        }
+
         treeVersionElement.treeElement.profile = profile
         treeVersionElement.save()
         return treeVersionElement

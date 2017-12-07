@@ -20,8 +20,7 @@
     <g:else>
       ${treeVersionElement.treeVersion.tree.name}: ${treeVersionElement.treeElement.simpleName}
     </g:else>
-    <span class="small text-info">(<tree:versionStatus
-        version="${treeVersionElement.treeVersion}"></tree:versionStatus>)</span>
+    <span class="small text-info">(<tree:versionStatus version="${treeVersionElement.treeVersion}"/>)</span>
 
     <tree:findCurrentVersion element="${treeVersionElement}">
       <span class="small">

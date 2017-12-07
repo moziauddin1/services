@@ -56,10 +56,27 @@ class TreeServicesTagLib {
         if (profileData) {
             out << "<dl class='dl-horizontal'>"
             profileData.each { k, v ->
-                out << "<dt>$k</dt><dd>${v.value}</dd>"
+                out << "<dt>$k</dt><dd>${v.value}"
+                if (v.previous) {
+                    out << '&nbsp;<span class="toggleNext"><i class="fa fa-clock-o"></i><i style="display: none" class="fa fa-circle"></i></span>' +
+                            '<div style="display: none" class="previous"><dl dl-horizontal>'
+                    previous(v.previous).each {
+                        out << "<dt>${it.updated_at}</dt><dd>${it.value ?: 'Blank'}</dd>"
+                    }
+                    out << '</dl></div>'
+                }
+                out << "</dd>"
             }
             out << "</dl>"
         }
+    }
+
+    private List previous(Map data, List results = []) {
+        results << data
+        if (data.previous) {
+            previous(data.previous, results)
+        }
+        results
     }
 
     def versionStatus = { attrs ->

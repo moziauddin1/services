@@ -55,6 +55,7 @@ div.tr synonyms nom,
 div.tr synonyms tax,
 div.tr synonyms mis {
     display: block;
+    white-space: normal;
 }
 
 div.tr synonyms nom:before {
@@ -194,4 +195,16 @@ div.indented div.tr.level11 {
 div.wrap div.tr {
     width: auto;
     display: inline-block;
+}
+
+div.previous {
+    margin: 0.5em;
+    padding: 0.5em;
+    border: 1px solid grey;
+    border-radius: 0.5em;
+}
+
+div.previous dt:nth-of-type(even),
+div.previous dd:nth-of-type(even) {
+    color: grey;
 }
