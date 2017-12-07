@@ -779,13 +779,17 @@ WHERE tve1.tree_version_id = :treeVersionId
         }
     }
 
-    private static deleteTreeVersionElement(String elementLink) {
+    private deleteTreeVersionElement(String elementLink) {
         deleteTreeVersionElement(TreeVersionElement.get(elementLink))
     }
 
-    private static deleteTreeVersionElement(TreeVersionElement target) {
+    private deleteTreeVersionElement(TreeVersionElement target) {
         target.treeElement.removeFromTreeVersionElements(target)
         target.treeVersion.removeFromTreeVersionElements(target)
+        Map result = linkService.bulkRemoveTargets([target])
+        if (!result.success) {
+            throw new ServiceException("Error deleting tree links from the mapper: ${result.errors}")
+        }
         target.delete()
     }
 
