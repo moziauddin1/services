@@ -9,7 +9,7 @@ trait ValidationUtils {
 
     static mustHave(Map things, Closure work) {
         things.each { k, v ->
-            if (!v) {
+            if (v == null) {
                 throw new IllegalArgumentException("$k must not be null")
             }
         }
@@ -18,7 +18,7 @@ trait ValidationUtils {
 
     static mustHave(Map things) {
         things.each { k, v ->
-            if (!v) {
+            if (v == null) {
                 throw new IllegalArgumentException("$k must not be null")
             }
         }

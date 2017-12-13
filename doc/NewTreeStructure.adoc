@@ -23,12 +23,9 @@ The main change in requirements is the idea of using a workspace, or draft tree,
 published as a new version. once a version is published it is immutable _except_ for minor typographical changes as determined
 by policy.
 
-****
-This work is designed to make the tree easy to understand and reason about, and therefore
 
- * easier to change and maintain over time
- * improve performance
-****
+IMPORTANT: This work is designed to make the tree easy to understand and reason about, and therefore make it easier to
+change and maintain over time, and improve performance.
 
 == Requirements
 

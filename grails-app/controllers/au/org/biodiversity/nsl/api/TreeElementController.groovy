@@ -98,7 +98,8 @@ class TreeElementController implements WithTarget, ValidationUtils {
                 throw new ObjectNotFoundException("Can't find taxon with URI $data.taxonUri")
             }
             String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
-            results.payload = treeService.editProfile(treeVersionElement, data.profile as Map, userName)
+            Map profile = data.profile.size() > 0 ? data.profile : null
+            results.payload = treeService.editProfile(treeVersionElement, profile, userName)
         }
     }
 

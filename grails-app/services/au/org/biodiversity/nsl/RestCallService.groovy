@@ -139,6 +139,7 @@ class RestCallService {
         log.error "Got ${response.status}. headers: ${response.headers}, body: ${response.text}"
     }
 
+    @SuppressWarnings("GrMethodMayBeStatic")
     private processJsonResponse(RestResponse response, Closure error, Closure worker) {
         if (response.json) {
             JSONElement json = response.json
