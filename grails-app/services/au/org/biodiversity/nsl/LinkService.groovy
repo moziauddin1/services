@@ -151,10 +151,24 @@ class LinkService {
         List<Map> identities = targets.collect { target -> new TargetParam(target, nameSpace()).briefParamMap() }
         String mapper = mapper(true)
         Map result = [success: true]
+        String url = "$mapper/admin/bulkRemoveIdentifiers?${mapperAuth()}"
+        String action = "Bulk remove TreeVersionElements"
+        Map sendData = [identifiers: identities]
+        return postIt(sendData, url, action, result)
+    }
+
+    Map bulkRemoveUris(List<String> targets) {
+        String mapper = mapper(true)
+        Map result = [success: true]
+        String url = "$mapper/admin/bulkRemoveUris?${mapperAuth()}"
+        String action = "Bulk remove TreeVersionElement by URIs"
+        Map sendData = [uris: targets]
+        return postIt(sendData, url, action, result)
+    }
+
+    private Map postIt(LinkedHashMap<String, List<String>> sendData, String url, String action, Map result) {
         try {
-            String url = "$mapper/admin/bulkRemoveIdentifiers?${mapperAuth()}"
-            String action = "Bulk remove TreeVersionElements"
-            restCallService.jsonPost([identifiers: identities], url,
+            restCallService.jsonPost(sendData, url,
                     { Map data ->
                         log.debug "$action. Response: $data"
                         result << data

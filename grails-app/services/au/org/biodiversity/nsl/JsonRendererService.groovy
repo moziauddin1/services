@@ -457,7 +457,6 @@ class JsonRendererService {
 
     Map marshallTreeVersionElement(TreeVersionElement treeVersionElement) {
         treeVersionElement = initializeAndUnproxy(treeVersionElement)
-        TreeVersionElement parent = treeService.getParentTreeVersionElement(treeVersionElement)
         TreeElement treeElement = treeVersionElement.treeElement
         return [treeElement:
                         [
@@ -465,7 +464,7 @@ class JsonRendererService {
                                 _links       : [
                                         elementLink      : treeVersionElement.elementLink,
                                         taxonLink        : treeVersionElement.taxonLink,
-                                        parentElementLink: parent?.elementLink,
+                                        parentElementLink: treeVersionElement.parent?.elementLink,
                                         nameLink         : treeElement.nameLink,
                                         instanceLink     : treeElement.instanceLink,
                                         sourceElementLink: treeElement.sourceElementLink,
@@ -474,6 +473,7 @@ class JsonRendererService {
                                 simpleName   : treeElement.simpleName,
                                 rankPath     : treeElement.rankPath,
                                 namePath     : treeElement.namePath,
+                                treePath     : treeVersionElement.treePath,
                                 displayString: treeElement.displayHtml,
                                 sourceShard  : treeElement.sourceShard,
                                 synonyms     : treeElement.synonyms,
@@ -489,8 +489,7 @@ class JsonRendererService {
                         [
                                 class        : treeElement.class.name,
                                 _links       : [
-                                        elementLink      : treeElement.elementLink,
-                                        parentElementLink: treeElement.parentElement?.elementLink,
+                                        elementLink      : linkService.getPreferredLinkForObject(treeElement),
                                         nameLink         : treeElement.nameLink,
                                         instanceLink     : treeElement.instanceLink,
                                         sourceElementLink: treeElement.sourceElementLink,
