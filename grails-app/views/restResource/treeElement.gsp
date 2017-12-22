@@ -70,7 +70,7 @@
     <div class="text-info">${children.size() - 1} sub taxa</div>
   </div>
 
-  <div class="indented indent${treeVersionElement.treeElement.depth}">
+  <div class="indented indent${treeVersionElement.depth}">
     <g:each in="${children}" var="childElement">
       <div class="tr ${childElement.excluded ? 'excluded' : ''} level${childElement.depth}">
         <div class="wrap">

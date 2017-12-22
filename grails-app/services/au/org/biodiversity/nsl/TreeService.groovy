@@ -3,7 +3,6 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import groovy.sql.Sql
-import groovy.transform.Synchronized
 import org.apache.shiro.SecurityUtils
 
 import javax.sql.DataSource
@@ -246,11 +245,11 @@ class TreeService implements ValidationUtils {
 
         TreeElement.executeQuery('''
 select tve.treeElement.displayHtml, tve.elementLink, tve.treeElement.nameLink, tve.treeElement.instanceLink, 
- tve.treeElement.excluded, tve.treeElement.depth, tve.treeElement.synonymsHtml 
+ tve.treeElement.excluded, tve.depth, tve.treeElement.synonymsHtml 
     from TreeVersionElement tve 
     where tve.treeVersion = :version
     and regex(tve.treePath, :pattern) = true 
-    order by tve.treeElement.namePath
+    order by tve.namePath
 ''', [version: treeVersion, pattern: pattern]).collect { data ->
             new DisplayElement(data as List)
         } as List<DisplayElement>
@@ -486,14 +485,25 @@ DROP TABLE IF EXISTS orphans;
 
         Sql sql = getSql()
 
-        sql.execute('''INSERT INTO tree_version_element (tree_version_id, tree_element_id, parent_id, taxon_id, element_link, taxon_link, tree_path) 
+        sql.execute('''
+INSERT INTO tree_version_element (tree_version_id, 
+                                  tree_element_id, 
+                                  parent_id, 
+                                  taxon_id, 
+                                  element_link, 
+                                  taxon_link, 
+                                  tree_path,
+                                  name_path,
+                                  depth) 
   (SELECT :toVersionId, 
           tve.tree_element_id, 
           regexp_replace(tve.parent_id,  :fromVersionIdMatch, :toVersionIdMatch) ,
           tve.taxon_id, 
           regexp_replace(tve.element_link,  :fromVersionIdMatch, :toVersionIdMatch),
           tve.taxon_link,
-          tve.tree_path
+          tve.tree_path,
+          tve.name_path,
+          tve.depth
    FROM tree_version_element tve WHERE tree_version_id = :fromVersionId)''',
                 [fromVersionId     : fromVersion.id,
                  toVersionId       : toVersion.id,
@@ -597,239 +607,54 @@ WHERE tve1.tree_version_id = :treeVersionId
      * This moves the child taxa from the replaced taxon to this new one.
      *
      * A new taxon (tree element) is created with a new instance and placed on the tree under the desired
-     * parent element. The child elements are copied to new elements under the new taxon (since they have a new
-     * parent path) but keep their taxon identifiers.
+     * parent element. The child tree version elements tree paths are updated.
      *
-     * This will copy the status and profile information from the replaced taxon.
+     * This will copy the status from the replaced taxon. The profile will be copied from the replacedTaxon
+     * only if the taxonData from the instance doesn't contain profile data.
      *
      * The old tree element will be removed from the current version of the tree.
      *
-     * @param currentElement
-     * @param parentElement
+     * @param currentTve
+     * @param parentTve
      * @param instanceUri
      * @param userName
      * @return
      */
-    Map replaceTaxon(TreeVersionElement currentElement, TreeVersionElement parentElement, String instanceUri, String userName) {
-        notPublished(parentElement)
+    Map replaceTaxon(TreeVersionElement currentTve, TreeVersionElement parentTve, String instanceUri, String userName) {
+        mustHave('Current Element': currentTve, 'Parent Element': parentTve, 'Instance Uri': instanceUri, userName: userName)
+        notPublished(parentTve)
 
-        if (currentElement.treeElement.instanceLink == instanceUri) {
-            Map problems = validateTreeVersion(currentElement.treeVersion)
-            return [replacementElement: currentElement, problems: problems]
+        if (currentTve.treeElement.instanceLink == instanceUri) {
+            Map problems = validateTreeVersion(currentTve.treeVersion)
+            return [replacementElement: currentTve, problems: problems]
         }
 
         TaxonData taxonData = findInstanceByUri(instanceUri)
         if (!taxonData) {
-            throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in $parentElement")
+            throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in $parentTve")
         }
-        TreeVersionElement originalParent = currentElement.parent
 
-        taxonData.excluded = currentElement.treeElement.excluded
-
-        List<String> warnings = validateReplacementElement(parentElement, taxonData)
-        TreeVersionElement replacementElement = makeVersionElementFromTaxonData(taxonData, parentElement, currentElement.treeElement, userName)
-
-        TreeVersionElement.withSession { s ->
-            s.flush()
-            copyKidsOf(currentElement, replacementElement, userName)
-            currentElement.refresh()
-            replacementElement.refresh()
+        taxonData.excluded = currentTve.treeElement.excluded
+        if (taxonData.profile == null && currentTve.treeElement.profile != null) {
+            taxonData.profile = currentTve.treeElement.profile
         }
-        updateParentTaxaId(originalParent)
-        updateParentTaxaId(parentElement)
 
-        deleteTreeVersionElement(currentElement)
+        List<String> warnings = validateReplacementElement(parentTve, taxonData)
+        TreeVersionElement replacementElement = makeVersionElementFromTaxonData(taxonData, parentTve, currentTve.treeElement, userName)
+        updateParentId(currentTve, replacementElement)
+        updateChildTreePath(replacementElement, currentTve.treeElementId)
+
+        updateParentTaxaId(parentTve)
+        if (parentTve != currentTve.parent) {
+            updateParentTaxaId(currentTve.parent)
+        }
+
+        deleteTreeVersionElement(currentTve)
 
         Map problems = validateTreeVersion(replacementElement.treeVersion)
         problems.put('warnings', warnings)
         return [replacementElement: replacementElement, problems: problems]
     }
-
-    /**
-     * copies all the child treeElements of fromParent to new treeElements then creates new treeVersionElements for
-     * each of the new elements and deletes the old tree version elements.
-     *
-     * we then need to get the old and new treeVersionElement links and add/remove them from the linker.
-     *
-     * @param fromParent
-     * @param toParent
-     * @param username
-     * @return
-     */
-    @Synchronized
-    private copyKidsOf(TreeVersionElement fromParent, TreeVersionElement toParent, String username) {
-        Sql sql = getSql()
-        log.debug "copy child elements using versionId: $toParent.treeVersion.id, " +
-                "path     : ${fromParent.treePath}/, " +
-                "toParentId : ${toParent.elementLink}"
-
-        sql.withTransaction {
-            // COPY_CHILD_ELEMENTS creates two temporary tables target_tves and new_tves with the element links of the old
-            // and new tree version elements. They should be available until the transation ends.
-            sql.execute(COPY_CHILD_ELEMENTS, [versionId    : toParent.treeVersion.id,
-                                              path         : "${fromParent.treePath}/".toString(),
-                                              newInstanceId: "/${toParent.treeElement.instanceId}/".toString(),
-                                              oldInstanceId: "/${fromParent.treeElement.instanceId}/".toString(),
-                                              toParentId   : toParent.elementLink
-            ])
-
-            List<String> oldElements = []
-            sql.eachRow('SELECT * FROM target_tves') { row ->
-                oldElements.add(row[0] as String)
-            }
-            log.debug "removing ${oldElements.size()} tree version element links"
-            linkService.bulkRemoveUris(oldElements)
-
-            List<TreeVersionElement> newElements = []
-            sql.eachRow('SELECT * FROM new_tves') { row ->
-                newElements.add(TreeVersionElement.get(row[0] as String))
-            }
-            log.debug "adding ${newElements.size()} tree version element links"
-            linkService.bulkAddTargets(newElements)
-            //clean up because this seems to not actually end the transaction context
-            sql.commit()
-        }
-    }
-
-    private static String COPY_CHILD_ELEMENTS = '''
-CREATE TEMP TABLE target_tves ON COMMIT DROP AS
-  SELECT
-    element_link,
-    tree_element_id
-  FROM tree_version_element tve
-    JOIN tree_element te ON tve.tree_element_id = te.id
-  WHERE tve.tree_version_id = :versionId
-        AND tve.tree_path ~ :path;
-
-CREATE TEMP TABLE updated_tree_elements (
-  id                  BIGINT,
-  previous_element_id BIGINT
-) ON COMMIT DROP;
-
-CREATE TEMP TABLE new_tves (
-  element_link TEXT
-) ON COMMIT DROP;
-
--- copy and modify tree elements
-WITH new_elements AS (
-  INSERT INTO tree_element (depth,
-                            display_html,
-                            excluded,
-                            instance_id,
-                            instance_link,
-                            instance_path,
-                            name_element,
-                            name_id,
-                            name_link,
-                            name_path,
-                            previous_element_id,
-                            profile,
-                            rank,
-                            rank_path,
-                            simple_name,
-                            source_element_link,
-                            source_shard,
-                            synonyms,
-                            synonyms_html,
-                            updated_at,
-                            updated_by)
-    (SELECT
-       te.depth,
-       te.display_html,
-       te.excluded,
-       te.instance_id,
-       te.instance_link,
-       regexp_replace(te.instance_path, :oldInstanceId, :newInstanceId),
-       te.name_element,
-       te.name_id,
-       te.name_link,
-       te.name_path,
-       te.id,
-       -- previous element id
-       te.profile,
-       te.rank,
-       te.rank_path,
-       te.simple_name,
-       te.source_element_link,
-       te.source_shard,
-       te.synonyms,
-       te.synonyms_html,
-       te.updated_at,
-       te.updated_by
-     FROM tree_Version_element tve
-       JOIN target_tves ON target_tves.element_link = tve.element_link
-       JOIN tree_element te ON tve.tree_element_id = te.id
-    )
-  RETURNING id, previous_element_id)
-INSERT INTO updated_tree_elements
-  SELECT
-    id,
-    previous_element_id
-  FROM new_elements;
-
--- create new tree_version_elements
-WITH new_elements AS (
-  INSERT INTO tree_version_element (element_link, parent_id, taxon_id, taxon_link, tree_element_id, tree_path, tree_version_id)
-    (SELECT
-       regexp_replace(old_tve.element_link, '/' || old_tve.tree_element_id, '/' || ute.id)           AS element_link,
-       old_tve.parent_id,
-       old_tve.taxon_id,
-       old_tve.taxon_link,
-       ute.id                                                                                        AS tree_element_id,
-       'not set' AS tree_path,
-       old_tve.tree_version_id
-     FROM tree_version_element old_tve
-       JOIN target_tves ON target_tves.element_link = old_tve.element_link
-       JOIN updated_tree_elements ute ON ute.previous_element_id = old_tve.tree_element_id
-     ORDER BY old_tve.tree_path)
-  RETURNING element_link)
-INSERT INTO new_tves
-  SELECT element_link
-  FROM new_elements;
-
---update the parent ids
-UPDATE tree_version_element
-SET parent_id = coalesce(new_tve_parent.element_link, to_parent.element_link)
-FROM new_tves,
-  tree_version_element old_tve_parent
-  LEFT OUTER JOIN updated_tree_elements parent_ute ON parent_ute.previous_element_id = old_tve_parent.tree_element_id
-  LEFT OUTER JOIN tree_version_element new_tve_parent ON new_tve_parent.tree_version_id = old_tve_parent.tree_version_id
-                                                         AND new_tve_parent.tree_element_id = parent_ute.id
-  ,
-  tree_version_element to_parent
-WHERE tree_version_element.element_link = new_tves.element_link
-      AND tree_version_element.parent_id = old_tve_parent.element_link
-      AND to_parent.element_link = :toParentId;
-
--- set the tree_paths
-WITH RECURSIVE walk (element_link, tree_path) AS (
-  SELECT
-    element_link,
-    tree_path
-  FROM tree_version_element tve
-  WHERE tve.element_link = :toParentId
-  UNION ALL
-  SELECT
-    tve2.element_link,
-    walk.tree_path || '/' || tve2.tree_element_id AS tree_path
-  FROM walk, tree_version_element tve2
-    join new_tves on tve2.element_link = new_tves.element_link
-  WHERE tve2.parent_id = walk.element_link
-)
-UPDATE tree_version_element tve3
-SET tree_path = walk.tree_path
-FROM walk
-WHERE tve3.element_link = walk.element_link;
-
--- delete old tree_version_elements
-UPDATE tree_version_element tve
-SET parent_id = NULL
-FROM target_tves
-WHERE target_tves.element_link = tve.element_link;
-
-DELETE FROM tree_version_element tve
-WHERE tve.element_link IN (SELECT element_link
-                           FROM target_tves);'''
 
     /**
      * for each treeVersionElement in the parent branch set the taxonId to a new, unique value. This can only happen in
@@ -927,7 +752,7 @@ WHERE tve.element_link IN (SELECT element_link
 
         //if this is not a draft only element clone it
         if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
-            TreeElement copiedElement = copyTreeElement(treeVersionElement.treeElement, treeVersionElement.parent.treeElement, userName)
+            TreeElement copiedElement = copyTreeElement(treeVersionElement.treeElement, userName)
             treeVersionElement = changeElement(treeVersionElement, copiedElement)
             //don't update taxonId above as the taxon hasn't changed
         } else {
@@ -980,7 +805,7 @@ WHERE tve.element_link IN (SELECT element_link
 
         //if this is not a draft only element clone it
         if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
-            TreeElement copiedElement = copyTreeElement(treeVersionElement.treeElement, treeVersionElement.parent.treeElement, userName)
+            TreeElement copiedElement = copyTreeElement(treeVersionElement.treeElement, userName)
             treeVersionElement = changeElement(treeVersionElement, copiedElement)
             //don't update taxonId above as the taxon hasn't changed
         } else {
@@ -1008,6 +833,7 @@ WHERE tve.element_link IN (SELECT element_link
         Long oldElementId = treeVersionElement.treeElement.id
         TreeVersionElement replacementTve = saveTreeVersionElement(newElement, treeVersionElement.parent, treeVersionElement.taxonId, treeVersionElement.taxonLink)
         updateChildTreePath(replacementTve, oldElementId)
+        updateParentId(treeVersionElement, replacementTve)
         deleteTreeVersionElement(treeVersionElement)
         return replacementTve
     }
@@ -1032,10 +858,13 @@ UPDATE tree_version_element
         return treeVersionElement
     }
 
-
-    private deleteTreeVersionElement(String elementLink) {
-        deleteTreeVersionElement(TreeVersionElement.get(elementLink))
+    private TreeVersionElement updateParentId(TreeVersionElement oldParent, TreeVersionElement newParent) {
+        TreeVersionElement.executeUpdate('''
+update TreeVersionElement set parent= :newParent
+where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
+        return newParent
     }
+
 
     private void removeLink(TreeVersionElement treeVersionElement) {
         Map result = linkService.bulkRemoveTargets([treeVersionElement])
@@ -1051,104 +880,30 @@ UPDATE tree_version_element
         target.delete()
     }
 
-    private static List<Long> elementsInOtherVersions(TreeVersion version) {
-        TreeVersionElement.executeQuery('''
-select distinct(tve.treeElement.id) 
-from TreeVersionElement tve
-where treeVersion <> :version''', [version: version]).collect {
-            it as Long
-        }
-    }
-
     @SuppressWarnings("GrMethodMayBeStatic")
-    private Map<Long, CopyElementHolder> getChildTreeElements(TreeVersionElement parent) {
-        String pattern = ".*/${parent.treeElement.id}/"
-        log.debug "getting all children of ${parent}"
-        LinkedHashMap results = [:]
-        TreeElement.executeQuery('''
-select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink 
-    from TreeVersionElement tve 
-    where tve.treeVersion = :version
-    and regex(tve.treePath, :pattern) = true 
-    order by tve.treeElement.namePath
-''', [version: parent.treeVersion, pattern: pattern]).each { data ->
-            CopyElementHolder h = new CopyElementHolder(data)
-            results.put(h.sourceElement.id, h)
-        }
-        return results
-    }
-
-    private Map optionalParentValues(TreeElement source, TreeElement parent) {
-        if (parent) {
-            [
-                    instancePath: "${parent.instancePath}/$source.instanceId",
-                    namePath    : "${parent.namePath}/$source.nameElement",
-                    depth       : parent.depth + 1,
-                    rankPath    : parent.rankPath << [(source.rank): [id       : source.name.id, name: source.nameElement,
-                                                                      name_link: linkService.getPreferredLinkForObject(source.name)]]
-            ]
-        } else {
-            [
-                    instancePath: "$source.instanceId",
-                    namePath    : "$source.nameElement",
-                    depth       : 1,
-                    rankPath    : [(source.rank): [id       : source.name.id, name: source.nameElement,
-                                                   name_link: linkService.getPreferredLinkForObject(source.name)]]
-            ]
-        }
-    }
-
-    private TreeElement copyTreeElement(TreeElement source, TreeElement parent, String userName) {
-        Map values = optionalParentValues(source, parent) << [instanceId       : source.instanceId,
-                                                              nameId           : source.nameId,
-                                                              excluded         : source.excluded,
-                                                              displayHtml      : source.displayHtml,
-                                                              synonymsHtml     : source.synonymsHtml,
-                                                              simpleName       : source.simpleName,
-                                                              nameElement      : source.nameElement,
-                                                              rank             : source.rank,
-                                                              sourceShard      : source.sourceShard,
-                                                              synonyms         : source.synonyms,
-                                                              profile          : source.profile,
-                                                              sourceElementLink: source.sourceElementLink,
-                                                              nameLink         : source.nameLink,
-                                                              instanceLink     : source.instanceLink,
-                                                              updatedBy        : userName,
-                                                              updatedAt        : new Timestamp(System.currentTimeMillis())]
-        TreeElement treeElement = new TreeElement(values)
+    private TreeElement copyTreeElement(TreeElement source, String userName) {
+        TreeElement treeElement = new TreeElement(instanceId: source.instanceId,
+                nameId: source.nameId,
+                excluded: source.excluded,
+                displayHtml: source.displayHtml,
+                synonymsHtml: source.synonymsHtml,
+                simpleName: source.simpleName,
+                nameElement: source.nameElement,
+                rank: source.rank,
+                sourceShard: source.sourceShard,
+                synonyms: source.synonyms,
+                profile: source.profile,
+                sourceElementLink: source.sourceElementLink,
+                nameLink: source.nameLink,
+                instanceLink: source.instanceLink,
+                updatedBy: userName,
+                updatedAt: new Timestamp(System.currentTimeMillis()))
         treeElement.save()
         // setting these references here because of a bug? setting in the map above where the parentElement
         // changes to this new element.
         treeElement.previousElement = source
         treeElement.save()
         return treeElement
-    }
-
-    private TreeElement updateTreeElement(TreeElement source, TreeElement parent, String userName) {
-        Map opv = optionalParentValues(source, parent)
-        source.previousElement = source
-        source.instanceId = source.instanceId
-        source.nameId = source.nameId
-        source.excluded = source.excluded
-        source.displayHtml = source.displayHtml
-        source.synonymsHtml = source.synonymsHtml
-        source.simpleName = source.simpleName
-        source.nameElement = source.nameElement
-        source.instancePath = opv.instancePath
-        source.namePath = opv.namePath
-        source.rank = source.rank
-        source.depth = opv.depth
-        source.sourceShard = source.sourceShard
-        source.synonyms = source.synonyms
-        source.rankPath = opv.rankPath
-        source.profile = source.profile
-        source.sourceElementLink = source.sourceElementLink
-        source.nameLink = source.nameLink
-        source.instanceLink = source.instanceLink
-        source.updatedBy = userName
-        source.updatedAt = new Timestamp(System.currentTimeMillis())
-        source.save()
-        return source
     }
 
     protected static notPublished(TreeVersionElement element) {
@@ -1162,7 +917,7 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
     }
 
     protected TreeVersionElement makeVersionElementFromTaxonData(TaxonData taxonData, TreeVersionElement parentElement, TreeElement previousElement, String userName) {
-        TreeElement treeElement = findTreeElement(taxonData, parentElement)
+        TreeElement treeElement = findTreeElement(taxonData)
         if (!treeElement) { //then make a new one
             treeElement = new TreeElement(
                     previousElement: previousElement,
@@ -1173,13 +928,9 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
                     synonymsHtml: taxonData.synonymsHtml,
                     simpleName: taxonData.simpleName,
                     nameElement: taxonData.nameElement,
-                    instancePath: parentElement.treeElement.instancePath + "/$taxonData.instanceId",
-                    namePath: parentElement.treeElement.namePath + "/$taxonData.nameElement",
                     rank: taxonData.rank,
-                    depth: parentElement.treeElement.depth + 1,
                     sourceShard: taxonData.sourceShard,
                     synonyms: taxonData.synonyms,
-                    rankPath: parentElement.treeElement.rankPath << taxonData.rankPathPart,
                     profile: taxonData.profile,
                     sourceElementLink: null,
                     nameLink: taxonData.nameLink,
@@ -1192,15 +943,13 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
         return saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null)
     }
 
-    private static findTreeElement(TaxonData taxonData, TreeVersionElement parentElement) {
+    private static findTreeElement(TaxonData taxonData) {
         TreeElement.findWhere(
                 instanceId: taxonData.instanceId,
                 nameId: taxonData.nameId,
                 excluded: taxonData.excluded,
                 simpleName: taxonData.simpleName,
                 nameElement: taxonData.nameElement,
-                instancePath: parentElement.treeElement.instancePath + "/$taxonData.instanceId",
-                namePath: parentElement.treeElement.namePath + "/$taxonData.nameElement",
                 sourceShard: taxonData.sourceShard,
                 synonyms: taxonData.synonyms
         )
@@ -1213,8 +962,6 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
                 excluded: treeElementData.excluded,
                 simpleName: treeElementData.simpleName,
                 nameElement: treeElementData.nameElement,
-                instancePath: treeElementData.instancePath,
-                namePath: treeElementData.namePath,
                 sourceShard: treeElementData.sourceShard,
                 synonyms: treeElementData.synonyms,
                 profile: treeElementData.profile
@@ -1223,16 +970,14 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
 
     protected static Map elementDataFromElement(TreeElement treeElement) {
         [
-                instanceId  : treeElement.instanceId,
-                nameId      : treeElement.nameId,
-                excluded    : treeElement.excluded,
-                simpleName  : treeElement.simpleName,
-                nameElement : treeElement.nameElement,
-                instancePath: treeElement.instancePath,
-                namePath    : treeElement.namePath,
-                sourceShard : treeElement.sourceShard,
-                synonyms    : treeElement.synonyms,
-                profile     : treeElement.profile
+                instanceId : treeElement.instanceId,
+                nameId     : treeElement.nameId,
+                excluded   : treeElement.excluded,
+                simpleName : treeElement.simpleName,
+                nameElement: treeElement.nameElement,
+                sourceShard: treeElement.sourceShard,
+                synonyms   : treeElement.synonyms,
+                profile    : treeElement.profile
         ]
     }
 
@@ -1242,7 +987,10 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
                 treeVersion: parentTve.treeVersion,
                 parent: parentTve,
                 taxonId: taxonId,
-                treePath: parentTve.treePath + "/${element.id}")
+                treePath: parentTve.treePath + "/${element.id}",
+                namePath: parentTve.namePath + "/${element.simpleName}",
+                depth: parentTve.depth + 1
+        )
 
         treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
         treeVersionElement.taxonLink = taxonLink ?: linkService.addTaxonIdentifier(treeVersionElement)
@@ -1263,8 +1011,8 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
         checkInstanceOnTree(taxonData, treeVersion)
         checkNameAlreadyOnTree(taxonData, treeVersion)
 
-        NameRank taxonRank = rankOfElement(taxonData.rankPathPart, taxonData.nameElement)
-        NameRank parentRank = rankOfElement(parentElement.treeElement.rankPath, parentElement.treeElement.nameElement)
+        NameRank taxonRank = NameRank.findByName(taxonData.rank)
+        NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
 
         //is rank below parent
         if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
@@ -1272,7 +1020,7 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
         }
 
         //polynomials must be placed under parent
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.treeElement.namePath.split('/'))
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
 
         checkForExistingSynonyms(taxonData, treeVersion)
 
@@ -1287,8 +1035,8 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
         warnings = checkNameValidity(taxonData)
         checkInstanceOnTree(taxonData, treeVersion)
 
-        NameRank taxonRank = rankOfElement(taxonData.rankPathPart, taxonData.nameElement)
-        NameRank parentRank = rankOfElement(parentElement.treeElement.rankPath, parentElement.treeElement.nameElement)
+        NameRank taxonRank = NameRank.findByName(taxonData.rank)
+        NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
 
         //is rank below parent
         if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
@@ -1296,7 +1044,7 @@ select tve.treeElement, tve.taxonId, tve.taxonLink, tve.elementLink
         }
 
         //polynomials must be placed under parent
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.treeElement.namePath.split('/'))
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
 
         checkForExistingSynonyms(taxonData, treeVersion)
 
@@ -1615,26 +1363,4 @@ class DisplayElement {
                 synonymsHtml: synonymsHtml
         ]
     }
-}
-
-class CopyElementHolder {
-
-    @SuppressWarnings("GrFinalVariableAccess")
-    final TreeElement sourceElement
-    @SuppressWarnings("GrFinalVariableAccess")
-    final Long taxonId
-    @SuppressWarnings("GrFinalVariableAccess")
-    final String taxonUri
-    @SuppressWarnings("GrFinalVariableAccess")
-    final String elementLink
-    TreeElement copiedElement
-
-    CopyElementHolder(Object[] data) {
-        assert data.size() == 4
-        this.sourceElement = data[0] as TreeElement
-        this.taxonId = data[1] as Long
-        this.taxonUri = data[2] as String
-        this.elementLink = data[3] as String
-    }
-
 }
