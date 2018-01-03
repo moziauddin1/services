@@ -154,6 +154,7 @@ class TreeService implements ValidationUtils {
     @Transactional(readOnly = true)
     List<TreeVersionElement> getAllChildElements(TreeVersionElement parent) {
         mustHave(parent: parent, 'parent.treeElement': parent.treeElement, 'parent.treeVersion': parent.treeVersion)
+        log.debug "getting children for $parent.treeElement.simpleName"
         String pattern = "^${parent.treePath}/.*"
         getElementsByPath(parent.treeVersion, pattern)
     }
@@ -640,9 +641,9 @@ WHERE tve1.tree_version_id = :treeVersionId
         }
 
         List<String> warnings = validateReplacementElement(parentTve, taxonData)
-        TreeVersionElement replacementElement = makeVersionElementFromTaxonData(taxonData, parentTve, currentTve.treeElement, userName)
-        updateParentId(currentTve, replacementElement)
-        updateChildTreePath(replacementElement, currentTve.treeElementId)
+        TreeVersionElement replacementTve = makeVersionElementFromTaxonData(taxonData, parentTve, currentTve.treeElement, userName)
+        updateParentId(currentTve, replacementTve)
+        updateChildTreePath(replacementTve, currentTve)
 
         updateParentTaxaId(parentTve)
         if (parentTve != currentTve.parent) {
@@ -651,9 +652,9 @@ WHERE tve1.tree_version_id = :treeVersionId
 
         deleteTreeVersionElement(currentTve)
 
-        Map problems = validateTreeVersion(replacementElement.treeVersion)
+        Map problems = validateTreeVersion(replacementTve.treeVersion)
         problems.put('warnings', warnings)
-        return [replacementElement: replacementElement, problems: problems]
+        return [replacementElement: replacementTve, problems: problems]
     }
 
     /**
@@ -830,9 +831,8 @@ WHERE tve1.tree_version_id = :treeVersionId
      * @return the replacement tree version element
      */
     private TreeVersionElement changeElement(TreeVersionElement treeVersionElement, TreeElement newElement) {
-        Long oldElementId = treeVersionElement.treeElement.id
         TreeVersionElement replacementTve = saveTreeVersionElement(newElement, treeVersionElement.parent, treeVersionElement.taxonId, treeVersionElement.taxonLink)
-        updateChildTreePath(replacementTve, oldElementId)
+        updateChildTreePath(replacementTve, treeVersionElement)
         updateParentId(treeVersionElement, replacementTve)
         deleteTreeVersionElement(treeVersionElement)
         return replacementTve
@@ -840,27 +840,35 @@ WHERE tve1.tree_version_id = :treeVersionId
 
     /**
      * for tree version elements in this version update tree paths that contain the old element ids to contain the new
-     * element id
-     * @param treeVersionElement
+     * element id.
+     *
+     * Note that because this does an update, if you have any of the children loaded in the session you will need to
+     * refresh them to see the change in the treePath.
+     *
+     * @param newTve
      * @param oldElementId
      * @return
      */
-    private TreeVersionElement updateChildTreePath(TreeVersionElement treeVersionElement, Long oldElementId) {
-        Sql sql = getSql()
-        sql.executeUpdate('''
-UPDATE tree_version_element 
-  SET tree_path = regexp_replace(tree_path, :oldId, :newId) 
-  WHERE tree_version_id = :versionId 
-        AND tree_path ~ :oldId''',
-                [oldId    : "/$oldElementId/".toString(),
-                 newId    : "/${treeVersionElement.treeElement.id}/".toString(),
-                 versionId: treeVersionElement.treeVersion.id])
-        return treeVersionElement
+    protected TreeVersionElement updateChildTreePath(TreeVersionElement newTve, TreeVersionElement oldTve) {
+        updateChildTreePath(newTve.treePath, oldTve.treePath, newTve.treeVersion)
+        return newTve
+    }
+
+    protected void updateChildTreePath(String newPath, String oldPath, TreeVersion treeVersion) {
+        log.debug "Replacing $oldPath with $newPath"
+        TreeVersionElement.executeUpdate('''
+update TreeVersionElement set treePath = regexp_replace(treePath, :oldId, :newId)
+where treeVersion = :version
+and regex(treePath, :oldId) = true
+''',
+                [oldId  : "^$oldPath/",
+                 newId  : "$newPath/",
+                 version: treeVersion])
     }
 
     private TreeVersionElement updateParentId(TreeVersionElement oldParent, TreeVersionElement newParent) {
         TreeVersionElement.executeUpdate('''
-update TreeVersionElement set parent= :newParent
+update TreeVersionElement set parent = :newParent
 where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         return newParent
     }

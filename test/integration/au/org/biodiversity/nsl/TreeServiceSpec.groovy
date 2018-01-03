@@ -150,7 +150,7 @@ class TreeServiceSpec extends Specification {
         tree.treeVersions.contains(version)
 
         when: 'I add some test elements to the version'
-        List<TreeElement> testElements = makeTestElements(version, testElementData())
+        List<TreeElement> testElements = makeTestElements(version, testElementData(), testTreeVersionElementData())
         println version.treeVersionElements
 
         then: 'It should have 30 tree elements'
@@ -230,7 +230,7 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, testElementData())
+        makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
 
@@ -268,7 +268,7 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, testElementData())
+        makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
 
@@ -332,7 +332,7 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData])
+        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData], [blechnaceaeTVEData, doodiaTVEData, asperaTVEData])
         Instance asperaInstance = Instance.get(781104)
         TreeVersionElement doodiaElement = service.findElementBySimpleName('Doodia', draftVersion)
         TreeVersionElement asperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
@@ -362,7 +362,7 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData])
+        makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData], [blechnaceaeTVEData, asperaTVEData])
         Instance doodiaInstance = Instance.get(578615)
         TreeVersionElement blechnaceaeElement = service.findElementBySimpleName('Blechnaceae', draftVersion)
         TreeVersionElement asperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
@@ -400,7 +400,7 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData])
+        makeTestElements(draftVersion, [blechnaceaeElementData, asperaElementData], [blechnaceaeTVEData, asperaTVEData])
         Instance doodiaInstance = Instance.get(578615)
         TreeVersionElement blechnaceaeElement = service.findElementBySimpleName('Blechnaceae', draftVersion)
 
@@ -440,7 +440,7 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData])
+        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData, asperaElementData], [blechnaceaeTVEData, doodiaTVEData, asperaTVEData])
         Instance asperaInstance = Instance.get(781104)
         TreeVersionElement doodiaElement = service.findElementBySimpleName('Doodia', draftVersion)
         TreeVersionElement asperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
@@ -463,7 +463,6 @@ class TreeServiceSpec extends Specification {
         then: 'I get bad argument, name is already on the tree'
         def e = thrown(BadArgumentsException)
         e.message == "$tree.name version $draftVersion.id already contains name $taxonData.nameLink. See $asperaElement.elementLink"
-
     }
 
     def "test place taxon"() {
@@ -471,7 +470,7 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData])
+        makeTestElements(draftVersion, [blechnaceaeElementData, doodiaElementData], [blechnaceaeTVEData, doodiaTVEData])
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
 
@@ -492,7 +491,7 @@ class TreeServiceSpec extends Specification {
         draftVersion
         blechnaceaeElement
         blechnaceaeTaxonId
-        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) == 2
+        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) > 2
         doodiaElement
         doodiaTaxonId
         asperaInstance
@@ -533,7 +532,7 @@ class TreeServiceSpec extends Specification {
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
-        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
         TreeVersionElement anthocerotaceaeTve = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
@@ -559,7 +558,7 @@ class TreeServiceSpec extends Specification {
         !draftVersion.published
         anthocerotaceaeTve
         anthocerosTve
-        anthocerosTve.treeElement.parentElement == anthocerotaceaeTve.treeElement
+        anthocerosTve.parent == anthocerotaceaeTve
         dendrocerotaceaeTve
         originalDendrocerotaceaeParentTaxonIDs.size() == 6
         originalAnthocerotaceaeParentTaxonIDs.size() == 6
@@ -569,21 +568,26 @@ class TreeServiceSpec extends Specification {
                 'http://localhost:7070/nsl-mapper/instance/apni/753948',
                 'test move taxon')
         println "\n*** $result\n"
+
+        TreeVersionElement.withSession { s ->
+            s.flush()
+        }
+        draftVersion.refresh()
+
         List<TreeVersionElement> anthocerosChildren = service.getAllChildElements(result.replacementElement)
         List<TreeVersionElement> dendrocerotaceaeChildren = service.getAllChildElements(dendrocerotaceaeTve)
 
         printTve(dendrocerotaceaeTve)
         printTve(anthocerotaceaeTve)
-        draftVersion.refresh()
 
         then: 'It works'
-        6 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
             [success: true]
         }
         1 * service.linkService.getObjectForLink(_) >> replacementAnthocerosInstance
         1 * service.linkService.getPreferredLinkForObject(replacementAnthocerosInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/121601'
         1 * service.linkService.getPreferredLinkForObject(replacementAnthocerosInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/753948'
-        6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        1 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         10 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
             println "Adding taxonIdentifier for $tve"
             "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
@@ -597,9 +601,9 @@ class TreeServiceSpec extends Specification {
         dendrocerotaceaeTve.taxonId != dendrocerotaceaeInitialTaxonId
         draftVersion.treeVersionElements.size() == 30
         anthocerosChildren.size() == 5
-        result.replacementElement.treeElement.parentElement == dendrocerotaceaeTve.treeElement
+        result.replacementElement.parent == dendrocerotaceaeTve
         anthocerosChildren[0].treeElement.nameElement == 'capricornii'
-        anthocerosChildren[0].treeElement.parentElement == result.replacementElement.treeElement
+        anthocerosChildren[0].parent == result.replacementElement
         anthocerosChildren[1].treeElement.nameElement == 'ferdinandi-muelleri'
         anthocerosChildren[2].treeElement.nameElement == 'fragilis'
         anthocerosChildren[3].treeElement.nameElement == 'laminifer'
@@ -628,7 +632,7 @@ class TreeServiceSpec extends Specification {
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
-        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
 
@@ -654,7 +658,7 @@ class TreeServiceSpec extends Specification {
         anthocerotalesTve
         dendrocerotidaeTve
         replacementAnthocerotalesInstance
-        anthocerotalesTve.treeElement.parentElement == anthocerotidaeTve.treeElement
+        anthocerotalesTve.parent == anthocerotidaeTve
         anthocerotalesChildren.size() == 10
         originalDendrocerotidaeTaxonIDs.size() == 4
         originalAnthocerotidaeTaxonIDs.size() == 4
@@ -671,13 +675,13 @@ class TreeServiceSpec extends Specification {
         draftVersion.refresh()
 
         then: 'It works'
-        11 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
             [success: true]
         }
         1 * service.linkService.getObjectForLink(_) >> replacementAnthocerotalesInstance
         1 * service.linkService.getPreferredLinkForObject(replacementAnthocerotalesInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/142301'
         1 * service.linkService.getPreferredLinkForObject(replacementAnthocerotalesInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/753978'
-        11 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        1 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         6 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
             println "Adding taxonIdentifier for $tve"
             "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
@@ -707,7 +711,7 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
-        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData())
+        List<TreeElement> testElements = makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
 
@@ -724,7 +728,7 @@ class TreeServiceSpec extends Specification {
         !draftVersion.published
         anthocerotaceae
         anthoceros
-        anthoceros.treeElement.parentElement == anthocerotaceae.treeElement
+        anthoceros.parent == anthocerotaceae
         originalAnthocerotaceaeTaxonIDs.size() == 6
 
         when: 'I try to move a taxon'
@@ -750,11 +754,11 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, testElementData())
+        makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
-        TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
-        TreeVersionElement pubAnthoceros = service.findElementBySimpleName('Anthoceros', publishedVersion)
+        TreeVersionElement anthocerosTve = service.findElementBySimpleName('Anthoceros', draftVersion)
+        TreeVersionElement pubAnthocerosTve = service.findElementBySimpleName('Anthoceros', publishedVersion)
 
         expect:
         tree
@@ -764,77 +768,68 @@ class TreeServiceSpec extends Specification {
         publishedVersion.treeVersionElements.size() == 30
         tree.defaultDraftTreeVersion == draftVersion
         tree.currentTreeVersion == publishedVersion
-        pubAnthoceros
-        anthoceros.treeElement.profile == ["APC Dist.":
-                                                   [
-                                                           "value"       : "WA, NT, SA, Qld, NSW, ACT, Vic, Tas",
-                                                           "sourceid"    : 27645,
-                                                           "createdat"   : "2011-01-27T00:00:00+11:00",
-                                                           "createdby"   : "KIRSTENC",
-                                                           "updatedat"   : "2011-01-27T00:00:00+11:00",
-                                                           "updatedby"   : "KIRSTENC",
-                                                           "sourcesystem": "APCCONCEPT"
-                                                   ]
+        pubAnthocerosTve
+        anthocerosTve.treeElement.profile == [
+                "APC Dist.": [
+                        value      : "WA, NT, SA, Qld, NSW, ACT, Vic, Tas",
+                        created_at : "2011-01-27T00:00:00+11:00",
+                        created_by : "KIRSTENC",
+                        updated_at : "2011-01-27T00:00:00+11:00",
+                        updated_by : "KIRSTENC",
+                        source_link: "http://localhost:7070/nsl-mapper/instanceNote/apni/1117116"
+                ]
         ]
 
         when: 'I update the profile on the published version'
-        service.editProfile(pubAnthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
+        service.editProfile(pubAnthocerosTve, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
 
         then: 'I get a PublishedVersionException'
         thrown(PublishedVersionException)
 
         when: 'I update a profile on the draft version'
-        TreeElement oldElement = anthoceros.treeElement
-        Timestamp oldUpdatedAt = anthoceros.treeElement.updatedAt
-        Long oldTaxonId = anthoceros.taxonId
-        TreeVersionElement treeVersionElement = service.editProfile(anthoceros, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
+        List<TreeVersionElement> childTves = TreeVersionElement.findAllByParent(anthocerosTve)
+        TreeElement oldElement = anthocerosTve.treeElement
+        Timestamp oldUpdatedAt = anthocerosTve.treeElement.updatedAt
+        Long oldTaxonId = anthocerosTve.taxonId
+        TreeVersionElement replacedAnthocerosTve = service.editProfile(anthocerosTve, ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]], 'test edit profile')
+        childTves.each {
+            it.refresh()
+        }
 
         then: 'It updates the treeElement profile'
+        1 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         oldElement
-        !deleted(anthoceros)
-        treeVersionElement
-        treeVersionElement.taxonId == oldTaxonId
-        treeVersionElement.treeElement == oldElement
-        treeVersionElement.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
-        treeVersionElement.treeElement.updatedBy == 'test edit profile'
-        treeVersionElement.treeElement.updatedAt.after(oldUpdatedAt)
+        deleted(anthocerosTve)
+        replacedAnthocerosTve
+        childTves.findAll {
+            it.parent == replacedAnthocerosTve
+        }.size() == childTves.size()
+        replacedAnthocerosTve.taxonId == oldTaxonId
+        replacedAnthocerosTve.treeElement != oldElement
+        replacedAnthocerosTve.treeElement.profile == ['APC Dist.': [value: "WA, NT, SA, Qld, NSW"]]
+        replacedAnthocerosTve.treeElement.updatedBy == 'test edit profile'
+        replacedAnthocerosTve.treeElement.updatedAt.after(oldUpdatedAt)
 
         when: 'I change a profile to the same thing'
         TreeVersionElement anthocerosCapricornii = service.findElementBySimpleName('Anthoceros capricornii', draftVersion)
         TreeElement oldACElement = anthocerosCapricornii.treeElement
         oldTaxonId = anthocerosCapricornii.taxonId
-        TreeVersionElement treeVersionElement1 = service.editProfile(anthocerosCapricornii, ["APC Dist.":
-                                                                                                     [
-                                                                                                             "value"       : "WA, NT",
-                                                                                                             "sourceid"    : 27646,
-                                                                                                             "createdat"   : "2011-01-27T00:00:00+11:00",
-                                                                                                             "createdby"   : "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00",
-                                                                                                             "updatedby"   : "KIRSTENC",
-                                                                                                             "sourcesystem": "APCCONCEPT"
-                                                                                                     ]
-        ], 'test edit profile')
+        Map oldProfile = new HashMap(anthocerosCapricornii.treeElement.profile)
+        TreeVersionElement treeVersionElement1 = service.editProfile(anthocerosCapricornii, oldProfile, 'test edit profile')
 
         then: 'nothing changes'
+
         treeVersionElement1 == anthocerosCapricornii
         treeVersionElement1.taxonId == oldTaxonId
         treeVersionElement1.treeElement == oldACElement
-        treeVersionElement1.treeElement.profile == ["APC Dist.":
-                                                            [
-                                                                    "value"       : "WA, NT",
-                                                                    "sourceid"    : 27646,
-                                                                    "createdat"   : "2011-01-27T00:00:00+11:00",
-                                                                    "createdby"   : "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00",
-                                                                    "updatedby"   : "KIRSTENC",
-                                                                    "sourcesystem": "APCCONCEPT"
-                                                            ]
-        ]
+        treeVersionElement1.treeElement.profile == oldProfile
     }
 
     def "test edit draft only taxon profile"() {
         given:
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, testElementData())
+        makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
 
         expect:
@@ -843,16 +838,15 @@ class TreeServiceSpec extends Specification {
         draftVersion.treeVersionElements.size() == 30
         tree.defaultDraftTreeVersion == draftVersion
         tree.currentTreeVersion == null
-        anthoceros.treeElement.profile == ["APC Dist.":
-                                                   [
-                                                           "value"       : "WA, NT, SA, Qld, NSW, ACT, Vic, Tas",
-                                                           "sourceid"    : 27645,
-                                                           "createdat"   : "2011-01-27T00:00:00+11:00",
-                                                           "createdby"   : "KIRSTENC",
-                                                           "updatedat"   : "2011-01-27T00:00:00+11:00",
-                                                           "updatedby"   : "KIRSTENC",
-                                                           "sourcesystem": "APCCONCEPT"
-                                                   ]
+        anthoceros.treeElement.profile == [
+                "APC Dist.": [
+                        value      : "WA, NT, SA, Qld, NSW, ACT, Vic, Tas",
+                        created_at : "2011-01-27T00:00:00+11:00",
+                        created_by : "KIRSTENC",
+                        updated_at : "2011-01-27T00:00:00+11:00",
+                        updated_by : "KIRSTENC",
+                        source_link: "http://localhost:7070/nsl-mapper/instanceNote/apni/1117116"
+                ]
         ]
 
         when: 'I update a profile on the draft version'
@@ -878,7 +872,7 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
         TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
-        makeTestElements(draftVersion, testElementData())
+        makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
@@ -904,26 +898,24 @@ class TreeServiceSpec extends Specification {
         when: 'I update a profile on the draft version'
         Long oldTaxonId = anthoceros.taxonId
         TreeElement oldElement = anthoceros.treeElement
-        TreeVersionElement treeVersionElement = service.editExcluded(anthoceros, true, 'test edit profile')
+        TreeVersionElement treeVersionElement = service.editExcluded(anthoceros, true, 'test edit status')
 
-        then: 'It creates a new treeVersionElement and treeElement copies the children and updates the profile'
-        6 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
-            [success: true]
-        }
-        6 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
+        then: 'It creates a new treeVersionElement and treeElement updates the children TVEs and updates the status'
+        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> tves -> [success: true] }
+        1 * service.linkService.addTargetLink(_) >> { TreeVersionElement tve -> "http://localhost:7070/nsl-mapper/tree/$tve.treeVersion.id/$tve.treeElement.id" }
         treeVersionElement
         oldElement
         deleted(anthoceros)
         treeVersionElement.taxonId == oldTaxonId
         treeVersionElement.treeElement != oldElement
         treeVersionElement.treeElement.excluded
-        treeVersionElement.treeElement.updatedBy == 'test edit profile'
+        treeVersionElement.treeElement.updatedBy == 'test edit status'
 
-        when: 'I change a profile to the same thing'
+        when: 'I change status to the same thing'
         TreeVersionElement anthocerosCapricornii = service.findElementBySimpleName('Anthoceros capricornii', draftVersion)
         TreeElement oldACElement = anthocerosCapricornii.treeElement
         oldTaxonId = anthocerosCapricornii.taxonId
-        TreeVersionElement treeVersionElement1 = service.editExcluded(anthocerosCapricornii, false, 'test edit profile')
+        TreeVersionElement treeVersionElement1 = service.editExcluded(anthocerosCapricornii, false, 'test edit status')
 
         then: 'nothing changes'
         treeVersionElement1 == anthocerosCapricornii
@@ -932,10 +924,47 @@ class TreeServiceSpec extends Specification {
         !treeVersionElement1.treeElement.excluded
     }
 
+    def "test update child tree path"() {
+        given:
+        Tree tree = makeATestTree()
+        service.linkService.bulkAddTargets(_) >> [success: true]
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        makeTestElements(draftVersion, testElementData(), testTreeVersionElementData())
+        makeTestElements(draftVersion, [doodiaElementData], [doodiaTVEData]).first()
+        service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+
+        TreeVersionElement anthocerosTve = service.findElementBySimpleName('Anthoceros', draftVersion)
+        TreeVersionElement doodiaTve = service.findElementBySimpleName('Doodia', draftVersion)
+        List<TreeVersionElement> anthocerosChildren = service.getAllChildElements(anthocerosTve)
+        printTve(anthocerosTve)
+
+        expect:
+        tree
+        draftVersion.treeVersionElements.size() == 31
+        !draftVersion.published
+        anthocerosTve
+        doodiaTve
+        anthocerosChildren.size() == 5
+        anthocerosChildren.findAll { it.treePath.contains(anthocerosTve.treeElement.id.toString()) }.size() == 5
+
+        when: "I update the tree path changing an element"
+        service.updateChildTreePath(doodiaTve.treePath, anthocerosTve.treePath, anthocerosTve.treeVersion)
+
+        List<TreeVersionElement> doodiaChildren = service.getAllChildElements(doodiaTve)
+
+        then: "The tree paths of anthoceros kids have changed"
+        doodiaChildren.size() == 5
+        anthocerosChildren.containsAll(doodiaChildren)
+
+    }
+
+
     private printTve(TreeVersionElement target) {
         println "*** Taxon $target.taxonId: $target.treeElement.name.simpleName Children ***"
         for (TreeVersionElement tve in service.getAllChildElements(target)) {
-            println "Taxon: $tve.taxonId, Names: $tve.treeElement.namePath, Instances: $tve.treeElement.instancePath"
+            tve.refresh()
+            println "Taxon: $tve.taxonId, Names: $tve.namePath, Path: $tve.treePath"
         }
     }
 
@@ -953,41 +982,49 @@ class TreeServiceSpec extends Specification {
         service.createNewTree('bTree', 'aGroup', null, '<p>B description</p>', 'http://trees.org/bTree', false)
     }
 
-    private static List<TreeElement> makeTestElements(TreeVersion version, List<Map> elementData) {
+    private static List<TreeElement> makeTestElements(TreeVersion version, List<Map> elementData, List<Map> tveData) {
         List<TreeElement> elements = []
         Map<Long, Long> generatedIdMapper = [:]
         elementData.each { Map data ->
-            if (data.parentElementId) {
-                data.parentElement = TreeElement.get(generatedIdMapper[data.parentElementId as Long])
-            }
             data.remove('previousElementId')
             TreeElement e = new TreeElement(data)
             e.save()
-            if (e.parentElement) {
-                e.treePath = e.parentElement.treePath + "/$e.id"
-            } else {
-                e.treePath = "/$e.id"
-            }
-            e.save()
             generatedIdMapper.put(data.id as Long, e.id as Long)
-            TreeVersionElement tve = new TreeVersionElement(
-                    treeVersion: version,
-                    treeElement: e,
-                    taxonId: e.id * 10, //generate a taxon id
-                    elementLink: "http://localhost:7070/nsl-mapper/tree/$version.id/$e.id",
-                    taxonLink: "http://localhost:7070/nsl-mapper/taxon/apni/${e.id * 10}")
-            tve.save()
             elements.add(e)
         }
+
+        Map<String, String> elementLinkMapper = [:]
+        tveData.each { Map data ->
+
+            TreeVersionElement tve = new TreeVersionElement(data)
+            tve.treeVersion = version
+            tve.treeElement = TreeElement.get(generatedIdMapper.get(data.treeElementId as Long) as Long)
+            tve.elementLink = "http://localhost:7070/nsl-mapper/tree/$version.id/$data.treeElementId"
+            tve.treePath = filterTreePath(generatedIdMapper, data.treePath)
+            tve.parent = TreeVersionElement.get(elementLinkMapper[data.parentId])
+            elementLinkMapper.put(data.elementLink, tve.elementLink)
+            tve.save()
+        }
+
         version.save(flush: true)
         version.refresh()
         return elements
     }
 
+    private static filterTreePath(Map idMap, String treePath) {
+        if (idMap.isEmpty()) {
+            println "ID Map is empty!!!!!!!!"
+        }
+        idMap.each { k, v ->
+            treePath = treePath.replaceAll("/$k", "/$v")
+        }
+        return treePath
+    }
+
+
     private static Map doodiaElementData = [
-            id               : 9435080,
+            id               : 9788223,
             lockVersion      : 0,
-            depth            : 7,
             displayHtml      : "<data><scientific><name id='70914'><element class='Doodia'>Doodia</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific><citation>Parris, B.S. in McCarthy, P.M. (ed.) (1998), Doodia. <i>Flora of Australia</i> 48</citation></data>",
             excluded         : false,
             instanceId       : 578615,
@@ -995,27 +1032,33 @@ class TreeServiceSpec extends Specification {
             nameElement      : "Doodia",
             nameId           : 70914,
             nameLink         : "http://localhost:7070/nsl-mapper/name/apni/70914",
-            namePath         : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia",
-            parentElementId  : 9435044,
             previousElementId: null,
-            profile          : ["APC Dist.": ["value": "NT, SA, Qld, NSW, LHI, NI, ACT, Vic, Tas", "sourceid": 14274, "createdat": "2008-08-06T00:00:00+10:00", "createdby": "BRONWYNC", "updatedat": "2008-08-06T00:00:00+10:00", "updatedby": "BRONWYNC", "sourcesystem": "APCCONCEPT"], "APC Comment": ["value": "<i>Doodia</i> R.Br. is included in <i>Blechnum</i> L. in NSW.", "sourceid": null, "createdat": "2016-06-10T15:22:41.742+10:00", "createdby": "blepschi", "updatedat": "2016-06-10T15:23:01.201+10:00", "updatedby": "blepschi", "sourcesystem": null]],
+            profile          : ["APC Dist.": ["value": "NT, SA, Qld, NSW, LHI, NI, ACT, Vic, Tas", "created_at": "2008-08-06T00:00:00+10:00", "created_by": "BRONWYNC", "updated_at": "2008-08-06T00:00:00+10:00", "updated_by": "BRONWYNC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1105068"], "APC Comment": ["value": "<i>Doodia</i> R.Br. is included in <i>Blechnum</i> L. in NSW.", "created_at": "2016-06-10T15:22:41.742+10:00", "created_by": "blepschi", "updated_at": "2016-06-10T15:23:01.201+10:00", "updated_by": "blepschi", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/6842406"]],
             rank             : "Genus",
-            rankPath         : ["Ordo": ["id": 223583, "name": "Polypodiales"], "Genus": ["id": 70914, "name": "Doodia"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 223519, "name": "Equisetopsida"], "Familia": ["id": 222592, "name": "Blechnaceae"], "Division": ["id": 224706, "name": "Charophyta"], "Subclassis": ["id": 224852, "name": "Polypodiidae"]],
             simpleName       : "Doodia",
             sourceElementLink: null,
             sourceShard      : "APNI",
             synonyms         : null,
             synonymsHtml     : "<synonyms></synonyms>",
-            treePath         : "/9434380/9434381/9434382/9434511/9434834/9435044/9435080",
-            instancePath     : "/9434380/9434381/9434382/9434511/9434834/9435044/9435080",
-            updatedAt        : "2017-09-07 10:54:20.736603",
+            updatedAt        : "2018-01-01 15:22:55.387530",
             updatedBy        : "import"
     ]
 
+    private static Map doodiaTVEData = [
+            elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9788223",
+            depth        : 7,
+            namePath     : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia",
+            parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9788187",
+            taxonId      : 2910041,
+            taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2910041",
+            treeElementId: 9788223,
+            treePath     : "/9787517/9787518/9787519/9787648/9787977/9788187/9788223",
+            treeVersionId: 9787484
+    ]
+
     private static Map blechnaceaeElementData = [
-            id               : 9435044,
+            id               : 9788187,
             lockVersion      : 0,
-            depth            : 6,
             displayHtml      : "<data><scientific><name id='222592'><element class='Blechnaceae'>Blechnaceae</element> <authors><author id='8244' title='Newman, E.'>Newman</author></authors></name></scientific><citation>CHAH (2009), <i>Australian Plant Census</i></citation></data>",
             excluded         : false,
             instanceId       : 651382,
@@ -1023,57 +1066,405 @@ class TreeServiceSpec extends Specification {
             nameElement      : "Blechnaceae",
             nameId           : 222592,
             nameLink         : "http://localhost:7070/nsl-mapper/name/apni/222592",
-            namePath         : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae",
-            parentElementId  : 9434834,
             previousElementId: null,
-            profile          : ["APC Dist.": ["value": "WA, NT, SA, Qld, NSW, LHI, NI, ACT, Vic, Tas, MI", "sourceid": 22346, "createdat": "2009-10-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2009-10-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+            profile          : ["APC Dist.": ["value": "WA, NT, SA, Qld, NSW, LHI, NI, ACT, Vic, Tas, MI", "created_at": "2009-10-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2009-10-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1111961"]],
             rank             : "Familia",
-            rankPath         : ["Ordo": ["id": 223583, "name": "Polypodiales"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 223519, "name": "Equisetopsida"], "Familia": ["id": 222592, "name": "Blechnaceae"], "Division": ["id": 224706, "name": "Charophyta"], "Subclassis": ["id": 224852, "name": "Polypodiidae"]],
             simpleName       : "Blechnaceae",
             sourceElementLink: null,
             sourceShard      : "APNI",
             synonyms         : null,
             synonymsHtml     : "<synonyms></synonyms>",
-            treePath         : "/9434380/9434381/9434382/9434511/9434834/9435044",
-            instancePath     : "/9434380/9434381/9434382/9434511/9434834/9435044",
-            updatedAt        : "2017-09-07 10:54:20.736603",
+            updatedAt        : "2018-01-01 15:22:55.387530",
             updatedBy        : "import"
     ]
 
+    private static Map blechnaceaeTVEData = [
+            elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9788187",
+            depth        : 6,
+            namePath     : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae",
+            parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9787977",
+            taxonId      : 8032171,
+            taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8032171",
+            treeElementId: 9788187,
+            treePath     : "/9787517/9787518/9787519/9787648/9787977/9788187",
+            treeVersionId: 9787484
+    ]
+
     private static Map asperaElementData = [
-            id          : 9435081,
-            lockVersion : 0,
-            depth       : 8,
-            displayHtml : "<data><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific><citation>CHAH (2014), <i>Australian Plant Census</i></citation></data>",
+            id               : 9788224,
+            lockVersion      : 0,
+            displayHtml      : "<data><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific><citation>CHAH (2014), <i>Australian Plant Census</i></citation></data>",
             excluded         : false,
             instanceId       : 781104,
             instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/781104",
             nameElement      : "aspera",
             nameId           : 70944,
             nameLink         : "http://localhost:7070/nsl-mapper/name/apni/70944",
-            namePath         : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia/aspera",
-            parentElementId  : 9435080,
             previousElementId: null,
-            profile          : ["APC Dist.": ["value": "Qld, NSW, LHI, NI, Vic, Tas", "sourceid": 42500, "createdat": "2014-03-25T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2014-03-25T14:04:06+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"], "APC Comment": ["value": "Treated as <i>Blechnum neohollandicum</i> Christenh. in NSW.", "sourceid": null, "createdat": "2016-06-10T15:21:38.135+10:00", "createdby": "blepschi", "updatedat": "2016-06-10T15:21:38.135+10:00", "updatedby": "blepschi", "sourcesystem": null]],
+            profile          : ["APC Dist.": ["value": "Qld, NSW, LHI, NI, Vic, Tas", "created_at": "2014-03-25T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2014-03-25T14:04:06+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1132306"], "APC Comment": ["value": "Treated as <i>Blechnum neohollandicum</i> Christenh. in NSW.", "created_at": "2016-06-10T15:21:38.135+10:00", "created_by": "blepschi", "updated_at": "2016-06-10T15:21:38.135+10:00", "updated_by": "blepschi", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/6842405"]],
             rank             : "Species",
-            rankPath         : ["Ordo": ["id": 223583, "name": "Polypodiales"], "Genus": ["id": 70914, "name": "Doodia"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 223519, "name": "Equisetopsida"], "Familia": ["id": 222592, "name": "Blechnaceae"], "Species": ["id": 70944, "name": "aspera"], "Division": ["id": 224706, "name": "Charophyta"], "Subclassis": ["id": 224852, "name": "Polypodiidae"]],
             simpleName       : "Doodia aspera",
             sourceElementLink: null,
             sourceShard      : "APNI",
-            synonyms         : ["Woodwardia aspera": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Mettenius, G.H. (1856), <i>Filices Horti Botanici Lipsiensis</i>", "nameid": 106698, "fullnamehtml": "<scientific><name id='106698'><scientific><name id='106675'><element class='Woodwardia'>Woodwardia</element></name></scientific> <element class='aspera'>aspera</element> <authors>(<base id='1441' title='Brown, R.'>R.Br.</base>) <author id='7081' title='Mettenius, G.H.'>Mett.</author></authors></name></scientific>"], "Blechnum neohollandicum": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Christenhusz, M.J.M., Zhang, X.C. & Schneider, H. (2011), A linear sequence of extant families and genera of lycophytes and ferns. <i>Phytotaxa</i> 19", "nameid": 239547, "fullnamehtml": "<scientific><name id='239547'><scientific><name id='56340'><element class='Blechnum'>Blechnum</element></name></scientific> <element class='neohollandicum'>neohollandicum</element> <authors><author id='6422' title='Christenhusz, M.J.M.'>Christenh.</author></authors></name></scientific>"], "Doodia aspera var. aspera": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Bailey, F.M. (1881), <i>The fern world of Australia</i>", "nameid": 70967, "fullnamehtml": "<scientific><name id='70967'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <rank id='54412'>var.</rank> <element class='aspera'>aspera</element></name></scientific>"], "Doodia aspera var. angustifrons": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Domin, K. (1915), Beitrage zur Flora und Pflanzengeographie Australiens. <i>Bibliotheca Botanica</i> 20(85)", "nameid": 70959, "fullnamehtml": "<scientific><name id='70959'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element></name></scientific> <rank id='54412'>var.</rank> <element class='angustifrons'>angustifrons</element> <authors><author id='6860' title='Domin, K.'>Domin</author></authors></name></scientific>"]],
-            synonymsHtml: "<synonyms><nom><scientific><name id='106698'><scientific><name id='106675'><element class='Woodwardia'>Woodwardia</element></name></scientific> <element class='aspera'>aspera</element> <authors>(<base id='1441' title='Brown, R.'>R.Br.</base>) <author id='7081' title='Mettenius, G.H.'>Mett.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='70967'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <rank id='54412'>var.</rank> <element class='aspera'>aspera</element></name></scientific> <type>nomenclatural synonym</type></nom><tax><scientific><name id='70959'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element></name></scientific> <rank id='54412'>var.</rank> <element class='angustifrons'>angustifrons</element> <authors><author id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax><tax><scientific><name id='239547'><scientific><name id='56340'><element class='Blechnum'>Blechnum</element></name></scientific> <element class='neohollandicum'>neohollandicum</element> <authors><author id='6422' title='Christenhusz, M.J.M.'>Christenh.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
-            treePath    : "/9434380/9434381/9434382/9434511/9434834/9435044/9435080/9435081",
-            instancePath: "/9434380/9434381/9434382/9434511/9434834/9435044/9435080/9435081",
-            updatedAt   : "2017-09-07 10:54:20.736603",
-            updatedBy   : "import"
+            synonyms         : ["Woodwardia aspera": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Mettenius, G.H. (1856), <i>Filices Horti Botanici Lipsiensis</i>", "name_id": 106698, "name_link": "http://localhost:7070/nsl-mapper/name/apni/106698", "full_name_html": "<scientific><name id='106698'><scientific><name id='106675'><element class='Woodwardia'>Woodwardia</element></name></scientific> <element class='aspera'>aspera</element> <authors>(<base id='1441' title='Brown, R.'>R.Br.</base>) <author id='7081' title='Mettenius, G.H.'>Mett.</author></authors></name></scientific>"], "Blechnum neohollandicum": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Christenhusz, M.J.M., Zhang, X.C. & Schneider, H. (2011), A linear sequence of extant families and genera of lycophytes and ferns. <i>Phytotaxa</i> 19", "name_id": 239547, "name_link": "http://localhost:7070/nsl-mapper/name/apni/239547", "full_name_html": "<scientific><name id='239547'><scientific><name id='56340'><element class='Blechnum'>Blechnum</element></name></scientific> <element class='neohollandicum'>neohollandicum</element> <authors><author id='6422' title='Christenhusz, M.J.M.'>Christenh.</author></authors></name></scientific>"], "Doodia aspera var. aspera": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Bailey, F.M. (1881), <i>The fern world of Australia</i>", "name_id": 70967, "name_link": "http://localhost:7070/nsl-mapper/name/apni/70967", "full_name_html": "<scientific><name id='70967'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <rank id='54412'>var.</rank> <element class='aspera'>aspera</element></name></scientific>"], "Doodia aspera var. angustifrons": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Domin, K. (1915), Beitrage zur Flora und Pflanzengeographie Australiens. <i>Bibliotheca Botanica</i> 20(85)", "name_id": 70959, "name_link": "http://localhost:7070/nsl-mapper/name/apni/70959", "full_name_html": "<scientific><name id='70959'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element></name></scientific> <rank id='54412'>var.</rank> <element class='angustifrons'>angustifrons</element> <authors><author id='6860' title='Domin, K.'>Domin</author></authors></name></scientific>"]],
+            synonymsHtml     : "<synonyms><nom><scientific><name id='106698'><scientific><name id='106675'><element class='Woodwardia'>Woodwardia</element></name></scientific> <element class='aspera'>aspera</element> <authors>(<base id='1441' title='Brown, R.'>R.Br.</base>) <author id='7081' title='Mettenius, G.H.'>Mett.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='70967'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element> <authors><author id='1441' title='Brown, R.'>R.Br.</author></authors></name></scientific> <rank id='54412'>var.</rank> <element class='aspera'>aspera</element></name></scientific> <type>nomenclatural synonym</type></nom><tax><scientific><name id='70959'><scientific><name id='70944'><scientific><name id='70914'><element class='Doodia'>Doodia</element></name></scientific> <element class='aspera'>aspera</element></name></scientific> <rank id='54412'>var.</rank> <element class='angustifrons'>angustifrons</element> <authors><author id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax><tax><scientific><name id='239547'><scientific><name id='56340'><element class='Blechnum'>Blechnum</element></name></scientific> <element class='neohollandicum'>neohollandicum</element> <authors><author id='6422' title='Christenhusz, M.J.M.'>Christenh.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
+            updatedAt        : "2018-01-01 15:22:55.387530",
+            updatedBy        : "import"
     ]
+
+    private static Map asperaTVEData = [
+            elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9788224",
+            depth        : 8,
+            namePath     : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia/aspera",
+            parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9788223",
+            taxonId      : 2895769,
+            taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2895769",
+            treeElementId: 9788224,
+            treePath     : "/9787517/9787518/9787519/9787648/9787977/9788187/9788223/9788224",
+            treeVersionId: 9787484
+    ]
+
+    private static List<Map> testTreeVersionElementData() {
+        [
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9787517",
+                        depth        : 1,
+                        namePath     : "Plantae",
+                        parentId     : null,
+                        taxonId      : 9723412,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9723412",
+                        treeElementId: 9787517,
+                        treePath     : "/9787517",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825378",
+                        depth        : 2,
+                        namePath     : "Plantae/Anthocerotophyta",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9787517",
+                        taxonId      : 9434056,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9434056",
+                        treeElementId: 9825378,
+                        treePath     : "/9787517/9825378",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825379",
+                        depth        : 3,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825378",
+                        taxonId      : 9434055,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9434055",
+                        treeElementId: 9825379,
+                        treePath     : "/9787517/9825378/9825379",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825380",
+                        depth        : 4,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825379",
+                        taxonId      : 8513221,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513221",
+                        treeElementId: 9825380,
+                        treePath     : "/9787517/9825378/9825379/9825380",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825381",
+                        depth        : 5,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825380",
+                        taxonId      : 8513220,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513220",
+                        treeElementId: 9825381,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825382",
+                        depth        : 6,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825381",
+                        taxonId      : 8513200,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513200",
+                        treeElementId: 9825382,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825383",
+                        depth        : 7,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825382",
+                        taxonId      : 6722223,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/6722223",
+                        treeElementId: 9825383,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825383",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825384",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/capricornii",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825383",
+                        taxonId      : 2910349,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2910349",
+                        treeElementId: 9825384,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825383/9825384",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825385",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/ferdinandi-muelleri",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825383",
+                        taxonId      : 2909847,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909847",
+                        treeElementId: 9825385,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825383/9825385",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825388",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/fragilis",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825383",
+                        taxonId      : 2916003,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2916003",
+                        treeElementId: 9825388,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825383/9825388",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825386",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/laminifer",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825383",
+                        taxonId      : 2891332,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2891332",
+                        treeElementId: 9825386,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825383/9825386",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825387",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/punctatus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825383",
+                        taxonId      : 2901206,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2901206",
+                        treeElementId: 9825387,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825383/9825387",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825389",
+                        depth        : 7,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825382",
+                        taxonId      : 2894485,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2894485",
+                        treeElementId: 9825389,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825389",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825390",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros/fuciformis",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825389",
+                        taxonId      : 2891695,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2891695",
+                        treeElementId: 9825390,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825389/9825390",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825391",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros/glandulosus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825389",
+                        taxonId      : 2896010,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2896010",
+                        treeElementId: 9825391,
+                        treePath     : "/9787517/9825378/9825379/9825380/9825381/9825382/9825389/9825391",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825408",
+                        depth        : 4,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825379",
+                        taxonId      : 8513224,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513224",
+                        treeElementId: 9825408,
+                        treePath     : "/9787517/9825378/9825379/9825408",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825409",
+                        depth        : 5,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825408",
+                        taxonId      : 8513222,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513222",
+                        treeElementId: 9825409,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825410",
+                        depth        : 6,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825409",
+                        taxonId      : 8513219,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513219",
+                        treeElementId: 9825410,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825411",
+                        depth        : 7,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825410",
+                        taxonId      : 8513207,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513207",
+                        treeElementId: 9825411,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825411",
+                        taxonId      : 2909398,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909398",
+                        treeElementId: 9825412,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825413",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/australis",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        taxonId      : 2895623,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2895623",
+                        treeElementId: 9825413,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412/9825413",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825414",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/crispatus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        taxonId      : 2909090,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909090",
+                        treeElementId: 9825414,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412/9825414",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825418",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/difficilis",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        taxonId      : 2897137,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2897137",
+                        treeElementId: 9825418,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412/9825418",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825415",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/granulatus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        taxonId      : 2897129,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2897129",
+                        treeElementId: 9825415,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412/9825415",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825419",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/muelleri",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        taxonId      : 2916733,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2916733",
+                        treeElementId: 9825419,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412/9825419",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825416",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/subtropicus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        taxonId      : 2917550,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2917550",
+                        treeElementId: 9825416,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412/9825416",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825417",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/wattsianus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825412",
+                        taxonId      : 2913739,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2913739",
+                        treeElementId: 9825417,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825412/9825417",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825420",
+                        depth        : 8,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Megaceros",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825411",
+                        taxonId      : 8513209,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513209",
+                        treeElementId: 9825420,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825420",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825421",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Megaceros/carnosus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825420",
+                        taxonId      : 2917526,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2917526",
+                        treeElementId: 9825421,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825420/9825421",
+                        treeVersionId: 9787484
+                ],
+                [
+                        elementLink  : "http://localhost:7070/nsl-mapper/tree/9787484/9825422",
+                        depth        : 9,
+                        namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Megaceros/crassus",
+                        parentId     : "http://localhost:7070/nsl-mapper/tree/9787484/9825420",
+                        taxonId      : 2909144,
+                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909144",
+                        treeElementId: 9825422,
+                        treePath     : "/9787517/9825378/9825379/9825408/9825409/9825410/9825411/9825420/9825422",
+                        treeVersionId: 9787484
+                ]
+        ]
+    }
+
 
     private static List<Map> testElementData() {
         [
                 [
-                        id               : 9434380,
+                        id               : 9787517,
                         lockVersion      : 0,
-                        depth            : 1,
                         displayHtml      : "<data><scientific><name id='54717'><element class='Plantae'>Plantae</element> <authors><author id='3882' title='Haeckel, Ernst Heinrich Philipp August'>Haeckel</author></authors></name></scientific><citation>CHAH (2012), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 738442,
@@ -1081,26 +1472,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Plantae",
                         nameId           : 54717,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/54717",
-                        namePath         : "Plantae",
-                        parentElementId  : null,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Regnum",
-                        rankPath         : ["Regnum": ["id": 54717, "name": "Plantae"]],
                         simpleName       : "Plantae",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380",
-                        instancePath     : "/9434380",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472131,
+                        id               : 9825378,
                         lockVersion      : 0,
-                        depth            : 2,
                         displayHtml      : "<data><scientific><name id='238892'><element class='Anthocerotophyta'>Anthocerotophyta</element> <authors><ex id='7053' title='Rothmaler, W.H.P.'>Rothm.</ex> ex <author id='5307' title='Stotler,R.E. &amp; Crandall-Stotler,B.J.'>Stotler & Crand.-Stotl.</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8509445,
@@ -1108,26 +1493,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Anthocerotophyta",
                         nameId           : 238892,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/238892",
-                        namePath         : "Plantae/Anthocerotophyta",
-                        parentElementId  : 9434380,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Division",
-                        rankPath         : ["Regnum": ["id": 54717, "name": "Plantae"], "Division": ["id": 238892, "name": "Anthocerotophyta"]],
                         simpleName       : "Anthocerotophyta",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131",
-                        instancePath     : "/9434380/9472131",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472132,
+                        id               : 9825379,
                         lockVersion      : 0,
-                        depth            : 3,
                         displayHtml      : "<data><scientific><name id='238893'><element class='Anthocerotopsida'>Anthocerotopsida</element> <authors><ex id='2484' title='de Bary, H.A.'>de Bary</ex> ex <author id='3443' title='Janczewski, E. von G.'>Jancz.</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8509444,
@@ -1135,26 +1514,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Anthocerotopsida",
                         nameId           : 238893,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/238893",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida",
-                        parentElementId  : 9472131,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Classis",
-                        rankPath         : ["Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Division": ["id": 238892, "name": "Anthocerotophyta"]],
                         simpleName       : "Anthocerotopsida",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132",
-                        instancePath     : "/9434380/9472131/9472132",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472133,
+                        id               : 9825380,
                         lockVersion      : 0,
-                        depth            : 4,
                         displayHtml      : "<data><scientific><name id='240384'><element class='Anthocerotidae'>Anthocerotidae</element> <authors><author id='6453' title='Rosenvinge, J.L.A.K.'>Rosenv.</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8509443,
@@ -1162,26 +1535,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Anthocerotidae",
                         nameId           : 240384,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/240384",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae",
-                        parentElementId  : 9472132,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Subclassis",
-                        rankPath         : ["Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthocerotidae",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133",
-                        instancePath     : "/9434380/9472131/9472132/9472133",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472134,
+                        id               : 9825381,
                         lockVersion      : 0,
-                        depth            : 5,
                         displayHtml      : "<data><scientific><name id='142301'><element class='Anthocerotales'>Anthocerotales</element> <authors><author id='2624' title='Limpricht, K.G.'>Limpr.</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8508886,
@@ -1189,26 +1556,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Anthocerotales",
                         nameId           : 142301,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/142301",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales",
-                        parentElementId  : 9472133,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Ordo",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthocerotales",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134",
-                        instancePath     : "/9434380/9472131/9472132/9472133/9472134",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472135,
+                        id               : 9825382,
                         lockVersion      : 0,
-                        depth            : 6,
                         displayHtml      : "<data><scientific><name id='124939'><element class='Anthocerotaceae'>Anthocerotaceae</element> <authors>(<base id='2041' title='Gray, S.F.'>Gray</base>) <author id='6855' title='Dumortier, B.C.J.'>Dumort.</author></authors></name></scientific><citation>CHAH (2011), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 748950,
@@ -1216,26 +1577,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Anthocerotaceae",
                         nameId           : 124939,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/124939",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae",
-                        parentElementId  : 9472134,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "WA, NT, Qld, NSW, Vic, Tas", "sourceid": 35164, "createdat": "2012-05-21T00:00:00+10:00", "createdby": "KIRSTENC", "updatedat": "2012-05-21T00:00:00+10:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "WA, NT, Qld, NSW, Vic, Tas", "created_at": "2012-05-21T00:00:00+10:00", "created_by": "KIRSTENC", "updated_at": "2012-05-21T00:00:00+10:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1124834"]],
                         rank             : "Familia",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthocerotaceae",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135",
-                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472136,
+                        id               : 9825383,
                         lockVersion      : 0,
-                        depth            : 7,
                         displayHtml      : "<data><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element> <authors><author id='1426' title='Linnaeus, C.'>L.</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 668637,
@@ -1243,53 +1598,41 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Anthoceros",
                         nameId           : 121601,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/121601",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros",
-                        parentElementId  : 9472135,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "WA, NT, SA, Qld, NSW, ACT, Vic, Tas", "sourceid": 27645, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "WA, NT, SA, Qld, NSW, ACT, Vic, Tas", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117116"]],
                         rank             : "Genus",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 121601, "name": "Anthoceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthoceros",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136",
-                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id          : 9472137,
-                        lockVersion : 0,
-                        depth       : 8,
-                        displayHtml : "<data><scientific><name id='144273'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='capricornii'>capricornii</element> <authors><author id='1771' title='Cargill, D.C. &amp; Scott, G.A.M.'>Cargill & G.A.M.Scott</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
+                        id               : 9825384,
+                        lockVersion      : 0,
+                        displayHtml      : "<data><scientific><name id='144273'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='capricornii'>capricornii</element> <authors><author id='1771' title='Cargill, D.C. &amp; Scott, G.A.M.'>Cargill & G.A.M.Scott</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 621662,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/621662",
                         nameElement      : "capricornii",
                         nameId           : 144273,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/144273",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/capricornii",
-                        parentElementId  : 9472136,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "WA, NT", "sourceid": 27646, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "WA, NT", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117117"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 121601, "name": "Anthoceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Species": ["id": 144273, "name": "capricornii"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthoceros capricornii",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms         : ["Anthoceros adscendens": ["mis": true, "nom": false, "tax": false, "type": "pro parte misapplied", "cites": "Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4", "nameid": 162382, "fullnamehtml": "<scientific><name id='162382'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='adscendens'>adscendens</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific>"]],
-                        synonymsHtml: "<synonyms><mis><scientific><name id='162382'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='adscendens'>adscendens</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>pro parte misapplied</type> by <citation>Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4</citation></mis></synonyms>",
-                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472137",
-                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472137",
-                        updatedAt   : "2017-09-07 10:54:20.736603",
-                        updatedBy   : "import"
+                        synonyms         : ["Anthoceros adscendens": ["mis": true, "nom": false, "tax": false, "type": "pro parte misapplied", "cites": "Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4", "name_id": 162382, "name_link": "http://localhost:7070/nsl-mapper/name/apni/162382", "full_name_html": "<scientific><name id='162382'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='adscendens'>adscendens</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific>"]],
+                        synonymsHtml     : "<synonyms><mis><scientific><name id='162382'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='adscendens'>adscendens</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>pro parte misapplied</type> by <citation>Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4</citation></mis></synonyms>",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
+                        updatedBy        : "import"
                 ],
                 [
-                        id               : 9472138,
+                        id               : 9825385,
                         lockVersion      : 0,
-                        depth            : 8,
                         displayHtml      : "<data><scientific><name id='209869'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='ferdinandi-muelleri'>ferdinandi-muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 621668,
@@ -1297,53 +1640,41 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "ferdinandi-muelleri",
                         nameId           : 209869,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/209869",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/ferdinandi-muelleri",
-                        parentElementId  : 9472136,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "?Qld", "sourceid": 27647, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "?Qld", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117118"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 121601, "name": "Anthoceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Species": ["id": 209869, "name": "ferdinandi-muelleri"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthoceros ferdinandi-muelleri",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472138",
-                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472138",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id          : 9472141,
-                        lockVersion : 0,
-                        depth       : 8,
-                        displayHtml : "<data><scientific><name id='142232'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fragilis'>fragilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>Cargill, D.C., Söderström, L., Hagborg, A. & Konrat, M. von (2013), Notes on Early Land Plants Today. 23. A new synonym in Anthoceros (Anthocerotaceae, Anthocerotophyta). <i>Phytotaxa</i> 76(3)</citation></data>",
+                        id               : 9825388,
+                        lockVersion      : 0,
+                        displayHtml      : "<data><scientific><name id='142232'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fragilis'>fragilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>Cargill, D.C., Söderström, L., Hagborg, A. & Konrat, M. von (2013), Notes on Early Land Plants Today. 23. A new synonym in Anthoceros (Anthocerotaceae, Anthocerotophyta). <i>Phytotaxa</i> 76(3)</citation></data>",
                         excluded         : false,
                         instanceId       : 760852,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/760852",
                         nameElement      : "fragilis",
                         nameId           : 142232,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/142232",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/fragilis",
-                        parentElementId  : 9472136,
                         previousElementId: null,
-                        profile          : ["Type": ["value": "Australia. Queensland: Amalie Dietrich (holotype G-61292! [=G-24322!]).", "sourceid": 214282, "createdat": "2013-01-16T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2013-01-16T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "CITATIONTEXT"], "APC Dist.": ["value": "Qld", "sourceid": 38619, "createdat": "2013-02-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2013-02-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["Type": ["value": "Australia. Queensland: Amalie Dietrich (holotype G-61292! [=G-24322!]).", "created_at": "2013-01-16T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2013-01-16T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1086559"], "APC Dist.": ["value": "Qld", "created_at": "2013-02-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2013-02-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1128261"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 121601, "name": "Anthoceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Species": ["id": 142232, "name": "fragilis"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthoceros fragilis",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms    : ["Anthoceros fertilis": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 209870, "fullnamehtml": "<scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml: "<synonyms><tax><scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
-                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472141",
-                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472141",
-                        updatedAt   : "2017-09-07 10:54:20.736603",
-                        updatedBy   : "import"
+                        synonyms         : ["Anthoceros fertilis": ["mis": false, "nom": false, "tax": true, "type": "taxonomic synonym", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "name_id": 209870, "name_link": "http://localhost:7070/nsl-mapper/name/apni/209870", "full_name_html": "<scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
+                        synonymsHtml     : "<synonyms><tax><scientific><name id='209870'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fertilis'>fertilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>taxonomic synonym</type></tax></synonyms>",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
+                        updatedBy        : "import"
                 ],
                 [
-                        id               : 9472139,
+                        id               : 9825386,
                         lockVersion      : 0,
-                        depth            : 8,
                         displayHtml      : "<data><scientific><name id='202233'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='laminifer'>laminifer</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 621709,
@@ -1351,26 +1682,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "laminifer",
                         nameId           : 202233,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/202233",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/laminifer",
-                        parentElementId  : 9472136,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld", "sourceid": 27650, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117121"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 121601, "name": "Anthoceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Species": ["id": 202233, "name": "laminifer"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthoceros laminifer",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472139",
-                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472139",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472140,
+                        id               : 9825387,
                         lockVersion      : 0,
-                        depth            : 8,
                         displayHtml      : "<data><scientific><name id='122138'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='punctatus'>punctatus</element> <authors><author id='1426' title='Linnaeus, C.'>L.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 621713,
@@ -1378,26 +1703,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "punctatus",
                         nameId           : 122138,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/122138",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/punctatus",
-                        parentElementId  : 9472136,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "SA, Qld, NSW, ACT, Vic, Tas", "sourceid": 27651, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "SA, Qld, NSW, ACT, Vic, Tas", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117122"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 121601, "name": "Anthoceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Species": ["id": 122138, "name": "punctatus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Anthoceros punctatus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472140",
-                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472136/9472140",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472142,
+                        id               : 9825389,
                         lockVersion      : 0,
-                        depth            : 7,
                         displayHtml      : "<data><scientific><name id='134990'><element class='Folioceros'>Folioceros</element> <authors><author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 669233,
@@ -1405,80 +1724,62 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Folioceros",
                         nameId           : 134990,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/134990",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros",
-                        parentElementId  : 9472135,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld, NSW", "sourceid": 27661, "createdat": "2011-01-31T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-31T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld, NSW", "created_at": "2011-01-31T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-31T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117130"]],
                         rank             : "Genus",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 134990, "name": "Folioceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Folioceros",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142",
-                        instancePath     : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id          : 9472143,
-                        lockVersion : 0,
-                        depth       : 8,
-                        displayHtml : "<data><scientific><name id='143486'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors>(<base id='8996' title='Montagne, J.P.F.C.'>Mont.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>Bhardwaj, D.C. (1975), <i>Geophytology</i> 5</citation></data>",
+                        id               : 9825390,
+                        lockVersion      : 0,
+                        displayHtml      : "<data><scientific><name id='143486'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors>(<base id='8996' title='Montagne, J.P.F.C.'>Mont.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>Bhardwaj, D.C. (1975), <i>Geophytology</i> 5</citation></data>",
                         excluded         : false,
                         instanceId       : 621673,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/621673",
                         nameElement      : "fuciformis",
                         nameId           : 143486,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/143486",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros/fuciformis",
-                        parentElementId  : 9472142,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld", "sourceid": 27662, "createdat": "2011-01-31T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-31T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld", "created_at": "2011-01-31T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-31T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117131"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 134990, "name": "Folioceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Species": ["id": 143486, "name": "fuciformis"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Folioceros fuciformis",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms    : ["Anthoceros fuciformis": ["mis": false, "nom": true, "tax": false, "type": "basionym", "cites": "Montagne, J.P.F.C. (1843), <i>Annales des Sciences Naturelles; Botanique</i> 20", "nameid": 142253, "fullnamehtml": "<scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific>"]],
-                        synonymsHtml: "<synonyms><nom><scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific> <type>basionym</type></nom></synonyms>",
-                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472143",
-                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472143",
-                        updatedAt   : "2017-09-07 10:54:20.736603",
-                        updatedBy   : "import"
+                        synonyms         : ["Anthoceros fuciformis": ["mis": false, "nom": true, "tax": false, "type": "basionym", "cites": "Montagne, J.P.F.C. (1843), <i>Annales des Sciences Naturelles; Botanique</i> 20", "name_id": 142253, "name_link": "http://localhost:7070/nsl-mapper/name/apni/142253", "full_name_html": "<scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific>"]],
+                        synonymsHtml     : "<synonyms><nom><scientific><name id='142253'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='fuciformis'>fuciformis</element> <authors><author id='8996' title='Montagne, J.P.F.C.'>Mont.</author></authors></name></scientific> <type>basionym</type></nom></synonyms>",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
+                        updatedBy        : "import"
                 ],
                 [
-                        id          : 9472144,
-                        lockVersion : 0,
-                        depth       : 8,
-                        displayHtml : "<data><scientific><name id='134991'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
+                        id               : 9825391,
+                        lockVersion      : 0,
+                        displayHtml      : "<data><scientific><name id='134991'><scientific><name id='134990'><element class='Folioceros'>Folioceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1941' title='Bhardwaj, D.C.'>D.C.Bhardwaj</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 669234,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/669234",
                         nameElement      : "glandulosus",
                         nameId           : 134991,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/134991",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros/glandulosus",
-                        parentElementId  : 9472142,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "NSW", "sourceid": 27663, "createdat": "2011-01-31T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-31T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "NSW", "created_at": "2011-01-31T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-31T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117132"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 142301, "name": "Anthocerotales"], "Genus": ["id": 134990, "name": "Folioceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 124939, "name": "Anthocerotaceae"], "Species": ["id": 134991, "name": "glandulosus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240384, "name": "Anthocerotidae"]],
                         simpleName       : "Folioceros glandulosus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms         : ["Anthoceros glandulosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4", "nameid": 129589, "fullnamehtml": "<scientific><name id='129589'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific>"], "Aspiromitus glandulosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 209879, "fullnamehtml": "<scientific><name id='209879'><scientific><name id='172172'><element class='Aspiromitus'>Aspiromitus</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml: "<synonyms><nom><scientific><name id='129589'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='209879'><scientific><name id='172172'><element class='Aspiromitus'>Aspiromitus</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
-                        treePath    : "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472144",
-                        instancePath: "/9434380/9472131/9472132/9472133/9472134/9472135/9472142/9472144",
-                        updatedAt   : "2017-09-07 10:54:20.736603",
-                        updatedBy   : "import"
+                        synonyms         : ["Anthoceros glandulosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Lehmann, J.G.C. & Lindenberg, J.B.W. in Lehmann, J.G.C. (1832), <i>Novarum et Minus Cognitarum Stirpium Pugillus</i> 4", "name_id": 129589, "name_link": "http://localhost:7070/nsl-mapper/name/apni/129589", "full_name_html": "<scientific><name id='129589'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific>"], "Aspiromitus glandulosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "name_id": 209879, "name_link": "http://localhost:7070/nsl-mapper/name/apni/209879", "full_name_html": "<scientific><name id='209879'><scientific><name id='172172'><element class='Aspiromitus'>Aspiromitus</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
+                        synonymsHtml     : "<synonyms><nom><scientific><name id='129589'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors><author id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom><nom><scientific><name id='209879'><scientific><name id='172172'><element class='Aspiromitus'>Aspiromitus</element></name></scientific> <element class='glandulosus'>glandulosus</element> <authors>(<base id='1628' title='Lehmann, J.G.C. &amp; Lindenberg, J.B.W.'>Lehm. & Lindenb.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
+                        updatedBy        : "import"
                 ],
                 [
-                        id               : 9472155,
+                        id               : 9825408,
                         lockVersion      : 0,
-                        depth            : 4,
                         displayHtml      : "<data><scientific><name id='240391'><element class='Dendrocerotidae'>Dendrocerotidae</element> <authors><author id='5261' title='Duff, R.J., Villarreal, J.C., Cargill, D.C. &amp; Renzaglia, K.S.'>Duff, J.C.Villarreal, Cargill & Renzaglia</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8511897,
@@ -1486,26 +1787,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Dendrocerotidae",
                         nameId           : 240391,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/240391",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae",
-                        parentElementId  : 9472132,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Subclassis",
-                        rankPath         : ["Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"]],
                         simpleName       : "Dendrocerotidae",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155",
-                        instancePath     : "/9434380/9472131/9472132/9472155",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472156,
+                        id               : 9825409,
                         lockVersion      : 0,
-                        depth            : 5,
                         displayHtml      : "<data><scientific><name id='240393'><element class='Dendrocerotales'>Dendrocerotales</element> <authors><author id='3432' title='H&auml;ssel de Men&eacute;ndez, G.G.'>Hässel</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8512151,
@@ -1513,26 +1808,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Dendrocerotales",
                         nameId           : 240393,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/240393",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales",
-                        parentElementId  : 9472155,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Ordo",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"]],
                         simpleName       : "Dendrocerotales",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472157,
+                        id               : 9825410,
                         lockVersion      : 0,
-                        depth            : 6,
                         displayHtml      : "<data><scientific><name id='193461'><element class='Dendrocerotaceae'>Dendrocerotaceae</element> <authors>(<base id='2276' title='Milde, C.A.J.'>Milde</base>) <author id='3432' title='H&auml;ssel de Men&eacute;ndez, G.G.'>Hässel</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8512407,
@@ -1540,26 +1829,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Dendrocerotaceae",
                         nameId           : 193461,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/193461",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae",
-                        parentElementId  : 9472156,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Familia",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"]],
                         simpleName       : "Dendrocerotaceae",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472158,
+                        id               : 9825411,
                         lockVersion      : 0,
-                        depth            : 7,
                         displayHtml      : "<data><scientific><name id='240394'><scientific><name id='193461'><element class='Dendrocerotaceae'>Dendrocerotaceae</element></name></scientific> <element class='Dendrocerotoideae'>Dendrocerotoideae</element> <authors><author id='1751' title='Schuster, R.M.'>R.M.Schust.</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8512665,
@@ -1567,26 +1850,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Dendrocerotoideae",
                         nameId           : 240394,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/240394",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae",
-                        parentElementId  : 9472157,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Subfamilia",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendrocerotaceae Dendrocerotoideae",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472159,
+                        id               : 9825412,
                         lockVersion      : 0,
-                        depth            : 8,
                         displayHtml      : "<data><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element> <authors><author id='6893' title='Nees von Esenbeck, C.G.D.'>Nees</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 668662,
@@ -1594,26 +1871,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Dendroceros",
                         nameId           : 129597,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/129597",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros",
-                        parentElementId  : 9472158,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld, NSW", "sourceid": 27652, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld, NSW", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117123"]],
                         rank             : "Genus",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472160,
+                        id               : 9825413,
                         lockVersion      : 0,
-                        depth            : 9,
                         displayHtml      : "<data><scientific><name id='210308'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='australis'>australis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 622818,
@@ -1621,53 +1892,41 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "australis",
                         nameId           : 210308,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/210308",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/australis",
-                        parentElementId  : 9472159,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "NSW", "sourceid": 27653, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "NSW", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117124"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 210308, "name": "australis"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros australis",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472160",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472160",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id          : 9472161,
-                        lockVersion : 0,
-                        depth       : 9,
-                        displayHtml : "<data><scientific><name id='178505'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='crispatus'>crispatus</element> <authors>(<base id='6851' title='Hooker, W.J.'>Hook.</base>) <author id='6893' title='Nees von Esenbeck, C.G.D.'>Nees</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
+                        id               : 9825414,
+                        lockVersion      : 0,
+                        displayHtml      : "<data><scientific><name id='178505'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='crispatus'>crispatus</element> <authors>(<base id='6851' title='Hooker, W.J.'>Hook.</base>) <author id='6893' title='Nees von Esenbeck, C.G.D.'>Nees</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 622823,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/622823",
                         nameElement      : "crispatus",
                         nameId           : 178505,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/178505",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/crispatus",
-                        parentElementId  : 9472159,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld", "sourceid": 27654, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117125"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 178505, "name": "crispatus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros crispatus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms    : ["Monoclea crispata": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Hooker, W.J. in Hooker, W.J. (ed.) (1830), <i>Botanical Miscellany</i> 1", "nameid": 210309, "fullnamehtml": "<scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific>"]],
-                        synonymsHtml: "<synonyms><nom><scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
-                        treePath    : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472161",
-                        instancePath: "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472161",
-                        updatedAt   : "2017-09-07 10:54:20.736603",
-                        updatedBy   : "import"
+                        synonyms         : ["Monoclea crispata": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Hooker, W.J. in Hooker, W.J. (ed.) (1830), <i>Botanical Miscellany</i> 1", "name_id": 210309, "name_link": "http://localhost:7070/nsl-mapper/name/apni/210309", "full_name_html": "<scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific>"]],
+                        synonymsHtml     : "<synonyms><nom><scientific><name id='210309'><scientific><name id='133731'><element class='Monoclea'>Monoclea</element></name></scientific> <element class='crispata'>crispata</element> <authors><author id='6851' title='Hooker, W.J.'>Hook.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
+                        updatedBy        : "import"
                 ],
                 [
-                        id               : 9472165,
+                        id               : 9825418,
                         lockVersion      : 0,
-                        depth            : 9,
                         displayHtml      : "<data><scientific><name id='210317'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='difficilis'>difficilis</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>Pócs, T. & Streimann, H. (1999), Epiphyllous liverworts from Queensland, Australia. <i>Bryobrothera</i> 5</citation></data>",
                         excluded         : false,
                         instanceId       : 622849,
@@ -1675,26 +1934,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "difficilis",
                         nameId           : 210317,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/210317",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/difficilis",
-                        parentElementId  : 9472159,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld", "sourceid": 41411, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "BLEPSCHI", "updatedat": "2013-10-24T12:18:26+11:00", "updatedby": "BLEPSCHI", "sourcesystem": "APCCONCEPT"], "APC Comment": ["value": "Listed as \"< i > Dendroceros < /i> cf. <i>difficilis</ i >\" by P.M.McCarthy, <i>Checkl. Austral. Liverworts and Hornworts</i> 35 (2003).", "sourceid": 41411, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "BLEPSCHI", "updatedat": "2013-10-24T12:18:26+11:00", "updatedby": "BLEPSCHI", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "BLEPSCHI", "updated_at": "2013-10-24T12:18:26+11:00", "updated_by": "BLEPSCHI", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1131154"], "APC Comment": ["value": "Listed as \"<i>Dendroceros</i> cf. <i>difficilis</i>\" by P.M.McCarthy, <i>Checkl. Austral. Liverworts and Hornworts</i> 35 (2003).", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "BLEPSCHI", "updated_at": "2013-10-24T12:18:26+11:00", "updated_by": "BLEPSCHI", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1131153"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 210317, "name": "difficilis"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros difficilis",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472165",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472165",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472162,
+                        id               : 9825415,
                         lockVersion      : 0,
-                        depth            : 9,
                         displayHtml      : "<data><scientific><name id='210311'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='granulatus'>granulatus</element> <authors><author id='1465' title='Mitten, W.'>Mitt.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 622830,
@@ -1702,53 +1955,41 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "granulatus",
                         nameId           : 210311,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/210311",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/granulatus",
-                        parentElementId  : 9472159,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld", "sourceid": 27656, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117126"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 210311, "name": "granulatus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros granulatus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472162",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472162",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id          : 9472166,
-                        lockVersion : 0,
-                        depth       : 9,
-                        displayHtml : "<data><scientific><name id='210313'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='muelleri'>muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
+                        id               : 9825419,
+                        lockVersion      : 0,
+                        displayHtml      : "<data><scientific><name id='210313'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='muelleri'>muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>CHAH (2010), <i>Australian Plant Census</i></citation></data>",
                         excluded         : false,
                         instanceId       : 772246,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/772246",
                         nameElement      : "muelleri",
                         nameId           : 210313,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/210313",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/muelleri",
-                        parentElementId  : 9472159,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld, NSW", "sourceid": 41410, "createdat": "2013-10-24T00:00:00+11:00", "createdby": "BLEPSCHI", "updatedat": "2013-10-24T11:42:28+11:00", "updatedby": "BLEPSCHI", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld, NSW", "created_at": "2013-10-24T00:00:00+11:00", "created_by": "BLEPSCHI", "updated_at": "2013-10-24T11:42:28+11:00", "updated_by": "BLEPSCHI", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1131152"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 210313, "name": "muelleri"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros muelleri",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms    : ["Dendroceros ferdinandi-muelleri": ["mis": false, "nom": false, "tax": false, "type": "orthographic variant", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "nameid": 210312, "fullnamehtml": "<scientific><name id='210312'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='ferdinandi-muelleri'>ferdinandi-muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml: "<synonyms></synonyms>",
-                        treePath    : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472166",
-                        instancePath: "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472166",
-                        updatedAt   : "2017-09-07 10:54:20.736603",
-                        updatedBy   : "import"
+                        synonyms         : ["Dendroceros ferdinandi-muelleri": ["mis": false, "nom": false, "tax": false, "type": "orthographic variant", "cites": "Stephani, F. (1916), <i>Species Hepaticarum</i> 5", "name_id": 210312, "name_link": "http://localhost:7070/nsl-mapper/name/apni/210312", "full_name_html": "<scientific><name id='210312'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='ferdinandi-muelleri'>ferdinandi-muelleri</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
+                        synonymsHtml     : "<synonyms></synonyms>",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
+                        updatedBy        : "import"
                 ],
                 [
-                        id               : 9472163,
+                        id               : 9825416,
                         lockVersion      : 0,
-                        depth            : 9,
                         displayHtml      : "<data><scientific><name id='210314'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='subtropicus'>subtropicus</element> <authors><author id='3814' title='Wild, C.J.'>C.J.Wild</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 622837,
@@ -1756,26 +1997,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "subtropicus",
                         nameId           : 210314,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/210314",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/subtropicus",
-                        parentElementId  : 9472159,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Qld", "sourceid": 27658, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Qld", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117127"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 210314, "name": "subtropicus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros subtropicus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472163",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472163",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472164,
+                        id               : 9825417,
                         lockVersion      : 0,
-                        depth            : 9,
                         displayHtml      : "<data><scientific><name id='210315'><scientific><name id='129597'><element class='Dendroceros'>Dendroceros</element></name></scientific> <element class='wattsianus'>wattsianus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 622841,
@@ -1783,26 +2018,20 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "wattsianus",
                         nameId           : 210315,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/210315",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/wattsianus",
-                        parentElementId  : 9472159,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "NSW", "sourceid": 27659, "createdat": "2011-01-27T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-27T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "NSW", "created_at": "2011-01-27T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-27T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117128"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 129597, "name": "Dendroceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 210315, "name": "wattsianus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Dendroceros wattsianus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472164",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472159/9472164",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id               : 9472167,
+                        id               : 9825420,
                         lockVersion      : 0,
-                        depth            : 8,
                         displayHtml      : "<data><scientific><name id='124930'><element class='Megaceros'>Megaceros</element> <authors><author id='9964' title='Campbell, D.H.'>Campb.</author></authors></name></scientific><citation>Renzaglia, K.S., Villarreal, J.C. & Duff, R.J. in Goffinet, B. & Shaw, A.J. (ed.) (2009), New insights into morphology, anatomy and systematics of hornworts. <i>Bryophyte Biology</i> Edn. 2</citation></data>",
                         excluded         : false,
                         instanceId       : 8513196,
@@ -1810,53 +2039,41 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "Megaceros",
                         nameId           : 124930,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/124930",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Megaceros",
-                        parentElementId  : 9472158,
                         previousElementId: null,
                         profile          : null,
                         rank             : "Genus",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 124930, "name": "Megaceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Megaceros",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ],
                 [
-                        id          : 9472168,
-                        lockVersion : 0,
-                        depth       : 9,
-                        displayHtml : "<data><scientific><name id='175653'><scientific><name id='124930'><element class='Megaceros'>Megaceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors>(<base id='1435' title='Stephani, F.'>Steph.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
+                        id               : 9825421,
+                        lockVersion      : 0,
+                        displayHtml      : "<data><scientific><name id='175653'><scientific><name id='124930'><element class='Megaceros'>Megaceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors>(<base id='1435' title='Stephani, F.'>Steph.</base>) <author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 624477,
                         instanceLink     : "http://localhost:7070/nsl-mapper/instance/apni/624477",
                         nameElement      : "carnosus",
                         nameId           : 175653,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/175653",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Megaceros/carnosus",
-                        parentElementId  : 9472167,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "NSW, Vic, Tas", "sourceid": 27665, "createdat": "2011-01-31T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-31T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "NSW, Vic, Tas", "created_at": "2011-01-31T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-31T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117134"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 124930, "name": "Megaceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 175653, "name": "carnosus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Megaceros carnosus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
-                        synonyms         : ["Anthoceros carnosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Stephani, F. (1889), Hepaticae Australiae. <i>Hedwigia</i> 28", "nameid": 175654, "fullnamehtml": "<scientific><name id='175654'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
-                        synonymsHtml: "<synonyms><nom><scientific><name id='175654'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
-                        treePath    : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472168",
-                        instancePath: "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472168",
-                        updatedAt   : "2017-09-07 10:54:20.736603",
-                        updatedBy   : "import"
+                        synonyms         : ["Anthoceros carnosus": ["mis": false, "nom": true, "tax": false, "type": "nomenclatural synonym", "cites": "Stephani, F. (1889), Hepaticae Australiae. <i>Hedwigia</i> 28", "name_id": 175654, "name_link": "http://localhost:7070/nsl-mapper/name/apni/175654", "full_name_html": "<scientific><name id='175654'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific>"]],
+                        synonymsHtml     : "<synonyms><nom><scientific><name id='175654'><scientific><name id='121601'><element class='Anthoceros'>Anthoceros</element></name></scientific> <element class='carnosus'>carnosus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific> <type>nomenclatural synonym</type></nom></synonyms>",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
+                        updatedBy        : "import"
                 ],
                 [
-                        id               : 9472169,
+                        id               : 9825422,
                         lockVersion      : 0,
-                        depth            : 9,
                         displayHtml      : "<data><scientific><name id='210888'><scientific><name id='124930'><element class='Megaceros'>Megaceros</element></name></scientific> <element class='crassus'>crassus</element> <authors><author id='1435' title='Stephani, F.'>Steph.</author></authors></name></scientific><citation>McCarthy, P.M. (2003), <i>Catalogue of Australian Liverworts and Hornworts</i></citation></data>",
                         excluded         : false,
                         instanceId       : 624478,
@@ -1864,20 +2081,15 @@ class TreeServiceSpec extends Specification {
                         nameElement      : "crassus",
                         nameId           : 210888,
                         nameLink         : "http://localhost:7070/nsl-mapper/name/apni/210888",
-                        namePath         : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Megaceros/crassus",
-                        parentElementId  : 9472167,
                         previousElementId: null,
-                        profile          : ["APC Dist.": ["value": "Tas", "sourceid": 27666, "createdat": "2011-01-31T00:00:00+11:00", "createdby": "KIRSTENC", "updatedat": "2011-01-31T00:00:00+11:00", "updatedby": "KIRSTENC", "sourcesystem": "APCCONCEPT"]],
+                        profile          : ["APC Dist.": ["value": "Tas", "created_at": "2011-01-31T00:00:00+11:00", "created_by": "KIRSTENC", "updated_at": "2011-01-31T00:00:00+11:00", "updated_by": "KIRSTENC", "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1117135"]],
                         rank             : "Species",
-                        rankPath         : ["Ordo": ["id": 240393, "name": "Dendrocerotales"], "Genus": ["id": 124930, "name": "Megaceros"], "Regnum": ["id": 54717, "name": "Plantae"], "Classis": ["id": 238893, "name": "Anthocerotopsida"], "Familia": ["id": 193461, "name": "Dendrocerotaceae"], "Species": ["id": 210888, "name": "crassus"], "Division": ["id": 238892, "name": "Anthocerotophyta"], "Subclassis": ["id": 240391, "name": "Dendrocerotidae"], "Subfamilia": ["id": 240394, "name": "Dendrocerotoideae"]],
                         simpleName       : "Megaceros crassus",
                         sourceElementLink: null,
                         sourceShard      : "APNI",
                         synonyms         : null,
                         synonymsHtml     : "<synonyms></synonyms>",
-                        treePath         : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472169",
-                        instancePath     : "/9434380/9472131/9472132/9472155/9472156/9472157/9472158/9472167/9472169",
-                        updatedAt        : "2017-09-07 10:54:20.736603",
+                        updatedAt        : "2018-01-01 15:22:55.387530",
                         updatedBy        : "import"
                 ]
         ]
