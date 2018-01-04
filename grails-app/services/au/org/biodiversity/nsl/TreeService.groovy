@@ -925,7 +925,17 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
     }
 
     protected TreeVersionElement makeVersionElementFromTaxonData(TaxonData taxonData, TreeVersionElement parentElement, TreeElement previousElement, String userName) {
-        TreeElement treeElement = findTreeElement(taxonData)
+        //find a matching tree element (excluding profile)
+        TreeElement treeElement = findTreeElement(
+                [instanceId : taxonData.instanceId,
+                 nameId     : taxonData.nameId,
+                 excluded   : taxonData.excluded,
+                 simpleName : taxonData.simpleName,
+                 nameElement: taxonData.nameElement,
+                 sourceShard: taxonData.sourceShard,
+                 synonyms   : taxonData.synonyms]
+        )
+
         if (!treeElement) { //then make a new one
             treeElement = new TreeElement(
                     previousElement: previousElement,
@@ -951,29 +961,8 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         return saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null)
     }
 
-    private static findTreeElement(TaxonData taxonData) {
-        TreeElement.findWhere(
-                instanceId: taxonData.instanceId,
-                nameId: taxonData.nameId,
-                excluded: taxonData.excluded,
-                simpleName: taxonData.simpleName,
-                nameElement: taxonData.nameElement,
-                sourceShard: taxonData.sourceShard,
-                synonyms: taxonData.synonyms
-        )
-    }
-
     private static findTreeElement(Map treeElementData) {
-        TreeElement.findWhere(
-                instanceId: treeElementData.instanceId,
-                nameId: treeElementData.nameId,
-                excluded: treeElementData.excluded,
-                simpleName: treeElementData.simpleName,
-                nameElement: treeElementData.nameElement,
-                sourceShard: treeElementData.sourceShard,
-                synonyms: treeElementData.synonyms,
-                profile: treeElementData.profile
-        )
+        TreeElement.findWhere(treeElementData)
     }
 
     protected static Map elementDataFromElement(TreeElement treeElement) {
@@ -996,7 +985,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                 parent: parentTve,
                 taxonId: taxonId,
                 treePath: parentTve.treePath + "/${element.id}",
-                namePath: parentTve.namePath + "/${element.simpleName}",
+                namePath: parentTve.namePath + "/${element.nameElement}",
                 depth: parentTve.depth + 1
         )
 
@@ -1173,12 +1162,11 @@ WHERE tve.tree_version_id = :versionId
                 instanceId: instance.id,
                 simpleName: instance.name.simpleName,
                 nameElement: instance.name.nameElement,
-                displayHtml: "<data> $instance.name.fullNameHtml <citation>$instance.reference.citationHtml</citation></data>",
+                displayHtml: "<data>$instance.name.fullNameHtml <citation>$instance.reference.citationHtml</citation></data>",
                 synonymsHtml: synonymsHtml,
                 sourceShard: configService.nameSpaceName,
                 synonyms: synonyms,
                 rank: instance.name.nameRank.name,
-                rankPathPart: [(instance.name.nameRank.name): [id: instance.name.id, name: instance.name.nameElement]],
                 nameLink: linkService.getPreferredLinkForObject(instance.name),
                 instanceLink: linkService.getPreferredLinkForObject(instance),
                 nomInval: instance.name.nameStatus.nomInval,
@@ -1302,34 +1290,12 @@ class TaxonData {
     String sourceShard
     Map synonyms
     String rank
-    Map rankPathPart
     Map profile
     String nameLink
     String instanceLink
     Boolean nomInval
     Boolean nomIlleg
     Boolean excluded
-
-    Map asMap() {
-        [
-                nameId      : nameId,
-                instanceId  : instanceId,
-                simpleName  : simpleName,
-                nameElement : nameElement,
-                displayHtml : displayHtml,
-                synonymsHtml: synonymsHtml,
-                sourceShard : sourceShard,
-                synonyms    : synonyms,
-                rank        : rank,
-                rankPathPart: rankPathPart,
-                profile     : profile,
-                nameLink    : nameLink,
-                instanceLink: instanceLink,
-                nomInval    : nomInval,
-                nomIlleg    : nomIlleg,
-                excluded    : excluded
-        ]
-    }
 }
 
 class DisplayElement {
