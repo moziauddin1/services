@@ -16,19 +16,19 @@ class TreeElementController implements WithTarget, ValidationUtils {
     def linkService
 
     static responseFormats = [
-            placeTaxon      : ['json', 'html'],
-            moveTaxon       : ['json', 'html'],
-            removeTaxon     : ['json', 'html'],
-            editTaxonProfile: ['json', 'html'],
-            editTaxonStatus : ['json', 'html']
+            placeElement      : ['json', 'html'],
+            replaceElement    : ['json', 'html'],
+            removeElement     : ['json', 'html'],
+            editElementProfile: ['json', 'html'],
+            editElementStatus : ['json', 'html']
     ]
 
     static allowedMethods = [
-            placeTaxon      : ['PUT'],
-            moveTaxon       : ['PUT'],
-            removeTaxon     : ['DELETE', 'POST'],
-            editTaxonProfile: ['POST'],
-            editTaxonStatus : ['POST']
+            placeElement      : ['PUT'],
+            replaceElement    : ['PUT'],
+            removeElement     : ['DELETE', 'POST'],
+            editElementProfile: ['POST'],
+            editElementStatus : ['POST']
     ]
     static namespace = "api"
 

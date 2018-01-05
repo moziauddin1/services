@@ -1052,12 +1052,12 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //a name can't be already in the tree as a synonym
         List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion)
         if (!existingSynonyms.empty) {
-            String message = existingSynonyms.collect {
-                "${it.simpleName} ($it.nameId) is a $it.type of $it.synonym ($it.synonymId)"
+            String synonyms = existingSynonyms.collect {
+                "* ${it.simpleName} ($it.nameId) is a $it.type of $it.synonym ($it.synonymId)"
             }.join(',\n')
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name ${taxonData.simpleName}:\n" +
-                    message +
-                    " according to the concepts involved.")
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name *${taxonData.simpleName}*:\n\n" +
+                    synonyms +
+                    "\n\naccording to the concepts involved.")
         }
     }
 
@@ -1092,7 +1092,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
     protected List<Map> checkSynonyms(TaxonData taxonData, TreeVersion treeVersion, Sql sql = getSql()) {
 
         List<Map> synonymsFound = []
-        String nameIds = filterSynonyms(taxonData).collect { it.value.name_id }.join(',')
+        List nameIdList = [taxonData.nameId] + filterSynonyms(taxonData).collect { it.value.name_id }
+
+        String nameIds = nameIdList.join(',')
 
         if (!nameIds) {
             return []
@@ -1109,7 +1111,7 @@ FROM tree_element el join tree_version_element tve on el.id = tve.tree_element_i
   JOIN name n ON el.name_id = n.id,
       jsonb_object_keys(synonyms) AS tax_syn
 WHERE tve.tree_version_id = :versionId
-      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*'
+      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
       and (synonyms -> tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
             synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id]
         }
@@ -1132,9 +1134,9 @@ WHERE tve.tree_version_id = :versionId
                 firstNamePart.contains(nameElement)
             }
             if (!elementFound) {
-                throw new BadArgumentsException("Polynomial name $simpleName is not under an appropriate parent name." +
-                        "It should probably be under ${firstNamePart.split(' ').first()} which isn't in this parents name path:\n" +
-                        "$parentNameElements")
+                throw new BadArgumentsException("Polynomial name *$simpleName* is not under an appropriate parent name." +
+                        "It should probably be under\n *${firstNamePart.split(' ').first()}* \n which isn't in this parents name path:\n\n" +
+                        "* ${parentNameElements.join('\n* ')}")
             }
         }
     }

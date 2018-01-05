@@ -16,29 +16,19 @@ class TreeController implements WithTarget, ValidationUtils {
     def linkService
 
     static responseFormats = [
-            createTree      : ['json', 'html'],
-            editTree        : ['json', 'html'],
-            copyTree        : ['json', 'html'],
-            deleteTree      : ['json', 'html'],
-            createVersion   : ['json', 'html'],
-            placeTaxon      : ['json', 'html'],
-            moveTaxon       : ['json', 'html'],
-            removeTaxon     : ['json', 'html'],
-            editTaxonProfile: ['json', 'html'],
-            editTaxonStatus : ['json', 'html']
+            createTree   : ['json', 'html'],
+            editTree     : ['json', 'html'],
+            copyTree     : ['json', 'html'],
+            deleteTree   : ['json', 'html'],
+            createVersion: ['json', 'html']
     ]
 
     static allowedMethods = [
-            createTree      : ['PUT'],
-            editTree        : ['POST'],
-            copyTree        : ['PUT'],
-            deleteTree      : ['DELETE'],
-            createVersion   : ['PUT'],
-            placeTaxon      : ['PUT'],
-            moveTaxon       : ['PUT'],
-            removeTaxon     : ['DELETE', 'POST'],
-            editTaxonProfile: ['POST'],
-            editTaxonStatus : ['POST']
+            createTree   : ['PUT'],
+            editTree     : ['POST'],
+            copyTree     : ['PUT'],
+            deleteTree   : ['DELETE'],
+            createVersion: ['PUT']
     ]
     static namespace = "api"
 
