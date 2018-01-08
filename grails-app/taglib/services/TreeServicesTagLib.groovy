@@ -99,7 +99,7 @@ class TreeServicesTagLib {
     def findCurrentVersion = { attrs, body ->
         TreeVersionElement tve = attrs.element
         TreeVersion currentVersion = tve.treeVersion.tree.currentTreeVersion
-        if (currentVersion != tve.treeVersion) {
+        if (currentVersion && currentVersion != tve.treeVersion) {
             TreeVersionElement currentElement = TreeVersionElement.
                     findByTreeVersionAndTreeElement(currentVersion, tve.treeElement)
             if (!currentElement) {

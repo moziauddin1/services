@@ -21,6 +21,7 @@ class TreeService implements ValidationUtils {
     def configService
     def linkService
     def restCallService
+    def treeReportService
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)
 
     /**
@@ -544,50 +545,6 @@ INSERT INTO tree_version_element (tree_version_id,
         return treeVersion
     }
 
-    Map validateTreeVersion(TreeVersion treeVersion) {
-        Sql sql = getSql()
-        if (!treeVersion) {
-            throw new BadArgumentsException("Tree version needs to be set.")
-        }
-
-        Map problems = [:]
-
-        problems.synonyms = checkVersionSynonyms(sql, treeVersion)
-        return problems
-    }
-
-    private static List<String> checkVersionSynonyms(Sql sql, TreeVersion treeVersion) {
-        List<String> problems = []
-        sql.eachRow('''
-SELECT
-  e1.simple_name                    AS name1,
-  tve1.element_link AS link1,
-  e2.simple_name                    AS name2,
-  tve2.element_link AS link2,
-  tax_syn                           AS name2_synonym,
-  e2.synonyms -> tax_syn ->> 'type' AS type
-FROM tree_version_element tve1
-  JOIN tree_element e1 ON tve1.tree_element_id = e1.id
-  ,
-  tree_version_element tve2
-  JOIN tree_element e2 ON tve2.tree_element_id = e2.id
-  ,
-      jsonb_object_keys(e2.synonyms) AS tax_syn
-WHERE tve1.tree_version_id = :treeVersionId
-      AND tve2.tree_version_id = :treeVersionId
-      AND tve2.tree_element_id <> tve1.tree_element_id
-      AND e1.excluded = FALSE
-      AND e2.excluded = FALSE
-      AND e2.synonyms IS NOT NULL
-      AND (e2.synonyms -> tax_syn ->> 'name_id') ::NUMERIC:: BIGINT = e1.name_id
-      AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*';
-      ''', [treeVersionId: treeVersion.id]) { row ->
-            problems.add("Taxon concept <a href=\"${row['link2']}\" title=\"tree link\">${row['name2']}</a> " +
-                    "considers <a href=\"${row['link1']}\" title=\"tree link\">${row['name1']}</a> to be a ${row['type']}.")
-        }
-        return problems
-    }
-
     Map placeTaxonUri(TreeVersionElement parentElement, String instanceUri, Boolean excluded, String userName) {
 
         TaxonData taxonData = findInstanceByUri(instanceUri)
@@ -597,10 +554,35 @@ WHERE tve1.tree_version_id = :treeVersionId
         notPublished(parentElement)
         taxonData.excluded = excluded
         List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
-        //note above will throw exceptions for invalid placements, not warnings
-        TreeVersionElement childElement = makeVersionElementFromTaxonData(taxonData, parentElement, null, userName)
+        //will throw exceptions for invalid placements, not warnings
+
+        TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
+        TreeVersionElement childElement = saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null)
         updateParentTaxaId(parentElement)
         return [childElement: childElement, warnings: warnings, message: "Placed ${childElement.treeElement.name.fullName}"]
+    }
+
+    /**
+     * Place a taxon at the "top" of the tree, with no parent
+     * @param treeVersion
+     * @param instanceUri
+     * @param excluded
+     * @param userName
+     * @return
+     */
+    Map placeTaxonUri(TreeVersion treeVersion, String instanceUri, Boolean excluded, String userName) {
+
+        TaxonData taxonData = findInstanceByUri(instanceUri)
+        if (!taxonData) {
+            throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in $parentElement")
+        }
+        notPublished(treeVersion)
+        taxonData.excluded = excluded
+
+        TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
+        TreeVersionElement childElement = saveTreeVersionElement(treeElement, null, treeVersion, nextSequenceId(), null)
+
+        return [childElement: childElement, warnings: [], message: "Placed ${childElement.treeElement.name.fullName}"]
     }
 
     /**
@@ -626,7 +608,7 @@ WHERE tve1.tree_version_id = :treeVersionId
         notPublished(parentTve)
 
         if (currentTve.treeElement.instanceLink == instanceUri) {
-            Map problems = validateTreeVersion(currentTve.treeVersion)
+            Map problems = treeReportService.validateTreeVersion(currentTve.treeVersion)
             return [replacementElement: currentTve, problems: problems]
         }
 
@@ -641,7 +623,9 @@ WHERE tve1.tree_version_id = :treeVersionId
         }
 
         List<String> warnings = validateReplacementElement(parentTve, taxonData)
-        TreeVersionElement replacementTve = makeVersionElementFromTaxonData(taxonData, parentTve, currentTve.treeElement, userName)
+
+        TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, currentTve.treeElement, userName)
+        TreeVersionElement replacementTve = saveTreeVersionElement(treeElement, parentTve, nextSequenceId(), null)
         updateParentId(currentTve, replacementTve)
         updateChildTreePath(replacementTve, currentTve)
 
@@ -652,7 +636,7 @@ WHERE tve1.tree_version_id = :treeVersionId
 
         deleteTreeVersionElement(currentTve)
 
-        Map problems = validateTreeVersion(replacementTve.treeVersion)
+        Map problems = treeReportService.validateTreeVersion(replacementTve.treeVersion)
         problems.put('warnings', warnings)
         return [replacementElement: replacementTve, problems: problems]
     }
@@ -924,9 +908,35 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
     }
 
-    protected TreeVersionElement makeVersionElementFromTaxonData(TaxonData taxonData, TreeVersionElement parentElement, TreeElement previousElement, String userName) {
-        //find a matching tree element (excluding profile)
-        TreeElement treeElement = findTreeElement(
+    protected
+    static TreeElement makeTreeElementFromTaxonData(TaxonData taxonData, TreeElement previousElement, String userName) {
+        new TreeElement(
+                previousElement: previousElement,
+                instanceId: taxonData.instanceId,
+                nameId: taxonData.nameId,
+                excluded: taxonData.excluded,
+                displayHtml: taxonData.displayHtml,
+                synonymsHtml: taxonData.synonymsHtml,
+                simpleName: taxonData.simpleName,
+                nameElement: taxonData.nameElement,
+                rank: taxonData.rank,
+                sourceShard: taxonData.sourceShard,
+                synonyms: taxonData.synonyms,
+                profile: taxonData.profile,
+                sourceElementLink: null,
+                nameLink: taxonData.nameLink,
+                instanceLink: taxonData.instanceLink,
+                updatedBy: userName,
+                updatedAt: new Timestamp(System.currentTimeMillis())
+        ).save()
+    }
+
+    private static findTreeElement(Map treeElementData) {
+        TreeElement.findWhere(treeElementData)
+    }
+
+    private static TreeElement findTreeElement(TaxonData taxonData) {
+        findTreeElement(
                 [instanceId : taxonData.instanceId,
                  nameId     : taxonData.nameId,
                  excluded   : taxonData.excluded,
@@ -935,34 +945,6 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                  sourceShard: taxonData.sourceShard,
                  synonyms   : taxonData.synonyms]
         )
-
-        if (!treeElement) { //then make a new one
-            treeElement = new TreeElement(
-                    previousElement: previousElement,
-                    instanceId: taxonData.instanceId,
-                    nameId: taxonData.nameId,
-                    excluded: taxonData.excluded,
-                    displayHtml: taxonData.displayHtml,
-                    synonymsHtml: taxonData.synonymsHtml,
-                    simpleName: taxonData.simpleName,
-                    nameElement: taxonData.nameElement,
-                    rank: taxonData.rank,
-                    sourceShard: taxonData.sourceShard,
-                    synonyms: taxonData.synonyms,
-                    profile: taxonData.profile,
-                    sourceElementLink: null,
-                    nameLink: taxonData.nameLink,
-                    instanceLink: taxonData.instanceLink,
-                    updatedBy: userName,
-                    updatedAt: new Timestamp(System.currentTimeMillis())
-            )
-            treeElement.save()
-        }
-        return saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null)
-    }
-
-    private static findTreeElement(Map treeElementData) {
-        TreeElement.findWhere(treeElementData)
     }
 
     protected static Map elementDataFromElement(TreeElement treeElement) {
@@ -979,20 +961,40 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
     }
 
     private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersionElement parentTve, Long taxonId, String taxonLink) {
+        saveTreeVersionElement(element, parentTve, parentTve.treeVersion, taxonId, taxonLink)
+    }
+
+    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersionElement parentTve, TreeVersion version, Long taxonId, String taxonLink) {
         TreeVersionElement treeVersionElement = new TreeVersionElement(
                 treeElement: element,
-                treeVersion: parentTve.treeVersion,
+                treeVersion: version,
                 parent: parentTve,
                 taxonId: taxonId,
-                treePath: parentTve.treePath + "/${element.id}",
-                namePath: parentTve.namePath + "/${element.nameElement}",
-                depth: parentTve.depth + 1
+                treePath: makeTreePath(parentTve, element),
+                namePath: makeNamePath(parentTve, element),
+                depth: (parentTve?.depth ?: 0) + 1
         )
 
         treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
         treeVersionElement.taxonLink = taxonLink ?: linkService.addTaxonIdentifier(treeVersionElement)
         treeVersionElement.save()
         return treeVersionElement
+    }
+
+    private static String makeTreePath(TreeVersionElement parentTve, TreeElement element) {
+        if (parentTve) {
+            parentTve.treePath + "/${element.id}"
+        } else {
+            element.id.toString()
+        }
+    }
+
+    private static String makeNamePath(TreeVersionElement parentTve, TreeElement element) {
+        if (parentTve) {
+            parentTve.namePath + "/${element.nameElement}"
+        } else {
+            element.nameElement
+        }
     }
 
     private Long nextSequenceId(Sql sql = getSql()) {

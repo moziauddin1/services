@@ -51,7 +51,24 @@ class TreeElementController implements WithTarget, ValidationUtils {
                 results.payload = treeService.placeTaxonUri(treeVersionElement, instanceUri, excluded, userName)
             } else {
                 results.ok = false
-                results.fail("Parent taxon with id $parentTaxonUri not found", NOT_FOUND)
+                results.fail("Parent taxon with id '$parentTaxonUri' not found", NOT_FOUND)
+            }
+        }
+    }
+
+    def placeTopElement() {
+        withJsonData(request.JSON, false, ['versionId', 'instanceUri', 'excluded']) { ResultObject results, Map data ->
+            log.debug "place top element $data"
+            Long treeVersionId = data.versionId
+            String instanceUri = data.instanceUri
+            Boolean excluded = data.excluded
+            TreeVersion treeVersion = TreeVersion.get(treeVersionId)
+            if (treeVersion) {
+                String userName = treeService.authorizeTreeOperation(treeVersion.tree)
+                results.payload = treeService.placeTaxonUri(treeVersion, instanceUri, excluded, userName)
+            } else {
+                results.ok = false
+                results.fail("Tree version with id '$treeVersionId' not found", NOT_FOUND)
             }
         }
     }

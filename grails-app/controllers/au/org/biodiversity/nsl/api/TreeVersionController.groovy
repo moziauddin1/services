@@ -10,6 +10,7 @@ import static org.springframework.http.HttpStatus.*
 class TreeVersionController implements WithTarget, ValidationUtils {
 
     def treeService
+    def treeReportService
     def jsonRendererService
     def linkService
 
@@ -84,7 +85,7 @@ class TreeVersionController implements WithTarget, ValidationUtils {
         TreeVersion treeVersion = TreeVersion.get(version)
         ResultObject results = requireTarget(treeVersion, "Tree version with id: $version")
         handleResults(results) {
-            results.payload = treeService.validateTreeVersion(treeVersion)
+            results.payload = treeReportService.validateTreeVersion(treeVersion)
         }
     }
 
