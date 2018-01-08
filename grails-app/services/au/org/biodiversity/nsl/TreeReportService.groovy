@@ -29,31 +29,37 @@ class TreeReportService implements ValidationUtils {
 
             List<Long> treeElementsNotInSecond = first.notIn(second, sql)
             List<Long> treeElementsNotInFirst = second.notIn(first, sql)
+            if (treeElementsNotInSecond.empty && treeElementsNotInFirst.empty) {
+                return [added: [], removed: [], modified: [], changed: false]
+            }
 
             List<TreeVersionElement> modified = TreeVersionElement.executeQuery('''
 select tve 
     from TreeVersionElement tve, TreeVersionElement ptve
 where tve.treeVersion = :version
-    and ptve.treeVersion =:previosuVersion
+    and ptve.treeVersion =:previousVersion
     and ptve.treeElement = tve.treeElement.previousElement
-    and tve.treeElement.id in (:elementIds)
+    and tve.treeElement.id in :elementIds
 ''', [version: second, previousVersion: first, elementIds: treeElementsNotInFirst])
 
             List<Long> treeElementsAddedToSecond = treeElementsNotInFirst - modified.collect { tve -> tve.treeElement.id }
-
-            List<TreeVersionElement> added = TreeVersionElement.executeQuery(
-                    'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in (:elementIds)',
-                    [version: second, elementIds: treeElementsAddedToSecond]
-            )
+            List<TreeVersionElement> added = getTvesInVersion(treeElementsAddedToSecond, second)
 
             List<Long> treeElementsRemovedFromSecond = treeElementsNotInSecond - modified.collect { tve -> tve.treeElement.previousElement.id }
+            List<TreeVersionElement> removed = getTvesInVersion(treeElementsRemovedFromSecond, first)
 
-            List<TreeVersionElement> removed = TreeVersionElement.executeQuery(
-                    'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in (:elementIds)',
-                    [version: first, elementIds: treeElementsRemovedFromSecond]
-            )
-            [added: added, removed: removed, modified: modified]
+            [added: added, removed: removed, modified: modified, changed: true]
         }
+    }
+
+    private static getTvesInVersion(List<Long> elementIds, TreeVersion version) {
+        if (elementIds.empty) {
+            return []
+        }
+        return TreeVersionElement.executeQuery(
+                'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in :elementIds',
+                [version: version, elementIds: elementIds]
+        )
     }
 
 
@@ -127,6 +133,7 @@ class TreeReportUtils {
    WHERE tree_version_id = :v2''', [v1: version1.id, v2: version2.id]) { row ->
             treeElementIdsNotInVersion2.add(row.tree_element_id as Long)
         }
+        return treeElementIdsNotInVersion2
     }
 
 }

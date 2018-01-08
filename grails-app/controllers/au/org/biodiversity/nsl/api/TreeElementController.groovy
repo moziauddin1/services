@@ -12,6 +12,7 @@ import static org.springframework.http.HttpStatus.*
 class TreeElementController implements WithTarget, ValidationUtils {
 
     def treeService
+    def treeReportService
     def jsonRendererService
     def linkService
 
@@ -141,6 +142,22 @@ class TreeElementController implements WithTarget, ValidationUtils {
             } else {
                 throw new ObjectNotFoundException("Instance with URI $instanceUri, is not in this shard.")
             }
+        }
+    }
+
+    def diff(Long v1, Long v2) {
+        ResultObject results = require('Version 1 ID': v1, 'Version 2 ID': v2)
+
+        handleResults(results) {
+            TreeVersion first = TreeVersion.get(v1)
+            if (!first) {
+                throw new ObjectNotFoundException("Version $v1, not found.")
+            }
+            TreeVersion second = TreeVersion.get(v2)
+            if (!second) {
+                throw new ObjectNotFoundException("Version $v2, not found.")
+            }
+            results.payload = treeReportService.diffReport(first, second)
         }
     }
 

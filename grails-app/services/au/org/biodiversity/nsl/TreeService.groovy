@@ -1300,6 +1300,26 @@ class TaxonData {
     Boolean nomInval
     Boolean nomIlleg
     Boolean excluded
+
+    Map asMap() {
+        [
+                nameId      : nameId,
+                instanceId  : instanceId,
+                simpleName  : simpleName,
+                nameElement : nameElement,
+                displayHtml : displayHtml,
+                synonymsHtml: synonymsHtml,
+                sourceShard : sourceShard,
+                synonyms    : synonyms,
+                rank        : rank,
+                profile     : profile,
+                nameLink    : nameLink,
+                instanceLink: instanceLink,
+                nomInval    : nomInval,
+                nomIlleg    : nomIlleg,
+                excluded    : excluded
+        ]
+    }
 }
 
 class DisplayElement {
