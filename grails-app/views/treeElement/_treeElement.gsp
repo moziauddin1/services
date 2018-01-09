@@ -10,9 +10,9 @@
     </dl>
   </g:if>
   <g:if test="${tve.treeElement.synonymsHtml && tve.treeElement.synonymsHtml != '<synonyms></synonyms>'}">
-    <span class="toggleNext hidden-print">(=)
+    <div class="toggleNext hidden-print">(=)
       <i class="fa fa-caret-up"></i><i class="fa fa-caret-down" style="display: none"></i>
-    </span>
+    </div>
 
     <div style="display: none">
       ${raw(tve.treeElement.synonymsHtml)}

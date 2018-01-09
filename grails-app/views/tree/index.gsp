@@ -227,6 +227,7 @@
           <div>
             <strong>Web page:</strong> <a href="${tree.linkToHomePage}">${tree.linkToHomePage}</a>
           </div>
+
           <div>
             <strong>Log entry:</strong> ${tree.currentTreeVersion?.logEntry}
           </div>
@@ -261,7 +262,9 @@
                             title="Publish Draft ${draft.draftName}.">
                       publish
                     </button>
-                    <a href="${createLink(namespace: 'api', controller: 'treeElement', action: 'diff', params: [v1: tree.currentTreeVersion.id, v2: draft.id])}">diff</a>
+                    <g:if test="${tree.currentTreeVersion}">
+                      <a href="${createLink(namespace: 'api', controller: 'treeElement', action: 'diff', params: [v1: tree.currentTreeVersion.id, v2: draft.id])}">diff</a>
+                    </g:if>
                   </shiro:hasRole>
                 </span>
               </div>
