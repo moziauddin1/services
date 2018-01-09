@@ -203,6 +203,9 @@
                     title="Edit tree details.">
               <i class="fa fa-edit"></i>
             </button>
+            <g:if test="${!tree.currentTreeVersion}">
+              <a href="${createLink(namespace: 'api', controller: 'tree', action: 'deleteTree', params: [treeId: tree.id])}">delete</a>
+            </g:if>
           </shiro:hasRole>
           <br>
           (${tree.groupName})

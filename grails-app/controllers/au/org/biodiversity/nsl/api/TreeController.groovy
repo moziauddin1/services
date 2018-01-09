@@ -27,7 +27,7 @@ class TreeController implements WithTarget, ValidationUtils {
             createTree   : ['PUT'],
             editTree     : ['POST'],
             copyTree     : ['PUT'],
-            deleteTree   : ['DELETE'],
+            deleteTree   : ['DELETE', 'GET'],
             createVersion: ['PUT']
     ]
     static namespace = "api"

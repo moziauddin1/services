@@ -988,7 +988,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         if (parentTve) {
             parentTve.treePath + "/${element.id}"
         } else {
-            element.id.toString()
+            "/${element.id}"
         }
     }
 
