@@ -24,6 +24,10 @@ div.indented div.tr {
     color: red !important;
 }
 
+div.tr dl {
+    margin-bottom: 0;
+}
+
 div.tr data {
     white-space: normal;
     padding-bottom: 0.2em;
@@ -77,8 +81,8 @@ div.tr synonyms mis:before {
     color: black;
 }
 
-div.tr synonyms type {
-    /*margin-left: 0.5em;*/
+div.tr synonyms type:before {
+    content: ' ';
 }
 
 div.tr.excluded data scientific {

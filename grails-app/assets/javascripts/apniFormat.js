@@ -62,6 +62,15 @@ $(function () {
         $(el).next('div').toggle(200);
     };
 
+    $('.toggleNextRow').unbind('click').click(function () {
+        toggleNextRow(this);
+    });
+
+    var toggleNextRow = function (el) {
+        $(el).find('i').toggle();
+        $(el).next('tr').toggle(200);
+    };
+
     $(".closeForm").click(function () {
         $('.openForm').show();
         $('.closeForm').hide();

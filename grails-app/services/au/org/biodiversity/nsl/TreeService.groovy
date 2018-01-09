@@ -622,7 +622,7 @@ INSERT INTO tree_version_element (tree_version_id,
             taxonData.profile = currentTve.treeElement.profile
         }
 
-        List<String> warnings = validateReplacementElement(parentTve, taxonData)
+        List<String> warnings = validateReplacementElement(parentTve, currentTve, taxonData)
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, currentTve.treeElement, userName)
         TreeVersionElement replacementTve = saveTreeVersionElement(treeElement, parentTve, nextSequenceId(), null)
@@ -1021,12 +1021,12 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //polynomials must be placed under parent
         checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
 
-        checkForExistingSynonyms(taxonData, treeVersion)
+        checkForExistingSynonyms(taxonData, treeVersion, [])
 
         return warnings
     }
 
-    protected List<String> validateReplacementElement(TreeVersionElement parentElement, TaxonData taxonData) {
+    protected List<String> validateReplacementElement(TreeVersionElement parentElement, TreeVersionElement currentTve, TaxonData taxonData) {
         List<String> warnings
 
         TreeVersion treeVersion = parentElement.treeVersion
@@ -1045,17 +1045,17 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //polynomials must be placed under parent
         checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
 
-        checkForExistingSynonyms(taxonData, treeVersion)
+        checkForExistingSynonyms(taxonData, treeVersion, [currentTve])
 
         return warnings
     }
 
-    private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion) {
+    private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
         //a name can't be already in the tree as a synonym
-        List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion)
+        List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion, excluding)
         if (!existingSynonyms.empty) {
             String synonyms = existingSynonyms.collect {
-                "* ${it.simpleName} ($it.nameId) is a $it.type of $it.synonym ($it.synonymId)"
+                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of [${it.simpleName} (${it.nameId})](${it.existing} '${it.existing}')."
             }.join(',\n')
             throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name *${taxonData.simpleName}*:\n\n" +
                     synonyms +
@@ -1091,7 +1091,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
     }
 
-    protected List<Map> checkSynonyms(TaxonData taxonData, TreeVersion treeVersion, Sql sql = getSql()) {
+    protected List<Map> checkSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding, Sql sql = getSql()) {
 
         List<Map> synonymsFound = []
         List nameIdList = [taxonData.nameId] + filterSynonyms(taxonData).collect { it.value.name_id }
@@ -1102,20 +1102,24 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
             return []
         }
 
+        String excludedLinks = "'" + excluding.collect { it.elementLink }.join("','") + "'"
+
         sql.eachRow("""
 SELECT
   el.name_id as name_id,
   el.simple_name as simple_name,
   tax_syn as synonym,
   synonyms -> tax_syn ->> 'type' as syn_type,
-  synonyms -> tax_syn ->> 'name_id' as syn_id
+  synonyms -> tax_syn ->> 'name_id' as syn_id,
+  tve.element_link as element_link
 FROM tree_element el join tree_version_element tve on el.id = tve.tree_element_id 
   JOIN name n ON el.name_id = n.id,
       jsonb_object_keys(synonyms) AS tax_syn
-WHERE tve.tree_version_id = :versionId
+WHERE tve.tree_version_id = :versionId                                                
+and tve.element_link not in ($excludedLinks)
       AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
-      and (synonyms -> tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
-            synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id]
+      AND (synonyms -> tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
+            synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id, existing: row.element_link]
         }
         return synonymsFound
     }

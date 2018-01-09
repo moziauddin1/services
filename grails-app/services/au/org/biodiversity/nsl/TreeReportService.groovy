@@ -30,29 +30,42 @@ class TreeReportService implements ValidationUtils {
             List<Long> treeElementsNotInSecond = first.notIn(second, sql)
             List<Long> treeElementsNotInFirst = second.notIn(first, sql)
             if (treeElementsNotInSecond.empty && treeElementsNotInFirst.empty) {
-                return [added: [], removed: [], modified: [], changed: false]
+                return [added: [], removed: [], modified: [], changed: false, overflow: false]
             }
 
-            List<TreeVersionElement> modified = TreeVersionElement.executeQuery('''
-select tve 
+            if (treeElementsNotInSecond.size() > 1000 || treeElementsNotInFirst.size() > 1000) {
+                return [added: [], removed: [], modified: [], changed: true, overflow: true]
+            }
+
+            List<List<TreeVersionElement>> modified = findModified(first, second, treeElementsNotInFirst)
+
+            List<Long> treeElementsAddedToSecond = treeElementsNotInFirst - modified.collect { mod -> mod[0].treeElement.id }
+            List<TreeVersionElement> added = getTvesInVersion(treeElementsAddedToSecond, second)
+
+            List<Long> treeElementsRemovedFromSecond = treeElementsNotInSecond - modified.collect { mod -> mod[0].treeElement.previousElement.id }
+            List<TreeVersionElement> removed = getTvesInVersion(treeElementsRemovedFromSecond, first)
+
+            [added: added, removed: removed, modified: modified, changed: true, overflow: false]
+        }
+    }
+
+    private
+    static List<List<TreeVersionElement>> findModified(TreeVersion first, TreeVersion second, List<Long> treeElementsNotInFirst) {
+        if (treeElementsNotInFirst.empty) {
+            return []
+        }
+        (TreeVersionElement.executeQuery('''
+select tve, ptve 
     from TreeVersionElement tve, TreeVersionElement ptve
 where tve.treeVersion = :version
     and ptve.treeVersion =:previousVersion
     and ptve.treeElement = tve.treeElement.previousElement
     and tve.treeElement.id in :elementIds
-''', [version: second, previousVersion: first, elementIds: treeElementsNotInFirst])
-
-            List<Long> treeElementsAddedToSecond = treeElementsNotInFirst - modified.collect { tve -> tve.treeElement.id }
-            List<TreeVersionElement> added = getTvesInVersion(treeElementsAddedToSecond, second)
-
-            List<Long> treeElementsRemovedFromSecond = treeElementsNotInSecond - modified.collect { tve -> tve.treeElement.previousElement.id }
-            List<TreeVersionElement> removed = getTvesInVersion(treeElementsRemovedFromSecond, first)
-
-            [added: added, removed: removed, modified: modified, changed: true]
-        }
+''', [version: second, previousVersion: first, elementIds: treeElementsNotInFirst])) as List<List<TreeVersionElement>>
     }
 
     private static getTvesInVersion(List<Long> elementIds, TreeVersion version) {
+        printf "querying ${elementIds.size()} elements"
         if (elementIds.empty) {
             return []
         }

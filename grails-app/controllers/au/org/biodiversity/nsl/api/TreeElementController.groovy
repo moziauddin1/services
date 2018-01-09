@@ -148,7 +148,7 @@ class TreeElementController implements WithTarget, ValidationUtils {
     def diff(Long v1, Long v2) {
         ResultObject results = require('Version 1 ID': v1, 'Version 2 ID': v2)
 
-        handleResults(results) {
+        handleResults(results, { diffRespond(results) }) {
             TreeVersion first = TreeVersion.get(v1)
             if (!first) {
                 throw new ObjectNotFoundException("Version $v1, not found.")
@@ -159,6 +159,12 @@ class TreeElementController implements WithTarget, ValidationUtils {
             }
             results.payload = treeReportService.diffReport(first, second)
         }
+    }
+
+    private diffRespond(ResultObject resultObject) {
+        log.debug "result status is ${resultObject.status} $resultObject"
+        //noinspection GroovyAssignabilityCheck
+        respond(resultObject, [view: 'diff', model: [data: resultObject], status: resultObject.remove('status')])
     }
 
     private withJsonData(Object json, Boolean list, List<String> requiredKeys, Closure work) {
@@ -195,6 +201,10 @@ class TreeElementController implements WithTarget, ValidationUtils {
     }
 
     private handleResults(ResultObject results, Closure work) {
+        handleResults(results, { serviceRespond(results) }, work)
+    }
+
+    private handleResults(ResultObject results, Closure response, Closure work) {
         if (results.ok) {
             try {
                 work()
@@ -226,7 +236,7 @@ class TreeElementController implements WithTarget, ValidationUtils {
                 log.error("$published.message : $results")
             }
         }
-        serviceRespond(results)
+        response()
     }
 
     private serviceRespond(ResultObject resultObject) {

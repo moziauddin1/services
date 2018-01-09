@@ -261,6 +261,7 @@
                             title="Publish Draft ${draft.draftName}.">
                       publish
                     </button>
+                    <a href="${createLink(namespace: 'api', controller: 'treeElement', action: 'diff', params: [v1: tree.currentTreeVersion.id, v2: draft.id])}">diff</a>
                   </shiro:hasRole>
                 </span>
               </div>
