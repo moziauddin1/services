@@ -305,7 +305,8 @@ select count(tve)
                 referenceId: referenceId,
                 descriptionHtml: descriptionHtml,
                 linkToHomePage: linkToHomePage,
-                acceptedTree: acceptedTree
+                acceptedTree: acceptedTree,
+                config: [comment_key: "Comment", distribution_key: "Dist."]
         )
         tree.save()
         linkService.addTargetLink(tree)
@@ -815,7 +816,9 @@ INSERT INTO tree_version_element (tree_version_id,
      * @return the replacement tree version element
      */
     private TreeVersionElement changeElement(TreeVersionElement treeVersionElement, TreeElement newElement) {
-        TreeVersionElement replacementTve = saveTreeVersionElement(newElement, treeVersionElement.parent, treeVersionElement.taxonId, treeVersionElement.taxonLink)
+        TreeVersionElement replacementTve = treeVersionElement.parent ?
+                saveTreeVersionElement(newElement, treeVersionElement.parent, treeVersionElement.taxonId, treeVersionElement.taxonLink) :
+                saveTreeVersionElement(newElement, null, treeVersionElement.treeVersion, treeVersionElement.taxonId, treeVersionElement.taxonLink)
         updateChildTreePath(replacementTve, treeVersionElement)
         updateParentId(treeVersionElement, replacementTve)
         deleteTreeVersionElement(treeVersionElement)
