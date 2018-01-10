@@ -629,6 +629,7 @@ INSERT INTO tree_version_element (tree_version_id,
         TreeVersionElement replacementTve = saveTreeVersionElement(treeElement, parentTve, nextSequenceId(), null)
         updateParentId(currentTve, replacementTve)
         updateChildTreePath(replacementTve, currentTve)
+        updateChildNamePath(replacementTve, currentTve)
 
         updateParentTaxaId(parentTve)
         if (parentTve != currentTve.parent) {
@@ -652,16 +653,18 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param parent
      */
     private void updateParentTaxaId(TreeVersionElement parent) {
-        List<TreeVersionElement> branchElements = getParentTreeVersionElements(parent)
-        Sql sql = getSql()
-        branchElements.each { TreeVersionElement element ->
-            if (!isUniqueTaxon(element)) {
-                element.taxonId = nextSequenceId(sql)
-                element.taxonLink = linkService.addTaxonIdentifier(element)
-                element.save()
+        if (parent) {
+            List<TreeVersionElement> branchElements = getParentTreeVersionElements(parent)
+            Sql sql = getSql()
+            branchElements.each { TreeVersionElement element ->
+                if (!isUniqueTaxon(element)) {
+                    element.taxonId = nextSequenceId(sql)
+                    element.taxonLink = linkService.addTaxonIdentifier(element)
+                    element.save()
+                }
             }
+            sql.close()
         }
-        sql.close()
     }
 
     private static boolean isUniqueTaxon(TreeVersionElement element) {
@@ -842,7 +845,7 @@ INSERT INTO tree_version_element (tree_version_id,
     }
 
     protected void updateChildTreePath(String newPath, String oldPath, TreeVersion treeVersion) {
-        log.debug "Replacing $oldPath with $newPath"
+        log.debug "Replacing tree path $oldPath with $newPath"
         TreeVersionElement.executeUpdate('''
 update TreeVersionElement set treePath = regexp_replace(treePath, :oldId, :newId)
 where treeVersion = :version
@@ -850,6 +853,23 @@ and regex(treePath, :oldId) = true
 ''',
                 [oldId  : "^$oldPath/",
                  newId  : "$newPath/",
+                 version: treeVersion])
+    }
+
+    protected TreeVersionElement updateChildNamePath(TreeVersionElement newTve, TreeVersionElement oldTve) {
+        updateChildNamePath(newTve.namePath, oldTve.namePath, newTve.treeVersion)
+        return newTve
+    }
+
+    protected void updateChildNamePath(String newPath, String oldPath, TreeVersion treeVersion) {
+        log.debug "Replacing name path $oldPath with $newPath"
+        TreeVersionElement.executeUpdate('''
+update TreeVersionElement set namePath = regexp_replace(namePath, :oldPath, :newPath)
+where treeVersion = :version
+and regex(namePath, :oldPath) = true
+''',
+                [oldPath: "^$oldPath/",
+                 newPath: "$newPath/",
                  version: treeVersion])
     }
 
