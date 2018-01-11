@@ -40,13 +40,42 @@ class ApniFormatTagLib {
     }
 
     def getDisplayableNonTypeNotes = { attrs, body ->
-        List<String> types = ['Type', 'Lectotype', 'Neotype', 'EPBC Advice', 'EPBC Impact', 'Synonym']
+        List<String> types = ['Type', 'Lectotype', 'Neotype', 'EPBC Advice', 'EPBC Impact', 'Synonym', 'APC Comment', 'APC Dist.']
         filterNotes(attrs, types, body, true)
     }
 
     def getAPCNotes = { attrs, body ->
         List<String> types = ['APC Comment', 'APC Dist.']
         filterNotes(attrs, types, body)
+    }
+
+    def ifOnTree = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        Instance instance = attrs.instance
+        if (tve && tve.treeElement.instanceId == instance?.id) {
+            out << body()
+        }
+    }
+
+    def treeComment = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        if (tve) {
+            Map comment = treeService.profileComment(tve)
+            if (comment) {
+                out << body((var): comment)
+            }
+        }
+    }
+    def treeDistribution = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        if (tve) {
+            Map dist = treeService.profileDistribution(tve)
+            if (dist) {
+                out << body((var): dist)
+            }
+        }
     }
 
     private void filterNotes(Map attrs, List<String> types, body, boolean invertMatch = false) {
@@ -248,6 +277,9 @@ class ApniFormatTagLib {
             if (treeElement && instance && treeElement.instance.id == instance.id) {
                 String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: treeElement.name.id)
                 String tree = treeVersionElement.treeVersion.tree.name
+                if (!treeVersionElement.treeVersion.published) {
+                    tree += ": ${treeVersionElement.treeVersion.draftName}"
+                }
 
                 out << """<a href="${link}">""".toString()
 

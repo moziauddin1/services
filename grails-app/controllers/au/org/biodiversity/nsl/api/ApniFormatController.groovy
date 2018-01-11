@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.RankUtils
+import au.org.biodiversity.nsl.TreeVersion
 import grails.converters.JSON
 import org.grails.plugins.metrics.groovy.Timed
 
@@ -46,7 +47,7 @@ class ApniFormatController {
      * @param Name
      */
     @Timed()
-    display(Name name) {
+    display(Name name, Long versionId) {
         if (name) {
             params.product = configService.nameTreeName
             String inc = g.cookie(name: 'searchInclude')
@@ -61,7 +62,7 @@ class ApniFormatController {
                 photoSearch = photoService.searchUrl(name.simpleName)
             }
 
-            apniFormatService.getNameModel(name) << [
+            apniFormatService.getNameModel(name, TreeVersion.get(versionId)) << [
                     query: [name: "$name.fullName", product: configService.nameTreeName, inc: params.inc],
                     stats: [:],
                     names: [name],

@@ -18,7 +18,8 @@
         </bhl-link>
       </g:if>
 
-      <a href="${af.refNameTreeSearchLink(citation: reference?.citation, product: params.product)}" class="hidden-print"><i
+      <a href="${af.refNameTreeSearchLink(citation: reference?.citation, product: params.product)}"
+         class="hidden-print"><i
           class="fa fa-search"></i></a>
     </g:if>
 
@@ -60,6 +61,22 @@
         <g:render template="/apniFormat/missappliedTo" model="[instance: instance]"/>
       </g:if>
 
+      <af:ifOnTree instance="${instance}" tve="${treeVersionElement}">
+        <ul class="instance-notes list-unstyled">
+          <af:treeComment tve="${treeVersionElement}">
+            <li>
+              <instance-note-key class="${note.name}">${note.name}:</instance-note-key>
+              <instance-note>${raw(note.value)}</instance-note>
+            </li>
+          </af:treeComment>
+          <af:treeDistribution tve="${treeVersionElement}">
+            <li>
+              <instance-note-key class="${note.name}">${note.name}:</instance-note-key>
+              <instance-note>${raw(note.value)}</instance-note>
+            </li>
+          </af:treeDistribution>
+        </ul>
+      </af:ifOnTree>
 
       <ul class="instance-notes list-unstyled">
         <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote">

@@ -291,6 +291,36 @@ select count(tve)
         return count
     }
 
+    @Transactional(readOnly = true)
+    Map profileComment(TreeVersionElement tve) {
+        mustHave('Tree version element': tve)
+        profileItem(tve, commentKey(tve.treeVersion.tree))
+    }
+
+    @Transactional(readOnly = true)
+    Map profileDistribution(TreeVersionElement tve) {
+        mustHave('Tree version element': tve)
+        profileItem(tve, distributionKey(tve.treeVersion.tree))
+    }
+
+    @Transactional(readOnly = true)
+    Map profileItem(TreeVersionElement tve, String key) {
+        Map value = tve.treeElement.profile?.get(key) as Map
+        value ? [name: key] + value : null
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    @Transactional(readOnly = true)
+    private String commentKey(Tree tree) {
+        tree.config.comment_key
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    @Transactional(readOnly = true)
+    private String distributionKey(Tree tree) {
+        tree.config.distribution_key
+    }
+
     /** Editing *****************************/
 
     Tree createNewTree(String treeName, String groupName, Long referenceId, String descriptionHtml,
