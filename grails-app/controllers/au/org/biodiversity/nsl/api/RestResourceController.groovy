@@ -158,11 +158,32 @@ class RestResourceController {
      */
     @Timed()
     def node(String shard, Long idNumber) {
-        List result = TreeVersionElement.executeQuery('''select tve.treeElement.id, max(tve.treeVersion.id) as mx 
+        Object[] result = TreeVersionElement.executeQuery('''select tve.treeElement.id, max(tve.treeVersion.id) as mx 
 from TreeVersionElement tve 
 where taxonLink like :query
 group by tve.treeElement.id
 order by mx''', [query: "%/node/$shard/$idNumber"]).last()
+        if (result && result.size() == 2) {
+            TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(result[1] as Long, result[0] as Long)
+
+            if (treeVersionElement) {
+                List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
+                List<TreeVersionElement> path = treeService.getElementPath(treeVersionElement)
+                respond(treeVersionElement, [view: 'taxon', model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
+            } else {
+                notFound("Couldn't find element ${result[0]} in tree version ${result[1]}.")
+            }
+        } else {
+            notFound("Couldn't find node $idNumber in $shard.")
+        }
+    }
+
+    def taxon(String shard, Long idNumber) {
+        Object[] result = TreeVersionElement.executeQuery('''select tve.treeElement.id, max(tve.treeVersion.id) as mx 
+from TreeVersionElement tve 
+where taxonId = :idNumber
+group by tve.treeElement.id
+order by mx''', [idNumber: idNumber]).last()
         if (result && result.size() == 2) {
             TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(result[1] as Long, result[0] as Long)
 

@@ -463,10 +463,20 @@ DROP TABLE IF EXISTS orphans;
         }
         treeVersion.tree.currentTreeVersion = treeVersion
         treeVersion.tree.save()
+        publishDraftInstances(treeVersion)
         //clean up any draft tree elements left behind
         deleteOrphanedTreeElements()
 
         return treeVersion
+    }
+
+    def publishDraftInstances(TreeVersion treeVersion) {
+        Instance.executeUpdate('''update Instance set draft = false
+where id in (select i.id from TreeVersionElement tve, Instance i 
+             where tve.treeVersion = :treeVersion  
+               and tve.treeElement.instanceId = i.id 
+               and i.draft = true)
+''', [treeVersion: treeVersion])
     }
 
     TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName) {

@@ -122,4 +122,9 @@ class TreeVersionController implements WithTarget, ValidationUtils {
         serviceRespond(results)
     }
 
+    private serviceRespond(ResultObject resultObject) {
+        log.debug "result status is ${resultObject.status} $resultObject"
+        //noinspection GroovyAssignabilityCheck
+        respond(resultObject, [view: '/common/serviceResult', model: [data: resultObject], status: resultObject.remove('status')])
+    }
 }
