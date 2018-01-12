@@ -463,20 +463,33 @@ DROP TABLE IF EXISTS orphans;
         }
         treeVersion.tree.currentTreeVersion = treeVersion
         treeVersion.tree.save()
-        publishDraftInstances(treeVersion)
+        publishDraftInstances(treeVersion, publishedBy)
         //clean up any draft tree elements left behind
         deleteOrphanedTreeElements()
 
         return treeVersion
     }
 
-    def publishDraftInstances(TreeVersion treeVersion) {
-        Instance.executeUpdate('''update Instance set draft = false
-where id in (select i.id from TreeVersionElement tve, Instance i 
+    def publishDraftInstances(TreeVersion treeVersion, String publishedBy) {
+        List<Instance> draftInstances = Instance.executeQuery('''select i from TreeVersionElement tve, Instance i 
              where tve.treeVersion = :treeVersion  
                and tve.treeElement.instanceId = i.id 
-               and i.draft = true)
-''', [treeVersion: treeVersion])
+               and i.draft = true''', [treeVersion: treeVersion])
+        Date now = new Date()
+        String today = now.format('dd MMM YYYY')
+        Timestamp timeStamp = new Timestamp(System.currentTimeMillis())
+        draftInstances.each { Instance instance ->
+            instance.draft = false
+            if (!instance.reference.published) {
+                instance.reference.published = true
+                instance.reference.publicationDate = today
+                instance.reference.year = now[Calendar.YEAR]
+                instance.reference.save()
+            }
+            instance.updatedAt = timeStamp
+            instance.updatedBy = publishedBy
+            instance.save()
+        }
     }
 
     TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName) {

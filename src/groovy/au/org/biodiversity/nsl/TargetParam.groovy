@@ -90,11 +90,22 @@ class TargetParam {
     }
 
     String identityParamString() {
-        return "nameSpace=${nameSpace}&objectType=${objectType}&idNumber=${idNumber}&versionNumber=${versionNumber}"
+        return "nameSpace=${nameSpace}" +
+                param("&objectType", objectType) +
+                param("&idNumber", idNumber) +
+                param("&versionNumber=", versionNumber)
     }
 
     String addIdentityParamString() {
-        return "nameSpace=${nameSpace}&objectType=${objectType}&idNumber=${idNumber}&versionNumber=${versionNumber}&uri=${uri}"
+        return identityParamString() +
+                param("&uri=", uri)
+    }
+
+    private static String param(String name, Object value) {
+        if (value) {
+            return "$name=$value"
+        }
+        return ''
     }
 
 }
