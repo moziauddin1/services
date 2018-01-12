@@ -31,7 +31,6 @@ class TreeElementController implements WithTarget, ValidationUtils {
             editElementProfile: ['POST'],
             editElementStatus : ['POST']
     ]
-    static namespace = "api"
 
     /**
      *

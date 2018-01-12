@@ -13,7 +13,6 @@ import static org.springframework.http.HttpStatus.OK
 
 @Transactional
 class AuthorController implements UnauthenticatedHandler, WithTarget {
-    static namespace = "api"
 
     static responseFormats = [
             index      : ['html'],

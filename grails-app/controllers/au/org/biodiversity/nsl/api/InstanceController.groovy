@@ -36,13 +36,12 @@ class InstanceController implements UnauthenticatedHandler, WithTarget {
     static allowedMethods = [
             delete: ["GET", "DELETE"]
     ]
-    static namespace = "api"
 
     def index() {}
 
     @Timed()
     delete(Instance instance, String reason) {
-        withTarget(instance) { ResultObject result ->
+        withTarget(instance) { ResultObject result, target ->
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << instanceService.deleteInstance(instance, reason)

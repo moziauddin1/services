@@ -67,7 +67,6 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             apc               : ["GET"],
             taxonSearch       : ["GET", "POST"]
     ]
-    static namespace = "api"
 
     @Timed()
     index() {
@@ -120,7 +119,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     nameStrings(Name name) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             result.result = nameConstructionService.constructName(name)
             result.result.fullName = nameConstructionService.stripMarkUp(result.result.fullMarkedUpName as String)
             result.result.simpleName = nameConstructionService.stripMarkUp(result.result.simpleMarkedUpName as String)
@@ -139,7 +138,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     delete(Name name, String reason) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << nameService.deleteName(name, reason)
@@ -156,7 +155,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     family(Name name) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             Name familyName = classificationService.getNameTreeFamilyName(name)
 
             if (familyName) {
@@ -170,7 +169,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     branch(Name name) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             List<Name> namesInBranch = classificationService.getPathFromNameTree(name)
             result << [branch: namesInBranch]
         }
@@ -178,7 +177,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     apc(Name name) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             Node node = classificationService.isNameInAcceptedTree(name)
             result << ["inAPC"   : node != null,
                        excluded  : node?.typeUriIdPart == 'ApcExcluded',
@@ -195,7 +194,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     apni(Name name) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             Node node = classificationService.isNameInNameTree(name)
             result << ["inAPNI"  : node != null,
                        operation : params.action,
@@ -260,7 +259,7 @@ order by n.simpleName asc''',
     @Timed()
     findConcept(Name name, String term) {
         log.debug "search concepts for $term"
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             List<String> terms = term.replaceAll('(,|&)', '').split(' ')
             log.debug "terms are $terms"
             Integer highestRank = 0
@@ -291,7 +290,7 @@ order by n.simpleName asc''',
         }
 
         log.info "getting APNI concept for $name"
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             Map nameModel = apniFormatService.getNameModel(name)
             result.name = jsonRendererService.getBriefNameWithHtml(name)
             //TODO fix this node reference

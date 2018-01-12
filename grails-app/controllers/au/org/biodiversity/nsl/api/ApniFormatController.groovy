@@ -47,7 +47,7 @@ class ApniFormatController {
      * @param Name
      */
     @Timed()
-    display(Name name, Long versionId) {
+    display(Name name, Long versionId, Boolean drafts) {
         if (name) {
             params.product = configService.nameTreeName
             String inc = g.cookie(name: 'searchInclude')
@@ -62,7 +62,7 @@ class ApniFormatController {
                 photoSearch = photoService.searchUrl(name.simpleName)
             }
 
-            apniFormatService.getNameModel(name, TreeVersion.get(versionId)) << [
+            apniFormatService.getNameModel(name, TreeVersion.get(versionId), drafts) << [
                     query: [name: "$name.fullName", product: configService.nameTreeName, inc: params.inc],
                     stats: [:],
                     names: [name],
@@ -75,10 +75,10 @@ class ApniFormatController {
     }
 
     @Timed()
-    name(Name name) {
+    name(Name name, Long versionId, Boolean drafts) {
         if (name) {
             log.info "getting ${configService.nameTreeName} name $name"
-            ResultObject model = new ResultObject(apniFormatService.getNameModel(name))
+            ResultObject model = new ResultObject(apniFormatService.getNameModel(name, TreeVersion.get(versionId), drafts))
             String photoSearch = null
             if (RankUtils.nameAtRankOrLower(name, 'Species') && photoService.hasPhoto(name.simpleName)) {
                 photoSearch = photoService.searchUrl(name.simpleName)

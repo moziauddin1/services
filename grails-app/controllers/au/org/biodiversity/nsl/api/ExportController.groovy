@@ -30,8 +30,6 @@ class ExportController implements UnauthenticatedHandler {
             taxonCsv: ["GET"],
     ]
 
-    static namespace = "api"
-
     @Timed()
     namesCsv() {
         try {

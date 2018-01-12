@@ -30,7 +30,6 @@ class TreeController implements WithTarget, ValidationUtils {
             deleteTree   : ['DELETE', 'GET'],
             createVersion: ['PUT']
     ]
-    static namespace = "api"
 
     def index() {
         [trees: Tree.list()]
@@ -179,12 +178,6 @@ class TreeController implements WithTarget, ValidationUtils {
             }
         }
         serviceRespond(results)
-    }
-
-    private serviceRespond(ResultObject resultObject) {
-        log.debug "result status is ${resultObject.status} $resultObject"
-        //noinspection GroovyAssignabilityCheck
-        respond(resultObject, [view: '/common/serviceResult', model: [data: resultObject], status: resultObject.remove('status')])
     }
 
 }

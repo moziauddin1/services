@@ -44,9 +44,9 @@ class UrlMappings {
 
         "/$product"(controller: 'search', action: 'search')
 
-        "/$namespace/cgi-bin/apni"(controller: 'idMapper', action: 'apni')
+        "/api/cgi-bin/apni"(controller: 'idMapper', action: 'apni')
 
-        "/rest/$controller/$shard/$id/$namespace/$action(.$format)?" {}
+        "/rest/$controller/$shard/$id/api/$action(.$format)?" {}
 
         "/rest/$action/$shard/$idNumber?(.$format)?"(controller: 'restResource', method: 'GET')
 
@@ -56,7 +56,7 @@ class UrlMappings {
             }
         }
 
-        "/api/$controller/$action?/$id?(.$format)?"(namespace: 'api') {
+        "/api/$controller/$action?/$id?(.$format)?" {
             constraints {
                 // apply constraints here
             }

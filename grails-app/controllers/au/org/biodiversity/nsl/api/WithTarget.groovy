@@ -40,13 +40,13 @@ trait WithTarget {
 
         if (target) {
             result.briefObject(target)
-            work(result)
+            work(result, target)
         } else {
             result.error("$targetInfo not found.")
             result.status = NOT_FOUND
         }
-
-        serviceRespond(result)
+        log.debug "result status is ${result.status} $result"
+        respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
     }
 
     def withTargets(Map targets, Closure work) {
@@ -67,8 +67,8 @@ trait WithTarget {
         } else {
             result.ok = false
         }
-
-        serviceRespond(result)
+        log.debug "result status is ${result.status} $result"
+        respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
     }
 
     ResultObject require(Map requirements) {
