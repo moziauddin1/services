@@ -40,7 +40,10 @@ class ApniFormatTagLib {
     }
 
     def getDisplayableNonTypeNotes = { attrs, body ->
-        List<String> types = ['Type', 'Lectotype', 'Neotype', 'EPBC Advice', 'EPBC Impact', 'Synonym', 'APC Comment', 'APC Dist.']
+        List<String> types = ['Type', 'Lectotype', 'Neotype', 'EPBC Advice', 'EPBC Impact', 'Synonym']
+        if (attrs.incApc) {
+            types += ['APC Comment', 'APC Dist.']
+        }
         filterNotes(attrs, types, body, true)
     }
 
@@ -56,6 +59,26 @@ class ApniFormatTagLib {
             out << body()
         }
     }
+
+    def ifEverOnAcceptedTree = { attrs, body ->
+        Instance instance = attrs.instance
+        TreeVersionElement excludedTve = attrs.exclude
+        TreeVersionElement tve = treeService.findLatestElementForInstance(instance,
+                Tree.findByName(configService.classificationTreeName))
+        if (tve && tve != excludedTve && tve.treeElement.instanceId == instance?.id) {
+            out << body("tve": tve)
+        }
+    }
+
+    def ifNeverOnAcceptedTreeSet = { attrs, body ->
+        Instance instance = attrs.instance
+        String varName = attrs.var
+        Object settable = attrs.set ?: true
+        TreeVersionElement tve = treeService.findLatestElementForInstance(instance,
+                Tree.findByName(configService.classificationTreeName))
+        out << body((varName): tve ? settable : null)
+    }
+
 
     def treeComment = { attrs, body ->
         TreeVersionElement tve = attrs.tve

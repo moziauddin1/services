@@ -50,7 +50,7 @@ class TreeService implements ValidationUtils {
      * get the current TreeElement for a name on the given tree
      * @param name
      * @param tree
-     * @return treeElement or null if not on the tree
+     * @return TreeVersionElement or null if not on the tree
      */
     @Transactional(readOnly = true)
     TreeVersionElement findCurrentElementForName(Name name, Tree tree) {
@@ -64,7 +64,7 @@ class TreeService implements ValidationUtils {
      * get the TreeElement for a name in the given version of a tree
      * @param name
      * @param treeVersion
-     * @return treeElement or null if not on the tree
+     * @return TreeVersionElement or null if not on the tree
      */
     @Transactional(readOnly = true)
     TreeVersionElement findElementForName(Name name, TreeVersion treeVersion) {
@@ -88,7 +88,7 @@ class TreeService implements ValidationUtils {
      * get the TreeElement for an instance in the current version of a tree
      * @param instance
      * @param tree
-     * @return treeElement or null if not on the tree
+     * @return TreeVersionElement or null if not on the tree
      */
     @Transactional(readOnly = true)
     TreeVersionElement findCurrentElementForInstance(Instance instance, Tree tree) {
@@ -102,7 +102,7 @@ class TreeService implements ValidationUtils {
      * get the TreeElement for an instance in the given version of a tree
      * @param instance
      * @param treeVersion
-     * @return treeElement or null if not on the tree
+     * @return TreeVersionElement or null if not on the tree
      */
     @Transactional(readOnly = true)
     TreeVersionElement findElementForInstance(Instance instance, TreeVersion treeVersion) {
@@ -118,6 +118,22 @@ class TreeService implements ValidationUtils {
         if (instanceLink && treeVersion) {
             return TreeVersionElement.find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.instanceLink = :instanceLink',
                     [treeVersion: treeVersion, instanceLink: instanceLink])
+        }
+        return null
+    }
+
+    /**
+     * Look for the latest treeVersionElement version for this tree which uses this instance
+     * @param instance
+     * @param tree
+     * @return treeVersionElement
+     */
+    @Transactional(readOnly = true)
+    TreeVersionElement findLatestElementForInstance(Instance instance, Tree tree) {
+        if (instance && tree) {
+            return TreeVersionElement.find(
+                    'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id desc',
+                    [tree: tree, instanceId: instance.id])
         }
         return null
     }
@@ -1216,7 +1232,7 @@ and tve.element_link not in ($excludedLinks)
                 firstNamePart.contains(nameElement)
             }
             if (!elementFound) {
-                throw new BadArgumentsException("Polynomial name *$simpleName* is not under an appropriate parent name." +
+                throw new BadArgumentsException("Name *$simpleName* is not under an appropriate parent name." +
                         "It should probably be under\n *${firstNamePart.split(' ').first()}* \n which isn't in this parents name path:\n\n" +
                         "* ${parentNameElements.join('\n* ')}")
             }

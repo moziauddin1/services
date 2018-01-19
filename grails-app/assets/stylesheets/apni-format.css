@@ -38,7 +38,12 @@ reference, instance, family, synonym-of, has-synonym, misapplication {
     display: block;
 }
 
-ref-citation, page, instance-type, instance-note-key, instance-note {
+ref-citation,
+page,
+instance-type,
+instance-note-key,
+instance-note,
+tree-note {
     display: inline;
 }
 
@@ -46,7 +51,7 @@ ul.instance-notes {
     margin-bottom: 0;
 }
 
-instance-note-key {
+instance-note-key, .key {
     font-weight: bold;
 }
 
@@ -142,8 +147,6 @@ help {
     font-size: 14pt;
 }
 
-
-
 reference-author {
     display: block;
 }
@@ -173,7 +176,7 @@ accepted-name {
 }
 
 accepted-name element,
-family element{
+family element {
     font-style: normal;
 }
 
@@ -209,36 +212,41 @@ dt.divide {
     border-bottom: solid #cfcfcf 1px;
 }
 
-.branch_node.apc-voc.apc-concept {}
+.branch_node.apc-voc.apc-concept {
+}
 
-.branch_node.apc-voc.apc-excluded { color: red; }
+.branch_node.apc-voc.apc-excluded {
+    color: red;
+}
 
-.branch_node.apc-voc.declared-bt { color: darkgray; }
+.branch_node.apc-voc.declared-bt {
+    color: darkgray;
+}
 
 div#page-footer {
-  background: white none repeat scroll 0 0;
-  color: black;
-  border-top: 1px solid gray;
-  bottom: 0;
-  height: 4em;
-  position: fixed;
-  width: 100%;
-  padding-top: 0.5em;
-  padding-left: 1em;
-  padding-right: 1em;
+    background: white none repeat scroll 0 0;
+    color: black;
+    border-top: 1px solid gray;
+    bottom: 0;
+    height: 4em;
+    position: fixed;
+    width: 100%;
+    padding-top: 0.5em;
+    padding-left: 1em;
+    padding-right: 1em;
 }
 
 div#page-footer a.twitter-link {
-  color: black;
+    color: black;
 }
 
 span#page-footer-inner-right {
-  display: inline-block;
-  margin-top: 1em;
+    display: inline-block;
+    margin-top: 1em;
 }
 
-div#main-content{
-  margin-bottom: 5em;
+div#main-content {
+    margin-bottom: 5em;
 }
 
 bhl-link img {

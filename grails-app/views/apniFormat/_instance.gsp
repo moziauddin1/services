@@ -61,32 +61,51 @@
         <g:render template="/apniFormat/missappliedTo" model="[instance: instance]"/>
       </g:if>
 
+      <af:ifEverOnAcceptedTree instance="${instance}" exclude="${treeVersionElement}">
+        <ul class="instance-notes list-unstyled">
+          <af:treeComment tve="${tve}">
+            <li>
+              <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
+              <tree-note>${raw(note.value)}</tree-note>
+            </li>
+          </af:treeComment>
+          <af:treeDistribution tve="${tve}">
+            <li>
+              <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
+              <tree-note>${raw(note.value)}</tree-note>
+            </li>
+          </af:treeDistribution>
+        </ul>
+      </af:ifEverOnAcceptedTree>
+
       <af:ifOnTree instance="${instance}" tve="${treeVersionElement}">
         <ul class="instance-notes list-unstyled">
           <af:treeComment tve="${treeVersionElement}">
             <li>
-              <instance-note-key class="${note.name}">${note.name}:</instance-note-key>
-              <instance-note>${raw(note.value)}</instance-note>
+              <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
+              <tree-note>${raw(note.value)}</tree-note>
             </li>
           </af:treeComment>
           <af:treeDistribution tve="${treeVersionElement}">
             <li>
-              <instance-note-key class="${note.name}">${note.name}:</instance-note-key>
-              <instance-note>${raw(note.value)}</instance-note>
+              <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
+              <tree-note>${raw(note.value)}</tree-note>
             </li>
           </af:treeDistribution>
         </ul>
       </af:ifOnTree>
 
-      <ul class="instance-notes list-unstyled">
-        <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote">
-          <li>
-            <instance-note-key
-                class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
-            <instance-note>${instanceNote.value}</instance-note>
-          </li>
-        </af:getDisplayableNonTypeNotes>
-      </ul>
+      <af:ifNeverOnAcceptedTreeSet instance="${instance}" var="incApcNotes">
+        <ul class="instance-notes list-unstyled">
+          <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote" incApc="${incApcNotes}">
+            <li>
+              <instance-note-key
+                  class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
+              <instance-note>${instanceNote.value}</instance-note>
+            </li>
+          </af:getDisplayableNonTypeNotes>
+        </ul>
+      </af:ifNeverOnAcceptedTreeSet>
     </instance>
   </af:sortedInstances>
 </reference>
