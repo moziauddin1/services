@@ -47,6 +47,14 @@ tree-note {
     display: inline;
 }
 
+ref-citation.draft:before {
+    content: '[DRAFT]';
+}
+
+ref-citation.draft {
+    color: green;
+}
+
 ul.instance-notes {
     margin-bottom: 0;
 }

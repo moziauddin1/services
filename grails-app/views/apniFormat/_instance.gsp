@@ -2,7 +2,7 @@
 
   <af:sortedInstances instances="${instances}" var="instance">
     <g:if test="${newPage}">
-      <ref-citation>
+      <ref-citation class="${instance.draft ? 'draft' : ''}">
         %{--don't reformat the citationHtml line--}%
         <st:preferredLink target="${instance}">${raw(reference?.citationHtml)}</st:preferredLink>:
       </ref-citation>
