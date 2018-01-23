@@ -311,7 +311,7 @@ class TreeServiceSpec extends Specification {
 
         when: 'I try to place Ficus virens var. sublanceolata sensu Jacobs & Packard (1981)'
         TaxonData taxonData = service.elementDataFromInstance(ficusVirensSublanceolata)
-        List<Map> existingSynonyms = service.checkSynonyms(taxonData, treeVersion)
+        List<Map> existingSynonyms = service.checkSynonyms(taxonData, treeVersion, [])
         println existingSynonyms
 
         then: 'I get two found synonyms'
@@ -635,8 +635,8 @@ class TreeServiceSpec extends Specification {
         service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         service.replaceTaxon(anthocerosTve, anthocerotaceaeTve,
                 'http://localhost:7070/nsl-mapper/instance/apni/753948',
-                anthocerosTve.treeElement.excluded,
-                anthocerosTve.treeElement.profile,
+                true,
+                [:],
                 'test move taxon')
 
         then: 'I get a PublishedVersionException'
@@ -789,14 +789,14 @@ class TreeServiceSpec extends Specification {
         originalAnthocerotaceaeTaxonIDs.size() == 6
 
         when: 'I try to remove a taxon'
-        int count = service.removeTreeVersionElement(anthoceros)
+        Map result = service.removeTreeVersionElement(anthoceros)
 
         then: 'It works'
         6 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
             println "Adding taxonIdentifier for $tve"
             "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
         }
-        count == 6
+        result.count == 6
         draftVersion.treeVersionElements.size() == 24
         service.findElementBySimpleName('Anthoceros', draftVersion) == null
         //The taxonIds for Anthoceros' parents should have changed
