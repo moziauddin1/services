@@ -85,7 +85,7 @@ class ApniFormatTagLib {
         String var = attrs.var ?: "note"
         if (tve) {
             Map comment = treeService.profileComment(tve)
-            if (comment) {
+            if (comment && comment.value) {
                 out << body((var): comment)
             }
         }
@@ -95,7 +95,7 @@ class ApniFormatTagLib {
         String var = attrs.var ?: "note"
         if (tve) {
             Map dist = treeService.profileDistribution(tve)
-            if (dist) {
+            if (dist && dist.value) {
                 out << body((var): dist)
             }
         }

@@ -509,7 +509,7 @@ class TreeServiceSpec extends Specification {
         !nullAsperaElement
 
         when: 'I try to place Doodia aspera under Doodia'
-        Map result = service.placeTaxonUri(doodiaElement, instanceUri, false, 'A. User')
+        Map result = service.placeTaxonUri(doodiaElement, instanceUri, false, null, 'A. User')
         println result
 
         then: 'It should work'
@@ -578,6 +578,8 @@ class TreeServiceSpec extends Specification {
         when: 'I try to move a taxon, anthoceros under dendrocerotaceae'
         Map result = service.replaceTaxon(anthocerosTve, dendrocerotaceaeTve,
                 'http://localhost:7070/nsl-mapper/instance/apni/753948',
+                anthocerosTve.treeElement.excluded,
+                anthocerosTve.treeElement.profile,
                 'test move taxon')
         println "\n*** $result\n"
 
@@ -633,6 +635,8 @@ class TreeServiceSpec extends Specification {
         service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
         service.replaceTaxon(anthocerosTve, anthocerotaceaeTve,
                 'http://localhost:7070/nsl-mapper/instance/apni/753948',
+                anthocerosTve.treeElement.excluded,
+                anthocerosTve.treeElement.profile,
                 'test move taxon')
 
         then: 'I get a PublishedVersionException'
@@ -678,6 +682,8 @@ class TreeServiceSpec extends Specification {
         when: 'I move Anthocerotales under Dendrocerotidae'
         Map result = service.replaceTaxon(anthocerotalesTve, dendrocerotidaeTve,
                 'http://localhost:7070/nsl-mapper/instance/apni/753978',
+                anthocerotalesTve.treeElement.excluded,
+                anthocerotalesTve.treeElement.profile,
                 'test move taxon')
         println "\n*** $result\n"
         List<TreeVersionElement> newAnthocerotalesChildren = service.getAllChildElements(result.replacementElement)
@@ -737,7 +743,7 @@ class TreeServiceSpec extends Specification {
         asperaInstance
 
         when: 'I try to place Doodia aspera in the version without a parent'
-        Map result = service.placeTaxonUri(draftVersion, instanceUri, false, 'A. User')
+        Map result = service.placeTaxonUri(draftVersion, instanceUri, false, null, 'A. User')
         println result
 
         then: 'It should work'

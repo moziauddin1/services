@@ -93,12 +93,12 @@ class TargetParam {
         return "nameSpace=${nameSpace}" +
                 param("&objectType", objectType) +
                 param("&idNumber", idNumber) +
-                param("&versionNumber=", versionNumber)
+                param("&versionNumber", versionNumber)
     }
 
     String addIdentityParamString() {
         return identityParamString() +
-                param("&uri=", uri)
+                param("&uri", uri)
     }
 
     private static String param(String name, Object value) {

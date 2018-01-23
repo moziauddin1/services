@@ -45,10 +45,11 @@ class TreeElementController implements WithTarget, ValidationUtils {
             String parentTaxonUri = data.parentElementUri
             String instanceUri = data.instanceUri
             Boolean excluded = data.excluded
+            Map profile = data.profile
             TreeVersionElement treeVersionElement = TreeVersionElement.get(parentTaxonUri)
             if (treeVersionElement) {
                 String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
-                results.payload = treeService.placeTaxonUri(treeVersionElement, instanceUri, excluded, userName)
+                results.payload = treeService.placeTaxonUri(treeVersionElement, instanceUri, excluded, profile, userName)
             } else {
                 results.ok = false
                 results.fail("Parent taxon with id '$parentTaxonUri' not found", NOT_FOUND)
@@ -62,10 +63,11 @@ class TreeElementController implements WithTarget, ValidationUtils {
             Long treeVersionId = data.versionId
             String instanceUri = data.instanceUri
             Boolean excluded = data.excluded
+            Map profile = data.profile
             TreeVersion treeVersion = TreeVersion.get(treeVersionId)
             if (treeVersion) {
                 String userName = treeService.authorizeTreeOperation(treeVersion.tree)
-                results.payload = treeService.placeTaxonUri(treeVersion, instanceUri, excluded, userName)
+                results.payload = treeService.placeTaxonUri(treeVersion, instanceUri, excluded, profile, userName)
             } else {
                 results.ok = false
                 results.fail("Tree version with id '$treeVersionId' not found", NOT_FOUND)
@@ -78,13 +80,15 @@ class TreeElementController implements WithTarget, ValidationUtils {
             String instanceUri = data.instanceUri
             String currentElementUri = data.currentElementUri
             String newParentElementUri = data.newParentElementUri
+            Boolean excluded = data.excluded ?: false
+            Map profile = data.profile
 
             TreeVersionElement currentElement = TreeVersionElement.get(currentElementUri)
             TreeVersionElement newParentElement = TreeVersionElement.get(newParentElementUri)
 
             if (currentElement && newParentElement && instanceUri) {
                 String userName = treeService.authorizeTreeOperation(newParentElement.treeVersion.tree)
-                results.payload = treeService.replaceTaxon(currentElement, newParentElement, instanceUri, userName)
+                results.payload = treeService.replaceTaxon(currentElement, newParentElement, instanceUri, excluded, profile, userName)
             } else {
                 results.ok = false
                 results.fail("Elements with ids $instanceUri, $currentElementUri, $newParentElementUri not found", NOT_FOUND)
@@ -99,8 +103,8 @@ class TreeElementController implements WithTarget, ValidationUtils {
 
             if (treeVersionElement) {
                 treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
-                int count = treeService.removeTreeVersionElement(treeVersionElement)
-                results.payload = [count: count, message: "$count taxon removed, starting from $taxonUri"]
+                Map result = treeService.removeTreeVersionElement(treeVersionElement)
+                results.payload = [count: result.count, message: result.message]
             } else {
                 results.ok = false
                 results.fail("taxon with id $taxonUri not found", NOT_FOUND)

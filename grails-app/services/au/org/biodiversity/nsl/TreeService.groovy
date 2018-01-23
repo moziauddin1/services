@@ -615,7 +615,7 @@ INSERT INTO tree_version_element (tree_version_id,
         return treeVersion
     }
 
-    Map placeTaxonUri(TreeVersionElement parentElement, String instanceUri, Boolean excluded, String userName) {
+    Map placeTaxonUri(TreeVersionElement parentElement, String instanceUri, Boolean excluded, Map profile, String userName) {
 
         TaxonData taxonData = findInstanceByUri(instanceUri)
         if (!taxonData) {
@@ -623,13 +623,23 @@ INSERT INTO tree_version_element (tree_version_id,
         }
         notPublished(parentElement)
         taxonData.excluded = excluded
+        taxonData.profile = profile
         List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
         //will throw exceptions for invalid placements, not warnings
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
         TreeVersionElement childElement = saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null)
         updateParentTaxaId(parentElement)
-        return [childElement: childElement, warnings: warnings, message: "Placed ${childElement.treeElement.name.fullName}"]
+
+        String message = "#### Placed ${childElement.treeElement.name.fullName} ####"
+        if (warnings && !warnings.empty) {
+            message += '\n\n *with these warnings:* \n'
+            warnings.each {
+                message += "\n * $it"
+            }
+        }
+
+        return [childElement: childElement, warnings: warnings, message: message]
     }
 
     /**
@@ -640,19 +650,20 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param userName
      * @return
      */
-    Map placeTaxonUri(TreeVersion treeVersion, String instanceUri, Boolean excluded, String userName) {
+    Map placeTaxonUri(TreeVersion treeVersion, String instanceUri, Boolean excluded, Map profile, String userName) {
 
         TaxonData taxonData = findInstanceByUri(instanceUri)
         if (!taxonData) {
-            throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in $parentElement")
+            throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in ${treeVersion.draftName}")
         }
         notPublished(treeVersion)
         taxonData.excluded = excluded
+        taxonData.profile = profile
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
         TreeVersionElement childElement = saveTreeVersionElement(treeElement, null, treeVersion, nextSequenceId(), null)
 
-        return [childElement: childElement, warnings: [], message: "Placed ${childElement.treeElement.name.fullName}"]
+        return [childElement: childElement, warnings: [], message: "#### Placed ${childElement.treeElement.name.fullName} ####"]
     }
 
     /**
@@ -673,7 +684,7 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param userName
      * @return
      */
-    Map replaceTaxon(TreeVersionElement currentTve, TreeVersionElement parentTve, String instanceUri, String userName) {
+    Map replaceTaxon(TreeVersionElement currentTve, TreeVersionElement parentTve, String instanceUri, Boolean excluded, Map profile, String userName) {
         mustHave('Current Element': currentTve, 'Parent Element': parentTve, 'Instance Uri': instanceUri, userName: userName)
         notPublished(parentTve)
 
@@ -687,10 +698,8 @@ INSERT INTO tree_version_element (tree_version_id,
             throw new ObjectNotFoundException("Taxon $instanceUri not found, trying to place it in $parentTve")
         }
 
-        taxonData.excluded = currentTve.treeElement.excluded
-        if (taxonData.profile == null && currentTve.treeElement.profile != null) {
-            taxonData.profile = currentTve.treeElement.profile
-        }
+        taxonData.excluded = excluded
+        taxonData.profile = profile
 
         List<String> warnings = validateReplacementElement(parentTve, currentTve, taxonData)
 
@@ -707,9 +716,15 @@ INSERT INTO tree_version_element (tree_version_id,
 
         deleteTreeVersionElement(currentTve)
 
-        Map problems = treeReportService.validateTreeVersion(replacementTve.treeVersion)
-        problems.put('warnings', warnings)
-        return [replacementElement: replacementTve, problems: problems]
+        String message = null
+        if (warnings && !warnings.empty) {
+            message = "#### Replaced with ${replacementTve.treeElement.name.fullName} #### \n\n *Note these warnings:* \n"
+            warnings.each {
+                message += "\n * $it"
+            }
+        }
+
+        return [replacementElement: replacementTve, problems: message]
     }
 
     /**
@@ -757,7 +772,7 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param treeVersionElement
      * @return count of treeVersionElements removed.
      */
-    int removeTreeVersionElement(TreeVersionElement treeVersionElement) {
+    Map removeTreeVersionElement(TreeVersionElement treeVersionElement) {
         notPublished(treeVersionElement)
 
         TreeVersionElement parent = treeVersionElement.parent
@@ -765,6 +780,12 @@ INSERT INTO tree_version_element (tree_version_id,
         List<TreeVersionElement> elements = getAllChildElements(treeVersionElement)
         elements.add(treeVersionElement)
         int count = elements.size()
+
+        String message = "Deleted $count elements:\n"
+        elements.each {
+            message += "\n * ${it.treeElement.displayHtml}"
+        }
+
         log.debug "Deleting ${count} tree version elements."
         Map result = linkService.bulkRemoveTargets(elements)
         log.info result
@@ -785,7 +806,7 @@ INSERT INTO tree_version_element (tree_version_id,
         //if this is removing new elements in a draft we may orphan some tree elements so it pays to clean up
         //this may be moved to a background garbage collection task if it is too slow.
         deleteOrphanedTreeElements()
-        return count
+        return [count: count, message: message]
     }
 
     TreeVersionElement editProfile(TreeVersionElement treeVersionElement, Map profile, String userName) {
@@ -1035,7 +1056,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                  simpleName : taxonData.simpleName,
                  nameElement: taxonData.nameElement,
                  sourceShard: taxonData.sourceShard,
-                 synonyms   : taxonData.synonyms]
+                 synonyms   : taxonData.synonyms,
+                 profile    : taxonData.profile
+                ]
         )
     }
 
