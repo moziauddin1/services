@@ -7,7 +7,7 @@ import org.apache.shiro.authz.AuthorizationException
 
 import static org.springframework.http.HttpStatus.*
 
-class TreeVersionController implements WithTarget, ValidationUtils {
+class TreeVersionController implements WithTarget {
 
     def treeService
     def treeReportService

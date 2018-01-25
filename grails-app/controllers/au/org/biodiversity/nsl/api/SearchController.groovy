@@ -168,19 +168,21 @@ class SearchController implements RequestUtil {
             params.product = configService.nameTreeName
         }
 
-        if (params.product) {
-            Arrangement tree = Arrangement.findByNamespaceAndLabel(configService.nameSpace, params.product.toUpperCase() as String)
+        Boolean treeSearch = params.product && params.product != configService.nameTreeName
+
+        if (treeSearch) {
+            Tree tree = Tree.findByNameIlike(params.product as String)
             if (tree) {
+                params.product = tree.name //force to the correct case for a product label
                 params.tree = [id: tree.id]
-                params.display = params.product
+                params.display = 'apc'
             } else {
                 flash.message = "Unknown product ${params.product}"
-                return redirect(url: '/')
+                return redirect(url: '/search')
             }
         } else {
             params.display = params.display ?: 'apni'
         }
-
 
         render([template: 'advanced-search-form', model: [query: params, max: 100]])
     }
@@ -234,7 +236,7 @@ class SearchController implements RequestUtil {
                     Map flatViewRow = flatViewService.findNameRow(nameData.name as Name)
                     List values = [result.found,
                                    result.query,
-                                   apcStatus(nameData.apc),
+                                   (nameData.treeVersionelement.treeElement.excluded ? 'APC Excluded' : 'APC'),
                                    nameData.name.fullName,
                                    nameData.name.nameStatus.name,
                                    nameData.name.nameType.name,
@@ -250,17 +252,6 @@ class SearchController implements RequestUtil {
             }
         }
         return CsvRenderer.renderAsCsv(headers, csvResults)
-    }
-
-    private static String apcStatus(Node node) {
-        if (node) {
-            if (node.typeUriIdPart == 'ApcConcept') {
-                return 'APC'
-            } else {
-                return 'APC Excluded'
-            }
-        }
-        return '-'
     }
 
 }

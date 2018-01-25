@@ -35,6 +35,10 @@ class TreeService implements ValidationUtils {
         Tree.findByNameIlike(name)
     }
 
+    Tree getAcceptedTree() {
+        getTree(configService.classificationTreeName)
+    }
+
     @Transactional(readOnly = true)
     TreeVersionElement getTreeVersionElement(Long versionId, Long elementId) {
         TreeVersionElement.find('from TreeVersionElement where treeVersion.id = :versionId and treeElement.id = :elementId',
@@ -139,21 +143,20 @@ class TreeService implements ValidationUtils {
     }
 
     /**
-     * get the tree path as a list of TreeElements
+     * get the tree path as a list of TreeVersionElements
      * @param treeElement
-     * @return List of TreeElements
+     * @return List of TreeVersionElements
      */
     @Transactional(readOnly = true)
     List<TreeVersionElement> getElementPath(TreeVersionElement treeVersionElement) {
         mustHave(treeVersionElement: treeVersionElement)
-        treeVersionElement.treePath.split('/').collect { String stringElementId ->
-            if (stringElementId) {
-                TreeVersionElement.find('from TreeVersionElement tve where tve.treeElement.id = :elementId and treeVersion = :version',
-                        [elementId: stringElementId as Long, version: treeVersionElement.treeVersion])
-            } else {
-                null
-            }
-        }.findAll { it }
+        List<TreeVersionElement> path = []
+        TreeVersionElement current = treeVersionElement
+        while (current) {
+            path.add(current)
+            current = current.parent
+        }
+        return path.reverse()
     }
 
     @Transactional(readOnly = true)
@@ -1400,6 +1403,13 @@ and tve.element_link not in ($excludedLinks)
         return Sql.newInstance(dataSource_nsl)
     }
 
+    boolean isNameInAnyTree(Name name) {
+        TreeElement.findByNameId(name.id) != null
+    }
+
+    boolean isInstanceInAnyTree(Instance instance) {
+        TreeElement.findByInstanceId(instance.id) != null
+    }
 }
 
 class TaxonData {

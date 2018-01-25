@@ -16,8 +16,10 @@
 
 package services
 
-import au.org.biodiversity.nsl.*
-import au.org.biodiversity.nsl.tree.QueryService
+import au.org.biodiversity.nsl.Tree
+import au.org.biodiversity.nsl.TreeService
+import au.org.biodiversity.nsl.TreeVersion
+import au.org.biodiversity.nsl.TreeVersionElement
 
 class TreeServicesTagLib {
     @SuppressWarnings("GroovyUnusedDeclaration")
@@ -25,14 +27,8 @@ class TreeServicesTagLib {
     static namespace = "tree"
 
     TreeService treeService
-    QueryService queryService
 
     //static encodeAsForTags = [tagName: [taglib:'html'], otherTagName: [taglib:'none']]
-
-    def getNodeNameAndInstance = { attrs, body ->
-        Node node = attrs.node
-        out << body(name: queryService.resolveName(node), instance: queryService.resolveInstance(node))
-    }
 
     def elementPath = { attrs, body ->
         TreeVersionElement element = attrs.element

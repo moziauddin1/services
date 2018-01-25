@@ -23,7 +23,7 @@ import org.springframework.transaction.TransactionStatus
 @Transactional
 class InstanceService {
 
-    def classificationService
+    def treeService
     def linkService
 
     /**
@@ -50,7 +50,6 @@ class InstanceService {
                         return [ok: false, errors: errors]
                     }
 
-                    removeInstanceFromTrees(instance)
                     instance.refresh()
                     instance.delete()
                     t.flush()
@@ -87,7 +86,7 @@ class InstanceService {
         if (!reason) {
             errors << 'You need to supply a reason for deleting this instance.'
         }
-        if (classificationService.isInstanceInAcceptedTree(instance)) {
+        if (treeService.isInstanceInAnyTree(instance)) {
             errors << "This instance is in APC."
         }
         if (instance.instancesForCites) {
@@ -113,24 +112,6 @@ class InstanceService {
             return [ok: false, errors: errors]
         }
         return [ok: true]
-    }
-
-    /**
-     * * Removing from the tree may mean:
-     *
-     * 1. make sure it's a leaf node (no children)
-     * 2. set any FK references to the name to null
-     *
-     * @param name
-     */
-    void removeInstanceFromTrees(Instance instance) {
-        //set *all* the node, instance references to null
-        List<Node> nodeReferences = Node.findAllByInstance(instance)
-        nodeReferences.each { Node node ->
-            log.info "Setting node $node.id instance ids to null from $instance.id"
-            node.instance = null //set the instance references to null
-            node.save()
-        }
     }
 
     List<Instance> findPrimaryInstance(Name name) {

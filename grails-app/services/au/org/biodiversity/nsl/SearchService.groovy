@@ -326,10 +326,7 @@ order by sortName
 ''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
-                        TreeVersionElement treeVersionElement = treeService.
-                                findCurrentElementForName(name,
-                                        treeService.getTree(configService.classificationTreeName)
-                                )
+                        TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, treeService.getAcceptedTree())
                         Name family = name.family
                         [treeVersionElement: treeVersionElement, name: name, family: family]
                     }

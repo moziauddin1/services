@@ -9,17 +9,18 @@ import javax.servlet.http.HttpServletRequest
  */
 trait RequestUtil {
 
-    private final ArrayList<String> headers = ["X-Forwarded-For","Proxy-Client-IP","WL-Proxy-Client-IP","HTTP_CLIENT_IP","HTTP_X_FORWARDED_FOR"]
+    private
+    final ArrayList<String> headers = ["X-Forwarded-For", "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR"]
 
-    public remoteAddress(HttpServletRequest request) {
+    def remoteAddress(HttpServletRequest request) {
         String ip = null
         String headerFound = headers.find { String header ->
             ip = request.getHeader(header)
             return ip && !"unknown".equalsIgnoreCase(ip)
         }
         if (!headerFound) {
-            ip = request.getRemoteAddr();
+            ip = request.getRemoteAddr()
         }
-        return ip;
+        return ip
     }
 }

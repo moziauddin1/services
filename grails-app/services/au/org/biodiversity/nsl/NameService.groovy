@@ -26,9 +26,9 @@ class NameService {
 
     def configService
     def restCallService
-    def classificationService
     def nameConstructionService
     def linkService
+    def treeService
     Scheduler quartzScheduler
 
     Set<String> restClients = []
@@ -123,8 +123,8 @@ class NameService {
         if (!reason) {
             errors << 'You need to supply a reason for deleting this name.'
         }
-        if (classificationService.isNameInAcceptedTree(name)) {
-            errors << "This name is in APC."
+        if (treeService.isNameInAnyTree(name)) {
+            errors << "This name is in a tree."
         }
         if (name.instances.size() > 0) {
             errors << 'There are instances that refer to this name'

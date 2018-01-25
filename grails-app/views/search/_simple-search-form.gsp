@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.Arrangement" %>
 <g:form name="search" role="form" controller="search" action="search" method="GET">
   <div class="form-group">
     <g:render template="/search/using-tree"/>

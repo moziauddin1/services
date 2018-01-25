@@ -44,7 +44,7 @@ class RestResourceController {
             return notFound("No name in $shard with id $idNumber found")
         }
         def links = linkService.getLinksForObject(name)
-        Map model = apniFormatService.getNameModel(name)
+        Map model = apniFormatService.getNameModel(name, null, false)
         model << [links: links]
         respond name, [model: model, status: OK]
     }
@@ -199,18 +199,7 @@ order by mx''', [idNumber: idNumber]).last()
         }
     }
 
-    @Timed()
-    def event(String shard, Long idNumber) {
-        Event event = Event.get(idNumber)
-        if (event == null) {
-            return notFound("No event in $shard with id $idNumber found")
-        }
-        def links = linkService.getLinksForObject(event)
-        respond event, [model: [event: event, links: links], status: OK]
-    }
-
     // not sure why this needs to be wrapped in a transaction
-
     @Timed()
     @Transactional
     def bulkFetch() {

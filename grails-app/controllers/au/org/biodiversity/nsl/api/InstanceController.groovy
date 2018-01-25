@@ -25,7 +25,7 @@ import static org.springframework.http.HttpStatus.FORBIDDEN
 import static org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED
 
 @Transactional
-class InstanceController implements UnauthenticatedHandler, WithTarget {
+class InstanceController implements WithTarget {
 
     def jsonRendererService
     def instanceService

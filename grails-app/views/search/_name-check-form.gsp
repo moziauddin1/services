@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.Arrangement" %>
 <g:form name="search" role="form" controller="search" action="nameCheck" method="POST" class="closable">
 
   <div class="form-group">

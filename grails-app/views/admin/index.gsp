@@ -222,24 +222,6 @@
                   </a>
                 </div>
               </li>
-              <li>
-                <a class=""
-                   href="${g.createLink(controller: "classification", action: "index")}">
-                  Manage classifications
-                </a>
-              </li>
-              <li>
-                <a class=""
-                   href="${g.createLink(controller: "classification", action: "validateClassifications")}">
-                  Validate classifications
-                </a>
-              </li>
-              <li>
-                <a class=""
-                   href="${g.createLink(controller: "classification", action: "rebuildNametreeForm")}">
-                  Rebuild name tree
-                </a>
-              </li>
             </ul>
           </div>
         </div>

@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.Arrangement" %>
 <g:if test="${query.product}">
   <input type="hidden" name="product" value="${query.product}">
   <input type="hidden" name="tree.id" value="${query.tree?.id}">

@@ -9,7 +9,7 @@ import org.codehaus.groovy.grails.web.json.JSONObject
 
 import static org.springframework.http.HttpStatus.*
 
-class TreeElementController implements WithTarget, ValidationUtils {
+class TreeElementController implements WithTarget {
 
     def treeService
     def treeReportService

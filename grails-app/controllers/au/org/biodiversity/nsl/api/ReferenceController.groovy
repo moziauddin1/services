@@ -28,7 +28,7 @@ import org.grails.plugins.metrics.groovy.Timed
 import static org.springframework.http.HttpStatus.*
 
 @Transactional
-class ReferenceController implements UnauthenticatedHandler, WithTarget {
+class ReferenceController implements WithTarget {
 
     def referenceService
     def jsonRendererService

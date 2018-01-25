@@ -3,7 +3,7 @@ package au.org.biodiversity.nsl.api
 import org.grails.plugins.metrics.groovy.Timed
 
 
-class ExportController implements UnauthenticatedHandler {
+class ExportController {
 
     def flatViewService
     def configService

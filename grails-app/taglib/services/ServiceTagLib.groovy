@@ -301,9 +301,9 @@ class ServiceTagLib {
     }
 
     def productBrief = { attrs ->
-        Arrangement arrangement = Arrangement.findByLabel(attrs.product)
+        Tree arrangement = Tree.findByName(attrs.product)
         if (arrangement) {
-            out << arrangement.description
+            out << arrangement.descriptionHtml
         } else {
             out << ''
         }

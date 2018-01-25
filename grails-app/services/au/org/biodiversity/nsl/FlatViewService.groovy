@@ -30,7 +30,7 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException
 
 
 @Transactional
-class FlatViewService implements WithSql{
+class FlatViewService implements WithSql {
 
     def grailsApplication
     def configService
@@ -544,6 +544,7 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
     Map taxonSearch(String name) {
         String nameQuery = name.toLowerCase()
         Map results = [:]
+        ensureView(TAXON_VIEW, taxonView)
         String query = "select * from $TAXON_VIEW where lower(\"canonicalName\") like ? or lower(\"scientificName\") like ? limit 100"
         List<Map> allResults = executeQuery(query, [nameQuery, nameQuery])
         List<Map> acceptedResults = allResults.findAll { Map result ->
@@ -561,6 +562,15 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
         }
         return results
 
+    }
+
+    private ensureView(viewName, Closure viewDefn) {
+        withSql { Sql sql ->
+            if (!viewExists(sql, viewName)) {
+                log.debug "creating $viewName view."
+                createView(configService.nameSpaceName.toLowerCase(), viewName, sql, viewDefn)
+            }
+        }
     }
 
     private static Boolean viewExists(Sql sql, String tableName) {
