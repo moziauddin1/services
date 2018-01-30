@@ -2,11 +2,13 @@
 
   <af:sortedInstances instances="${instances}" var="instance">
     <g:if test="${newPage}">
-      <ref-citation class="${instance.draft ? 'draft' : ''}">
-        %{--don't reformat the citationHtml line--}%
-        <st:preferredLink target="${instance}">${raw(reference?.citationHtml)}</st:preferredLink>:
-      </ref-citation>
-      <page><af:page instance="${instance}"/></page>
+      <span class="${instance.draft ? 'draft' : ''}">
+        <ref-citation>
+          %{--don't reformat the citationHtml line--}%
+          <st:preferredLink target="${instance}">${raw(reference?.citationHtml)}</st:preferredLink>:
+        </ref-citation>
+        <page><af:page instance="${instance}"/></page>
+      </span>
       <g:if test="${instance.sourceId && instance.sourceSystem == 'PLANT_NAME_REFERENCE'}">
         <protologue-pdf
             data-id="https://biodiversity.org.au/images/pnrid-pdf/${instance.sourceId}.pdf">

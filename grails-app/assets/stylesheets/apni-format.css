@@ -47,12 +47,9 @@ tree-note {
     display: inline;
 }
 
-ref-citation.draft:before {
+span.draft:after {
     content: '[DRAFT]';
-}
-
-ref-citation.draft {
-    color: green;
+    color: #730E15;
 }
 
 ul.instance-notes {
