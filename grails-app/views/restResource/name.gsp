@@ -81,7 +81,7 @@
               <st:preferredLink target="${instance.reference}"><i class="fa fa-book"></i></st:preferredLink>
             </span>
             <span class="vertbar">
-              <a href="${g.createLink(controller: 'search', params: [publication: instance.reference?.citation, search: true, advanced: true, display: 'apni'])}"
+              <a href="${g.createLink(controller: 'search', action: 'search', params: [publication: instance.reference?.citation, search: true, advanced: true, display: 'apni'])}"
                  title="Search for names in this reference.">
                 <i class="fa fa-search"></i></a>
             </span>
