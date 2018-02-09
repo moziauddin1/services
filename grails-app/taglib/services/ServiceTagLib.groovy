@@ -175,7 +175,7 @@ class ServiceTagLib {
     }
 
     def googleAnalytics = { attrs ->
-        String script = grailsApplication?.config?.services?.googleAnalytics
+        String script = grailsApplication?.config?.services?.scriptAddOns
         if (script) {
             out << script
         }
