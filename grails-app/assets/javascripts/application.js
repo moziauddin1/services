@@ -24,13 +24,6 @@ if (typeof jQuery !== 'undefined') {
     })(jQuery);
 }
 
-jQuery.ajax({
-    url: "https://www.anbg.gov.au/25jira/s/d41d8cd98f00b204e9800998ecf8427e/en-p174ip-1988229788/6265/3/1.4.7/_/download/batch/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector-embededjs/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector-embededjs.js?collectorId=30647d85",
-    type: "get",
-    cache: true,
-    dataType: "script"
-});
-
 $(function () {
 
     function worker() {
