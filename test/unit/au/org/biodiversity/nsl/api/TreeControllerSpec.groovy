@@ -13,6 +13,8 @@ import org.springframework.validation.FieldError
 import org.springframework.validation.ObjectError
 import spock.lang.Specification
 
+import java.sql.Timestamp
+
 /**
  * See the API for {@link grails.test.mixin.web.ControllerUnitTestMixin} for usage instructions
  */
@@ -285,8 +287,11 @@ class TreeControllerSpec extends Specification {
         def data = jsonCall('PUT', req) { controller.createVersion() }
 
         then: 'I should get an OK response'
-        1 * treeService.createTreeVersion(_, _, _) >> { Tree tree1, TreeVersion version, String draftName ->
-            TreeVersion v = new TreeVersion(tree: tree1, draftName: draftName)
+        1 * treeService.authorizeTreeOperation(tree) >> { Tree tree1 ->
+            "irma"
+        }
+        1 * treeService.createTreeVersion(_, _, _, _) >> { Tree tree1, TreeVersion version, String draftName, String userName ->
+            TreeVersion v = new TreeVersion(tree: tree1, draftName: draftName, createdBy: userName, createdAt: new Timestamp(System.currentTimeMillis()))
             v.save()
             return v
         }

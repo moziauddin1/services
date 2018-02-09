@@ -511,9 +511,9 @@ DROP TABLE IF EXISTS orphans;
         }
     }
 
-    TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName) {
+    TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName) {
         log.debug "create default draft version $draftName on $tree using $treeVersion"
-        tree.defaultDraftTreeVersion = createTreeVersion(tree, treeVersion, draftName)
+        tree.defaultDraftTreeVersion = createTreeVersion(tree, treeVersion, draftName, userName)
         tree.save()
         return tree.defaultDraftTreeVersion
     }
@@ -528,7 +528,7 @@ DROP TABLE IF EXISTS orphans;
         return treeVersion
     }
 
-    TreeVersion createTreeVersion(Tree tree, TreeVersion treeVersion, String draftName) {
+    TreeVersion createTreeVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName) {
         log.debug "create tree version $draftName on $tree using $treeVersion"
         if (!draftName) {
             throw new BadArgumentsException("Draft name is required and can't be blank.")
@@ -537,7 +537,9 @@ DROP TABLE IF EXISTS orphans;
         TreeVersion newVersion = new TreeVersion(
                 tree: tree,
                 previousVersion: fromVersion,
-                draftName: draftName
+                draftName: draftName,
+                createdBy: userName,
+                createdAt: new Timestamp(System.currentTimeMillis())
         )
         tree.addToTreeVersions(newVersion)
         tree.save(flush: true)
@@ -569,7 +571,9 @@ INSERT INTO tree_version_element (tree_version_id,
                                   taxon_link, 
                                   tree_path,
                                   name_path,
-                                  depth) 
+                                  depth,
+                                  updated_at,
+                                  updated_by) 
   (SELECT :toVersionId, 
           tve.tree_element_id, 
           regexp_replace(tve.parent_id,  :fromVersionIdMatch, :toVersionIdMatch) ,
@@ -578,7 +582,9 @@ INSERT INTO tree_version_element (tree_version_id,
           tve.taxon_link,
           tve.tree_path,
           tve.name_path,
-          tve.depth
+          tve.depth,
+          tve.updated_at,
+          tve.updated_by
    FROM tree_version_element tve WHERE tree_version_id = :fromVersionId)''',
                 [fromVersionId     : fromVersion.id,
                  toVersionId       : toVersion.id,
@@ -631,7 +637,7 @@ INSERT INTO tree_version_element (tree_version_id,
         //will throw exceptions for invalid placements, not warnings
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
-        TreeVersionElement childElement = saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null)
+        TreeVersionElement childElement = saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null, userName)
         updateParentTaxaId(parentElement)
 
         String message = "#### Placed ${childElement.treeElement.name.fullName} ####"
@@ -664,7 +670,7 @@ INSERT INTO tree_version_element (tree_version_id,
         taxonData.profile = profile
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
-        TreeVersionElement childElement = saveTreeVersionElement(treeElement, null, treeVersion, nextSequenceId(), null)
+        TreeVersionElement childElement = saveTreeVersionElement(treeElement, null, treeVersion, nextSequenceId(), null, userName)
 
         return [childElement: childElement, warnings: [], message: "#### Placed ${childElement.treeElement.name.fullName} ####"]
     }
@@ -707,7 +713,7 @@ INSERT INTO tree_version_element (tree_version_id,
         List<String> warnings = validateReplacementElement(parentTve, currentTve, taxonData)
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, currentTve.treeElement, userName)
-        TreeVersionElement replacementTve = saveTreeVersionElement(treeElement, parentTve, nextSequenceId(), null)
+        TreeVersionElement replacementTve = saveTreeVersionElement(treeElement, parentTve, nextSequenceId(), null, userName)
         updateParentId(currentTve, replacementTve)
         updateChildTreePath(replacementTve, currentTve)
         updateChildNamePath(replacementTve, currentTve)
@@ -829,13 +835,13 @@ INSERT INTO tree_version_element (tree_version_id,
         TreeElement foundElement = findTreeElement(elementData)
         if (foundElement) {
             log.debug "Reusing $foundElement"
-            return changeElement(treeVersionElement, foundElement)
+            return changeElement(treeVersionElement, foundElement, userName)
         }
 
         //if this is not a draft only element clone it
         if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
             TreeElement copiedElement = copyTreeElement(treeVersionElement.treeElement, userName)
-            treeVersionElement = changeElement(treeVersionElement, copiedElement)
+            treeVersionElement = changeElement(treeVersionElement, copiedElement, userName)
             //don't update taxonId above as the taxon hasn't changed
         } else {
             treeVersionElement.treeElement.updatedBy = userName
@@ -882,13 +888,13 @@ INSERT INTO tree_version_element (tree_version_id,
         elementData.excluded = excluded
         TreeElement foundElement = findTreeElement(elementData)
         if (foundElement) {
-            return changeElement(treeVersionElement, foundElement)
+            return changeElement(treeVersionElement, foundElement, userName)
         }
 
         //if this is not a draft only element clone it
         if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
             TreeElement copiedElement = copyTreeElement(treeVersionElement.treeElement, userName)
-            treeVersionElement = changeElement(treeVersionElement, copiedElement)
+            treeVersionElement = changeElement(treeVersionElement, copiedElement, userName)
             //don't update taxonId above as the taxon hasn't changed
         } else {
             treeVersionElement.treeElement.updatedBy = userName
@@ -911,10 +917,9 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param userName
      * @return the replacement tree version element
      */
-    private TreeVersionElement changeElement(TreeVersionElement treeVersionElement, TreeElement newElement) {
-        TreeVersionElement replacementTve = treeVersionElement.parent ?
-                saveTreeVersionElement(newElement, treeVersionElement.parent, treeVersionElement.taxonId, treeVersionElement.taxonLink) :
-                saveTreeVersionElement(newElement, null, treeVersionElement.treeVersion, treeVersionElement.taxonId, treeVersionElement.taxonLink)
+    private TreeVersionElement changeElement(TreeVersionElement treeVersionElement, TreeElement newElement, String userName) {
+        TreeVersionElement replacementTve = saveTreeVersionElement(newElement, treeVersionElement.parent,
+                treeVersionElement.treeVersion, treeVersionElement.taxonId, treeVersionElement.taxonLink, userName)
         updateChildTreePath(replacementTve, treeVersionElement)
         updateParentId(treeVersionElement, replacementTve)
         deleteTreeVersionElement(treeVersionElement)
@@ -1078,11 +1083,11 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         ]
     }
 
-    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersionElement parentTve, Long taxonId, String taxonLink) {
-        saveTreeVersionElement(element, parentTve, parentTve.treeVersion, taxonId, taxonLink)
+    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersionElement parentTve, Long taxonId, String taxonLink, String userName) {
+        saveTreeVersionElement(element, parentTve, parentTve.treeVersion, taxonId, taxonLink, userName)
     }
 
-    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersionElement parentTve, TreeVersion version, Long taxonId, String taxonLink) {
+    private TreeVersionElement saveTreeVersionElement(TreeElement element, TreeVersionElement parentTve, TreeVersion version, Long taxonId, String taxonLink, String userName) {
         TreeVersionElement treeVersionElement = new TreeVersionElement(
                 treeElement: element,
                 treeVersion: version,
@@ -1090,7 +1095,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                 taxonId: taxonId,
                 treePath: makeTreePath(parentTve, element),
                 namePath: makeNamePath(parentTve, element),
-                depth: (parentTve?.depth ?: 0) + 1
+                depth: (parentTve?.depth ?: 0) + 1,
+                updatedBy: userName,
+                updatedAt: new Timestamp(System.currentTimeMillis())
         )
 
         treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)

@@ -143,7 +143,7 @@ class TreeServiceSpec extends Specification {
         tree
 
         when: 'I create a new version on a new tree without a version'
-        TreeVersion version = service.createTreeVersion(tree, null, 'my first draft')
+        TreeVersion version = service.createTreeVersion(tree, null, 'my first draft', 'irma')
 
         then: 'A new version is created on that tree'
         version
@@ -163,7 +163,7 @@ class TreeServiceSpec extends Specification {
         version.treeVersionElements.contains(TreeVersionElement.findByTreeElementAndTreeVersion(testElements[23], version))
 
         when: 'I make a new version from this version'
-        TreeVersion version2 = service.createTreeVersion(tree, version, 'my second draft')
+        TreeVersion version2 = service.createTreeVersion(tree, version, 'my second draft', 'irma')
         println version2.treeVersionElements
 
         then: 'It should copy the elements and set the previous version'
@@ -190,7 +190,7 @@ class TreeServiceSpec extends Specification {
         tree.currentTreeVersion == version2published
 
         when: 'I create a default draft'
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
 
         then: 'It copies the current version and sets it as the defaultDraft'
         draftVersion
@@ -231,10 +231,10 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft', 'irma')
 
         expect:
         tree
@@ -269,10 +269,10 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft', 'irma')
 
         expect:
         tree
@@ -333,7 +333,7 @@ class TreeServiceSpec extends Specification {
     def "test check validation, existing instance"() {
         given:
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion,
                 [TreeTstHelper.blechnaceaeElementData,
                  TreeTstHelper.doodiaElementData,
@@ -369,7 +369,7 @@ class TreeServiceSpec extends Specification {
     def "test check validation, ranked above parent"() {
         given:
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, [TreeTstHelper.blechnaceaeElementData, TreeTstHelper.asperaElementData],
                 [TreeTstHelper.blechnaceaeTVEData, TreeTstHelper.asperaTVEData])
         Instance doodiaInstance = Instance.get(578615)
@@ -408,7 +408,7 @@ class TreeServiceSpec extends Specification {
     def "test check validation, nomIlleg nomInval"() {
         given:
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, [TreeTstHelper.blechnaceaeElementData, TreeTstHelper.asperaElementData],
                 [TreeTstHelper.blechnaceaeTVEData, TreeTstHelper.asperaTVEData])
         Instance doodiaInstance = Instance.get(578615)
@@ -449,7 +449,7 @@ class TreeServiceSpec extends Specification {
     def "test check validation, existing name"() {
         given:
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, [TreeTstHelper.blechnaceaeElementData, TreeTstHelper.doodiaElementData, TreeTstHelper.asperaElementData],
                 [TreeTstHelper.blechnaceaeTVEData, TreeTstHelper.doodiaTVEData, TreeTstHelper.asperaTVEData])
         Instance asperaInstance = Instance.get(781104)
@@ -480,10 +480,10 @@ class TreeServiceSpec extends Specification {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, [TreeTstHelper.blechnaceaeElementData, TreeTstHelper.doodiaElementData], [TreeTstHelper.blechnaceaeTVEData, TreeTstHelper.doodiaTVEData])
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft', 'irma')
 
         Instance asperaInstance = Instance.get(781104)
         TreeVersionElement blechnaceaeElement = service.findElementBySimpleName('Blechnaceae', draftVersion)
@@ -542,10 +542,10 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
-        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft', 'irma')
         List<TreeElement> testElements = TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft', 'irma')
         TreeVersionElement anthocerotaceaeTve = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
         TreeVersionElement anthocerosTve = service.findElementBySimpleName('Anthoceros', draftVersion)
         TreeVersionElement dendrocerotaceaeTve = service.findElementBySimpleName('Dendrocerotaceae', draftVersion)
@@ -647,10 +647,10 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
-        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft', 'irma')
         List<TreeElement> testElements = TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft', 'irma')
 
         TreeVersionElement anthocerotalesTve = service.findElementBySimpleName('Anthocerotales', draftVersion)
         TreeVersionElement dendrocerotidaeTve = service.findElementBySimpleName('Dendrocerotidae', draftVersion)
@@ -727,7 +727,7 @@ class TreeServiceSpec extends Specification {
         given:
         service.linkService.bulkAddTargets(_) >> [success: true]
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
 
         Instance asperaInstance = Instance.get(781104)
         String instanceUri = 'http://localhost:7070/nsl-mapper/instance/apni/781104'
@@ -767,10 +767,10 @@ class TreeServiceSpec extends Specification {
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
-        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft', 'irma')
         List<TreeElement> testElements = TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft', 'irma')
 
         TreeVersionElement anthocerotaceae = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
@@ -810,10 +810,10 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft', 'irma')
         TreeVersionElement anthocerosTve = service.findElementBySimpleName('Anthoceros', draftVersion)
         TreeVersionElement pubAnthocerosTve = service.findElementBySimpleName('Anthoceros', publishedVersion)
 
@@ -885,7 +885,7 @@ class TreeServiceSpec extends Specification {
     def "test edit draft only taxon profile"() {
         given:
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
 
@@ -928,10 +928,10 @@ class TreeServiceSpec extends Specification {
         service.linkService.bulkAddTargets(_) >> [success: true]
         service.linkService.bulkRemoveTargets(_) >> [success: true]
         Tree tree = makeATestTree()
-        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft')
+        TreeVersion draftVersion = service.createDefaultDraftVersion(tree, null, 'my default draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         TreeVersion publishedVersion = service.publishTreeVersion(draftVersion, 'tester', 'publishing to delete')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my next draft', 'irma')
         TreeVersionElement anthoceros = service.findElementBySimpleName('Anthoceros', draftVersion)
         TreeVersionElement pubAnthoceros = service.findElementBySimpleName('Anthoceros', publishedVersion)
 
@@ -985,11 +985,11 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
-        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft')
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft', 'irma')
         TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
         TreeTstHelper.makeTestElements(draftVersion, [TreeTstHelper.doodiaElementData], [TreeTstHelper.doodiaTVEData]).first()
         service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
-        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft', 'irma')
 
         TreeVersionElement anthocerosTve = service.findElementBySimpleName('Anthoceros', draftVersion)
         TreeVersionElement doodiaTve = service.findElementBySimpleName('Doodia', draftVersion)

@@ -88,13 +88,13 @@ class TreeController implements WithTarget {
 
             Tree tree = Tree.get(treeId)
             if (tree) {
-                treeService.authorizeTreeOperation(tree)
+                String userName = treeService.authorizeTreeOperation(tree)
 
                 TreeVersion fromVersion = TreeVersion.get(fromVersionId)
                 if (defaultVersion) {
-                    results.payload = treeService.createDefaultDraftVersion(tree, fromVersion, draftName)
+                    results.payload = treeService.createDefaultDraftVersion(tree, fromVersion, draftName, userName)
                 } else {
-                    results.payload = treeService.createTreeVersion(tree, fromVersion, draftName)
+                    results.payload = treeService.createTreeVersion(tree, fromVersion, draftName, userName)
                 }
             } else {
                 results.ok = false

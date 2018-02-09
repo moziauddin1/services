@@ -1,5 +1,7 @@
 package au.org.biodiversity.nsl
 
+import java.sql.Timestamp
+
 /**
  * User: pmcneil
  * Date: 8/01/18
@@ -17,7 +19,7 @@ class TreeTstHelper {
             generatedIdMapper.put(data.id as Long, e.id as Long)
             elements.add(e)
         }
-
+        Timestamp now = new Timestamp(System.currentTimeMillis())
         Map<String, String> elementLinkMapper = [:]
         tveData.each { Map data ->
 
@@ -27,6 +29,8 @@ class TreeTstHelper {
             tve.elementLink = "http://localhost:7070/nsl-mapper/tree/$version.id/$data.treeElementId"
             tve.treePath = filterTreePath(generatedIdMapper, data.treePath)
             tve.parent = TreeVersionElement.get(elementLinkMapper[data.parentId])
+            tve.updatedBy = 'tester'
+            tve.updatedAt = now
             elementLinkMapper.put(data.elementLink, tve.elementLink)
             tve.save()
         }
