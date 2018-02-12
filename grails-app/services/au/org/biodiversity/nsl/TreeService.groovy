@@ -511,9 +511,9 @@ DROP TABLE IF EXISTS orphans;
         }
     }
 
-    TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName) {
+    TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName, String logEntry) {
         log.debug "create default draft version $draftName on $tree using $treeVersion"
-        tree.defaultDraftTreeVersion = createTreeVersion(tree, treeVersion, draftName, userName)
+        tree.defaultDraftTreeVersion = createTreeVersion(tree, treeVersion, draftName, userName, logEntry)
         tree.save()
         return tree.defaultDraftTreeVersion
     }
@@ -528,7 +528,7 @@ DROP TABLE IF EXISTS orphans;
         return treeVersion
     }
 
-    TreeVersion createTreeVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName) {
+    TreeVersion createTreeVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName, String logEntry) {
         log.debug "create tree version $draftName on $tree using $treeVersion"
         if (!draftName) {
             throw new BadArgumentsException("Draft name is required and can't be blank.")
@@ -538,6 +538,7 @@ DROP TABLE IF EXISTS orphans;
                 tree: tree,
                 previousVersion: fromVersion,
                 draftName: draftName,
+                logEntry: logEntry,
                 createdBy: userName,
                 createdAt: new Timestamp(System.currentTimeMillis())
         )

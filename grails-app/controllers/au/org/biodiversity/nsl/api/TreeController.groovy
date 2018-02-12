@@ -84,6 +84,7 @@ class TreeController implements WithTarget {
             Long treeId = data.treeId
             Long fromVersionId = data.fromVersionId
             String draftName = data.draftName
+            String logEntry = data.log
             Boolean defaultVersion = data.defaultDraft
 
             Tree tree = Tree.get(treeId)
@@ -92,9 +93,9 @@ class TreeController implements WithTarget {
 
                 TreeVersion fromVersion = TreeVersion.get(fromVersionId)
                 if (defaultVersion) {
-                    results.payload = treeService.createDefaultDraftVersion(tree, fromVersion, draftName, userName)
+                    results.payload = treeService.createDefaultDraftVersion(tree, fromVersion, draftName, userName, logEntry)
                 } else {
-                    results.payload = treeService.createTreeVersion(tree, fromVersion, draftName, userName)
+                    results.payload = treeService.createTreeVersion(tree, fromVersion, draftName, userName, logEntry)
                 }
             } else {
                 results.ok = false
