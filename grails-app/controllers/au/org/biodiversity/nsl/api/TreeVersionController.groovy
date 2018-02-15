@@ -15,11 +15,11 @@ class TreeVersionController implements WithTarget {
     def linkService
 
     static responseFormats = [
-            deleteTreeVersion         : ['json', 'html'],
+            delete                    : ['json', 'html'],
             setDefaultDraftTreeVersion: ['json', 'html'],
-            editTreeVersion           : ['json', 'html'],
-            validateTreeVersion       : ['json', 'html'],
-            publishTreeVersion        : ['json', 'html'],
+            edit                      : ['json', 'html'],
+            validate                  : ['json', 'html'],
+            publish                   : ['json', 'html'],
     ]
 
     static allowedMethods = [
@@ -28,7 +28,7 @@ class TreeVersionController implements WithTarget {
             setDefaultDraftTreeVersion: ['PUT'],
             editTreeVersion           : ['POST'],
             validate                  : ['GET'],
-            publishTreeVersion        : ['PUT'],
+            publish                   : ['PUT'],
     ]
 
     def delete(Long id) {

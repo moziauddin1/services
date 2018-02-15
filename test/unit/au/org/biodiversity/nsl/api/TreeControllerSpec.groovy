@@ -290,8 +290,8 @@ class TreeControllerSpec extends Specification {
         1 * treeService.authorizeTreeOperation(tree) >> { Tree tree1 ->
             "irma"
         }
-        1 * treeService.createTreeVersion(_, _, _, _) >> { Tree tree1, TreeVersion version, String draftName, String userName ->
-            TreeVersion v = new TreeVersion(tree: tree1, draftName: draftName, createdBy: userName, createdAt: new Timestamp(System.currentTimeMillis()))
+        1 * treeService.createTreeVersion(_, _, _, _, _) >> { Tree tree1, TreeVersion version, String draftName, String userName, String logEntry ->
+            TreeVersion v = new TreeVersion(tree: tree1, draftName: draftName, logEntry: logEntry, createdBy: userName, createdAt: new Timestamp(System.currentTimeMillis()))
             v.save()
             return v
         }
