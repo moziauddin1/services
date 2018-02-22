@@ -1,16 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="layout" content="main">
-  <title>Tree</title>
-  <asset:stylesheet src="tree.css"/>
-
-</head>
-
-<body>
 <div class="rest-resource-content tree-gsp">
+  <h2>Changes to ${data.payload.v1.tree.name} in ${data.payload.v2.draftName}</h2>
+
   <g:if test="${data.payload.changed == false}">
-    <h1>Nothing to see here.</h1>
+    <h3>Nothing to see here.</h3>
 
     <p>We have no changes, nothing, zip.</p>
   </g:if>
@@ -20,8 +12,7 @@
     <p>We have changes, so many changes.</p>
   </g:elseif>
   <g:else>
-
-    <h1>Added</h1>
+    <h3>Added</h3>
 
     <g:if test="${data.payload?.added}">
       <table class="table">
@@ -36,7 +27,7 @@
       <p>nothing</p>
     </g:else>
 
-    <h1>Removed</h1>
+    <h3>Removed</h3>
 
     <g:if test="${data.payload?.removed}">
       <table class="table">
@@ -51,7 +42,7 @@
       <p>nothing</p>
     </g:else>
 
-    <h1>Modified</h1>
+    <h3>Modified</h3>
 
     <g:if test="${data.payload?.modified}">
 
@@ -63,25 +54,12 @@
         </tr>
         </thead>
         <g:each in="${data.payload?.modified}" var="mod">
-          <tr class="toggleNextRow">
+          <tr>
             <td class="diffBefore">
-              <g:render template="treeElementSideBySide" model="[tve: mod[1]]"/>
-              (=)<i class="fa fa-caret-up"></i><i class="fa fa-caret-down" style="display: none"></i>
+              <g:render template="treeElement" model="[tve: mod[1]]"/>
             </td>
             <td class="diffAfter">
-              <g:render template="treeElementSideBySide" model="[tve: mod[0]]"/>
-            </td>
-          </tr>
-          <tr style="display: none">
-            <td class="diffBefore">
-              <div class="tr">
-                ${raw(mod[1].treeElement.synonymsHtml)}
-              </div>
-            </td>
-            <td class="diffAfter">
-              <div class="tr">
-                ${raw(mod[0].treeElement.synonymsHtml)}
-              </div>
+              <g:render template="treeElement" model="[tve: mod[0]]"/>
             </td>
           </tr>
         </g:each>
@@ -92,6 +70,3 @@
     </g:else>
   </g:else>
 </div>
-
-</body>
-</html>

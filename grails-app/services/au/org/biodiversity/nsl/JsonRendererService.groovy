@@ -425,8 +425,8 @@ class JsonRendererService {
         TreeElement treeElement = treeVersionElement.treeElement
         return [treeElement:
                         [
-                                class        : treeElement.class.name,
-                                _links       : [
+                                class           : treeElement.class.name,
+                                _links          : [
                                         elementLink      : treeVersionElement.elementLink,
                                         taxonLink        : treeVersionElement.taxonLink,
                                         parentElementLink: treeVersionElement.parent?.elementLink,
@@ -434,15 +434,19 @@ class JsonRendererService {
                                         instanceLink     : treeElement.instanceLink,
                                         sourceElementLink: treeElement.sourceElementLink,
                                 ],
-                                tree         : briefTree(treeVersionElement.treeVersion.tree),
-                                simpleName   : treeElement.simpleName,
-                                namePath     : treeVersionElement.namePath,
-                                treePath     : treeVersionElement.treePath,
-                                displayString: treeElement.displayHtml,
-                                sourceShard  : treeElement.sourceShard,
-                                synonyms     : treeElement.synonyms,
-                                profile      : treeElement.profile,
-                                children     : treeElementChildren(treeVersionElement)
+                                tree            : briefTree(treeVersionElement.treeVersion.tree),
+                                simpleName      : treeElement.simpleName,
+                                namePath        : treeVersionElement.namePath,
+                                treePath        : treeVersionElement.treePath,
+                                displayString   : treeElement.displayHtml,
+                                sourceShard     : treeElement.sourceShard,
+                                synonyms        : treeElement.synonyms,
+                                profile         : treeElement.profile,
+                                children        : treeElementChildren(treeVersionElement),
+                                versionUpdatedBy: treeVersionElement.updatedBy,
+                                versionUpdatedAt: treeVersionElement.updatedAt,
+                                elementUpdatedBy: treeElement.updatedBy,
+                                elementUpdatedAt: treeElement.updatedAt
                         ]
         ]
     }
@@ -462,7 +466,9 @@ class JsonRendererService {
                                 displayString: treeElement.displayHtml,
                                 sourceShard  : treeElement.sourceShard,
                                 synonyms     : treeElement.synonyms,
-                                profile      : treeElement.profile
+                                profile      : treeElement.profile,
+                                updatedBy    : treeElement.updatedBy,
+                                updatedAt    : treeElement.updatedAt
                         ],
                 NOTE       : 'You probably want a TreeVersionElement'
         ]

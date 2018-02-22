@@ -844,14 +844,15 @@ INSERT INTO tree_version_element (tree_version_id,
             TreeElement copiedElement = copyTreeElement(treeVersionElement.treeElement, userName)
             treeVersionElement = changeElement(treeVersionElement, copiedElement, userName)
             //don't update taxonId above as the taxon hasn't changed
-        } else {
-            treeVersionElement.treeElement.updatedBy = userName
-            treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
         }
+
+        Timestamp now = new Timestamp(System.currentTimeMillis())
 
         treeVersionElement.treeElement.profile = profile
         treeVersionElement.treeElement.updatedBy = userName
-        treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
+        treeVersionElement.treeElement.updatedAt = now
+        treeVersionElement.updatedBy = userName
+        treeVersionElement.updatedAt = now
         treeVersionElement.save()
         return treeVersionElement
     }
@@ -1181,7 +1182,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion, excluding)
         if (!existingSynonyms.empty) {
             String synonyms = existingSynonyms.collect {
-                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of [${it.simpleName} (${it.nameId})](${it.existing} '${it.existing}')."
+                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of ${it.displayHtml} [Tree link](${it.existing} '${it.existing}')"
             }.join(',\n')
             throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name *${taxonData.simpleName}*:\n\n" +
                     synonyms +
@@ -1213,7 +1214,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //a name can't be in the tree already
         TreeVersionElement existingNameElement = findElementForNameLink(taxonData.nameLink, treeVersion)
         if (existingNameElement) {
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name ${taxonData.nameLink}. See ${existingNameElement.elementLink}")
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name [${taxonData.simpleName}]${taxonData.nameLink}. See ${existingNameElement.elementLink}")
         }
     }
 
@@ -1234,6 +1235,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 SELECT
   el.name_id as name_id,
   el.simple_name as simple_name,
+  el.display_html as display_html,
   tax_syn as synonym,
   synonyms -> tax_syn ->> 'type' as syn_type,
   synonyms -> tax_syn ->> 'name_id' as syn_id,
@@ -1245,7 +1247,7 @@ WHERE tve.tree_version_id = :versionId
 and tve.element_link not in ($excludedLinks)
       AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
       AND (synonyms -> tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
-            synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id, existing: row.element_link]
+            synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, displayHtml: row.display_html, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id, existing: row.element_link]
         }
         return synonymsFound
     }

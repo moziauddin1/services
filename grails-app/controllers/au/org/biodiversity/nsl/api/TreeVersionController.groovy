@@ -20,6 +20,7 @@ class TreeVersionController implements WithTarget {
             edit                      : ['json', 'html'],
             validate                  : ['json', 'html'],
             publish                   : ['json', 'html'],
+            diff                      : ['json', 'html'],
     ]
 
     static allowedMethods = [
@@ -29,6 +30,7 @@ class TreeVersionController implements WithTarget {
             editTreeVersion           : ['POST'],
             validate                  : ['GET'],
             publish                   : ['PUT'],
+            diff                      : ['GET']
     ]
 
     def delete(Long id) {
@@ -88,7 +90,34 @@ class TreeVersionController implements WithTarget {
         }
     }
 
-    private handleResults(ResultObject results, Closure work) {
+    def diff(Long v1, Long v2, Boolean embed) {
+        ResultObject results = require('Version 1 ID': v1, 'Version 2 ID': v2)
+
+        handleResults(results, { diffRespond(results, embed) }) {
+            TreeVersion first = TreeVersion.get(v1)
+            if (!first) {
+                throw new ObjectNotFoundException("Version $v1, not found.")
+            }
+            TreeVersion second = TreeVersion.get(v2)
+            if (!second) {
+                throw new ObjectNotFoundException("Version $v2, not found.")
+            }
+            results.payload = treeReportService.diffReport(first, second)
+        }
+    }
+
+    private diffRespond(ResultObject resultObject, Boolean embed) {
+        log.debug "result status is ${resultObject.status} $resultObject"
+        if (embed) {
+            //noinspection GroovyAssignabilityCheck
+            respond(resultObject, [view: '_diffContent', model: [data: resultObject], status: resultObject.remove('status')])
+        } else {
+            //noinspection GroovyAssignabilityCheck
+            respond(resultObject, [view: 'diff', model: [data: resultObject], status: resultObject.remove('status')])
+        }
+    }
+
+    private handleResults(ResultObject results, Closure response, Closure work) {
         if (results.ok) {
             try {
                 work()
@@ -116,10 +145,15 @@ class TreeVersionController implements WithTarget {
                 log.error("$notFound.message : $results")
             } catch (PublishedVersionException published) {
                 results.ok = false
-                results.fail(published.message, BAD_REQUEST)
+                results.fail(published.message, CONFLICT)
+                log.error("$published.message : $results")
             }
         }
-        serviceRespond(results)
+        response()
+    }
+
+    private handleResults(ResultObject results, Closure work) {
+        handleResults(results, { serviceRespond(results) }, work)
     }
 
     private serviceRespond(ResultObject resultObject) {

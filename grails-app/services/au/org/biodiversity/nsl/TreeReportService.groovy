@@ -30,11 +30,11 @@ class TreeReportService implements ValidationUtils {
             List<Long> treeElementsNotInSecond = first.notIn(second, sql)
             List<Long> treeElementsNotInFirst = second.notIn(first, sql)
             if (treeElementsNotInSecond.empty && treeElementsNotInFirst.empty) {
-                return [added: [], removed: [], modified: [], changed: false, overflow: false]
+                return [v1: first, v2: second, added: [], removed: [], modified: [], changed: false, overflow: false]
             }
 
             if (treeElementsNotInSecond.size() > 1000 || treeElementsNotInFirst.size() > 1000) {
-                return [added: [], removed: [], modified: [], changed: true, overflow: true]
+                return [v1: first, v2: second, added: [], removed: [], modified: [], changed: true, overflow: true]
             }
 
             List<List<TreeVersionElement>> modified = findModified(first, second, treeElementsNotInFirst)
@@ -45,7 +45,7 @@ class TreeReportService implements ValidationUtils {
             List<Long> treeElementsRemovedFromSecond = treeElementsNotInSecond - modified.collect { mod -> mod[0].treeElement.previousElement.id }
             List<TreeVersionElement> removed = getTvesInVersion(treeElementsRemovedFromSecond, first)
 
-            [added: added, removed: removed, modified: modified, changed: true, overflow: false]
+            [v1: first, v2: second, added: added, removed: removed, modified: modified, changed: true, overflow: false]
         }
     }
 

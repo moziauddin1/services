@@ -10,6 +10,7 @@
 //= require jquery.cookie
 //= require bootstrap
 //= require apniFormat
+//= require jquery-dateFormat.min
 //= require_self
 
 var pendingReload = false;
@@ -161,6 +162,13 @@ function send(data, method, url) {
     });
 }
 
+function replaceDates() {
+    $('date').each(function (element) {
+        var d = $(this).html();
+        $(this).html(jQuery.format.prettyDate(d));
+        $(this).html(jQuery.format.prettyDate(d));
+    });
+}
 
 $(function () {
 
@@ -290,4 +298,6 @@ $(function () {
     $('#deleteDraftForm').on('submit', function (event) {
         deleteDraftData(event);
     });
+
+    replaceDates();
 });
