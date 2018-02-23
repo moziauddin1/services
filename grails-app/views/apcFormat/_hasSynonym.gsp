@@ -25,13 +25,14 @@
         <name-status class="${synonym.name.nameStatus.name}">${synonym.name.nameStatus.name}</name-status>
         sensu
       </g:else>
+
       <g:if test="${synonym.cites}">
         ${raw(synonym.cites.reference.citationHtml)}<g:if
           test="${synonym.instanceType.proParte}">, p.p.</g:if>: ${synonym?.cites?.page ?: '-'}
       </g:if>
       <g:else>
       %{--unsourced reference--}%
-        UNSOURCED
+        <g:if test="${synonym.instanceType.proParte}">, p.p.</g:if> UNSOURCED
       </g:else>
 
     </has-synonym>
