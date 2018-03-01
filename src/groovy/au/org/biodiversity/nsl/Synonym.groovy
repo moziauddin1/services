@@ -16,9 +16,11 @@ class Synonym {
     final Boolean tax
     final Boolean mis
     final String cites
+    final Long year
 
     Synonym(Instance synonymInstance, String nameLink) {
         instance = synonymInstance
+        year = instance.cites?.reference?.year
         simpleName = synonymInstance.name.simpleName
         type = synonymInstance.instanceType.name
         nameId = synonymInstance.name.id
@@ -32,6 +34,7 @@ class Synonym {
 
     Synonym(Map synonymMap) {
         instance = Instance.get(synonymMap.instance_id as Long)
+        year = instance?.cites?.reference?.year
         simpleName = synonymMap.simple_name as String
         type = synonymMap.type as String
         nameId = synonymMap.name_id
@@ -75,7 +78,7 @@ class Synonyms {
     @Delegate
     final List<Synonym> synonyms = []
     Closure sortSyn = { a, b ->
-        a.simpleName <=> b.simpleName ?: a.instance.reference.year <=> a.instance.reference.year
+        a.simpleName <=> b.simpleName ?: a.year <=> b.year
     }
 
     Synonyms() {}
