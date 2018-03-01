@@ -634,8 +634,8 @@ INSERT INTO tree_version_element (tree_version_id,
         notPublished(parentElement)
         taxonData.excluded = excluded
         taxonData.profile = profile
-        List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
         //will throw exceptions for invalid placements, not warnings
+        List<String> warnings = validateNewElementPlacement(parentElement, taxonData)
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
         TreeVersionElement childElement = saveTreeVersionElement(treeElement, parentElement, nextSequenceId(), null, userName)
@@ -669,11 +669,13 @@ INSERT INTO tree_version_element (tree_version_id,
         notPublished(treeVersion)
         taxonData.excluded = excluded
         taxonData.profile = profile
+        //will throw exceptions for invalid placements, not warnings
+        List<String> warnings = validateNewElementTopPlacement(treeVersion, taxonData)
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, null, userName)
         TreeVersionElement childElement = saveTreeVersionElement(treeElement, null, treeVersion, nextSequenceId(), null, userName)
 
-        return [childElement: childElement, warnings: [], message: "#### Placed ${childElement.treeElement.name.fullName} ####"]
+        return [childElement: childElement, warnings: warnings, message: "#### Placed ${childElement.treeElement.name.fullName} ####"]
     }
 
     /**
@@ -1033,29 +1035,19 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
     protected
     static TreeElement makeTreeElementFromTaxonData(TaxonData taxonData, TreeElement previousElement, String userName) {
-        new TreeElement(
-                previousElement: previousElement,
-                instanceId: taxonData.instanceId,
-                nameId: taxonData.nameId,
-                excluded: taxonData.excluded,
-                displayHtml: taxonData.displayHtml,
-                synonymsHtml: taxonData.synonymsHtml,
-                simpleName: taxonData.simpleName,
-                nameElement: taxonData.nameElement,
-                rank: taxonData.rank,
-                sourceShard: taxonData.sourceShard,
-                synonyms: taxonData.synonyms,
-                profile: taxonData.profile,
-                sourceElementLink: null,
-                nameLink: taxonData.nameLink,
-                instanceLink: taxonData.instanceLink,
-                updatedBy: userName,
-                updatedAt: new Timestamp(System.currentTimeMillis())
-        ).save()
+        TreeElement element = new TreeElement(taxonData.asMap())
+        element.previousElement = previousElement
+        element.updatedBy = userName
+        element.updatedAt = new Timestamp(System.currentTimeMillis())
+        element.sourceElementLink = null
+        element.save()
     }
 
     private static findTreeElement(Map treeElementData) {
-        TreeElement.findWhere(treeElementData)
+        // find where doesn't like the synonyms field, so we remove it. TODO figure out why
+        List<Map> synonyms = treeElementData.remove('synonyms') as List<Map>
+        TreeElement e = TreeElement.findWhere(treeElementData)
+        return (e?.synonyms == synonyms) ? e : null
     }
 
     private static TreeElement findTreeElement(TaxonData taxonData) {
@@ -1066,7 +1058,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                  simpleName : taxonData.simpleName,
                  nameElement: taxonData.nameElement,
                  sourceShard: taxonData.sourceShard,
-                 synonyms   : taxonData.synonyms,
+                 synonyms   : taxonData.synonyms.asListMap(),
                  profile    : taxonData.profile
                 ]
         )
@@ -1129,11 +1121,10 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
     }
 
     protected List<String> validateNewElementPlacement(TreeVersionElement parentElement, TaxonData taxonData) {
-        List<String> warnings
 
         TreeVersion treeVersion = parentElement.treeVersion
 
-        warnings = checkNameValidity(taxonData)
+        List<String> warnings = checkNameValidity(taxonData)
         checkInstanceOnTree(taxonData, treeVersion)
         checkNameAlreadyOnTree(taxonData, treeVersion)
 
@@ -1154,11 +1145,10 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
     }
 
     protected List<String> validateReplacementElement(TreeVersionElement parentElement, TreeVersionElement currentTve, TaxonData taxonData) {
-        List<String> warnings
 
         TreeVersion treeVersion = parentElement.treeVersion
 
-        warnings = checkNameValidity(taxonData)
+        List<String> warnings = checkNameValidity(taxonData)
         checkInstanceOnTree(taxonData, treeVersion)
 
         NameRank taxonRank = NameRank.findByName(taxonData.rank)
@@ -1174,6 +1164,14 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         checkForExistingSynonyms(taxonData, treeVersion, [currentTve])
 
+        return warnings
+    }
+
+    protected List<String> validateNewElementTopPlacement(TreeVersion treeVersion, TaxonData taxonData) {
+        List<String> warnings = checkNameValidity(taxonData)
+        checkInstanceOnTree(taxonData, treeVersion)
+        checkNameAlreadyOnTree(taxonData, treeVersion)
+        checkForExistingSynonyms(taxonData, treeVersion, [])
         return warnings
     }
 
@@ -1214,14 +1212,14 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //a name can't be in the tree already
         TreeVersionElement existingNameElement = findElementForNameLink(taxonData.nameLink, treeVersion)
         if (existingNameElement) {
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name [${taxonData.simpleName}]${taxonData.nameLink}. See ${existingNameElement.elementLink}")
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains ${taxonData.simpleName}. See ${existingNameElement.elementLink}")
         }
     }
 
     protected List<Map> checkSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding, Sql sql = getSql()) {
 
         List<Map> synonymsFound = []
-        List nameIdList = [taxonData.nameId] + filterSynonyms(taxonData).collect { it.value.name_id }
+        List nameIdList = [taxonData.nameId] + filterSynonyms(taxonData).collect { it.nameId }
 
         String nameIds = nameIdList.join(',')
 
@@ -1236,25 +1234,26 @@ SELECT
   el.name_id as name_id,
   el.simple_name as simple_name,
   el.display_html as display_html,
-  tax_syn as synonym,
-  synonyms -> tax_syn ->> 'type' as syn_type,
-  synonyms -> tax_syn ->> 'name_id' as syn_id,
+  tax_syn ->> 'simple_name' as synonym,
+  tax_syn ->> 'type' as syn_type,
+  tax_syn ->> 'name_id' as syn_id,
   tve.element_link as element_link
 FROM tree_element el join tree_version_element tve on el.id = tve.tree_element_id 
   JOIN name n ON el.name_id = n.id,
-      jsonb_object_keys(synonyms) AS tax_syn
-WHERE tve.tree_version_id = :versionId                                                
+      jsonb_array_elements(synonyms) AS tax_syn
+WHERE tve.tree_version_id = :versionId
+and synonyms is not null                                                
 and tve.element_link not in ($excludedLinks)
-      AND synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
-      AND (synonyms -> tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
+      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
+      AND (tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->
             synonymsFound << [nameId: row.name_id, simpleName: row.simple_name, displayHtml: row.display_html, synonym: row.synonym, type: row.syn_type, synonymId: row.syn_id, existing: row.element_link]
         }
         return synonymsFound
     }
 
-    protected static Map filterSynonyms(TaxonData taxonData) {
-        taxonData.synonyms.findAll { Map.Entry entry ->
-            !(entry.value.type ==~ '.*(misapp|pro parte|common|vernacular).*')
+    protected static List<Synonym> filterSynonyms(TaxonData taxonData) {
+        taxonData.synonyms.findAll { Synonym synonym ->
+            !(synonym.type ==~ '.*(misapp|pro parte|common|vernacular).*')
         }
     }
 
@@ -1290,8 +1289,8 @@ and tve.element_link not in ($excludedLinks)
             return null
         }
 
-        Map synonyms = getSynonyms(instance)
-        String synonymsHtml = makeSynonymsHtml(synonyms)
+        Synonyms synonyms = getSynonyms(instance)
+        String synonymsHtml = synonyms.html()
 
         new TaxonData(
                 nameId: instance.name.id,
@@ -1310,42 +1309,13 @@ and tve.element_link not in ($excludedLinks)
         )
     }
 
-    private static String makeSynonymsHtml(Map data) {
-        '<synonyms>' +
-                addSynType(data, 'nom') +
-                addSynType(data, 'tax') +
-                addSynType(data, 'mis') +
-                '</synonyms>'
-    }
-
-    private static String addSynType(Map data, String type) {
-        String synonymsHtml = ''
-        data.findAll { Map.Entry entry -> entry.value[type] }.each { Map.Entry syn ->
-            Map value = syn.value as Map
-            if (type == 'mis') {
-                synonymsHtml += "<$type>${value.full_name_html}<type>${value.type}</type> by <citation>${value.cites ?: ''}</citation></$type>"
-            } else {
-                synonymsHtml += "<$type>${value.full_name_html}<type>${value.type}</type></$type>"
-            }
+    private Synonyms getSynonyms(Instance instance) {
+        Synonyms synonyms = new Synonyms()
+        instance.instancesForCitedBy.each { Instance synonymInstance ->
+            String nameLink = linkService.getPreferredLinkForObject(synonymInstance.name)
+            synonyms.add(new Synonym(synonymInstance, nameLink))
         }
-        return synonymsHtml
-    }
-
-    private Map getSynonyms(Instance instance) {
-        Map resultMap = [:]
-        instance.instancesForCitedBy.each { Instance synonym ->
-            String nameLink = linkService.getPreferredLinkForObject(synonym.name)
-            resultMap.put((synonym.name.simpleName), [type          : synonym.instanceType.name,
-                                                      name_id       : synonym.name.id,
-                                                      name_link     : nameLink,
-                                                      full_name_html: synonym.name.fullNameHtml,
-                                                      nom           : synonym.instanceType.nomenclatural,
-                                                      tax           : synonym.instanceType.taxonomic,
-                                                      mis           : synonym.instanceType.misapplied,
-                                                      cites         : synonym.cites ? synonym.cites.reference.citationHtml : ''
-            ])
-        }
-        return resultMap
+        return synonyms
     }
 
     private TaxonData findInstanceByUri(String instanceUri) {
@@ -1431,7 +1401,6 @@ class TaxonData {
     String displayHtml
     String synonymsHtml
     String sourceShard
-    Map synonyms
     String rank
     Map profile
     String nameLink
@@ -1439,6 +1408,7 @@ class TaxonData {
     Boolean nomInval
     Boolean nomIlleg
     Boolean excluded
+    Synonyms synonyms
 
     Map asMap() {
         [
@@ -1449,7 +1419,7 @@ class TaxonData {
                 displayHtml : displayHtml,
                 synonymsHtml: synonymsHtml,
                 sourceShard : sourceShard,
-                synonyms    : synonyms,
+                synonyms    : synonyms.asListMap(),
                 rank        : rank,
                 profile     : profile,
                 nameLink    : nameLink,
@@ -1501,3 +1471,4 @@ class DisplayElement {
         ]
     }
 }
+

@@ -298,6 +298,48 @@ class TreeServiceSpec extends Specification {
                 [draftVersionId: draftVersion.id]).empty
     }
 
+    def "test getting synonyms from instance"() {
+        given:
+        Tree tree = Tree.findByName('APC')
+        TreeVersion treeVersion = tree.currentTreeVersion
+        Instance ficusVirens = Instance.get(781547)
+
+        expect:
+        tree
+        treeVersion
+        ficusVirens
+
+        when: 'I get element data for ficus virens'
+        TaxonData taxonData = service.elementDataFromInstance(ficusVirens)
+        println taxonData.synonymsHtml
+        println taxonData.synonyms.asListMap()
+
+        then: 'I get 19 synonyms'
+        taxonData.synonyms.size() == 19
+        taxonData.synonymsHtml == '''<synonyms>
+
+<tax><scientific><name data-id='90571'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>caulobotrya</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='245725'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>cunninghami</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='90744'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>cunninghamii</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='91064'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>fraseri</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6832' title='Mueller, F.J.H. von'>F.Muell.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='91138'><scientific><name data-id='91097'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>glabella</element></name></scientific> <rank data-id='54412'>var.</rank> <element>nesophila</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='2897' title='Schumann, K.M.'>K.Schum.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='91343'><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element></name></scientific> <rank data-id='54412'>var.</rank> <element>cunninghamii</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='91363'><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element></name></scientific> <rank data-id='54412'>var.</rank> <element>fraseri</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='91381'><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element></name></scientific> <rank data-id='54412'>var.</rank> <element>psychotriifolium</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='91908'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>nesophila</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='92451'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>psychotriifolia</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='246717'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>cunninghami</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='105887'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>cunninghamii</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='105930'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>fraseri</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='106129'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>nesophilum</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='246718'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>psychotriaefolium</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<tax><scientific><name data-id='106369'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>psychotriifolium</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
+<mis><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element> <authors><author data-id='1884' title='Willdenow, C.L. von'>Willd.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='25068'><ref-section><author>Roxburgh, W.</author> <year>(1832)</year>, <par-title><i>Flora Indica; or descriptions of Indian Plants, by the late William Roxburgh</i></par-title> <edition>Edn. 2,</edition> <volume>3</volume></ref-section></ref></citation></mis>
+<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='33263'><ref-paper><author>Buchanan-Hamilton, F.</author> <year>(1827)</year>, <ref-title>A commentary on the third part of the Hortus Malabaricus.</ref-title> <par-title><i>Transactions of the Linnean Society of London</i></par-title> <volume>15</volume></ref-paper></ref></citation></mis>
+<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='23509'><ref-paper><author>Specht, R.L.</author> <author>in Specht, R.L. & Mountford, C.P. (ed.)</author> <year>(1958)</year>, <ref-title>The Gymnospermae and Angiospermae collected on the Arnhem Land Expedition.</ref-title> <par-title><i>Records of the American-Australian Scientific Expedition to Arnhem Land No. 3 Botany and Plant Ecology</i></par-title></ref-paper></ref></citation></mis>
+</synonyms>'''
+    }
+
     def "test check synonyms"() {
         given:
         Tree tree = Tree.findByName('APC')
@@ -473,7 +515,7 @@ class TreeServiceSpec extends Specification {
 
         then: 'I get bad argument, name is already on the tree'
         def e = thrown(BadArgumentsException)
-        e.message == "$tree.name version $draftVersion.id already contains name $taxonData.nameLink. See $asperaElement.elementLink"
+        e.message == "$tree.name version $draftVersion.id already contains $taxonData.simpleName. See $asperaElement.elementLink"
     }
 
     def "test place taxon"() {
@@ -497,12 +539,16 @@ class TreeServiceSpec extends Specification {
         service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/70944'
         service.linkService.getPreferredLinkForObject(asperaInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/781104'
 
+        println TreeVersionElement.findAllByTaxonId(blechnaceaeElement.taxonId)
+        printTve(blechnaceaeElement)
+
         expect:
         tree
         draftVersion
         blechnaceaeElement
         blechnaceaeTaxonId
-        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) > 2
+        TreeVersionElement.findAllByTaxonId(blechnaceaeElement.taxonId).size() == 2
+        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) == 2
         doodiaElement
         doodiaTaxonId
         asperaInstance
