@@ -128,6 +128,12 @@ class RestResourceController {
         respond(treeVersion, [view: 'tree', model: [treeVersion: treeVersion, versions: versions, children: children], status: OK])
     }
 
+    /**
+     *
+     * @param shard - actually version number
+     * @param idNumber of the tree Element
+     * @return
+     */
     @Timed()
     def treeElement(Long shard, Long idNumber) {
         if (idNumber == 0) {

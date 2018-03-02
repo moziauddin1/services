@@ -69,7 +69,8 @@ class Synonym {
                 nom           : nom,
                 tax           : tax,
                 mis           : mis,
-                cites         : cites
+                cites         : cites,
+                year          : year
         ]
     }
 }

@@ -298,6 +298,16 @@ class TreeServiceSpec extends Specification {
                 [draftVersionId: draftVersion.id]).empty
     }
 
+    def "test recalling a tree element"() {
+        when: "I get tree Element 50071057"
+        TreeElement treeElement = TreeElement.get(50071057)
+        println treeElement.synonyms
+
+        then: "I can see synonyms"
+        treeElement.synonyms
+        treeElement.synonyms.list instanceof List
+    }
+
     def "test getting synonyms from instance"() {
         given:
         Tree tree = Tree.findByName('APC')
@@ -547,8 +557,8 @@ class TreeServiceSpec extends Specification {
         draftVersion
         blechnaceaeElement
         blechnaceaeTaxonId
-        TreeVersionElement.findAllByTaxonId(blechnaceaeElement.taxonId).size() == 2
-        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) == 2
+        TreeVersionElement.findAllByTaxonId(blechnaceaeElement.taxonId).size() > 1
+        TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) > 1
         doodiaElement
         doodiaTaxonId
         asperaInstance

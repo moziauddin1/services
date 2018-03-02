@@ -1240,9 +1240,10 @@ SELECT
   tve.element_link as element_link
 FROM tree_element el join tree_version_element tve on el.id = tve.tree_element_id 
   JOIN name n ON el.name_id = n.id,
-      jsonb_array_elements(synonyms) AS tax_syn
+      jsonb_array_elements(synonyms -> 'list') AS tax_syn
 WHERE tve.tree_version_id = :versionId
-and synonyms is not null                                                
+and synonyms is not null 
+and synonyms ->> 'list' is not null
 and tve.element_link not in ($excludedLinks)
       AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
       AND (tax_syn ->> 'name_id'):: NUMERIC :: BIGINT in ($nameIds)""", [versionId: treeVersion.id]) { row ->

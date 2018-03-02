@@ -17,19 +17,21 @@ class TreeElementController implements WithTarget {
     def linkService
 
     static responseFormats = [
-            placeElement      : ['json', 'html'],
-            replaceElement    : ['json', 'html'],
-            removeElement     : ['json', 'html'],
-            editElementProfile: ['json', 'html'],
-            editElementStatus : ['json', 'html']
+            placeElement           : ['json', 'html'],
+            replaceElement         : ['json', 'html'],
+            removeElement          : ['json', 'html'],
+            editElementProfile     : ['json', 'html'],
+            editElementStatus      : ['json', 'html'],
+            elementDataFromInstance: ['json', 'html']
     ]
 
     static allowedMethods = [
-            placeElement      : ['PUT'],
-            replaceElement    : ['PUT'],
-            removeElement     : ['DELETE', 'POST'],
-            editElementProfile: ['POST'],
-            editElementStatus : ['POST']
+            placeElement           : ['PUT'],
+            replaceElement         : ['PUT'],
+            removeElement          : ['DELETE', 'POST'],
+            editElementProfile     : ['POST'],
+            editElementStatus      : ['POST'],
+            elementDataFromInstance: ['GET']
     ]
 
     /**
