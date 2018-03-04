@@ -322,7 +322,7 @@ class TreeServiceSpec extends Specification {
         when: 'I get element data for ficus virens'
         TaxonData taxonData = service.elementDataFromInstance(ficusVirens)
         println taxonData.synonymsHtml
-        println taxonData.synonyms.asListMap()
+        println taxonData.synonyms.asMap()
 
         then: 'I get 19 synonyms'
         taxonData.synonyms.size() == 19

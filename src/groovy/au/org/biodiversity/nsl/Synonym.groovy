@@ -90,8 +90,8 @@ class Synonyms {
         }
     }
 
-    List<Map> asListMap() {
-        synonyms.collect { it.asMap() } ?: null
+    Map asMap() {
+        [list: (synonyms.collect { it.asMap() } ?: null)]
     }
 
     List<Synonym> nomSynonyms() {

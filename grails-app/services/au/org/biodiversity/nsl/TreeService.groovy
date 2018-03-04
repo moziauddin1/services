@@ -1043,11 +1043,8 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         element.save()
     }
 
-    private static findTreeElement(Map treeElementData) {
-        // find where doesn't like the synonyms field, so we remove it. TODO figure out why
-        List<Map> synonyms = treeElementData.remove('synonyms') as List<Map>
-        TreeElement e = TreeElement.findWhere(treeElementData)
-        return (e?.synonyms == synonyms) ? e : null
+    private static TreeElement findTreeElement(Map treeElementData) {
+        return TreeElement.findWhere(treeElementData)
     }
 
     private static TreeElement findTreeElement(TaxonData taxonData) {
@@ -1058,7 +1055,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                  simpleName : taxonData.simpleName,
                  nameElement: taxonData.nameElement,
                  sourceShard: taxonData.sourceShard,
-                 synonyms   : taxonData.synonyms.asListMap(),
+                 synonyms   : taxonData.synonyms.asMap(),
                  profile    : taxonData.profile
                 ]
         )
@@ -1420,7 +1417,7 @@ class TaxonData {
                 displayHtml : displayHtml,
                 synonymsHtml: synonymsHtml,
                 sourceShard : sourceShard,
-                synonyms    : synonyms.asListMap(),
+                synonyms    : synonyms.asMap(),
                 rank        : rank,
                 profile     : profile,
                 nameLink    : nameLink,
