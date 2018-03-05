@@ -432,6 +432,12 @@ a:hover {
     font-size: 46px;
 }
 
+.diffBefore,
+.diffAfter {
+    width: 50vw;
+    overflow: auto;
+}
+
 .diffBefore {
     background-color: rgba(235,21,31,0.1);
 }

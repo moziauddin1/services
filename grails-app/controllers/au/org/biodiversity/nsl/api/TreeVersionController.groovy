@@ -60,7 +60,13 @@ class TreeVersionController implements WithTarget {
         ResultObject results = requireTarget(treeVersion, "Tree version with id: $versionId")
         handleResults(results) {
             String userName = treeService.authorizeTreeOperation(treeVersion.tree)
+            Boolean createNewDraft = treeVersion == treeVersion.tree.defaultDraftTreeVersion
             results.payload = treeService.publishTreeVersion(treeVersion, userName, logEntry)
+            if (createNewDraft) {
+                results.autocreate = true
+                String draftName = treeVersion.draftName
+                treeService.bgCreateDefaultDraftVersion(treeVersion.tree, treeVersion, draftName, userName, "Default draft.")
+            }
         }
     }
 

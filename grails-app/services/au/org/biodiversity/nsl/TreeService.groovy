@@ -511,6 +511,20 @@ DROP TABLE IF EXISTS orphans;
         }
     }
 
+    void bgCreateDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName, String logEntry) {
+        runAsync {
+            Thread.sleep(1000)
+            TreeVersion.withNewSession { s ->
+                TreeVersion.withNewTransaction {
+                    log.debug "Async create"
+                    tree.refresh()
+                    treeVersion.refresh()
+                    createDefaultDraftVersion(tree, treeVersion, draftName, userName, logEntry)
+                }
+            }
+        }
+    }
+
     TreeVersion createDefaultDraftVersion(Tree tree, TreeVersion treeVersion, String draftName, String userName, String logEntry) {
         log.debug "create default draft version $draftName on $tree using $treeVersion"
         tree.defaultDraftTreeVersion = createTreeVersion(tree, treeVersion, draftName, userName, logEntry)

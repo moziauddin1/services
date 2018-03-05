@@ -1,4 +1,4 @@
-<div class="tr">
+<div>
   <div class="text-muted">
     Updated by ${tve.updatedBy} <date>${tve.updatedAt}</date>
   </div>
