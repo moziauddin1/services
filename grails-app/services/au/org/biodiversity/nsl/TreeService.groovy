@@ -1324,8 +1324,7 @@ and tve.element_link not in ($excludedLinks)
     private Synonyms getSynonyms(Instance instance) {
         Synonyms synonyms = new Synonyms()
         instance.instancesForCitedBy.each { Instance synonymInstance ->
-            String nameLink = linkService.getPreferredLinkForObject(synonymInstance.name)
-            synonyms.add(new Synonym(synonymInstance, nameLink))
+            synonyms.add(new Synonym(synonymInstance, linkService))
         }
         return synonyms
     }

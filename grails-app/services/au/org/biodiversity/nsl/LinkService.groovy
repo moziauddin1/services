@@ -195,6 +195,10 @@ class LinkService {
 
     @Timed()
     String getPreferredLinkForObject(Object target) {
+        if (target == null) {
+            log.warn "Can't get link for null object"
+            return null
+        }
         doUsingCache(getLinkCache(), target?.id) {
             String link = null
             try {

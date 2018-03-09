@@ -7,6 +7,7 @@ package au.org.biodiversity.nsl
  */
 class Synonym {
     final Instance instance
+    final String instanceLink
     final String simpleName
     final String type
     final Long nameId
@@ -16,15 +17,20 @@ class Synonym {
     final Boolean tax
     final Boolean mis
     final String cites
+    final String citesLink
+    final String conceptLink
     final Long year
 
-    Synonym(Instance synonymInstance, String nameLink) {
+    Synonym(Instance synonymInstance, LinkService linkService) {
+        nameLink = linkService.getPreferredLinkForObject(synonymInstance.name)
+        instanceLink = linkService.getPreferredLinkForObject(synonymInstance)
+        conceptLink = linkService.getPreferredLinkForObject(synonymInstance.cites)
+        citesLink = linkService.getPreferredLinkForObject(synonymInstance.cites?.reference)
         instance = synonymInstance
         year = instance.cites?.reference?.year
         simpleName = synonymInstance.name.simpleName
         type = synonymInstance.instanceType.name
         nameId = synonymInstance.name.id
-        this.nameLink = nameLink
         fullNameHtml = synonymInstance.name.fullNameHtml
         nom = synonymInstance.instanceType.nomenclatural
         tax = synonymInstance.instanceType.taxonomic
@@ -34,11 +40,16 @@ class Synonym {
 
     Synonym(Map synonymMap) {
         instance = Instance.get(synonymMap.instance_id as Long)
+
+        nameLink = synonymMap.name_link as String
+        instanceLink = synonymMap.instance_link as String
+        conceptLink = synonymMap.concept_link as String
+        citesLink = synonymMap.cites_link as String
+
         year = instance?.cites?.reference?.year
         simpleName = synonymMap.simple_name as String
         type = synonymMap.type as String
         nameId = synonymMap.name_id
-        nameLink = synonymMap.name_link as String
         fullNameHtml = synonymMap.full_name_html as String
         nom = synonymMap.nom as Boolean
         tax = synonymMap.tax as Boolean
