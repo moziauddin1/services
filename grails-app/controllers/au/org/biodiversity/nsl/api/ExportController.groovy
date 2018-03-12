@@ -32,22 +32,24 @@ class ExportController {
 
     @Timed()
     namesCsv() {
+        File exportFile = null
         try {
-            File exportFile = flatViewService.exportNamesToCSV()
+            exportFile = flatViewService.exportNamesToCSV()
             render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
         } finally {
-            exportFile.delete()
+            exportFile?.delete()
 
         }
     }
 
     @Timed()
     taxonCsv() {
+        File exportFile = null
         try {
-            File exportFile = flatViewService.exportTaxonToCSV()
+            exportFile = flatViewService.exportTaxonToCSV()
             render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
         } finally {
-            exportFile.delete()
+            exportFile?.delete()
         }
     }
 }
