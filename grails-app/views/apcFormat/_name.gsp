@@ -34,13 +34,21 @@
           <g:if test="${instances}">
             <g:render template="hasSynonym" model="[instances: instances]"/>
           </g:if>
-          <ul class="instance-notes list-unstyled">
-            <af:getAPCNotes instance="${apcInstance}" var="instanceNote">
-              <li>
-                <instance-note>${raw(instanceNote.value)}</instance-note>
-              </li>
-            </af:getAPCNotes>
-          </ul>
+          <af:ifOnTree instance="${apcInstance}" tve="${treeVersionElement}">
+            <ul class="instance-notes list-unstyled">
+              <af:treeComment tve="${treeVersionElement}">
+                <li>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeComment>
+              <af:treeDistribution tve="${treeVersionElement}">
+                <li>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeDistribution>
+            </ul>
+          </af:ifOnTree>
+
         </div>
       </div>
 

@@ -242,7 +242,44 @@ ORDER BY tve.name_path, n.simple_name;
     }
 
     Closure taxonView = { namespace ->
-        return """
+        return """   
+DROP FUNCTION find_tree_rank( BIGINT, INT );
+-- this function is a little slow, but it works for now.
+CREATE FUNCTION find_tree_rank(tve_id TEXT, rank_sort_order INT)
+  RETURNS TABLE(name_element TEXT, rank TEXT, sort_order INT) LANGUAGE SQL
+AS \$\$
+WITH RECURSIVE walk (parent_id, name_element, rank, sort_order) AS (
+  SELECT
+    tve.parent_id,
+    n.name_element,
+    r.name,
+    r.sort_order
+  FROM tree_version_element tve
+    JOIN tree_element te ON tve.tree_element_id = te.id
+    JOIN name n ON te.name_id = n.id
+    JOIN name_rank r ON n.name_rank_id = r.id
+  WHERE tve.element_link = tve_id AND r.sort_order >= rank_sort_order
+  UNION ALL
+  SELECT
+    tve.parent_id,
+    n.name_element,
+    r.name,
+    r.sort_order
+  FROM walk w,
+    tree_version_element tve
+    JOIN tree_element te ON tve.tree_element_id = te.id
+    JOIN name n ON te.name_id = n.id
+    JOIN name_rank r ON n.name_rank_id = r.id
+  WHERE tve.element_link = w.parent_id AND r.sort_order >= rank_sort_order
+)
+SELECT
+  w.name_element,
+  w.rank,
+  w.sort_order
+FROM walk w
+WHERE w.sort_order >= rank_sort_order
+\$\$;
+
 CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
 
 -- synonyms bit
@@ -269,12 +306,21 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
    syn_rank.name                                         AS "taxonRank",
    syn_rank.sort_order                                   AS "taxonRankSortOrder",
    -- this is pretty much fixed per shard
-   regnum.name_path                                                AS "kindom",
-   -- the below works for plants, we may need to add this info to tree version elements or
+   regnum.name_path                                      AS "kindom",
+   -- the below works but is a little slow
    -- find another efficient way to do it.
-   (substring(tve.name_path, '/([^/]*ida)/'))            AS "class",
-   (substring(tve.name_path, '/([^/]*idae)/'))           AS "subclass",
-   (substring(tve.name_path, '/([^/]*aceae)/'))          AS "family",
+   (SELECT name_element
+    FROM find_tree_rank(tve.element_link, 30)
+    ORDER BY sort_order ASC
+    LIMIT 1)                                             AS "class",
+   (SELECT name_element
+    FROM find_tree_rank(tve.element_link, 40)
+    ORDER BY sort_order ASC
+    LIMIT 1)                                             AS "subclass",
+   (SELECT name_element
+    FROM find_tree_rank(tve.element_link, 80)
+    ORDER BY sort_order ASC
+    LIMIT 1)                                                     AS "family",
    syn_name.created_at                                   AS "created",
    syn_name.updated_at                                   AS "modified",
    tree.name                                             AS "datasetName",
@@ -358,12 +404,21 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
    te.rank                                                       AS "taxonRank",
    acc_rank.sort_order                                           AS "taxonRankSortOrder",
    -- this is pretty much fixed per shard
-   regnum.name_path                                                        AS "kindom",
-   -- the below works for plants, we may need to add this info to tree version elements or
+   regnum.name_path                                              AS "kindom",
+   -- the below works but is a little slow
    -- find another efficient way to do it.
-   (substring(tve.name_path, '/([^/]*ida)/'))                    AS "class",
-   (substring(tve.name_path, '/([^/]*idae)/'))                   AS "subclass",
-   (substring(tve.name_path, '/([^/]*aceae)/'))                  AS "family",
+   (SELECT name_element
+    FROM find_tree_rank(tve.element_link, 30)
+    ORDER BY sort_order ASC
+    LIMIT 1)                                                     AS "class",
+   (SELECT name_element
+    FROM find_tree_rank(tve.element_link, 40)
+    ORDER BY sort_order ASC
+    LIMIT 1)                                                     AS "subclass",
+   (SELECT name_element
+    FROM find_tree_rank(tve.element_link, 80)
+    ORDER BY sort_order ASC
+    LIMIT 1)                                                     AS "family",
    acc_name.created_at                                           AS "created",
    acc_name.updated_at                                           AS "modified",
    tree.name                                                     AS "datasetName",
