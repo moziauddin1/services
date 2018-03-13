@@ -51,6 +51,9 @@
         <li class="${params.controller == 'tree' ? 'active' : ''}">
           <a href="${createLink(namespace: 'api', controller: 'tree')}">Classifications</a>
         </li>
+        <li class="${params.controller == 'export' ? 'active' : ''}">
+          <a href="${createLink(namespace: 'api', controller: 'export', action: 'index')}">Exports</a>
+        </li>
 
       </ul>
 
