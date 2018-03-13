@@ -1186,19 +1186,6 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         return warnings
     }
 
-    private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
-        //a name can't be already in the tree as a synonym
-        List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion, excluding)
-        if (!existingSynonyms.empty) {
-            String synonyms = existingSynonyms.collect {
-                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of ${it.displayHtml} [Tree link](${it.existing} '${it.existing}')"
-            }.join(',\n')
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name *${taxonData.simpleName}*:\n\n" +
-                    synonyms +
-                    "\n\naccording to the concepts involved.")
-        }
-    }
-
     private void checkInstanceOnTree(TaxonData taxonData, TreeVersion treeVersion) {
         //is instance already in the tree. We use instance link because that works across shards, there is a remote possibility instance id will clash.
         TreeVersionElement existingElement = findElementForInstanceLink(taxonData.instanceLink, treeVersion)
@@ -1224,6 +1211,20 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         TreeVersionElement existingNameElement = findElementForNameLink(taxonData.nameLink, treeVersion)
         if (existingNameElement) {
             throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains ${taxonData.simpleName}. See ${existingNameElement.elementLink}")
+        }
+    }
+
+    private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
+        //a name can't be already in the tree as a synonym
+        List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion, excluding)
+        if (!existingSynonyms.empty) {
+            String synonyms = existingSynonyms.collect {
+                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of ${it.displayHtml} [Tree link](${it.existing} '${it.existing}')"
+            }.join(',\n')
+
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name *${taxonData.simpleName}*:\n\n" +
+                    synonyms +
+                    "\n\naccording to the concepts involved.")
         }
     }
 
