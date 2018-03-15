@@ -152,16 +152,16 @@ class ApniFormatTagLib {
         String var = attrs.var ?: "instance"
         instances.sort { a, b ->
             if (a.name.simpleName == b.name.simpleName) {
-                if (a.cites.reference.year == b.cites.reference.year) {
-                    if (a.cites.reference == b.cites.reference) {
+                if (a.cites?.reference?.year == b.cites?.reference?.year) {
+                    if (a.cites?.reference == b.cites?.reference) {
                         if (a.cites.page == b.cites.page) {
                             return b.cites.id <=> a.cites.id
                         }
                         return b.cites.page <=> a.cites.page
                     }
-                    return a.cites.reference.citation <=> b.cites.reference.citation
+                    return a.cites?.reference?.citation <=> b.cites?.reference?.citation
                 }
-                return (a.cites.reference.year) <=> (b.cites.reference.year)
+                return (a.cites?.reference?.year) <=> (b.cites?.reference?.year)
             }
             return a.name.simpleName <=> b.name.simpleName
         }.each { Instance instance ->
