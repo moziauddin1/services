@@ -1218,13 +1218,18 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //a name can't be already in the tree as a synonym
         List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion, excluding)
         if (!existingSynonyms.empty) {
-            String synonyms = existingSynonyms.collect {
-                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of ${it.displayHtml} [Tree link](${it.existing} '${it.existing}')"
-            }.join(',\n')
+            String message = "You can't place name *${taxonData.simpleName}* because:\n\n"
+            existingSynonyms.groupBy { it.displayHtml }.each { k, synonyms ->
+                message += "Accepted concept **${k}** has conflicting synonyms:\n"
+                message += synonyms.collect {
+                    "* ${it.type} ${it.synonym}" //remove type and add full name
+                }.join(',\n')
+            }
+//            String synonyms = existingSynonyms.collect {
+//                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of ${it.displayHtml} [Tree link](${it.existing} '${it.existing}')"
+//            }.join(',\n')
 
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains name *${taxonData.simpleName}*:\n\n" +
-                    synonyms +
-                    "\n\naccording to the concepts involved.")
+            throw new BadArgumentsException("$message")
         }
     }
 
@@ -1246,6 +1251,7 @@ SELECT
   el.name_id as name_id,
   el.simple_name as simple_name,
   el.display_html as display_html,
+  el.instance_id as instance_id
   tax_syn ->> 'simple_name' as synonym,
   tax_syn ->> 'type' as syn_type,
   tax_syn ->> 'name_id' as syn_id,
