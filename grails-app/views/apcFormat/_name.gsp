@@ -86,10 +86,17 @@
         <div data-nameId="${name.id}">
           <g:if test="${synonym.instanceType.doubtful}">?</g:if>
           <g:if test="${synonym.instanceType.misapplied}">
-            <st:preferredLink target="${name}" api="api/apni-format">${raw(name.fullNameHtml)}</st:preferredLink>
-            <st:preferredLink target="${primaryInstance ?: name}"><i title="Link to use in reference"
-                                                                     class="fa fa-book"></i></st:preferredLink>
-            sensu ${raw(synonym.cites.reference.citationHtml)}
+            <span class="misapplied">
+              <st:preferredLink target="${name}" api="api/apni-format">
+                ${raw(name.fullNameHtml)}
+              </st:preferredLink>
+              <st:preferredLink target="${primaryInstance ?: name}"><i title="Link to use in reference"
+                                                                       class="fa fa-book"></i></st:preferredLink>
+              auct. non <af:author name="${synonym.name}"/>:
+
+              <g:if
+                  test="${!synonym.instanceType.unsourced}">sensu ${raw(synonym.cites?.reference?.citationHtml)}</g:if>
+            </span>
           </g:if>
           <g:else>
             <st:preferredLink target="${name}" api="api/apni-format">${raw(name.fullNameHtml)}</st:preferredLink>
