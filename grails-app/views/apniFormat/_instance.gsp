@@ -53,7 +53,7 @@
                   model="[instances: instance.instancesForCitedBy.findAll { it.instanceType.unsourced }]"/>
       %{--other synonyms--}%
         <g:render template="/apniFormat/hasSynonym" model="[instances: instance.instancesForCitedBy.findAll {
-          (!it.instanceType.synonym && !it.instanceType.misapplied)
+          (!it.instanceType.synonym && !it.instanceType.misapplied && !it.instanceType.unsourced)
         }]"/>
       </g:if>
 
