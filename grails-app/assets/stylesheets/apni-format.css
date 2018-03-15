@@ -58,6 +58,11 @@ synonym-type.\[unknown\] {
     display: none;
 }
 
+has-synonym.misapplied name > authors,
+span.misapplied name > authors {
+    display: none;
+}
+
 .instance-notes, synonym-of, has-synonym, missapplied-to, misapplication {
     font-size: 0.9em;
     padding-left: 3em;

@@ -13,9 +13,11 @@
 
 <div>
   <af:apcSortedInstances instances="${instances.findAll { it.instanceType.misapplied }}" var="synonym">
-    <has-synonym>
+    <has-synonym class="${synonym.instanceType.misapplied ? 'misapplied' : ''}">
       <g:if test="${synonym.instanceType.doubtful}">?</g:if>
-      <st:preferredLink target="${synonym.name}" api="api/apni-format">${raw(synonym.name.fullNameHtml)}</st:preferredLink>
+      <st:preferredLink target="${synonym.name}" api="api/apni-format">
+        ${raw(synonym.name.fullNameHtml)}
+      </st:preferredLink>
       <st:preferredLink target="${synonym}"><i title="Use in reference" class="fa fa-book"></i></st:preferredLink>
 
       <g:if test="${synonym.instanceType.misapplied}">
@@ -32,7 +34,7 @@
       </g:if>
       <g:else>
       %{--unsourced reference--}%
-        <g:if test="${synonym.instanceType.proParte}">, p.p.</g:if> UNSOURCED
+        <g:if test="${synonym.instanceType.proParte}">, p.p.</g:if>
       </g:else>
 
     </has-synonym>
