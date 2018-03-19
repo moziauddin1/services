@@ -193,6 +193,10 @@ class NameConstructionService {
             Name nameParent = name.nameParent()
             String precedingName = constructPrecedingNameString(nameParent, name)
 
+            if (nameParent && !precedingName) {
+                log.error "parent $nameParent, but didn't construct name."
+            }
+
             String rank = nameParent ? makeRankString(name) : ''
             String connector = makeConnectorString(name, rank)
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
@@ -275,17 +279,19 @@ class NameUtils {
             if (name.nameRank.name == '[unranked]') {
                 return firstMajorRankedParent(name)
             }
-            if (name.nameLowerThanRank('Genus') || name.nameRank.visibleInName) {
-                NameRank parentRank = name.nameRank.parentRank
+            Name next = name
+            if (next.nameLowerThanRank('Genus') || next.nameRank.visibleInName) {
+                NameRank parentRank = next.nameRank.parentRank
+                int count = 9 //count to prevent recursive parents causing issues
                 if (parentRank) {
-                    int count = 5 //count to prevent recursive parents causing issues
-                    while (count-- > 0 && name?.nameLowerThanRank(parentRank)) {
-                        if (name.parent && name.parent.nameRank == parentRank) {
-                            return name.parent
+                    while (next && count-- > 0 && next.nameLowerThanRank(parentRank)) {
+                        if (next.parent && next.parent.nameRank.id == parentRank.id) {
+                            return next.parent
                         }
-                        name = name.parent
+                        next = next.parent
                     }
                 }
+                log.debug "couldn't find parent of $name of rank $parentRank.name, up to $next, count: $count"
             }
             return null
         }
