@@ -1216,27 +1216,30 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
     private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
         //a name can't be already in the tree as a synonym
-        List<Map> existingSynonyms = checkSynonyms(taxonData, treeVersion, excluding)
+        List<Long> nameIdList = filterSynonyms(taxonData).collect { it.nameId }
+        List<Map> existingSynonyms = checkSynonyms((nameIdList + [taxonData.nameId]), treeVersion, excluding)
         if (!existingSynonyms.empty) {
             String message = "You can't place name *${taxonData.simpleName}* because:\n\n"
             existingSynonyms.groupBy { it.displayHtml }.each { k, synonyms ->
-                message += "Accepted concept **${k}** has conflicting synonyms:\n"
-                message += synonyms.collect {
-                    "* ${it.type} ${it.synonym}" //remove type and add full name
-                }.join(',\n')
+                Long nameId = synonyms.first().nameId
+                log.debug "is $nameId in $nameIdList?"
+                if (nameIdList.contains(nameId)) {
+                    message += "*${taxonData.displayHtml}* has a synonym of Accepted concept **${k}**."
+                } else {
+                    message += "Accepted concept **${k}** has conflicting synonyms:\n"
+                    message += synonyms.collect {
+                        "* ${it.type} ${it.synonym}" //remove type and add full name
+                    }.join(',\n')
+                }
             }
-//            String synonyms = existingSynonyms.collect {
-//                "* ${it.synonym} (${it.synonymId}) is a ${it.type} of ${it.displayHtml} [Tree link](${it.existing} '${it.existing}')"
-//            }.join(',\n')
 
             throw new BadArgumentsException("$message")
         }
     }
 
-    protected List<Map> checkSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding, Sql sql = getSql()) {
+    protected List<Map> checkSynonyms(List<Long> nameIdList, TreeVersion treeVersion, List<TreeVersionElement> excluding, Sql sql = getSql()) {
 
         List<Map> synonymsFound = []
-        List nameIdList = [taxonData.nameId] + filterSynonyms(taxonData).collect { it.nameId }
 
         String nameIds = nameIdList.join(',')
 
@@ -1251,7 +1254,7 @@ SELECT
   el.name_id as name_id,
   el.simple_name as simple_name,
   el.display_html as display_html,
-  el.instance_id as instance_id
+  el.instance_id as instance_id,
   tax_syn ->> 'simple_name' as synonym,
   tax_syn ->> 'type' as syn_type,
   tax_syn ->> 'name_id' as syn_id,
@@ -1361,11 +1364,11 @@ and tve.element_link not in ($excludedLinks)
         }
     }
 
-    /**
-     * Fetch instance data from another service
-     * @param instanceUri
-     * @return
-     */
+/**
+ * Fetch instance data from another service
+ * @param instanceUri
+ * @return
+ */
     private Map fetchInstanceData(String instanceUri) {
         Map result = [success: true]
         String uri = "$instanceUri/api/tree/element-data-from-instance"
@@ -1408,6 +1411,7 @@ and tve.element_link not in ($excludedLinks)
     boolean isInstanceInAnyTree(Instance instance) {
         TreeElement.findByInstanceId(instance.id) != null
     }
+
 }
 
 class TaxonData {
