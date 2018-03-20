@@ -101,6 +101,12 @@ class Synonyms {
         }
     }
 
+    List<Synonym> filtered() {
+        synonyms.findAll { Synonym synonym ->
+            !(synonym.type ==~ '.*(misapp|pro parte|common|vernacular).*')
+        }
+    }
+
     Map asMap() {
         [list: (synonyms.collect { it.asMap() } ?: null)]
     }

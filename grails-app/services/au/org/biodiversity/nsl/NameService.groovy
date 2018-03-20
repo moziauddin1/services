@@ -88,8 +88,6 @@ class NameService {
                     name.refresh()
                     Comment.findAllByName(name)*.delete()
                     notifyNameEvent(name, 'deleted')
-                    NamePart.findAllByName(name)*.delete()
-                    NamePart.findAllByPrecedingName(name)*.delete()
                     NameTagName.findAllByName(name)*.delete()
                     name.delete()
                     Map response = linkService.deleteNameLinks(name, reason)

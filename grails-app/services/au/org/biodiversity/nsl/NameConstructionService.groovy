@@ -285,6 +285,9 @@ class NameUtils {
                 int count = 9 //count to prevent recursive parents causing issues
                 if (parentRank) {
                     while (next && count-- > 0 && next.nameLowerThanRank(parentRank)) {
+                        // NSL-2696 don't use == here between NameRank objects because you may get a
+                        // ...NameRank_$$_javassist_44 object which will fail the equals test.
+                        // Comparing ids is quicker too.
                         if (next.parent && next.parent.nameRank.id == parentRank.id) {
                             return next.parent
                         }

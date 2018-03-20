@@ -23,7 +23,7 @@ class TreeServiceUnitSpec extends Specification {
 
         when: 'I filter a synonyms map'
         Synonyms s = new Synonyms(synonyms)
-        List<Synonym> result = service.filterSynonyms(new TaxonData(synonyms: s))
+        List<Synonym> result = s.filtered()
         println synonyms
         println result
 

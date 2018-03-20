@@ -1149,7 +1149,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         //polynomials must be placed under parent
         checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
-
+        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion)
         checkForExistingSynonyms(taxonData, treeVersion, [])
 
         return warnings
@@ -1172,7 +1172,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         //polynomials must be placed under parent
         checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
-
+        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion)
         checkForExistingSynonyms(taxonData, treeVersion, [currentTve])
 
         return warnings
@@ -1182,6 +1182,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         List<String> warnings = checkNameValidity(taxonData)
         checkInstanceOnTree(taxonData, treeVersion)
         checkNameAlreadyOnTree(taxonData, treeVersion)
+        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion)
         checkForExistingSynonyms(taxonData, treeVersion, [])
         return warnings
     }
@@ -1214,10 +1215,22 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
     }
 
+    protected void checkSynonymsOfThisTaxonNotOnTree(TaxonData taxonData, TreeVersion treeVersion) {
+        List<Synonym> synonyms = taxonData.synonyms.filtered()
+        synonyms.each { Synonym synonym ->
+            TreeVersionElement tve = TreeVersionElement.find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.nameId = :nameId',
+                    [treeVersion: treeVersion, nameId: synonym.nameId])
+            if (tve) {
+                String message = "*${taxonData.displayHtml}* has a synonym of Accepted concept **${tve.treeElement.displayHtml}**"
+                throw new BadArgumentsException("$message")
+            }
+        }
+    }
+
     private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
         //a name can't be already in the tree as a synonym
-        List<Long> nameIdList = filterSynonyms(taxonData).collect { it.nameId }
-        List<Map> existingSynonyms = checkSynonyms((nameIdList + [taxonData.nameId]), treeVersion, excluding)
+        List<Long> nameIdList = taxonData.synonyms.filtered().collect { it.nameId }
+        List<Map> existingSynonyms = checkSynonyms((nameIdList + [taxonData.nameId] as List<Long>), treeVersion, excluding)
         if (!existingSynonyms.empty) {
             String message = "You can't place name *${taxonData.simpleName}* because:\n\n"
             existingSynonyms.groupBy { it.displayHtml }.each { k, synonyms ->
