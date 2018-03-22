@@ -24,12 +24,14 @@ class TreeServiceSpec extends Specification {
         service.treeReportService = new TreeReportService()
         service.treeReportService.transactionManager = getTransactionManager()
         service.treeReportService.dataSource_nsl = dataSource_nsl
+        service.linkService.getPreferredHost() >> 'localhost:7070/nsl-mapper'
     }
 
     def cleanup() {
     }
 
     void "test create new tree"() {
+
         when: 'I create a new unique tree'
         Tree tree = service.createNewTree('aTree', 'aGroup', null, '<p>A description</p>', 'http://trees.org/aTree', false)
 
@@ -68,6 +70,7 @@ class TreeServiceSpec extends Specification {
         tree2.name == 'aNotherTree'
         tree2.groupName == 'aGroup'
         tree2.referenceId == 12345l
+        tree2.hostName == 'localhost:7070/nsl-mapper'
     }
 
     void "Test editing tree"() {
@@ -335,9 +338,9 @@ class TreeServiceSpec extends Specification {
 <tax><scientific><name data-id='106129'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>nesophilum</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
 <tax><scientific><name data-id='246718'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>psychotriaefolium</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
 <tax><scientific><name data-id='106369'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>psychotriifolium</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<mis><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element> <authors><author data-id='1884' title='Willdenow, C.L. von'>Willd.</author></authors></name></scientific> <type>misapplied</type> by <citation>Roxburgh, W. (1832), <i>Flora Indica; or descriptions of Indian Plants, by the late William Roxburgh</i> Edn. 2, 3</citation></mis>
-<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation>Buchanan-Hamilton, F. (1827), A commentary on the third part of the Hortus Malabaricus. <i>Transactions of the Linnean Society of London</i> 15</citation></mis>
-<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation>Specht, R.L. in Specht, R.L. & Mountford, C.P. (ed.) (1958), The Gymnospermae and Angiospermae collected on the Arnhem Land Expedition. <i>Records of the American-Australian Scientific Expedition to Arnhem Land No. 3 Botany and Plant Ecology</i></citation></mis>
+<mis><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element> <authors><author data-id='1884' title='Willdenow, C.L. von'>Willd.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='25068'><ref-section><author>Roxburgh, W.</author> <year>(1832)</year>, <par-title><i>Flora Indica; or descriptions of Indian Plants, by the late William Roxburgh</i></par-title> <edition>Edn. 2,</edition> <volume>3</volume></ref-section></ref></citation></mis>
+<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='33263'><ref-paper><author>Buchanan-Hamilton, F.</author> <year>(1827)</year>, <ref-title>A commentary on the third part of the Hortus Malabaricus.</ref-title> <par-title><i>Transactions of the Linnean Society of London</i></par-title> <volume>15</volume></ref-paper></ref></citation></mis>
+<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='23509'><ref-paper><author>Specht, R.L.</author> <author>in Specht, R.L. & Mountford, C.P. (ed.)</author> <year>(1958)</year>, <ref-title>The Gymnospermae and Angiospermae collected on the Arnhem Land Expedition.</ref-title> <par-title><i>Records of the American-Australian Scientific Expedition to Arnhem Land No. 3 Botany and Plant Ecology</i></par-title></ref-paper></ref></citation></mis>
 </synonyms>'''
     }
 
@@ -383,7 +386,7 @@ class TreeServiceSpec extends Specification {
         then: 'I get en error'
         def e = thrown(BadArgumentsException)
         println e.message
-        e.message == '*<data><scientific><name data-id=\'54730\'><scientific><name data-id=\'115383\'><element>Xanthosia</element></name></scientific> <element>pusilla</element> <authors><author data-id=\'6835\' title=\'Bunge, A.A. von\'>Bunge</author></authors></name></scientific> <citation>Curtis, W.M. (1963), Angiospermae: Lythraceae to Epacridaceae. <i>The Student\'s Flora of Tasmania</i> 2</citation></data>* has a synonym of Accepted concept **<data><scientific><name id=\'54854\'><scientific><name id=\'115383\'><element class=\'Xanthosia\'>Xanthosia</element></name></scientific> <element class=\'tasmanica\'>tasmanica</element> <authors><author id=\'6860\' title=\'Domin, K.\'>Domin</author></authors></name></scientific><citation>CHAH (2011), <i>Australian Plant Census</i></citation></data>**'
+        e.message == '*<data><scientific><name data-id=\'54730\'><scientific><name data-id=\'115383\'><element>Xanthosia</element></name></scientific> <element>pusilla</element> <authors><author data-id=\'6835\' title=\'Bunge, A.A. von\'>Bunge</author></authors></name></scientific> <citation><ref data-id=\'22550\'><ref-section><author>Curtis, W.M.</author> <year>(1963)</year>, <ref-title>Angiospermae: Lythraceae to Epacridaceae.</ref-title> <par-title><i>The Student\'s Flora of Tasmania</i></par-title> <volume>2</volume></ref-section></ref></citation></data>* has a synonym of Accepted concept **<data><scientific><name data-id=\'54854\'><scientific><name data-id=\'115383\'><element>Xanthosia</element></name></scientific> <element>tasmanica</element> <authors><author data-id=\'6860\' title=\'Domin, K.\'>Domin</author></authors></name></scientific><citation><ref data-id=\'49840\'><ref-section><author>CHAH</author> <year>(2011)</year>, <par-title><i>Australian Plant Census</i></par-title></ref-section></ref></citation></data>**'
     }
 
     def "test check validation, relationship instance"() {
@@ -427,7 +430,7 @@ class TreeServiceSpec extends Specification {
 
         then: 'I get bad argument, instance already on the tree'
         def e = thrown(BadArgumentsException)
-        e.message == "$tree.name version $draftVersion.id already contains taxon $asperaElement.treeElement.instanceLink. See $asperaElement.elementLink"
+        e.message == "$tree.name version $draftVersion.id already contains taxon $asperaElement.treeElement.instanceLink. See ${asperaElement.fullElementLink()}"
 
     }
 
@@ -538,7 +541,7 @@ class TreeServiceSpec extends Specification {
 
         then: 'I get bad argument, name is already on the tree'
         def e = thrown(BadArgumentsException)
-        e.message == "$tree.name version $draftVersion.id already contains $taxonData.simpleName. See $asperaElement.elementLink"
+        e.message == "$tree.name version $draftVersion.id already contains $taxonData.simpleName. See ${asperaElement.fullElementLink()}"
     }
 
     def "test place taxon"() {
@@ -593,16 +596,16 @@ class TreeServiceSpec extends Specification {
         //taxon id should be set to a unique/new positive value
         result.childElement.taxonId != 0
         TreeVersionElement.countByTaxonId(result.childElement.taxonId) == 1
-        result.childElement.taxonLink == "http://localhost:7070/nsl-mapper/taxon/apni/${result.childElement.taxonId}"
+        result.childElement.taxonLink == "/taxon/apni/${result.childElement.taxonId}"
         //taxon id for the taxon above has changed to new IDs
         blechnaceaeElement.taxonId != 0
         blechnaceaeElement.taxonId != blechnaceaeTaxonId
         TreeVersionElement.countByTaxonId(blechnaceaeElement.taxonId) == 1
-        blechnaceaeElement.taxonLink == "http://localhost:7070/nsl-mapper/taxon/apni/$blechnaceaeElement.taxonId"
+        blechnaceaeElement.taxonLink == "/taxon/apni/$blechnaceaeElement.taxonId"
         doodiaElement.taxonId != 0
         doodiaElement.taxonId != doodiaTaxonId
         TreeVersionElement.countByTaxonId(doodiaElement.taxonId) == 1
-        doodiaElement.taxonLink == "http://localhost:7070/nsl-mapper/taxon/apni/$doodiaElement.taxonId"
+        doodiaElement.taxonLink == "/taxon/apni/$doodiaElement.taxonId"
 
         println result.childElement.elementLink
     }
@@ -827,7 +830,7 @@ class TreeServiceSpec extends Specification {
         //taxon id should be set to a unique/new positive value
         result.childElement.taxonId != 0
         TreeVersionElement.countByTaxonId(result.childElement.taxonId) == 1
-        result.childElement.taxonLink == "http://localhost:7070/nsl-mapper/taxon/apni/${result.childElement.taxonId}"
+        result.childElement.taxonLink == "/taxon/apni/${result.childElement.taxonId}"
         println result.childElement.elementLink
     }
 

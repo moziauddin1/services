@@ -25,7 +25,7 @@
     <tree:findCurrentVersion element="${treeVersionElement}">
       <span class="small">
         <i class="fa fa-long-arrow-right"></i>
-        <a href='${currentElement.elementLink}'>
+        <a href='${currentElement.fullElementLink()}'>
           current version.
         </a>
       </span>
@@ -65,7 +65,7 @@
   <div>
     <tree:profile profile="${treeVersionElement.treeElement.profile}"/>
     <tree:elementPath element="${treeVersionElement}" var="pathElement" separator="/" excludeThis="false">
-      <a href="${pathElement.elementLink}">${pathElement.treeElement.simpleName}</a>
+      <a href="${pathElement.fullElementLink()}">${pathElement.treeElement.simpleName}</a>
     </tree:elementPath>
     <div class="text-info">${children.size() - 1} sub taxa</div>
   </div>
@@ -99,8 +99,8 @@
   </div>
 </help>
 </h4>
-Please cite using: <a href="${treeVersionElement.elementLink}">
-  ${treeVersionElement.elementLink}
+Please cite using: <a href="${treeVersionElement.fullElementLink()}">
+  ${treeVersionElement.fullElementLink()}
 </a> <i class="fa fa-star green"></i>
 
 </div>

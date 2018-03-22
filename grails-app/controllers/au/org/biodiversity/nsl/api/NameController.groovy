@@ -187,7 +187,7 @@ class NameController implements WithTarget {
                        nameNs    : "${tve.treeVersion.tree.name}-name",
                        nameId    : linkService.getPreferredLinkForObject(name),
                        taxonNs   : "${tve.treeVersion.tree.name}-name",
-                       taxonId   : tve.taxonLink,
+                       taxonId   : tve.fullTaxonLink(),
                        type      : "${tve.treeVersion.tree.name}Concept"
             ]
         }

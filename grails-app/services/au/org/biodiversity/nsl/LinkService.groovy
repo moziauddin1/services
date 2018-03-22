@@ -229,6 +229,36 @@ class LinkService {
     }
 
     /**
+     * Ask the mapper for the preferred host name and context path (sans protocol e.g. http://)
+     * @return
+     */
+    @Timed()
+    String getPreferredHost() {
+        String host = null
+        try {
+            String url = getInternalLinkServiceUrl('preferredHost')
+
+            restCallService.json('get', url,
+                    { Map data ->
+                        host = data.host
+                    },
+                    { Map data, List errors ->
+                        log.error "Couldn't get preferred host $errors"
+                    },
+                    {
+                        log.error "Couldn't get preferred host: 404 not found"
+                    },
+                    { data ->
+                        log.error "Something went wrong getting preferred host. Response: $data"
+                    }
+            )
+        } catch (RestCallException e) {
+            log.error "Error $e.message getting preferred host"
+        }
+        return host
+    }
+
+    /**
      * Get the domain object matching a URI based identifier. This method asks
      * the mapper for the mapper identity for a URI, and recover the object.
      *
@@ -348,6 +378,12 @@ class LinkService {
             return url
         }
         return null
+    }
+
+    private String getInternalLinkServiceUrl(String endPoint) {
+        String mapper = mapper(true)
+        String url = "${mapper}/broker/${endPoint}"
+        return url
     }
 
     private String mapper(Boolean internal) {

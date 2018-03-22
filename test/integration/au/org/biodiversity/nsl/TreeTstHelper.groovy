@@ -29,7 +29,7 @@ class TreeTstHelper {
             TreeVersionElement tve = new TreeVersionElement(data)
             tve.treeVersion = version
             tve.treeElement = TreeElement.get(generatedIdMapper.get(data.treeElementId as Long) as Long)
-            tve.elementLink = "http://localhost:7070/nsl-mapper/tree/$version.id/$data.treeElementId"
+            tve.elementLink = "tree/$version.id/$data.treeElementId"
             tve.treePath = filterTreePath(generatedIdMapper, data.treePath as String)
             tve.parent = TreeVersionElement.get(elementLinkMapper[data.parentId as String] as String)
             tve.updatedBy = 'tester'
@@ -77,12 +77,12 @@ class TreeTstHelper {
     ]
 
     static Map doodiaTVEData = [
-            elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50083039",
+            elementLink  : "/tree/50083038/50083039",
             depth        : 7,
             namePath     : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia",
-            parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50045090",
+            parentId     : "/tree/50083038/50045090",
             taxonId      : 50083040,
-            taxonLink    : "http://localhost:7070/nsl-mapper/taxon/apni/50083040",
+            taxonLink    : "/taxon/apni/50083040",
             treeElementId: 50083039,
             treePath     : "/50044420/50044421/50044422/50044551/50044880/50045090/50083039",
             treeVersionId: 50083038,
@@ -113,12 +113,12 @@ class TreeTstHelper {
     ]
 
     static Map blechnaceaeTVEData = [
-            elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50045090",
+            elementLink  : "/tree/50083038/50045090",
             depth        : 6,
             namePath     : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae",
-            parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50044880",
+            parentId     : "/tree/50083038/50044880",
             taxonId      : 50083046,
-            taxonLink    : "http://localhost:7070/nsl-mapper/taxon/apni/50083046",
+            taxonLink    : "/taxon/apni/50083046",
             treeElementId: 50045090,
             treePath     : "/50044420/50044421/50044422/50044551/50044880/50045090",
             treeVersionId: 50083038,
@@ -149,12 +149,12 @@ class TreeTstHelper {
     ]
 
     static Map asperaTVEData = [
-            elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50045127",
+            elementLink  : "/tree/50083038/50045127",
             depth        : 8,
             namePath     : "Plantae/Charophyta/Equisetopsida/Polypodiidae/Polypodiales/Blechnaceae/Doodia/aspera",
-            parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50083039",
+            parentId     : "/tree/50083038/50083039",
             taxonId      : 2895769,
-            taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2895769",
+            taxonLink    : "/node/apni/2895769",
             treeElementId: 50045127,
             treePath     : "/50044420/50044421/50044422/50044551/50044880/50045090/50083039/50045127",
             treeVersionId: 50083038,
@@ -165,12 +165,12 @@ class TreeTstHelper {
     static List<Map> testTreeVersionElementData() {
         [
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50044420",
+                        elementLink  : "/tree/50083038/50044420",
                         depth        : 1,
                         namePath     : "Plantae",
                         parentId     : null,
                         taxonId      : 50083041,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/taxon/apni/50083041",
+                        taxonLink    : "/taxon/apni/50083041",
                         treeElementId: 50044420,
                         treePath     : "/50044420",
                         treeVersionId: 50083038,
@@ -178,12 +178,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082285",
+                        elementLink  : "/tree/50083038/50082285",
                         depth        : 2,
                         namePath     : "Plantae/Anthocerotophyta",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50044420",
+                        parentId     : "/tree/50083038/50044420",
                         taxonId      : 9873243,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9873243",
+                        taxonLink    : "/node/apni/9873243",
                         treeElementId: 50082285,
                         treePath     : "/50044420/50082285",
                         treeVersionId: 50083038,
@@ -191,12 +191,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082286",
+                        elementLink  : "/tree/50083038/50082286",
                         depth        : 3,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082285",
+                        parentId     : "/tree/50083038/50082285",
                         taxonId      : 9873242,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9873242",
+                        taxonLink    : "/node/apni/9873242",
                         treeElementId: 50082286,
                         treePath     : "/50044420/50082285/50082286",
                         treeVersionId: 50083038,
@@ -204,12 +204,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082287",
+                        elementLink  : "/tree/50083038/50082287",
                         depth        : 4,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082286",
+                        parentId     : "/tree/50083038/50082286",
                         taxonId      : 8513221,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513221",
+                        taxonLink    : "/node/apni/8513221",
                         treeElementId: 50082287,
                         treePath     : "/50044420/50082285/50082286/50082287",
                         treeVersionId: 50083038,
@@ -217,12 +217,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082288",
+                        elementLink  : "/tree/50083038/50082288",
                         depth        : 5,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082287",
+                        parentId     : "/tree/50083038/50082287",
                         taxonId      : 8513220,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513220",
+                        taxonLink    : "/node/apni/8513220",
                         treeElementId: 50082288,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288",
                         treeVersionId: 50083038,
@@ -230,12 +230,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082289",
+                        elementLink  : "/tree/50083038/50082289",
                         depth        : 6,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082288",
+                        parentId     : "/tree/50083038/50082288",
                         taxonId      : 8513200,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513200",
+                        taxonLink    : "/node/apni/8513200",
                         treeElementId: 50082289,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289",
                         treeVersionId: 50083038,
@@ -243,12 +243,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082290",
+                        elementLink  : "/tree/50083038/50082290",
                         depth        : 7,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082289",
+                        parentId     : "/tree/50083038/50082289",
                         taxonId      : 6722223,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/6722223",
+                        taxonLink    : "/node/apni/6722223",
                         treeElementId: 50082290,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082290",
                         treeVersionId: 50083038,
@@ -256,12 +256,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082291",
+                        elementLink  : "/tree/50083038/50082291",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/capricornii",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082290",
+                        parentId     : "/tree/50083038/50082290",
                         taxonId      : 2910349,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2910349",
+                        taxonLink    : "/node/apni/2910349",
                         treeElementId: 50082291,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082290/50082291",
                         treeVersionId: 50083038,
@@ -269,12 +269,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082292",
+                        elementLink  : "/tree/50083038/50082292",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/ferdinandi-muelleri",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082290",
+                        parentId     : "/tree/50083038/50082290",
                         taxonId      : 2909847,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909847",
+                        taxonLink    : "/node/apni/2909847",
                         treeElementId: 50082292,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082290/50082292",
                         treeVersionId: 50083038,
@@ -282,12 +282,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082295",
+                        elementLink  : "/tree/50083038/50082295",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/fragilis",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082290",
+                        parentId     : "/tree/50083038/50082290",
                         taxonId      : 2916003,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2916003",
+                        taxonLink    : "/node/apni/2916003",
                         treeElementId: 50082295,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082290/50082295",
                         treeVersionId: 50083038,
@@ -295,12 +295,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082293",
+                        elementLink  : "/tree/50083038/50082293",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/laminifer",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082290",
+                        parentId     : "/tree/50083038/50082290",
                         taxonId      : 2891332,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2891332",
+                        taxonLink    : "/node/apni/2891332",
                         treeElementId: 50082293,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082290/50082293",
                         treeVersionId: 50083038,
@@ -308,12 +308,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082294",
+                        elementLink  : "/tree/50083038/50082294",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Anthoceros/punctatus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082290",
+                        parentId     : "/tree/50083038/50082290",
                         taxonId      : 2901206,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2901206",
+                        taxonLink    : "/node/apni/2901206",
                         treeElementId: 50082294,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082290/50082294",
                         treeVersionId: 50083038,
@@ -321,12 +321,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082296",
+                        elementLink  : "/tree/50083038/50082296",
                         depth        : 7,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082289",
+                        parentId     : "/tree/50083038/50082289",
                         taxonId      : 2894485,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2894485",
+                        taxonLink    : "/node/apni/2894485",
                         treeElementId: 50082296,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082296",
                         treeVersionId: 50083038,
@@ -334,12 +334,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082297",
+                        elementLink  : "/tree/50083038/50082297",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros/fuciformis",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082296",
+                        parentId     : "/tree/50083038/50082296",
                         taxonId      : 2891695,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2891695",
+                        taxonLink    : "/node/apni/2891695",
                         treeElementId: 50082297,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082296/50082297",
                         treeVersionId: 50083038,
@@ -347,12 +347,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082298",
+                        elementLink  : "/tree/50083038/50082298",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Anthocerotidae/Anthocerotales/Anthocerotaceae/Folioceros/glandulosus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082296",
+                        parentId     : "/tree/50083038/50082296",
                         taxonId      : 2896010,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2896010",
+                        taxonLink    : "/node/apni/2896010",
                         treeElementId: 50082298,
                         treePath     : "/50044420/50082285/50082286/50082287/50082288/50082289/50082296/50082298",
                         treeVersionId: 50083038,
@@ -360,12 +360,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082315",
+                        elementLink  : "/tree/50083038/50082315",
                         depth        : 4,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082286",
+                        parentId     : "/tree/50083038/50082286",
                         taxonId      : 9873241,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9873241",
+                        taxonLink    : "/node/apni/9873241",
                         treeElementId: 50082315,
                         treePath     : "/50044420/50082285/50082286/50082315",
                         treeVersionId: 50083038,
@@ -373,12 +373,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082316",
+                        elementLink  : "/tree/50083038/50082316",
                         depth        : 5,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082315",
+                        parentId     : "/tree/50083038/50082315",
                         taxonId      : 9873240,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9873240",
+                        taxonLink    : "/node/apni/9873240",
                         treeElementId: 50082316,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316",
                         treeVersionId: 50083038,
@@ -386,12 +386,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082317",
+                        elementLink  : "/tree/50083038/50082317",
                         depth        : 6,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082316",
+                        parentId     : "/tree/50083038/50082316",
                         taxonId      : 9873234,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9873234",
+                        taxonLink    : "/node/apni/9873234",
                         treeElementId: 50082317,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317",
                         treeVersionId: 50083038,
@@ -399,12 +399,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082318",
+                        elementLink  : "/tree/50083038/50082318",
                         depth        : 7,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082317",
+                        parentId     : "/tree/50083038/50082317",
                         taxonId      : 9873236,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/9873236",
+                        taxonLink    : "/node/apni/9873236",
                         treeElementId: 50082318,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318",
                         treeVersionId: 50083038,
@@ -412,12 +412,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        elementLink  : "/tree/50083038/50082319",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082318",
+                        parentId     : "/tree/50083038/50082318",
                         taxonId      : 2909398,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909398",
+                        taxonLink    : "/node/apni/2909398",
                         treeElementId: 50082319,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319",
                         treeVersionId: 50083038,
@@ -425,12 +425,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082320",
+                        elementLink  : "/tree/50083038/50082320",
                         depth        : 9,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/australis",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        parentId     : "/tree/50083038/50082319",
                         taxonId      : 2895623,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2895623",
+                        taxonLink    : "/node/apni/2895623",
                         treeElementId: 50082320,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319/50082320",
                         treeVersionId: 50083038,
@@ -438,12 +438,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082321",
+                        elementLink  : "/tree/50083038/50082321",
                         depth        : 9,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/crispatus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        parentId     : "/tree/50083038/50082319",
                         taxonId      : 2909090,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909090",
+                        taxonLink    : "/node/apni/2909090",
                         treeElementId: 50082321,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319/50082321",
                         treeVersionId: 50083038,
@@ -451,12 +451,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082325",
+                        elementLink  : "/tree/50083038/50082325",
                         depth        : 9,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/difficilis",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        parentId     : "/tree/50083038/50082319",
                         taxonId      : 2897137,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2897137",
+                        taxonLink    : "/node/apni/2897137",
                         treeElementId: 50082325,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319/50082325",
                         treeVersionId: 50083038,
@@ -464,12 +464,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082322",
+                        elementLink  : "/tree/50083038/50082322",
                         depth        : 9,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/granulatus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        parentId     : "/tree/50083038/50082319",
                         taxonId      : 2897129,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2897129",
+                        taxonLink    : "/node/apni/2897129",
                         treeElementId: 50082322,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319/50082322",
                         treeVersionId: 50083038,
@@ -477,12 +477,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082326",
+                        elementLink  : "/tree/50083038/50082326",
                         depth        : 9,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/muelleri",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        parentId     : "/tree/50083038/50082319",
                         taxonId      : 2916733,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2916733",
+                        taxonLink    : "/node/apni/2916733",
                         treeElementId: 50082326,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319/50082326",
                         treeVersionId: 50083038,
@@ -490,12 +490,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082323",
+                        elementLink  : "/tree/50083038/50082323",
                         depth        : 9,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/subtropicus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        parentId     : "/tree/50083038/50082319",
                         taxonId      : 2917550,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2917550",
+                        taxonLink    : "/node/apni/2917550",
                         treeElementId: 50082323,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319/50082323",
                         treeVersionId: 50083038,
@@ -503,12 +503,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082324",
+                        elementLink  : "/tree/50083038/50082324",
                         depth        : 9,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Dendrocerotoideae/Dendroceros/wattsianus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082319",
+                        parentId     : "/tree/50083038/50082319",
                         taxonId      : 2913739,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2913739",
+                        taxonLink    : "/node/apni/2913739",
                         treeElementId: 50082324,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082318/50082319/50082324",
                         treeVersionId: 50083038,
@@ -516,12 +516,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082334",
+                        elementLink  : "/tree/50083038/50082334",
                         depth        : 7,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Megaceros",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082317",
+                        parentId     : "/tree/50083038/50082317",
                         taxonId      : 8513209,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/8513209",
+                        taxonLink    : "/node/apni/8513209",
                         treeElementId: 50082334,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082334",
                         treeVersionId: 50083038,
@@ -529,12 +529,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082335",
+                        elementLink  : "/tree/50083038/50082335",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Megaceros/carnosus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082334",
+                        parentId     : "/tree/50083038/50082334",
                         taxonId      : 2917526,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2917526",
+                        taxonLink    : "/node/apni/2917526",
                         treeElementId: 50082335,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082334/50082335",
                         treeVersionId: 50083038,
@@ -542,12 +542,12 @@ class TreeTstHelper {
                         updatedBy    : "import"
                 ],
                 [
-                        elementLink  : "http://localhost:7070/nsl-mapper/tree/50083038/50082336",
+                        elementLink  : "/tree/50083038/50082336",
                         depth        : 8,
                         namePath     : "Plantae/Anthocerotophyta/Anthocerotopsida/Dendrocerotidae/Dendrocerotales/Dendrocerotaceae/Megaceros/crassus",
-                        parentId     : "http://localhost:7070/nsl-mapper/tree/50083038/50082334",
+                        parentId     : "/tree/50083038/50082334",
                         taxonId      : 2909144,
-                        taxonLink    : "http://localhost:7070/nsl-mapper/node/apni/2909144",
+                        taxonLink    : "/node/apni/2909144",
                         treeElementId: 50082336,
                         treePath     : "/50044420/50082285/50082286/50082315/50082316/50082317/50082334/50082336",
                         treeVersionId: 50083038,

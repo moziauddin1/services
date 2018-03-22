@@ -168,7 +168,7 @@ class RestResourceController {
 from TreeVersionElement tve 
 where taxonLink like :query
 group by tve.treeElement.id
-order by mx''', [query: "%/node/$shard/$idNumber"]).last()
+order by mx''', [query: "%node/$shard/$idNumber"]).last()
         if (result && result.size() == 2) {
             TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(result[1] as Long, result[0] as Long)
 

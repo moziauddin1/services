@@ -263,7 +263,7 @@ class TreeService implements ValidationUtils {
     private List<DisplayElement> fetchDisplayElements(String pattern, TreeVersion treeVersion) {
         mustHave(treeVersion: treeVersion, pattern: pattern)
         log.debug("getting $pattern")
-
+        String hostPart = treeVersion.hostPart()
         TreeElement.executeQuery('''
 select tve.treeElement.displayHtml, tve.elementLink, tve.treeElement.nameLink, tve.treeElement.instanceLink, 
  tve.treeElement.excluded, tve.depth, tve.treeElement.synonymsHtml 
@@ -272,7 +272,7 @@ select tve.treeElement.displayHtml, tve.elementLink, tve.treeElement.nameLink, t
     and regex(tve.treePath, :pattern) = true 
     order by tve.namePath
 ''', [version: treeVersion, pattern: pattern]).collect { data ->
-            new DisplayElement(data as List)
+            new DisplayElement(data as List, hostPart)
         } as List<DisplayElement>
     }
 
@@ -355,7 +355,8 @@ select count(tve)
                 descriptionHtml: descriptionHtml,
                 linkToHomePage: linkToHomePage,
                 acceptedTree: acceptedTree,
-                config: [comment_key: "Comment", distribution_key: "Dist."]
+                config: [comment_key: "Comment", distribution_key: "Dist."],
+                hostName: linkService.getPreferredHost()
         )
         tree.save()
         linkService.addTargetLink(tree)
@@ -766,10 +767,11 @@ INSERT INTO tree_version_element (tree_version_id,
         if (parent) {
             List<TreeVersionElement> branchElements = getParentTreeVersionElements(parent)
             Sql sql = getSql()
+            String hostPart = parent.treeVersion.hostPart()
             branchElements.each { TreeVersionElement element ->
                 if (!isUniqueTaxon(element)) {
                     element.taxonId = nextSequenceId(sql)
-                    element.taxonLink = linkService.addTaxonIdentifier(element)
+                    element.taxonLink = linkService.addTaxonIdentifier(element) - hostPart
                     element.save()
                 }
             }
@@ -1105,8 +1107,8 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                 updatedAt: new Timestamp(System.currentTimeMillis())
         )
 
-        treeVersionElement.elementLink = linkService.addTargetLink(treeVersionElement)
-        treeVersionElement.taxonLink = taxonLink ?: linkService.addTaxonIdentifier(treeVersionElement)
+        treeVersionElement.elementLink = (linkService.addTargetLink(treeVersionElement) - version.hostPart())
+        treeVersionElement.taxonLink = taxonLink ?: (linkService.addTaxonIdentifier(treeVersionElement) - version.hostPart())
         treeVersionElement.save()
         return treeVersionElement
     }
@@ -1191,7 +1193,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //is instance already in the tree. We use instance link because that works across shards, there is a remote possibility instance id will clash.
         TreeVersionElement existingElement = findElementForInstanceLink(taxonData.instanceLink, treeVersion)
         if (existingElement) {
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains taxon ${taxonData.instanceLink}. See ${existingElement.elementLink}")
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains taxon ${taxonData.instanceLink}. See ${existingElement.fullElementLink()}")
         }
     }
 
@@ -1211,7 +1213,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //a name can't be in the tree already
         TreeVersionElement existingNameElement = findElementForNameLink(taxonData.nameLink, treeVersion)
         if (existingNameElement) {
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains ${taxonData.simpleName}. See ${existingNameElement.elementLink}")
+            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains ${taxonData.simpleName}. See ${existingNameElement.fullElementLink()}")
         }
     }
 
@@ -1483,10 +1485,10 @@ class DisplayElement {
     @SuppressWarnings("GrFinalVariableAccess")
     public final String synonymsHtml
 
-    DisplayElement(List data) {
+    DisplayElement(List data, String hostPart) {
         assert data.size() == 7
         this.displayHtml = data[0] as String
-        this.elementLink = data[1] as String
+        this.elementLink = hostPart + data[1] as String
         this.nameLink = data[2] as String
         this.instanceLink = data[3] as String
         this.excluded = data[4] as Boolean
