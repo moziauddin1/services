@@ -448,7 +448,7 @@ into relationship types e.g.
 }
 ----
 
-=== Profile data
+=== Profile data / attributes
 
 The Profile data will be stored as a JSON object/document field in the tree_element. This allows arbitrary extension of the
 profile data to be stored. It also provides a consistent versioned view of the Profile data. e.g.

@@ -1,0 +1,172 @@
+= Tree Placement Rules
+v1.0, March 2018
+:imagesdir: resources/images/
+:toc: left
+:toclevels: 4
+:toc-class: toc2
+:icons: font
+:iconfont-cdn: //cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css
+:stylesdir: resources/style/
+:stylesheet: asciidoctor.css
+:description: New tree structure documentation
+:keywords: documentation, NSL, APNI, API, APC, tree
+:links:
+:numbered:
+
+Placing taxa on a tree has a set of rules that need to be understood. This document attempts to explain them.
+
+== Previous documentation
+
+* https://www.anbg.gov.au/25jira/browse/NSL-464[JIRA - NSL-464]
+* https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality[Confluence - Tree Monitor Functionality]
+
+The JIRA NSL-464 lists the rules as:
+
+*Prevent placement for:*
+
+1. Within any classification, the placement of name on the tree must be below the rank of the name of its parent node.
+
+2. Within any classification, the placement of a name at the level of species and below must be within a branch subtended by the node, at rank genus, using the same generic name.
+
+3. Similarly, the placement of a name below the rank of species must be within the branch subtending from its species.
+
+4. Placement of an instance within a classification is not permitted if there is already an instance node bearing the
+same name within that tree.
+
+*Warning should be issued (at least) for:*
+
+5. Placement of an instance within a classification should not be permitted if there exists a node for an instance that
+places the new instance name in synonymy; unless, all synonymic instances of that name within the tree, bear the
+pro_parte qualification.
+
+6. Placement of an instance within a classification should not be permitted if its synonyms include the name of an
+instance that already exists within the tree; unless, the synonymic instance bears the pro_parte qualification.
+
+7. Placement of an instance within a classification should not be permitted if its synonyms include the name of a
+synonym of an instance that already exists within the tree; unless, all synonymic instance bear the pro_parte
+qualification.
+
+In part these rules are *incorrect* or deficient. Below I am documenting what has been implemented in code after much
+discussion and testing with users.
+
+== The code
+
+A summary of what we check can be found by looking at the code for placing a new taxon on the tree:
+
+[source:groovy]
+.Validate New Element Placement groovy
+----
+   protected List<String> validateNewElementPlacement(TreeVersionElement parentElement, TaxonData taxonData) {
+
+        TreeVersion treeVersion = parentElement.treeVersion
+
+        List<String> warnings = checkNameValidity(taxonData)   // test 1
+        checkInstanceOnTree(taxonData, treeVersion)            // test 2
+        checkNameAlreadyOnTree(taxonData, treeVersion)         // test 3
+
+        NameRank taxonRank = NameRank.findByName(taxonData.rank)
+        NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
+
+        //is rank below parent                                 // test 4
+        if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
+            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.treeElement.simpleName.")
+        }
+
+        //polynomials must be placed under parent              // test 5
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion) // test 6
+        checkForExistingSynonyms(taxonData, treeVersion, [])      // test 7
+
+        return warnings
+    }
+
+----
+
+We describe each test below.
+
+=== Check name validity (warning only)
+
+* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1200[github]
+
+The creates a warning if the name is *nom Illeg* or *nom Inval*. It does not stop you from adding the name.
+
+=== Check if the instance is already on the tree
+
+* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1192[github]
+
+Checks if the instance of the taxon is already placed on the tree as an accepted name. It will prevent the taxon being
+placed. In general you can replace an instance, but not with itself, so you would have to remove the existing instance
+first before placing it again, but this is almost always not what you want to do... [because??]
+
+=== Check if the name is already on the tree
+
+* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1212[github]
+
+Checks if the name of the taxon is already placed on the tree as an accepted name. It will prevent the taxon being
+placed. You need to replace the accepted taxon. In general this shouldn't happen because the editor prevents it.
+
+=== Check the rank of the name is below it's parent
+
+* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1148[github]
+
+You can't place a lower rank above a higher one in the tree.
+
+=== Check a polynomial name is below it's parent name
+
+* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1297[github]
+
+e.g. Doodia aspera must be placed below Doodia not Woodwardia because the name is *Doodia* aspera not *Woodwardia* aspera.
+
+=== Check synonyms of the taxon you are placing are not on the tree
+
+* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1220[github]
+
+This checks the synonyms of the taxon/instance you are placing and ensures that no accepted taxon on the tree has that
+name. This is an extension of rule 3 <<Check if the name is already on the tree>>. It should probably be merged with
+<<Check if the name is already on the tree>>.
+
+=== Check synonyms of Accepted Names on the tree are not in this taxon
+
+* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1232[github]
+
+Check the name being placed and all it's synonyms as defined by the instance/concept against all the synonyms of
+Accepted Names on the tree.
+
+NOTE: Rules 3, 6 and 7 are the same thing, checking if the name you are placing or any of it's synonyms are effectively
+already on the tree. A name is effectively on the tree if it is the Accepted Name that is placed, or any of it's
+synonyms as defined in the concept (via the instance and cited by relationships)
+
+When checking if a name is on the tree we have to check if any two sets of accepted name plus synonyms (or concepts)
+intersect. The code splits these checks into two sides checking one set against the tree and then the other. We do the
+simplest (quickest) check first (is the name in the accepted names) so that we fail fast on the simplest check.
+
+== Synonym errors
+
+=== candidate name is an accepted name
+
+e.g. trying to place another concept of Doodia aspera:
+
+Can't place this concept - Doodia aspera is already accepted as
+Doodia aspera R.Br.CHAH (2014), Australian Plant Census
+
+=== candidate's synonym is an accepted name
+
+e.g. trying to place a concept that has Doodia aspera as a synonym:
+
+Can't place this concept - synonym Doodia aspera (R.Br.) Mett. is an accepted concept
+Doodia aspera R.Br.CHAH (2014), Australian Plant Census
+
+
+=== candidate name is a synonym of an accepted name
+
+e.g. trying to place a concept of Woodwardia aspera:
+
+Can't place this concept - Woodwardia aspera (R.Br.) Mett. is part of accepted concept
+Doodia aspera R.Br.CHAH (2014), Australian Plant Census
+
+=== cadidates's synonym is a synonym of an accepted name
+
+e.g. trying to place a concept (other than Doodia aspera) that has Woodwardia aspera as a synonym:
+
+Can't place this concept - synonym Woodwardia aspera (R.Br.) Mett. is part of accepted concept
+Doodia aspera R.Br.CHAH (2014), Australian Plant Census

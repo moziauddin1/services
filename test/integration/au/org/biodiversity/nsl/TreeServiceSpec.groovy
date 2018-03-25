@@ -358,7 +358,7 @@ class TreeServiceSpec extends Specification {
         when: 'I try to place Ficus virens var. sublanceolata sensu Jacobs & Packard (1981)'
         TaxonData taxonData = service.elementDataFromInstance(ficusVirensSublanceolata)
         List<Long> nameIdList = taxonData.synonyms.filtered().collect { it.nameId } + [taxonData.nameId]
-        List<Map> existingSynonyms = service.checkSynonyms(nameIdList, treeVersion, [])
+        List<Map> existingSynonyms = service.checkNameIdsAgainstAllSynonyms(nameIdList, treeVersion, [])
         println existingSynonyms
 
         then: 'I get two found synonyms'
@@ -381,7 +381,7 @@ class TreeServiceSpec extends Specification {
 
         when: 'I try to place Xanthosia pusilla Bunge'
         TaxonData taxonData = service.elementDataFromInstance(xanthosiaPusillaBunge)
-        service.checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion)
+        service.checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
 
         then: 'I get en error'
         def e = thrown(BadArgumentsException)

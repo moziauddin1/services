@@ -23,7 +23,6 @@ class SearchService {
     def suggestService
     def treeService
     def linkService
-    def classificationService
     def configService
 
     @Timed(name = "SearchTimer")

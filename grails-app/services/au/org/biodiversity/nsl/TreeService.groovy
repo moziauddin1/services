@@ -1138,8 +1138,6 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         TreeVersion treeVersion = parentElement.treeVersion
 
         List<String> warnings = checkNameValidity(taxonData)
-        checkInstanceOnTree(taxonData, treeVersion)
-        checkNameAlreadyOnTree(taxonData, treeVersion)
 
         NameRank taxonRank = NameRank.findByName(taxonData.rank)
         NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
@@ -1151,8 +1149,12 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         //polynomials must be placed under parent
         checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
-        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion)
-        checkForExistingSynonyms(taxonData, treeVersion, [])
+
+        checkInstanceIsNotOnTheTree(taxonData, treeVersion)
+        checkNameIsNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [])
+        checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
 
         return warnings
     }
@@ -1162,7 +1164,6 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         TreeVersion treeVersion = parentElement.treeVersion
 
         List<String> warnings = checkNameValidity(taxonData)
-        checkInstanceOnTree(taxonData, treeVersion)
 
         NameRank taxonRank = NameRank.findByName(taxonData.rank)
         NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
@@ -1174,27 +1175,23 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         //polynomials must be placed under parent
         checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
-        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion)
-        checkForExistingSynonyms(taxonData, treeVersion, [currentTve])
+
+        checkInstanceIsNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [currentTve])
+        checkNameNotAnExistingSynonym(taxonData, treeVersion, [currentTve])
 
         return warnings
     }
 
     protected List<String> validateNewElementTopPlacement(TreeVersion treeVersion, TaxonData taxonData) {
         List<String> warnings = checkNameValidity(taxonData)
-        checkInstanceOnTree(taxonData, treeVersion)
-        checkNameAlreadyOnTree(taxonData, treeVersion)
-        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion)
-        checkForExistingSynonyms(taxonData, treeVersion, [])
+        checkInstanceIsNotOnTheTree(taxonData, treeVersion)
+        checkNameIsNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [])
+        checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
         return warnings
-    }
-
-    private void checkInstanceOnTree(TaxonData taxonData, TreeVersion treeVersion) {
-        //is instance already in the tree. We use instance link because that works across shards, there is a remote possibility instance id will clash.
-        TreeVersionElement existingElement = findElementForInstanceLink(taxonData.instanceLink, treeVersion)
-        if (existingElement) {
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains taxon ${taxonData.instanceLink}. See ${existingElement.fullElementLink()}")
-        }
     }
 
     private static List<String> checkNameValidity(TaxonData taxonData) {
@@ -1209,50 +1206,63 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         return warnings
     }
 
-    private void checkNameAlreadyOnTree(TaxonData taxonData, TreeVersion treeVersion) {
-        //a name can't be in the tree already
-        TreeVersionElement existingNameElement = findElementForNameLink(taxonData.nameLink, treeVersion)
-        if (existingNameElement) {
-            throw new BadArgumentsException("${treeVersion.tree.name} version $treeVersion.id already contains ${taxonData.simpleName}. See ${existingNameElement.fullElementLink()}")
+    private void checkInstanceIsNotOnTheTree(TaxonData taxonData, TreeVersion treeVersion) {
+        //is instance already in the tree. We use instance link because that works across shards, there is a remote possibility instance id will clash.
+        TreeVersionElement existingElement = findElementForInstanceLink(taxonData.instanceLink, treeVersion)
+        if (existingElement) {
+            String message = "Can’t place this concept - ${taxonData.displayHtml} is accepted concept **${existingElement.treeElement.displayHtml}**"
+            throw new BadArgumentsException(message)
         }
     }
 
-    protected void checkSynonymsOfThisTaxonNotOnTree(TaxonData taxonData, TreeVersion treeVersion) {
+    private void checkNameIsNotOnTheTree(TaxonData taxonData, TreeVersion treeVersion) {
+        //a name can't be in the tree already
+        TreeVersionElement existingNameElement = findElementForNameLink(taxonData.nameLink, treeVersion)
+        if (existingNameElement) {
+            String message = "Can’t place this concept - ${taxonData.simpleName} is accepted concept **${existingNameElement.treeElement.displayHtml}**"
+            throw new BadArgumentsException(message)
+        }
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    protected void checkSynonymsOfNameNotOnTheTree(TaxonData taxonData, TreeVersion treeVersion) {
         List<Synonym> synonyms = taxonData.synonyms.filtered()
         synonyms.each { Synonym synonym ->
             TreeVersionElement tve = TreeVersionElement.find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.nameId = :nameId',
                     [treeVersion: treeVersion, nameId: synonym.nameId])
             if (tve) {
-                String message = "*${taxonData.displayHtml}* has a synonym of Accepted concept **${tve.treeElement.displayHtml}**"
+                String message = "Can’t place this concept - synonym $synonym.fullNameHtml is accepted concept **${tve.treeElement.displayHtml}**"
                 throw new BadArgumentsException("$message")
             }
         }
     }
 
-    private void checkForExistingSynonyms(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
+    private void checkSynonymsAreNotSynonymsOnTheTree(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
         //a name can't be already in the tree as a synonym
         List<Long> nameIdList = taxonData.synonyms.filtered().collect { it.nameId }
-        List<Map> existingSynonyms = checkSynonyms((nameIdList + [taxonData.nameId] as List<Long>), treeVersion, excluding)
+        List<Map> existingSynonyms = checkNameIdsAgainstAllSynonyms(nameIdList, treeVersion, excluding)
         if (!existingSynonyms.empty) {
-            String message = "You can't place name *${taxonData.simpleName}* because:\n\n"
-            existingSynonyms.groupBy { it.displayHtml }.each { k, synonyms ->
-                Long nameId = synonyms.first().nameId
-                log.debug "is $nameId in $nameIdList?"
-                if (nameIdList.contains(nameId)) {
-                    message += "*${taxonData.displayHtml}* has a synonym of Accepted concept **${k}**."
-                } else {
-                    message += "Accepted concept **${k}** has conflicting synonyms:\n"
-                    message += synonyms.collect {
-                        "* ${it.type} ${it.synonym}" //remove type and add full name
-                    }.join(',\n')
-                }
+            String message = "Can’t place this concept -\n\n"
+            existingSynonyms.each { Map s ->
+                message += "synonym ${s.synonym} is part of accepted concept ${s.displayHtml}"
             }
-
             throw new BadArgumentsException("$message")
         }
     }
 
-    protected List<Map> checkSynonyms(List<Long> nameIdList, TreeVersion treeVersion, List<TreeVersionElement> excluding, Sql sql = getSql()) {
+    private void checkNameNotAnExistingSynonym(TaxonData taxonData, TreeVersion treeVersion, List<TreeVersionElement> excluding) {
+        //a name can't be already in the tree as a synonym
+        List<Map> existingSynonyms = checkNameIdsAgainstAllSynonyms(([taxonData.nameId] as List<Long>), treeVersion, excluding)
+        if (!existingSynonyms.empty) {
+            String message = "Can’t place this concept -\n\n"
+            existingSynonyms.each { Map s ->
+                message += "${taxonData.simpleName} is part of accepted concept ${s.displayHtml}"
+            }
+            throw new BadArgumentsException("$message")
+        }
+    }
+
+    protected List<Map> checkNameIdsAgainstAllSynonyms(List<Long> nameIdList, TreeVersion treeVersion, List<TreeVersionElement> excluding, Sql sql = getSql()) {
 
         List<Map> synonymsFound = []
 
