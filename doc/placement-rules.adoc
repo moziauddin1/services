@@ -1,4 +1,4 @@
-= Tree Placement Rules
+= Tree Placement and Editing Rules
 v1.0, March 2018
 :imagesdir: resources/images/
 :toc: left
@@ -56,28 +56,30 @@ A summary of what we check can be found by looking at the code for placing a new
 [source:groovy]
 .Validate New Element Placement groovy
 ----
-   protected List<String> validateNewElementPlacement(TreeVersionElement parentElement, TaxonData taxonData) {
+    protected List<String> validateNewElementPlacement(TreeVersionElement parentElement, TaxonData taxonData) {
 
-        TreeVersion treeVersion = parentElement.treeVersion
+       TreeVersion treeVersion = parentElement.treeVersion
 
-        List<String> warnings = checkNameValidity(taxonData)   // test 1
-        checkInstanceOnTree(taxonData, treeVersion)            // test 2
-        checkNameAlreadyOnTree(taxonData, treeVersion)         // test 3
+(1)    List<String> warnings = checkNameValidity(taxonData)
 
-        NameRank taxonRank = NameRank.findByName(taxonData.rank)
-        NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
+       NameRank taxonRank = NameRank.findByName(taxonData.rank)
+       NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
 
-        //is rank below parent                                 // test 4
-        if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
-            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.treeElement.simpleName.")
-        }
+       //is rank below parent
+(2)    if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
+           throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.treeElement.simpleName.")
+       }
 
-        //polynomials must be placed under parent              // test 5
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
-        checkSynonymsOfThisTaxonNotOnTree(taxonData, treeVersion) // test 6
-        checkForExistingSynonyms(taxonData, treeVersion, [])      // test 7
+       //polynomials must be placed under parent
+(3)    checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
 
-        return warnings
+(4)    checkInstanceIsNotOnTheTree(taxonData, treeVersion)
+(5)    checkNameIsNotOnTheTree(taxonData, treeVersion)
+(6)    checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
+(7)    checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+(8)    checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [])
+
+       return warnings
     }
 
 ----
@@ -86,59 +88,57 @@ We describe each test below.
 
 === Check name validity (warning only)
 
-* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1200[github]
+ACTION: Warn that you are placing an invalid name.
 
 The creates a warning if the name is *nom Illeg* or *nom Inval*. It does not stop you from adding the name.
 
-=== Check if the instance is already on the tree
-
-* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1192[github]
-
-Checks if the instance of the taxon is already placed on the tree as an accepted name. It will prevent the taxon being
-placed. In general you can replace an instance, but not with itself, so you would have to remove the existing instance
-first before placing it again, but this is almost always not what you want to do... [because??]
-
-=== Check if the name is already on the tree
-
-* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1212[github]
-
-Checks if the name of the taxon is already placed on the tree as an accepted name. It will prevent the taxon being
-placed. You need to replace the accepted taxon. In general this shouldn't happen because the editor prevents it.
-
 === Check the rank of the name is below it's parent
 
-* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1148[github]
+ACTION: Prevents the taxon being placed.
 
 You can't place a lower rank above a higher one in the tree.
 
 === Check a polynomial name is below it's parent name
 
-* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1297[github]
+ACTION: Prevents the taxon being placed.
 
 e.g. Doodia aspera must be placed below Doodia not Woodwardia because the name is *Doodia* aspera not *Woodwardia* aspera.
 
-=== Check synonyms of the taxon you are placing are not on the tree
+=== Check if the instance is already on the tree
 
-* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1220[github]
+ACTION: Prevents the taxon being placed.
 
-This checks the synonyms of the taxon/instance you are placing and ensures that no accepted taxon on the tree has that
-name. This is an extension of rule 3 <<Check if the name is already on the tree>>. It should probably be merged with
-<<Check if the name is already on the tree>>.
+Checks if the instance of the taxon is already placed on the tree. It will prevent the taxon being
+placed. In general you can replace an instance, but not with itself, so you would have to remove the existing instance
+first before placing it again, but this is almost always not what you want to do... [because??]
 
-=== Check synonyms of Accepted Names on the tree are not in this taxon
+=== check Name Is Not On The Tree
 
-* https://github.com/bio-org-au/services/blob/5538d46bc05bc4aa90e86d212922995852398921/grails-app/services/au/org/biodiversity/nsl/TreeService.groovy#L1232[github]
+ACTION: Prevents the taxon being placed.
 
-Check the name being placed and all it's synonyms as defined by the instance/concept against all the synonyms of
-Accepted Names on the tree.
+Checks if the name of the taxon is already placed on the tree. You need to replace the accepted taxon.
+In general this shouldn't happen because the editor prevents it.
 
-NOTE: Rules 3, 6 and 7 are the same thing, checking if the name you are placing or any of it's synonyms are effectively
-already on the tree. A name is effectively on the tree if it is the Accepted Name that is placed, or any of it's
-synonyms as defined in the concept (via the instance and cited by relationships)
+=== check Name Not An Existing Synonym
 
-When checking if a name is on the tree we have to check if any two sets of accepted name plus synonyms (or concepts)
-intersect. The code splits these checks into two sides checking one set against the tree and then the other. We do the
-simplest (quickest) check first (is the name in the accepted names) so that we fail fast on the simplest check.
+ACTION: Prevents the taxon being placed.
+
+Checks if the name of the taxon is a synonym of name already placed on the tree. You need to replace
+or modify the accepted taxon.
+
+=== check Synonyms Of Name Not On The Tree
+
+ACTION: Prevents the taxon being placed.
+
+This checks if any of the synonyms of the taxon you are placing is a name already placed on the tree. You need
+to replace or modify the accepted taxon.
+
+=== check Synonyms Are Not Synonyms On The Tree
+
+ACTION: Prevents the taxon being placed.
+
+This checks if any of the synonyms of the taxon you are placing are a synonym of any name already placed on the tree.
+You need to replace or modify the accepted taxon.
 
 == Synonym errors
 
@@ -170,3 +170,40 @@ e.g. trying to place a concept (other than Doodia aspera) that has Woodwardia as
 
 Can't place this concept - synonym Woodwardia aspera (R.Br.) Mett. is part of accepted concept
 Doodia aspera R.Br.CHAH (2014), Australian Plant Census
+
+== Fixup edits
+
+We need to be able to edit past annotations and possibly synonomy that have been erroneously entered. These minor edits
+are considered errata to a published tree (see https://www.anbg.gov.au/25jira/browse/NSL-2550[NSL-2550]).
+
+.From NSL-2550 Kirsten Kowley
+----
+    We would like the following to be included in "minor edits":
+    1. deletion or edit of distribution
+    2. deletion or edit of comment
+    3. addition of a basionym
+    4. addition of autonyms
+    5. addition of orthographic variants
+    6. addition of isonyms
+
+    We do not consider any of these to be a change of concept and therefore do not need a new instance.
+
+    We like the idea of having to provide a reason for the change and would like to suggest the following:
+    1. Change in distribution
+    2. Comment deleted
+    3. Comment edited
+    4. Basionym added
+    5. Autonym added
+    6. Orthographic variant added
+    7. Isonym added
+----
+
+Presenting the User Interface for making a fix like these needs to be consistent across the types of change and obvious
+that you are changing the historical data.
+
+Accessing the historical data such as the Distribution and Comment data in the editor will potentially be a challenge as
+they may be stored in older versions. We currently only edit the current version and a draft. It would be logical to use
+previously used instances as the vector to the previous versions in the editor, as that works in a similar way to the
+previous use of Instance Notes to provide this information.
+
+icon:question-circle[2x, role='yellow'] | Not an immediate problem, but: How do we handle other attributes people may need to edit for different trees?
