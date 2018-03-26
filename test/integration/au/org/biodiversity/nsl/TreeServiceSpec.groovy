@@ -386,7 +386,9 @@ class TreeServiceSpec extends Specification {
         then: 'I get en error'
         def e = thrown(BadArgumentsException)
         println e.message
-        e.message == '*<data><scientific><name data-id=\'54730\'><scientific><name data-id=\'115383\'><element>Xanthosia</element></name></scientific> <element>pusilla</element> <authors><author data-id=\'6835\' title=\'Bunge, A.A. von\'>Bunge</author></authors></name></scientific> <citation><ref data-id=\'22550\'><ref-section><author>Curtis, W.M.</author> <year>(1963)</year>, <ref-title>Angiospermae: Lythraceae to Epacridaceae.</ref-title> <par-title><i>The Student\'s Flora of Tasmania</i></par-title> <volume>2</volume></ref-section></ref></citation></data>* has a synonym of Accepted concept **<data><scientific><name data-id=\'54854\'><scientific><name data-id=\'115383\'><element>Xanthosia</element></name></scientific> <element>tasmanica</element> <authors><author data-id=\'6860\' title=\'Domin, K.\'>Domin</author></authors></name></scientific><citation><ref data-id=\'49840\'><ref-section><author>CHAH</author> <year>(2011)</year>, <par-title><i>Australian Plant Census</i></par-title></ref-section></ref></citation></data>**'
+        e.message.startsWith("Can’t place this concept - synonym")
+        e.message.contains("Xanthosia")
+        e.message.contains("tasmanica")
     }
 
     def "test check validation, relationship instance"() {
@@ -430,7 +432,9 @@ class TreeServiceSpec extends Specification {
 
         then: 'I get bad argument, instance already on the tree'
         def e = thrown(BadArgumentsException)
-        e.message == "$tree.name version $draftVersion.id already contains taxon $asperaElement.treeElement.instanceLink. See ${asperaElement.fullElementLink()}"
+        e.message.startsWith("Can’t place this concept")
+        e.message.contains("Doodia")
+        e.message.contains("aspera")
 
     }
 
@@ -541,7 +545,7 @@ class TreeServiceSpec extends Specification {
 
         then: 'I get bad argument, name is already on the tree'
         def e = thrown(BadArgumentsException)
-        e.message == "$tree.name version $draftVersion.id already contains $taxonData.simpleName. See ${asperaElement.fullElementLink()}"
+        e.message.startsWith("Can’t place this concept - Doodia aspera is accepted concept")
     }
 
     def "test place taxon"() {

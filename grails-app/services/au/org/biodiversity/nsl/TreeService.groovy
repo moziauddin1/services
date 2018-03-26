@@ -1152,9 +1152,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         checkInstanceIsNotOnTheTree(taxonData, treeVersion)
         checkNameIsNotOnTheTree(taxonData, treeVersion)
+        checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
         checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
         checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [])
-        checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
 
         return warnings
     }
@@ -1178,8 +1178,8 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         checkInstanceIsNotOnTheTree(taxonData, treeVersion)
         checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
-        checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [currentTve])
         checkNameNotAnExistingSynonym(taxonData, treeVersion, [currentTve])
+        checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [currentTve])
 
         return warnings
     }
@@ -1188,9 +1188,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         List<String> warnings = checkNameValidity(taxonData)
         checkInstanceIsNotOnTheTree(taxonData, treeVersion)
         checkNameIsNotOnTheTree(taxonData, treeVersion)
+        checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
         checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
         checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [])
-        checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
         return warnings
     }
 
@@ -1244,7 +1244,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         if (!existingSynonyms.empty) {
             String message = "Can’t place this concept -\n\n"
             existingSynonyms.each { Map s ->
-                message += "synonym ${s.synonym} is part of accepted concept ${s.displayHtml}"
+                message += "synonym ${s.synonym} is part of accepted concept **${s.displayHtml}**"
             }
             throw new BadArgumentsException("$message")
         }
@@ -1256,7 +1256,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         if (!existingSynonyms.empty) {
             String message = "Can’t place this concept -\n\n"
             existingSynonyms.each { Map s ->
-                message += "${taxonData.simpleName} is part of accepted concept ${s.displayHtml}"
+                message += "${taxonData.simpleName} is part of accepted concept **${s.displayHtml}**"
             }
             throw new BadArgumentsException("$message")
         }

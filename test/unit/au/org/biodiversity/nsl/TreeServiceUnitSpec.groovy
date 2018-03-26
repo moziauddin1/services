@@ -137,15 +137,15 @@ class TreeServiceUnitSpec extends Specification {
 
     void "test DisplayElement"() {
         when: "I create a DisplayElement from a list"
-        DisplayElement displayElement = new DisplayElement(['display string', 'element link', 'name link', 'instance link', false, 8, 'synonyms html'])
+        DisplayElement displayElement = new DisplayElement(['display string', '/element_link', 'name_link', 'instance_link', false, 8, 'synonyms html'], 'http://localhost:7070/nsl-mapper')
 
         then: "it should work"
         displayElement
         !displayElement.excluded
-        displayElement.instanceLink == 'instance link'
-        displayElement.nameLink == 'name link'
+        displayElement.instanceLink == 'instance_link'
+        displayElement.nameLink == 'name_link'
         displayElement.displayHtml == 'display string'
-        displayElement.elementLink == 'element link'
+        displayElement.elementLink == 'http://localhost:7070/nsl-mapper/element_link'
         displayElement.depth == 8
         displayElement.synonymsHtml == 'synonyms html'
     }
