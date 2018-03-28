@@ -165,7 +165,7 @@ class TreeControllerSpec extends Specification {
 
     void "test editing a tree"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>', hostName: 'localhost').save()
         Long treeId = tree.id
         Map req = [id             : treeId,
                    treeName       : 'A New Name',
@@ -226,7 +226,7 @@ class TreeControllerSpec extends Specification {
 
     void "test validation error editing a tree"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>', hostName: 'localhost').save()
         Long treeId = tree.id
         Map req = [id             : treeId,
                    treeName       : 'A New Name',
@@ -276,7 +276,7 @@ class TreeControllerSpec extends Specification {
 
     void "test creating a new version"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>', hostName: 'localhost').save()
         Map req = [treeId       : tree.id.toString(),
                    fromVersionId: '',
                    draftName    : 'my draft tree',
@@ -303,7 +303,7 @@ class TreeControllerSpec extends Specification {
 
     void "test creating a new version no draft name"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>', hostName: 'localhost').save()
         Map req = [treeId       : tree.id,
                    fromVersionId: null,
                    draftName    : null,
@@ -321,7 +321,7 @@ class TreeControllerSpec extends Specification {
 
     void "test creating a new version unauthorized"() {
         given:
-        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>').save()
+        Tree tree = new Tree(name: 'aTree', groupName: 'aGroup', descriptionHtml: '<p>description</p>', hostName: 'localhost').save()
         Map req = [treeId       : tree.id,
                    fromVersionId: null,
                    draftName    : 'blargh',
