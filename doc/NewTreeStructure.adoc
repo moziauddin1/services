@@ -1560,6 +1560,41 @@ FROM (
      ) a;
 ----
 
+=== fix the depth of all elements in a tree version
+
+[source:sql]
+.update depth.sql
+----
+DO $$
+DECLARE
+    c CURSOR FOR
+    SELECT tve.parent_id
+    FROM tree_version_element tve
+      JOIN tree ON tve.tree_version_id = tree.default_draft_tree_version_id AND tree.name = 'APC'
+    ORDER BY tve.tree_path
+    FOR UPDATE;
+BEGIN
+  FOR row IN c LOOP
+    UPDATE tree_version_element
+    SET depth = coalesce ((select depth + 1 from tree_version_element where element_link = row.parent_id), 1)
+    WHERE CURRENT OF c;
+  END LOOP;
+END
+$$
+----
+
+This works, but sets the depth assuming the top element has the correct depth. The below solution
+is better because it uses the tree_path to set the depth by counting the number of '/' chars
+
+[source:sql]
+.update depth.sql
+----
+UPDATE tree_version_element
+SET depth   = array_length(regexp_split_to_array(tree_path, '/'),1) - 1
+WHERE tree_version_id = 50617332
+AND tree_path ~ '/50617337';
+----
+
 == Placement Rules
 
 This is an interpretation of the results of the discussion at https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality

@@ -732,9 +732,11 @@ INSERT INTO tree_version_element (tree_version_id,
 
         TreeElement treeElement = findTreeElement(taxonData) ?: makeTreeElementFromTaxonData(taxonData, currentTve.treeElement, userName)
         TreeVersionElement replacementTve = saveTreeVersionElement(treeElement, parentTve, nextSequenceId(), null, userName)
+
         updateParentId(currentTve, replacementTve)
         updateChildTreePath(replacementTve, currentTve)
         updateChildNamePath(replacementTve, currentTve)
+        updateChildNameDepth(replacementTve)
 
         updateParentTaxaId(parentTve)
         if (parentTve != currentTve.parent) {
@@ -752,6 +754,58 @@ INSERT INTO tree_version_element (tree_version_id,
         }
 
         return [replacementElement: replacementTve, problems: message]
+    }
+
+    /**
+     * Change the parent taxon only of a current unpublished taxon.
+     * @param currentTve
+     * @param newParentTve
+     * @param userName
+     * @return
+     */
+    Map changeParentTaxon(TreeVersionElement currentTve, TreeVersionElement newParentTve, String userName) {
+        mustHave('Current Element': currentTve, 'Parent Element': newParentTve, userName: userName)
+        notPublished(newParentTve)
+
+        //get data from link because it could be external to this shard
+        TaxonData taxonData = findInstanceByUri(currentTve.treeElement.instanceLink)
+        if (!taxonData) {
+            throw new ObjectNotFoundException("Taxon $currentTve.treeElement.instanceLink not found, trying to place it in $newParentTve")
+        }
+
+        taxonData.excluded = currentTve.treeElement.excluded
+        taxonData.profile = currentTve.treeElement.profile
+
+        List<String> warnings = validateChangeParentElement(newParentTve, taxonData)
+
+        String oldTreePath = currentTve.treePath
+        String oldNamePath = currentTve.namePath
+        TreeVersionElement oldParent = currentTve.parent
+        currentTve.parent = newParentTve
+        currentTve.treePath = makeTreePath(newParentTve, currentTve.treeElement)
+        currentTve.namePath = makeNamePath(newParentTve, currentTve.treeElement)
+        currentTve.depth = (newParentTve?.depth ?: 0) + 1
+        currentTve.updatedBy = userName
+        currentTve.updatedAt = new Timestamp(System.currentTimeMillis())
+
+        updateChildTreePath(currentTve.treePath, oldTreePath, currentTve.treeVersion)
+        updateChildNamePath(currentTve.namePath, oldNamePath, currentTve.treeVersion)
+        updateChildNameDepth(currentTve.namePath, currentTve.treeVersion)
+
+        updateParentTaxaId(newParentTve)
+        if (oldParent != currentTve.parent) {
+            updateParentTaxaId(oldParent)
+        }
+
+        String message = null
+        if (warnings && !warnings.empty) {
+            message = "#### Replaced parent with ${newParentTve.treeElement.name.fullName} #### \n\n *Note these warnings:* \n"
+            warnings.each {
+                message += "\n * $it"
+            }
+        }
+
+        return [replacementElement: currentTve, problems: message]
     }
 
     /**
@@ -962,6 +1016,7 @@ INSERT INTO tree_version_element (tree_version_id,
         return newTve
     }
 
+    @SuppressWarnings("GrMethodMayBeStatic")
     protected void updateChildTreePath(String newPath, String oldPath, TreeVersion treeVersion) {
         log.debug "Replacing tree path $oldPath with $newPath"
         TreeVersionElement.executeUpdate('''
@@ -979,6 +1034,7 @@ and regex(treePath, :oldId) = true
         return newTve
     }
 
+    @SuppressWarnings("GrMethodMayBeStatic")
     protected void updateChildNamePath(String newPath, String oldPath, TreeVersion treeVersion) {
         log.debug "Replacing name path $oldPath with $newPath"
         TreeVersionElement.executeUpdate('''
@@ -991,6 +1047,24 @@ and regex(namePath, :oldPath) = true
                  version: treeVersion])
     }
 
+    protected TreeVersionElement updateChildNameDepth(TreeVersionElement newTve) {
+        updateChildNameDepth(newTve.namePath, newTve.treeVersion)
+        return newTve
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
+    protected void updateChildNameDepth(String newPath, TreeVersion treeVersion) {
+        log.debug "Updating depth for path $newPath"
+        TreeVersionElement.executeUpdate('''
+update TreeVersionElement set depth = array_length(regexp_split_to_array(treePath, '/'),1) - 1
+where treeVersion = :version
+and regex(namePath, :newPath) = true
+''',
+                [newPath: "^$newPath/",
+                 version: treeVersion])
+    }
+
+    @SuppressWarnings("GrMethodMayBeStatic")
     private TreeVersionElement updateParentId(TreeVersionElement oldParent, TreeVersionElement newParent) {
         TreeVersionElement.executeUpdate('''
 update TreeVersionElement set parent = :newParent
@@ -1133,9 +1207,14 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         sql.firstRow("SELECT nextval('nsl_global_seq')")[0] as Long
     }
 
-    protected List<String> validateNewElementPlacement(TreeVersionElement parentElement, TaxonData taxonData) {
-
-        TreeVersion treeVersion = parentElement.treeVersion
+    /**
+     * Checks name validity and parent validations i.e. rank and matching Name parent
+     * @param parentElement
+     * @param taxonData
+     * @return
+     */
+    @SuppressWarnings("GrMethodMayBeStatic")
+    protected List<String> basicPlacementValidation(TreeVersionElement parentElement, TaxonData taxonData) {
 
         List<String> warnings = checkNameValidity(taxonData)
 
@@ -1149,47 +1228,71 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         //polynomials must be placed under parent
         checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        return warnings
+    }
+
+    protected List<String> validateNewElementPlacement(TreeVersionElement parentElement, TaxonData taxonData) {
+        TreeVersion treeVersion = parentElement.treeVersion
+
+        List<String> warnings = basicPlacementValidation(parentElement, taxonData)
 
         checkInstanceIsNotOnTheTree(taxonData, treeVersion)
-        checkNameIsNotOnTheTree(taxonData, treeVersion)
+        checkNameIsNotOnTheTree(taxonData, treeVersion, null)
         checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
-        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion, null)
         checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [])
 
         return warnings
     }
 
+    /**
+     * Replacing a taxon needs to exclude the taxon being replaced from the checks, but must be a different instance.
+     * @param parentElement
+     * @param currentTve
+     * @param taxonData
+     * @return
+     */
     protected List<String> validateReplacementElement(TreeVersionElement parentElement, TreeVersionElement currentTve, TaxonData taxonData) {
 
         TreeVersion treeVersion = parentElement.treeVersion
 
-        List<String> warnings = checkNameValidity(taxonData)
-
-        NameRank taxonRank = NameRank.findByName(taxonData.rank)
-        NameRank parentRank = NameRank.findByName(parentElement.treeElement.rank)
-
-        //is rank below parent
-        if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
-            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.treeElement.simpleName.")
-        }
-
-        //polynomials must be placed under parent
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        List<String> warnings = basicPlacementValidation(parentElement, taxonData)
 
         checkInstanceIsNotOnTheTree(taxonData, treeVersion)
-        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion, currentTve)
         checkNameNotAnExistingSynonym(taxonData, treeVersion, [currentTve])
         checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [currentTve])
 
         return warnings
     }
 
+    /**
+     * When we change parent the instance is the same, just the parent changes so don't check if the instance is on the
+     * tree and exclude the current taxon from validation.
+     * @param parentElement
+     * @param currentTve
+     * @param taxonData
+     * @return
+     */
+    protected List<String> validateChangeParentElement(TreeVersionElement parentElement, TaxonData taxonData) {
+
+        List<String> warnings = basicPlacementValidation(parentElement, taxonData)
+
+        return warnings
+    }
+
+    /**
+     * A top element, being at the top of the tree needs no parent checks
+     * @param treeVersion
+     * @param taxonData
+     * @return
+     */
     protected List<String> validateNewElementTopPlacement(TreeVersion treeVersion, TaxonData taxonData) {
         List<String> warnings = checkNameValidity(taxonData)
         checkInstanceIsNotOnTheTree(taxonData, treeVersion)
-        checkNameIsNotOnTheTree(taxonData, treeVersion)
+        checkNameIsNotOnTheTree(taxonData, treeVersion, null)
         checkNameNotAnExistingSynonym(taxonData, treeVersion, [])
-        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+        checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion, null)
         checkSynonymsAreNotSynonymsOnTheTree(taxonData, treeVersion, [])
         return warnings
     }
@@ -1215,21 +1318,22 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
     }
 
-    private void checkNameIsNotOnTheTree(TaxonData taxonData, TreeVersion treeVersion) {
+    private void checkNameIsNotOnTheTree(TaxonData taxonData, TreeVersion treeVersion, TreeVersionElement excluding) {
         //a name can't be in the tree already
         TreeVersionElement existingNameElement = findElementForNameLink(taxonData.nameLink, treeVersion)
-        if (existingNameElement) {
+        if (existingNameElement && existingNameElement.elementLink != excluding?.elementLink) {
             String message = "Can’t place this concept - ${taxonData.simpleName} is accepted concept **${existingNameElement.treeElement.displayHtml}**"
             throw new BadArgumentsException(message)
         }
     }
 
     @SuppressWarnings("GrMethodMayBeStatic")
-    protected void checkSynonymsOfNameNotOnTheTree(TaxonData taxonData, TreeVersion treeVersion) {
+    protected void checkSynonymsOfNameNotOnTheTree(TaxonData taxonData, TreeVersion treeVersion, TreeVersionElement excluding) {
         List<Synonym> synonyms = taxonData.synonyms.filtered()
         synonyms.each { Synonym synonym ->
-            TreeVersionElement tve = TreeVersionElement.find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.nameId = :nameId',
-                    [treeVersion: treeVersion, nameId: synonym.nameId])
+            TreeVersionElement tve = TreeVersionElement
+                    .find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.nameId = :nameId and tve.elementLink <> :excluding',
+                    [treeVersion: treeVersion, nameId: synonym.nameId, excluding: excluding?.elementLink ?: ''])
             if (tve) {
                 String message = "Can’t place this concept - synonym $synonym.fullNameHtml is accepted concept **${tve.treeElement.displayHtml}**"
                 throw new BadArgumentsException("$message")

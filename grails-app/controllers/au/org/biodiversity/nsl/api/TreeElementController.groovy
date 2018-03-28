@@ -98,6 +98,24 @@ class TreeElementController implements WithTarget {
         }
     }
 
+    def changeParentElement() {
+        withJsonData(request.JSON, false, ['currentElementUri', 'newParentElementUri']) { ResultObject results, Map data ->
+            String currentElementUri = data.currentElementUri
+            String newParentElementUri = data.newParentElementUri
+
+            TreeVersionElement currentElement = TreeVersionElement.get(currentElementUri)
+            TreeVersionElement newParentElement = TreeVersionElement.get(newParentElementUri)
+
+            if (currentElement && newParentElement) {
+                String userName = treeService.authorizeTreeOperation(newParentElement.treeVersion.tree)
+                results.payload = treeService.changeParentTaxon(currentElement, newParentElement, userName)
+            } else {
+                results.ok = false
+                results.fail("Elements with ids $currentElementUri, $newParentElementUri not found", NOT_FOUND)
+            }
+        }
+    }
+
     def removeElement() {
         withJsonData(request.JSON, false, ['taxonUri']) { ResultObject results, Map data ->
             String taxonUri = data.taxonUri

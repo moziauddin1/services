@@ -381,7 +381,7 @@ class TreeServiceSpec extends Specification {
 
         when: 'I try to place Xanthosia pusilla Bunge'
         TaxonData taxonData = service.elementDataFromInstance(xanthosiaPusillaBunge)
-        service.checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion)
+        service.checkSynonymsOfNameNotOnTheTree(taxonData, treeVersion, null)
 
         then: 'I get en error'
         def e = thrown(BadArgumentsException)
@@ -1091,6 +1091,97 @@ class TreeServiceSpec extends Specification {
         anthocerosChildren.containsAll(doodiaChildren)
 
     }
+
+    def "test change a taxons parent"() {
+        given:
+        Tree tree = makeATestTree()
+        service.linkService.bulkAddTargets(_) >> [success: true]
+        TreeVersion draftVersion = service.createTreeVersion(tree, null, 'my first draft', 'irma', 'This is a log entry')
+        List<TreeElement> testElements = TreeTstHelper.makeTestElements(draftVersion, TreeTstHelper.testElementData(), TreeTstHelper.testTreeVersionElementData())
+        service.publishTreeVersion(draftVersion, 'testy mctestface', 'Publishing draft as a test')
+        draftVersion = service.createDefaultDraftVersion(tree, null, 'my new default draft', 'irma', 'This is a log entry')
+        TreeVersionElement anthocerotaceaeTve = service.findElementBySimpleName('Anthocerotaceae', draftVersion)
+        TreeVersionElement anthocerosTve = service.findElementBySimpleName('Anthoceros', draftVersion)
+        TreeVersionElement dendrocerotaceaeTve = service.findElementBySimpleName('Dendrocerotaceae', draftVersion)
+        List<Long> originalDendrocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(dendrocerotaceaeTve).collect {
+            it.taxonId
+        }
+        List<Long> originalAnthocerotaceaeParentTaxonIDs = service.getParentTreeVersionElements(anthocerotaceaeTve).collect {
+            it.taxonId
+        }
+        Instance replacementAnthocerosInstance = Instance.get(753948)
+        TreeElement anthocerosTe = anthocerosTve.treeElement
+        Long dendrocerotaceaeInitialTaxonId = dendrocerotaceaeTve.taxonId
+
+        printTve(dendrocerotaceaeTve)
+        printTve(anthocerotaceaeTve)
+
+        expect:
+        tree
+        testElements.size() == 30
+        draftVersion.treeVersionElements.size() == 30
+        !draftVersion.published
+        anthocerotaceaeTve
+        anthocerosTve
+        anthocerosTve.parent == anthocerotaceaeTve
+        dendrocerotaceaeTve
+        originalDendrocerotaceaeParentTaxonIDs.size() == 6
+        originalAnthocerotaceaeParentTaxonIDs.size() == 6
+        service.treeReportService
+
+        when: 'I try to move a taxon, anthoceros under dendrocerotaceae'
+        Map result = service.changeParentTaxon(anthocerosTve, dendrocerotaceaeTve, 'test move taxon')
+        println "\n*** $result\n"
+
+        TreeVersionElement.withSession { s ->
+            s.flush()
+        }
+        draftVersion.refresh()
+
+        List<TreeVersionElement> anthocerosChildren = service.getAllChildElements(result.replacementElement)
+        List<TreeVersionElement> dendrocerotaceaeChildren = service.getAllChildElements(dendrocerotaceaeTve)
+
+        printTve(dendrocerotaceaeTve)
+        printTve(anthocerotaceaeTve)
+
+        then: 'It works'
+//        1 * service.linkService.bulkRemoveTargets(_) >> { List<TreeVersionElement> elements ->
+//            [success: true]
+//        }
+        1 * service.linkService.getObjectForLink(_) >> replacementAnthocerosInstance
+        1 * service.linkService.getPreferredLinkForObject(replacementAnthocerosInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/121601'
+        1 * service.linkService.getPreferredLinkForObject(replacementAnthocerosInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/753948'
+        9 * service.linkService.addTaxonIdentifier(_) >> { TreeVersionElement tve ->
+            println "Adding taxonIdentifier for $tve"
+            "http://localhost:7070/nsl-mapper/taxon/apni/$tve.taxonId"
+        }
+        !deleted(anthocerosTve)// changing the parent simply changes the parent
+        !deleted(anthocerosTe) // We are using the same tree element
+        result.replacementElement
+        result.replacementElement == service.findElementBySimpleName('Anthoceros', draftVersion)
+        result.replacementElement.elementLink == anthocerosTve.elementLink //haven't changed tree version elements
+        result.replacementElement.treeVersion == draftVersion
+        result.replacementElement.treeElement == anthocerosTe
+        dendrocerotaceaeTve.taxonId != dendrocerotaceaeInitialTaxonId
+        draftVersion.treeVersionElements.size() == 30
+        anthocerosChildren.size() == 5
+        result.replacementElement.parent == dendrocerotaceaeTve
+        anthocerosChildren[0].treeElement.nameElement == 'capricornii'
+        anthocerosChildren[0].parent == result.replacementElement
+        anthocerosChildren[1].treeElement.nameElement == 'ferdinandi-muelleri'
+        anthocerosChildren[2].treeElement.nameElement == 'fragilis'
+        anthocerosChildren[3].treeElement.nameElement == 'laminifer'
+        anthocerosChildren[4].treeElement.nameElement == 'punctatus'
+        dendrocerotaceaeChildren.containsAll(anthocerosChildren)
+        // all the parent taxonIds should have been updated
+        !service.getParentTreeVersionElements(dendrocerotaceaeTve).collect { it.taxonId }.find {
+            originalDendrocerotaceaeParentTaxonIDs.contains(it)
+        }
+        !service.getParentTreeVersionElements(anthocerotaceaeTve).collect { it.taxonId }.find {
+            originalAnthocerotaceaeParentTaxonIDs.contains(it)
+        }
+    }
+
 
     static deleted(domainObject) {
         Name.withSession { session ->
