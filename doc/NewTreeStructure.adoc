@@ -1597,6 +1597,10 @@ AND tree_path ~ '/50617337';
 
 == Placement Rules
 
+NOTE: there is a new more succinct document "placement-rules.adoc" which is based directly on the new implementation
+after we've tested and reviewed the results with users. Consider this document to be the before picture and that as the
+after.
+
 This is an interpretation of the results of the discussion at https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality
 regarding the placement rules.
 

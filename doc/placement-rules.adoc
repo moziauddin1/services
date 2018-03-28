@@ -19,6 +19,7 @@ Placing taxa on a tree has a set of rules that need to be understood. This docum
 
 * https://www.anbg.gov.au/25jira/browse/NSL-464[JIRA - NSL-464]
 * https://www.anbg.gov.au/ibis25/display/NSL/Tree+Monitor+Functionality[Confluence - Tree Monitor Functionality]
+* NewTreeStucture.adoc
 
 The JIRA NSL-464 lists the rules as:
 
@@ -176,7 +177,7 @@ Doodia aspera R.Br.CHAH (2014), Australian Plant Census
 We need to be able to edit past annotations and possibly synonomy that have been erroneously entered. These minor edits
 are considered errata to a published tree (see https://www.anbg.gov.au/25jira/browse/NSL-2550[NSL-2550]).
 
-.From NSL-2550 Kirsten Kowley
+.From NSL-2550 Kirsten Cowley
 ----
     We would like the following to be included in "minor edits":
     1. deletion or edit of distribution
