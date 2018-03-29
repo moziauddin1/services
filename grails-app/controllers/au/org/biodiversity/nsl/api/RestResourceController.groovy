@@ -32,11 +32,6 @@ class RestResourceController {
     def apniFormatService
     def treeService
 
-//    static allowedMethods = [
-//            '*'        : 'GET',
-//            'bulkFetch': 'POST'
-//    ]
-
     @Timed()
     def name(String shard, Long idNumber) {
         Name name = Name.get(idNumber)
