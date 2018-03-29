@@ -1335,7 +1335,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
                     .find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.nameId = :nameId and tve.elementLink <> :excluding',
                     [treeVersion: treeVersion, nameId: synonym.nameId, excluding: excluding?.elementLink ?: ''])
             if (tve) {
-                String message = "Can’t place this concept - synonym $synonym.fullNameHtml is accepted concept **${tve.treeElement.displayHtml}**"
+                String message = "Can’t place this concept - synonym is accepted concept **${tve.treeElement.displayHtml}**"
                 throw new BadArgumentsException("$message")
             }
         }
@@ -1346,9 +1346,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         List<Long> nameIdList = taxonData.synonyms.filtered().collect { it.nameId }
         List<Map> existingSynonyms = checkNameIdsAgainstAllSynonyms(nameIdList, treeVersion, excluding)
         if (!existingSynonyms.empty) {
-            String message = "Can’t place this concept -\n\n"
+            String message = "Can’t place this concept "
             existingSynonyms.each { Map s ->
-                message += "synonym ${s.synonym} is part of accepted concept **${s.displayHtml}**"
+                message += "- synonym ${s.synonym} is also a synonym of **${s.displayHtml}**\n"
             }
             throw new BadArgumentsException("$message")
         }
@@ -1358,9 +1358,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         //a name can't be already in the tree as a synonym
         List<Map> existingSynonyms = checkNameIdsAgainstAllSynonyms(([taxonData.nameId] as List<Long>), treeVersion, excluding)
         if (!existingSynonyms.empty) {
-            String message = "Can’t place this concept -\n\n"
+            String message = "Can’t place this concept "
             existingSynonyms.each { Map s ->
-                message += "${taxonData.simpleName} is part of accepted concept **${s.displayHtml}**"
+                message += "- ${taxonData.simpleName} is in synonymy under accepted concept **${s.displayHtml}**\n"
             }
             throw new BadArgumentsException("$message")
         }

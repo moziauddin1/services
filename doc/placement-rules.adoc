@@ -124,22 +124,31 @@ In general this shouldn't happen because the editor prevents it.
 
 ACTION: Prevents the taxon being placed.
 
-Checks if the name of the taxon is a synonym of name already placed on the tree. You need to replace
-or modify the accepted taxon.
+Checks if the name of the taxon being placed is a synonym of name already placed as accepted on the tree. If so, you
+need to supersede the accepted taxon or modify its synonymy.
+
+Error example: Can’t place this concept - Angophora costata subsp. leiocarpa is in synonymy under accepted concept
+Angophora leiocarpa (L.A.S.Johnson ex G.J.Leach) K.R.Thiele & LadigesCHAH (2006), Australian Plant Census.
 
 === check Synonyms Of Name Not On The Tree
 
 ACTION: Prevents the taxon being placed.
 
-This checks if any of the synonyms of the taxon you are placing is a name already placed on the tree. You need
-to replace or modify the accepted taxon.
+This checks if any of the synonyms of the taxon you are placing is a name already placed on the tree as an accepted taxon.
+If so, you need to supersede the accepted taxon.
+
+Error example: Can’t place this concept - synonym is accepted concept Angophora costata subsp. euryphylla L.A.S.Johnson
+ex G.J.LeachCHAH (2006), Australian Plant Census
 
 === check Synonyms Are Not Synonyms On The Tree
 
 ACTION: Prevents the taxon being placed.
 
-This checks if any of the synonyms of the taxon you are placing are a synonym of any name already placed on the tree.
-You need to replace or modify the accepted taxon.
+This checks if any of the synonyms of the taxon you are placing is also a synonym of an accepted name already placed on
+the tree. If so, you need to supersede the accepted name or modify its synonymy.
+
+Error example: Can’t place this concept - synonym Eucalyptus gigantea is also a synonym of Eucalyptus globulus Labill.CHAH
+(2006), Australian Plant Census
 
 == Synonym errors
 
