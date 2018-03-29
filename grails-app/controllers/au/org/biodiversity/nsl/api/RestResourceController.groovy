@@ -167,6 +167,7 @@ class RestResourceController {
         Object[] result = TreeVersionElement.executeQuery('''select tve.treeElement.id, max(tve.treeVersion.id) as mx 
 from TreeVersionElement tve 
 where taxonLink like :query
+and treeVersion.published = true
 group by tve.treeElement.id
 order by mx''', [query: "%node/$shard/$idNumber"]).last()
         if (result && result.size() == 2) {

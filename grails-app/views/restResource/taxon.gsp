@@ -75,7 +75,7 @@
     <g:each in="${children}" var="childElement">
       <div class="tr ${childElement.excluded ? 'excluded' : ''} level${childElement.depth}">
         <div class="wrap">
-          <a href="${childElement.fullElementLink()}">${raw(childElement.displayHtml)}</a>
+          <a href="${childElement.elementLink}">${raw(childElement.displayHtml)}</a>
           <a href="${childElement.nameLink}/api/apni-format" title="View name in APNI format.">
             <i class="fa fa-list-alt see-through"></i>
           </a>
