@@ -60,12 +60,22 @@ class ApniFormatTagLib {
         }
     }
 
+    def rangeOnAcceptedTree = { attrs, body ->
+        Instance instance = attrs.instance
+        def (TreeVersionElement first, TreeVersionElement last) = treeService.findFirstAndLastElementForInstance(instance,
+                Tree.findByAcceptedTree(true))
+        if (first) {
+            Boolean current = last.treeVersion.id == last.treeVersion.tree.currentTreeVersion.id
+            out << body("first": first, "last": last, "current": current)
+        }
+    }
+
     def ifEverOnAcceptedTree = { attrs, body ->
         Instance instance = attrs.instance
         TreeVersionElement excludedTve = attrs.exclude
         TreeVersionElement tve = treeService.findLatestElementForInstance(instance,
-                Tree.findByName(configService.classificationTreeName))
-        if (tve && tve != excludedTve && tve.treeElement.instanceId == instance?.id) {
+                Tree.findByAcceptedTree(true))
+        if (tve && tve != excludedTve) {
             out << body("tve": tve)
         }
     }
@@ -75,7 +85,7 @@ class ApniFormatTagLib {
         String varName = attrs.var
         Object settable = attrs.set ?: true
         TreeVersionElement tve = treeService.findLatestElementForInstance(instance,
-                Tree.findByName(configService.classificationTreeName))
+                Tree.findByAcceptedTree(true))
         out << body((varName): tve ? settable : null)
     }
 

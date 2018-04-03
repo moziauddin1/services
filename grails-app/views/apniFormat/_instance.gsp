@@ -27,7 +27,21 @@
       </g:if>
 
       <af:onTree element="${treeVersionElement}" instance="${instance}"/>
-
+      <af:rangeOnAcceptedTree instance="${instance}">
+        <g:if test="${current}">
+          <a href="${last.fullElementLink()}" class="small text-info"
+             title="in current tree since ${first.treeVersion.publishedAt.dateString}">
+            <i class="fa fa-tree"></i>
+          </a>
+        </g:if>
+        <g:else>
+          <a href="${last.fullElementLink()}" class="small text-info"
+             title="previously published from ${first.treeVersion.publishedAt.dateString} to ${last.treeVersion.publishedAt.dateString}">
+            <i class="fa fa-tree"></i>
+          </a>
+        </g:else>
+      </af:rangeOnAcceptedTree>
+      
       <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
       <instance data-instanceId="${instance.id}">
 
@@ -74,12 +88,18 @@
               <li>
                 <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
+                <shiro:hasRole name="treebuilder">
+                  <i class="fa fa-edit"></i>
+                </shiro:hasRole>
               </li>
             </af:treeComment>
             <af:treeDistribution tve="${tve}">
               <li>
                 <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
+                <shiro:hasRole name="treebuilder">
+                  <i class="fa fa-edit"></i>
+                </shiro:hasRole>
               </li>
             </af:treeDistribution>
           </ul>
@@ -91,12 +111,18 @@
               <li>
                 <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
+                <shiro:hasRole name="treebuilder">
+                  <i class="fa fa-edit"></i>
+                </shiro:hasRole>
               </li>
             </af:treeComment>
             <af:treeDistribution tve="${treeVersionElement}">
               <li>
                 <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
+                <shiro:hasRole name="treebuilder">
+                  <i class="fa fa-edit"></i>
+                </shiro:hasRole>
               </li>
             </af:treeDistribution>
           </ul>

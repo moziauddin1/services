@@ -142,6 +142,20 @@ class TreeService implements ValidationUtils {
         return null
     }
 
+    @Transactional(readOnly = true)
+    List<TreeVersionElement> findFirstAndLastElementForInstance(Instance instance, Tree tree) {
+        if (instance && tree) {
+            TreeVersionElement first = TreeVersionElement.find(
+                    'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id asc',
+                    [tree: tree, instanceId: instance.id])
+            TreeVersionElement last = TreeVersionElement.find(
+                    'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id desc',
+                    [tree: tree, instanceId: instance.id])
+            return new Tuple(first, last)
+        }
+        return null
+    }
+
     /**
      * get the tree path as a list of TreeVersionElements
      * @param treeElement
