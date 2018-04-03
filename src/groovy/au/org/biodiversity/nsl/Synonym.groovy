@@ -16,6 +16,7 @@ class Synonym {
     final Boolean nom
     final Boolean tax
     final Boolean mis
+    final Boolean syn
     final String cites
     final String citesLink
     final String conceptLink
@@ -35,6 +36,7 @@ class Synonym {
         nom = synonymInstance.instanceType.nomenclatural
         tax = synonymInstance.instanceType.taxonomic
         mis = synonymInstance.instanceType.misapplied
+        syn = synonymInstance.instanceType.synonym
         cites = synonymInstance.cites ? synonymInstance.cites.reference.citationHtml : ''
     }
 
@@ -66,6 +68,9 @@ class Synonym {
         }
         if (mis) {
             return "<mis>${fullNameHtml} <type>${type}</type> by <citation>${cites ?: ''}</citation></mis>"
+        }
+        if (syn) {
+            return "<syn>${fullNameHtml} <type>${type}</type></syn>"
         }
     }
 
@@ -123,12 +128,17 @@ class Synonyms {
         synonyms.findAll { it.mis }.sort(sortSyn)
     }
 
+    List<Synonym> otherSynonyms() {
+        synonyms.findAll { !it.nom && !it.tax && !it.mis }.sort(sortSyn)
+    }
+
 
     String html() {
         """<synonyms>
 ${nomSynonyms().collect { it.html() }.join('\n')}
 ${taxSynonyms().collect { it.html() }.join('\n')}
 ${misSynonyms().collect { it.html() }.join('\n')}
+${otherSynonyms().collect { it.html() }.join('\n')}
 </synonyms>"""
     }
 }
