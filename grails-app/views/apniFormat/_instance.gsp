@@ -88,18 +88,14 @@
               <li>
                 <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <shiro:hasRole name="treebuilder">
-                  <i class="fa fa-edit"></i>
-                </shiro:hasRole>
+                <g:render template="edit_comment" model="[tve: tve, val: note.value]"/>
               </li>
             </af:treeComment>
             <af:treeDistribution tve="${tve}">
               <li>
                 <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <shiro:hasRole name="treebuilder">
-                  <i class="fa fa-edit"></i>
-                </shiro:hasRole>
+                <g:render template="edit_dist" model="[tve: tve, val: note.value]"/>
               </li>
             </af:treeDistribution>
           </ul>
@@ -111,18 +107,14 @@
               <li>
                 <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <shiro:hasRole name="treebuilder">
-                  <i class="fa fa-edit"></i>
-                </shiro:hasRole>
+                <g:render template="edit_comment" model="[tve: treeVersionElement, val: note.value]"/>
               </li>
             </af:treeComment>
             <af:treeDistribution tve="${treeVersionElement}">
               <li>
                 <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <shiro:hasRole name="treebuilder">
-                  <i class="fa fa-edit"></i>
-                </shiro:hasRole>
+                <g:render template="edit_dist" model="[tve: treeVersionElement, val: note.value]"/>
               </li>
             </af:treeDistribution>
           </ul>

@@ -70,6 +70,7 @@ grails.project.dependency.resolution = {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes e.g.
         // runtime 'mysql:mysql-connector-java:5.1.29'
         runtime 'org.postgresql:postgresql:9.3-1101-jdbc41'
+        runtime 'joda-time:joda-time:2.9.9'
         test "org.grails:grails-datastore-test-support:1.0-grails-2.4"
         compile 'net.htmlparser.jericho:jericho-html:3.2', {
             excludes 'log4j', 'commons-logging-api','slf4j-api'

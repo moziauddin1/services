@@ -22,7 +22,8 @@ class TreeElementController implements WithTarget {
             removeElement          : ['json', 'html'],
             editElementProfile     : ['json', 'html'],
             editElementStatus      : ['json', 'html'],
-            elementDataFromInstance: ['json', 'html']
+            elementDataFromInstance: ['json', 'html'],
+            editComment            : ['html']
     ]
 
     static allowedMethods = [
@@ -31,7 +32,8 @@ class TreeElementController implements WithTarget {
             removeElement          : ['DELETE', 'POST'],
             editElementProfile     : ['POST'],
             editElementStatus      : ['POST'],
-            elementDataFromInstance: ['GET']
+            elementDataFromInstance: ['GET'],
+            editComment            : ['POST']
     ]
 
     /**
@@ -142,6 +144,50 @@ class TreeElementController implements WithTarget {
             Map profile = data.profile.size() > 0 ? data.profile : null
             results.payload = treeService.editProfile(treeVersionElement, profile, userName)
         }
+    }
+
+    /**
+     * This is for errata edits only. It does an in place edit on the tree element directly, so it changes history.
+     *
+     * It needs post parameters
+     * * taxonUri - the tree version element elementLink
+     * * comment - the comment text
+     * * reason - the reason for the change
+     *
+     * if comment text is blank the comment is removed.
+     *
+     * @return
+     */
+    def editComment(String taxonUri, String comment, String reason) {
+        TreeVersionElement treeVersionElement = TreeVersionElement.get(taxonUri)
+        if (!treeVersionElement) {
+            throw new ObjectNotFoundException("Can't find taxon with URI $taxonUri")
+        }
+        String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+        treeService.minorEditComment(treeVersionElement, comment, reason, userName)
+        redirect(url: "${treeVersionElement.treeElement.nameLink}/api/apni-format")
+    }
+
+    /**
+     * This is for errata edits only. It does an in place edit on the tree element directly, so it changes history.
+     *
+     * It needs post parameters
+     * * taxonUri - the tree version element elementLink
+     * * comment - the comment text
+     * * reason - the reason for the change
+     *
+     * if comment text is blank the comment is removed.
+     *
+     * @return
+     */
+    def editDistribution(String taxonUri, String distribution, String reason) {
+        TreeVersionElement treeVersionElement = TreeVersionElement.get(taxonUri)
+        if (!treeVersionElement) {
+            throw new ObjectNotFoundException("Can't find taxon with URI $taxonUri")
+        }
+        String userName = treeService.authorizeTreeOperation(treeVersionElement.treeVersion.tree)
+        treeService.minorEditDistribution(treeVersionElement, distribution, reason, userName)
+        redirect(url: "${treeVersionElement.treeElement.nameLink}/api/apni-format")
     }
 
     def editElementStatus() {

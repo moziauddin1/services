@@ -342,10 +342,20 @@ select count(tve)
         value ? [name: key] + value : null
     }
 
+    @Transactional(readOnly = true)
+    private String commentKey(TreeVersionElement tve) {
+        commentKey(tve.treeVersion.tree)
+    }
+
     @SuppressWarnings("GrMethodMayBeStatic")
     @Transactional(readOnly = true)
     private String commentKey(Tree tree) {
         tree.config.comment_key
+    }
+
+    @Transactional(readOnly = true)
+    private String distributionKey(TreeVersionElement tve) {
+        distributionKey(tve.treeVersion.tree)
     }
 
     @SuppressWarnings("GrMethodMayBeStatic")
@@ -905,6 +915,29 @@ INSERT INTO tree_version_element (tree_version_id,
         return [count: count, message: message]
     }
 
+    /**
+     * Edit the profile of a tee element for a draft tree. This will create a new tree element if the profile is different.
+     *
+     * A profile looks something like this:
+     *{*   "APC Dist.": {*     "value": "Qld, NSW, LHI, NI, Vic, Tas",
+     *     "created_at": "2014-03-25T00:00:00+11:00",
+     *     "created_by": "KIRSTENC",
+     *     "updated_at": "2014-03-25T14:04:06+11:00",
+     *     "updated_by": "KIRSTENC",
+     *     "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/1132306"
+     *},
+     *   "APC Comment": {*     "value": "Treated as <i>Blechnum neohollandicum</i> Christenh. in NSW.",
+     *     "created_at": "2016-06-10T15:21:38.135+10:00",
+     *     "created_by": "blepschi",
+     *     "updated_at": "2016-06-10T15:21:38.135+10:00",
+     *     "updated_by": "blepschi",
+     *     "source_link": "http://localhost:7070/nsl-mapper/instanceNote/apni/6842405"*   }*}*
+     * @param treeVersionElement
+     * @param profile
+     * @param userName
+     * @return
+     */
+
     TreeVersionElement editProfile(TreeVersionElement treeVersionElement, Map profile, String userName) {
         mustHave(treeVersionElement: treeVersionElement, userName: userName)
         notPublished(treeVersionElement)
@@ -943,22 +976,29 @@ INSERT INTO tree_version_element (tree_version_id,
         return treeVersionElement
     }
 
-    //todo determine if this is needed
-    TreeVersionElement minorEditProfile(TreeVersionElement treeVersionElement, Map profile, String userName) {
-        mustHave(treeVersionElement: treeVersionElement, profile: profile, userName: userName)
-        notPublished(treeVersionElement)
-        treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
+    TreeVersionElement minorEditDistribution(TreeVersionElement treeVersionElement, String distribution, String reason, String userName) {
+        String distKey = distributionKey(treeVersionElement)
+        return minorEditProfile(treeVersionElement, distribution, reason, userName, distKey)
+    }
 
-        log.debug treeVersionElement.treeElement.profile.toString()
+    TreeVersionElement minorEditComment(TreeVersionElement treeVersionElement, String comment, String reason, String userName) {
+        String commentKey = commentKey(treeVersionElement)
+        return minorEditProfile(treeVersionElement, comment, reason, userName, commentKey)
+    }
+
+    TreeVersionElement minorEditProfile(TreeVersionElement treeVersionElement, String value, String reason, String userName, String key) {
+        mustHave(treeVersionElement: treeVersionElement, value: value, reason: reason, userName: userName)
+        published(treeVersionElement)
+        treeVersionElement.treeElement.refresh()
+
+        Map profile = treeVersionElement.treeElement.profile
         log.debug profile.toString()
-        if (treeVersionElement.treeElement.profile == profile) {
-            return treeVersionElement // data is equal, do nothing
-        }
 
-        treeVersionElement.treeElement.profile = profile
-        treeVersionElement.treeElement.updatedBy = userName
-        treeVersionElement.treeElement.updatedAt = new Timestamp(System.currentTimeMillis())
-        treeVersionElement.save()
+        ProfileValue newComment = new ProfileValue(value, userName, profile[key] as Map, reason)
+
+        treeVersionElement.treeElement.profile[key] = newComment.toMap()
+        treeVersionElement.treeElement.save()
+        log.debug treeVersionElement.treeElement.profile.toString()
         return treeVersionElement
     }
 
@@ -1125,6 +1165,16 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         treeElement.previousElement = source
         treeElement.save()
         return treeElement
+    }
+
+    protected static published(TreeVersionElement element) {
+        published(element.treeVersion)
+    }
+
+    protected static published(TreeVersion version) {
+        if (!version.published) {
+            throw new PublishedVersionException("You can't do this with an unpublished tree. $version.tree.name version $version.id is not published.")
+        }
     }
 
     protected static notPublished(TreeVersionElement element) {
