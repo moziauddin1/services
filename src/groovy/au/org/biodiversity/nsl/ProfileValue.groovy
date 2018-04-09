@@ -40,29 +40,29 @@ class ProfileValue {
         }
     }
 
-    ProfileValue(Map comment) {
-        value = comment.value
-        createdAt = comment.created_at
-        createdBy = comment.created_by
-        updatedAt = comment.updated_at
-        updatedBy = comment.updated_by
-        errataReason = comment.errata_reason
-        sourceLink = comment.source_link
-        if (comment.previous_comment) {
-            previous = new ProfileValue(comment.previous_comment as Map)
+    ProfileValue(Map profileValue) {
+        value = profileValue.value
+        createdAt = profileValue.created_at
+        createdBy = profileValue.created_by
+        updatedAt = profileValue.updated_at
+        updatedBy = profileValue.updated_by
+        errataReason = profileValue.errata_reason
+        sourceLink = profileValue.source_link
+        if (profileValue.previous) {
+            previous = new ProfileValue(profileValue.previous as Map)
         }
     }
 
     Map toMap() {
         [
-                value           : value,
-                created_at      : createdAt,
-                created_by      : createdBy,
-                updated_at      : updatedAt,
-                updated_by      : updatedBy,
-                errata_reason   : errataReason,
-                source_link     : sourceLink,
-                previous_comment: previous?.toMap()
+                value        : value,
+                created_at   : createdAt,
+                created_by   : createdBy,
+                updated_at   : updatedAt,
+                updated_by   : updatedBy,
+                errata_reason: errataReason,
+                source_link  : sourceLink,
+                previous     : previous?.toMap()
         ]
     }
 

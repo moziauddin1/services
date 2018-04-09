@@ -89,23 +89,49 @@ class ApniFormatTagLib {
         out << body((varName): tve ? settable : null)
     }
 
-
     def treeComment = { attrs, body ->
         TreeVersionElement tve = attrs.tve
         String var = attrs.var ?: "note"
+        Boolean showEmpty = attrs.showEmpty
         if (tve) {
             Map comment = treeService.profileComment(tve)
-            if (comment && comment.value) {
+            if (comment && (showEmpty || comment.value)) {
                 out << body((var): comment)
             }
         }
     }
+
     def treeDistribution = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        Boolean showEmpty = attrs.showEmpty
+        if (tve) {
+            Map dist = treeService.profileDistribution(tve)
+            if (dist && (showEmpty || dist.value)) {
+                out << body((var): dist)
+            }
+        }
+    }
+
+    def previousComments = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        if (tve) {
+            Map comment = treeService.profileComment(tve)
+            while (comment && comment.previous) {
+                comment = comment.previous
+                out << body((var): comment)
+            }
+        }
+    }
+
+    def previousDistribution = { attrs, body ->
         TreeVersionElement tve = attrs.tve
         String var = attrs.var ?: "note"
         if (tve) {
             Map dist = treeService.profileDistribution(tve)
-            if (dist && dist.value) {
+            while (dist && dist.previous) {
+                dist = dist.previous
                 out << body((var): dist)
             }
         }

@@ -993,6 +993,11 @@ INSERT INTO tree_version_element (tree_version_id,
 
         Map profile = treeVersionElement.treeElement.profile
         log.debug profile.toString()
+        if (profile[key]?.value == value) {
+            //value hasn't changed do nothing
+            log.debug "no change in comment, doing nothing."
+            return treeVersionElement
+        }
 
         ProfileValue newComment = new ProfileValue(value, userName, profile[key] as Map, reason)
 

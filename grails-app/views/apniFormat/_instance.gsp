@@ -40,8 +40,9 @@
             <i class="fa fa-tree"></i>
           </a>
         </g:else>
+        <g:render template="edit_profile" model="[tve: last]"/>
       </af:rangeOnAcceptedTree>
-      
+
       <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
       <instance data-instanceId="${instance.id}">
 
@@ -88,14 +89,12 @@
               <li>
                 <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <g:render template="edit_comment" model="[tve: tve, val: note.value]"/>
               </li>
             </af:treeComment>
             <af:treeDistribution tve="${tve}">
               <li>
                 <tree-note class="${tve.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <g:render template="edit_dist" model="[tve: tve, val: note.value]"/>
               </li>
             </af:treeDistribution>
           </ul>
@@ -107,14 +106,12 @@
               <li>
                 <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <g:render template="edit_comment" model="[tve: treeVersionElement, val: note.value]"/>
               </li>
             </af:treeComment>
             <af:treeDistribution tve="${treeVersionElement}">
               <li>
                 <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
                 <tree-note>${raw(note.value)}</tree-note>
-                <g:render template="edit_dist" model="[tve: treeVersionElement, val: note.value]"/>
               </li>
             </af:treeDistribution>
           </ul>

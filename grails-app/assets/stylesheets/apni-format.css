@@ -262,3 +262,7 @@ div#main-content {
 bhl-link img {
     vertical-align: baseline;
 }
+
+.undo {
+    text-decoration: grey line-through;
+}

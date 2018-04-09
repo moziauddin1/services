@@ -39,8 +39,11 @@ $(function () {
                                         event.preventDefault();
                                     }
                                 });
-
-
+                                parentDiv.find('date').each(function () {
+                                    var d = $(this).html();
+                                    $(this).html(jQuery.format.prettyDate(d));
+                                    $(this).html(jQuery.format.prettyDate(d));
+                                });
                             }
                         });
                     }
@@ -248,7 +251,24 @@ $(function () {
         }
     });
 
-
 })
 ;
+
+function clearComment(el) {
+    $(el).parent().parent('form').find('[name="comment"]').val('');
+}
+
+function clearDistribution(el) {
+    $(el).parent().parent('form').find('[name="distribution"]').val('');
+}
+
+function confirmDelete(el) {
+    $(el).prop('disabled', true).next('div').show().focus();
+    $(el).parent().parent('form').find('[name="reason"]').val('Deleted, incorrect.');
+}
+
+function cancelDelete(el) {
+    $(el).parent().hide().prev('button').prop('disabled', false);
+    $(el).parent().parent('form').find('[name="reason"]').val('Fixed typo.');
+}
 

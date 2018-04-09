@@ -40,8 +40,6 @@ class AdminController {
     @RequiresRoles('admin')
     index() {
         Map stats = [:]
-
-
         stats.namesNeedingConstruction = nameService.countIncompleteNameStrings()
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         Boolean servicing = adminService.serviceMode()
