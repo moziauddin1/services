@@ -10,7 +10,7 @@
 //= require jquery.cookie
 //= require bootstrap
 //= require apniFormat
-//= require jquery-dateformat
+//= require jquery-dateformat.min
 //= require_self
 
 var pendingReload = false;
