@@ -93,9 +93,13 @@ class ApniFormatTagLib {
         TreeVersionElement tve = attrs.tve
         String var = attrs.var ?: "note"
         Boolean showEmpty = attrs.showEmpty
+        Boolean create = attrs.createIfNull
         if (tve) {
             Map comment = treeService.profileComment(tve)
             if (comment && (showEmpty || comment.value)) {
+                out << body((var): comment)
+            } else if (create) {
+                comment = new ProfileValue('Enter new comment', SecurityUtils.subject.principal.toString()).toMap()
                 out << body((var): comment)
             }
         }
@@ -105,9 +109,13 @@ class ApniFormatTagLib {
         TreeVersionElement tve = attrs.tve
         String var = attrs.var ?: "note"
         Boolean showEmpty = attrs.showEmpty
+        Boolean create = attrs.createIfNull
         if (tve) {
             Map dist = treeService.profileDistribution(tve)
             if (dist && (showEmpty || dist.value)) {
+                out << body((var): dist)
+            } else if (create) {
+                dist = new ProfileValue('Enter new distribution', SecurityUtils.subject.principal.toString()).toMap()
                 out << body((var): dist)
             }
         }

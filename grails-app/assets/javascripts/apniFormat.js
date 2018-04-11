@@ -264,11 +264,11 @@ function clearDistribution(el) {
 
 function confirmDelete(el) {
     $(el).prop('disabled', true).next('div').show().focus();
-    $(el).parent().parent('form').find('[name="reason"]').val('Deleted, incorrect.');
+  $(el).parent('form').find('[name="reason"]').val('Deleted, incorrect.');
 }
 
 function cancelDelete(el) {
     $(el).parent().hide().prev('button').prop('disabled', false);
-    $(el).parent().parent('form').find('[name="reason"]').val('Fixed typo.');
+  $(el).parent().parent('form').find('[name="reason"]').val('Errata, typographic error');
 }
 

@@ -18,14 +18,14 @@
             </undo></li>
           </af:previousComments>
         </ul>
-        <af:treeComment tve="${tve}" showEmpty="${true}">
+        <af:treeComment tve="${tve}" showEmpty="${true}" createIfNull="${true}">
           <label>Comment <span
               class="small text-muted">updated <date>${note.updated_at}</date> - ${note.errata_reason ?: 'original'}
           </span>
             <g:textField name="comment" value="${note.value}" class="form-control"/>
           </label>
           <label>Reason
-          <g:textField name="reason" value="Comment edit" class="form-control"/>
+          <g:textField name="reason" value="Errata, typographic error" class="form-control"/>
           </label>
           <g:submitButton name="Update" class="btn btn-success"/>
 
@@ -70,14 +70,14 @@
             </undo></li>
           </af:previousDistribution>
         </ul>
-        <af:treeDistribution tve="${tve}" showEmpty="${true}">
+        <af:treeDistribution tve="${tve}" showEmpty="${true}" createIfNull="${true}">
           <label>Distribution <span
               class="small text-muted">updated <date>${note.updated_at}</date> - ${note.errata_reason ?: 'original'}
           </span>
             <g:textField name="distribution" value="${note.value}" class="form-control"/>
           </label>
           <label>Reason
-          <g:textField name="reason" value="Distribution edit" class="form-control"/>
+          <g:textField name="reason" value="Errata, typographic error" class="form-control"/>
           </label>
           <g:submitButton name="Update" class="btn btn-success"/>
 
