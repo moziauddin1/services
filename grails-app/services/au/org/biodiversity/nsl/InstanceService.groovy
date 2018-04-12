@@ -221,5 +221,11 @@ class InstanceService {
         }
     }
 
-
+    def checkInstanceChanges(Instance instance) {
+        //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
+        //update the synonomy on the trees
+        if (instance.citedBy) {
+            treeService.updateSynonomyOfInstance(instance.citedBy)
+        }
+    }
 }

@@ -1040,6 +1040,24 @@ INSERT INTO tree_version_element (tree_version_id,
     }
 
     /**
+     * update the local synonomy of all tree elements for an instance on any tree. This regenerates the synonomy json field
+     * and the synonomy html.
+     * @param instance
+     * @param sql
+     * @return
+     */
+    def updateSynonomyOfInstance(Instance instance, Sql sql = getSql()) {
+        sql.executeUpdate('''update tree_element
+        set synonyms_html = coalesce(synonyms_as_html(instance_id), '<synonyms></synonyms>')
+        where instance_id = :instanceId
+        ''', [instanceId: instance.id])
+        sql.executeUpdate('''update tree_element
+        set synonyms_html = synonyms_as_jsonb(instance_id)
+        where instance_id = :instanceId
+        ''', [instanceId: instance.id])
+    }
+
+    /**
      * Take replace and existing tree version element with a new one using a different tree element.
      *
      * This updates the tree version element tree path and deletes the existing treeVersionElement, so make sure it's
