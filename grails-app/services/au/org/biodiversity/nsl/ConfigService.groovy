@@ -151,6 +151,12 @@ class ConfigService {
         throw new Exception("Config error. Add JWT config.")
     }
 
+    String getServerUrl() {
+        if (grailsApplication.config?.grails.serverURL) {
+            return grailsApplication.config.grails.serverURL
+        }
+        throw new Exception("Config error. Add serverURL.")
+    }
 
     Sql getSqlForNSLDB() {
         String dbUrl = grailsApplication.config.dataSource_nsl.url

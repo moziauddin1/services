@@ -86,6 +86,7 @@ class CheckNamesJob {
                         case 'reference deleted':
                             break
                         case 'instance updated':
+                        case 'instance created':
                             log.debug "Instance $note.objectId updated"
                             Instance instance = Instance.get(note.objectId)
                             if (instance) {
@@ -94,10 +95,10 @@ class CheckNamesJob {
                                 log.debug "Instance $note.objectId doesn't exist"
                             }
                             break
-                        case 'instance created':
                         case 'instance deleted':
+                            log.debug "Instance $note.objectId deleted."
+                            instanceService.checkInstanceDelete(note.objectId)
                             break
-
                         default:
                             //probably caused by previous error. This note will be deleted
                             log.error "unhandled notification $note.message:$note.objectId"

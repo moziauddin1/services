@@ -228,4 +228,8 @@ class InstanceService {
             treeService.updateSynonomyOfInstance(instance.citedBy)
         }
     }
+
+    def checkInstanceDelete(Long id) {
+        treeService.updateSynonomyBySynonymInstanceId(id)
+    }
 }

@@ -1047,14 +1047,34 @@ INSERT INTO tree_version_element (tree_version_id,
      * @return
      */
     def updateSynonomyOfInstance(Instance instance, Sql sql = getSql()) {
+        log.debug "update synonomy of $instance"
+        String host = configService.getServerUrl()
         sql.executeUpdate('''update tree_element
         set synonyms_html = coalesce(synonyms_as_html(instance_id), '<synonyms></synonyms>')
         where instance_id = :instanceId
         ''', [instanceId: instance.id])
         sql.executeUpdate('''update tree_element
-        set synonyms_html = synonyms_as_jsonb(instance_id)
+        set synonyms = synonyms_as_jsonb(instance_id, :host)
         where instance_id = :instanceId
-        ''', [instanceId: instance.id])
+        ''', [instanceId: instance.id, host: host])
+    }
+
+    def updateSynonomyBySynonymInstanceId(Long id, Sql sql = getSql()) {
+        log.debug "update synonym by synonym instance $id"
+        String query = """select distinct(te.instance_id) from tree_element te,
+        jsonb_array_elements(synonyms -> 'list') AS tax_syn
+        WHERE synonyms is not null
+        and synonyms ->> 'list' is not null
+        AND (tax_syn ->> 'instance_id') = '$id' """
+        log.debug query
+        sql.eachRow(query) { row ->
+            Long instId = row.instance_id.toLong()
+            Instance instance = Instance.get(instId)
+            log.debug "about to update instance $instance"
+            if (instance) {
+                updateSynonomyOfInstance(instance, sql)
+            }
+        }
     }
 
     /**
