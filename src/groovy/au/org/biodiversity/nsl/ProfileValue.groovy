@@ -54,7 +54,8 @@ class ProfileValue {
     }
 
     Map toMap() {
-        [
+        // redundant assignment due to https://youtrack.jetbrains.com/issue/IDEA-190205
+        Map m = [
                 value        : value,
                 created_at   : createdAt,
                 created_by   : createdBy,
@@ -64,6 +65,7 @@ class ProfileValue {
                 source_link  : sourceLink,
                 previous     : previous?.toMap()
         ]
+        return m
     }
 
 }
