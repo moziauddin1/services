@@ -1645,7 +1645,9 @@ and tve.element_link not in ($excludedLinks)
     }
 
     boolean isInstanceInAnyTree(Instance instance) {
-        TreeElement.findByInstanceId(instance.id) != null
+        TreeElement te = TreeElement.findByInstanceId(instance.id)
+        TreeVersionElement tve = TreeVersionElement.findByTreeElement(te)
+        return te != null && tve != null
     }
 
 }
