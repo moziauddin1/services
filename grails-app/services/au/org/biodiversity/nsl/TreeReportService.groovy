@@ -1,6 +1,7 @@
 package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.api.ValidationUtils
+import grails.converters.JSON
 import grails.transaction.Transactional
 import groovy.sql.Sql
 
@@ -84,8 +85,23 @@ where tve.treeVersion = :version
 
         Map problems = [:]
 
-        problems.synonyms = checkVersionSynonyms(sql, treeVersion)
+        problems.synonymsOfAcceptedNames = checkVersionSynonyms(sql, treeVersion)
+        problems.commonSynonyms = checkVersionCommonSynonyms(sql, treeVersion)
         return problems
+    }
+
+    Map synonymsOfCitedInstance(Instance instance, Name name, Sql sql) {
+        sql.eachRow('''select distinct(t.name), te.id from tree_element te
+  join tree_version_element tve on te.id = tve.tree_element_id
+  join tree_version tv on tve.tree_version_id = tv.id
+  join tree t on tv.tree_id = t.id,
+      jsonb_array_elements(te.synonyms -> 'list') AS tax_syn
+where te.instance_id = :instanceId
+      and synonyms ->> 'list' is not null
+      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*\'
+      AND (tax_syn ->> 'name_id'):: NUMERIC :: BIGINT = :nameId''', [instanceId: instance.id, nameId: name.id]) { row ->
+
+        }
     }
 
     private static List<String> checkVersionSynonyms(Sql sql, TreeVersion treeVersion) {
@@ -112,10 +128,51 @@ WHERE tve1.tree_version_id = :treeVersionId
       AND e2.excluded = FALSE
       AND e2.synonyms IS NOT NULL
       AND (e2.synonyms -> tax_syn ->> 'name_id') :: NUMERIC :: BIGINT = e1.name_id
-      AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common).*';
+      AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*';
       ''', [treeVersionId: treeVersion.id]) { row ->
             problems.add("Taxon concept <a href=\"${row['link2']}\" title=\"tree link\">${row['name2']}</a> " +
                     "considers <a href=\"${row['link1']}\" title=\"tree link\">${row['name1']}</a> to be a ${row['type']}.")
+        }
+        return problems
+    }
+
+    private static List<Map> checkVersionCommonSynonyms(Sql sql, TreeVersion treeVersion) {
+        List<Map> problems = []
+        sql.eachRow('''
+SELECT
+  tax_syn2 ->> 'simple_name'                                        AS common_synonym,
+  jsonb_build_object(tax_syn2 ->> 'simple_name',
+  jsonb_object_agg(e1.simple_name,
+                   jsonb_build_object('html', '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>',
+                                      'name_link', e1.name_link,
+                                      'tree_link', tree.host_name || tve1.element_link,
+                                      'type', tax_syn2 ->> 'type'))) as names
+FROM tree_version_element tve1
+  JOIN tree_element e1 ON tve1.tree_element_id = e1.id
+  ,
+  tree_version_element tve2
+  JOIN tree_element e2 ON tve2.tree_element_id = e2.id
+  ,
+      jsonb_array_elements(e1.synonyms -> 'list') AS tax_syn1,
+      jsonb_array_elements(e2.synonyms -> 'list') AS tax_syn2,
+  tree_version tv
+  join tree on tv.tree_id = tree.id
+WHERE tv.id = :treeVersionId
+      AND tve1.tree_version_id = tv.id
+      AND tve2.tree_version_id = tv.id
+      AND tve2.tree_element_id <> tve1.tree_element_id
+      AND e1.excluded = FALSE
+      AND e2.excluded = FALSE
+      AND e1.synonyms ->> 'list' is not null
+      AND tax_syn1 ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*\'
+      AND e2.synonyms ->> 'list' is not null
+      AND tax_syn2 ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*\'
+      AND (tax_syn1 ->> 'name_id') = (tax_syn2 ->> 'name_id')
+group by common_synonym;
+      ''', [treeVersionId: treeVersion.id]) { row ->
+            String jsonString = row['names']
+
+            problems.add(JSON.parse(jsonString))
         }
         return problems
     }

@@ -94,6 +94,7 @@
                   </g:else>
                 </g:if>
               </g:if>
+              <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'validate', params: [version: version.id])}">validate</a>
             </td>
           </tr>
         </g:each>
