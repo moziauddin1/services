@@ -96,6 +96,30 @@ class TreeVersionController implements WithTarget {
         }
     }
 
+    /**
+     * Report what trees and what versions are adversely affected by adding a synonym to an instance.
+     *
+     * check if name of cites instance is either on a tree or a synonym of something on a tree
+     * check if the name is already on the tree
+     *
+     * @param citedById
+     * @param citesId
+     */
+    def canAddSynonymOf(Long nameId, Long citedById, Long citesId) {
+        ResultObject results = require('cited by ID': citedById, 'cites ID': citesId)
+        Instance citedBy = Instance.get(citedById)
+        Instance cites = Instance.get(citesId)
+        handleResults(results) {
+            if (!citedBy) {
+                throw new ObjectNotFoundException("Cited by instance $citedById, not found.")
+            }
+            if (!cites) {
+                throw new ObjectNotFoundException("Cites instance $citedsId, not found.")
+            }
+
+        }
+    }
+
     def diff(Long v1, Long v2, Boolean embed) {
         ResultObject results = require('Version 1 ID': v1, 'Version 2 ID': v2)
 

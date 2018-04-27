@@ -1643,7 +1643,7 @@ checks if a placed instance is cited by the instance you wish to place in any re
 If you try to place Ficus virens Aiton (CHAH 2016) it will bring up the CHAH 2005 instance, which isn't relevant because
 you're view (sensu)  is CHAH 2016.
 
-So we should check synonomy from the point of view of the taxa being placed and then the already placed taxa back to the
+So we should check synonymy from the point of view of the taxa being placed and then the already placed taxa back to the
 taxa being placed, e.g. from Ficus virens var. sublanceolata
 
 To warn on taxonomic synonyms we need to check the name of the instance. For example if you try to place Woodwardia Sm.

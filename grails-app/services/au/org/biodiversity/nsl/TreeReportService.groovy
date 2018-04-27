@@ -168,7 +168,8 @@ WHERE tv.id = :treeVersionId
       AND e2.synonyms ->> 'list' is not null
       AND tax_syn2 ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*\'
       AND (tax_syn1 ->> 'name_id') = (tax_syn2 ->> 'name_id')
-group by common_synonym;
+group by common_synonym
+order by common_synonym;
       ''', [treeVersionId: treeVersion.id]) { row ->
             String jsonString = row['names']
 

@@ -1040,14 +1040,14 @@ INSERT INTO tree_version_element (tree_version_id,
     }
 
     /**
-     * update the local synonomy of all tree elements for an instance on any tree. This regenerates the synonomy json field
-     * and the synonomy html.
+     * update the local synonymy of all tree elements for an instance on any tree. This regenerates the synonymy json field
+     * and the synonymy html.
      * @param instance
      * @param sql
      * @return
      */
     def updateSynonomyOfInstance(Instance instance, Sql sql = getSql()) {
-        log.debug "update synonomy of $instance"
+        log.debug "update synonymy of $instance"
         String host = configService.getServerUrl()
         sql.executeUpdate('''update tree_element
         set synonyms_html = coalesce(synonyms_as_html(instance_id), '<synonyms></synonyms>')
