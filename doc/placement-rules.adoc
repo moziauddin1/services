@@ -356,3 +356,10 @@ Importantly we are talking about three separate output formats (products):
 * APNI format output - constructed from Instance and Name data directly.
 * APC format output - constructed from Name and Instance data using instances that are on the Accepted (APC) tree.
 * The Tree output - constructed from tree data only.
+
+==== The tricky bit
+
+Changing synonymy of an instance is un-related to tree operations as such. In other words the user may add a synonym
+to an instance and not be a "treebuilder", so how does the draft tree get updated? What if there isn't a draft
+tree.footnote:[because that could happen (murphies' law)]? Do we just do the change automagically in the background or
+do we let treebuilders know there is a change required (notifications)?
