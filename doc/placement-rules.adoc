@@ -363,3 +363,66 @@ Changing synonymy of an instance is un-related to tree operations as such. In ot
 to an instance and not be a "treebuilder", so how does the draft tree get updated? What if there isn't a draft
 tree.footnote:[because that could happen (murphies' law)]? Do we just do the change automagically in the background or
 do we let treebuilders know there is a change required (notifications)?
+
+An instance may be used on a tree that is controlled by someone else (another team or even on a different shard potentially
+- see composed and uber trees), so  we need to think through how and when the changes to synonymy will be propagated to
+trees.
+
+Lets look at the simplest situation and the current vascular shard APC.
+
+===== When the instance and tree are on the same shard.
+
+We could use *workflow controls*, for example if the instance is on the APC tree:
+
+* we could alert the user that they are altering an instance that is on a published tree (we'll say published instance
+for short). It would be up to that user to alert the APC team that the synonomy has changed if they choose to go ahead
+and change it
+- but lets assume that won't always happen because, people.
+* we could prevent the change, and the user would have to ask the APC team to make the change and update the draft tree...
+- but lets assume the APC team won't be told, and the user will be cranky and say I just can't do my work because the
+computer says "no" and not tell anyone they're not doing work.
+* we could allow the change without fuss.footnote:[The change in synonymy would show up immediately in the APNi and APC
+outputs.], and automatically notify the APC team of the change, which they could review
+and update the tree by going to the name on the draft tree in the editor and clicking "update synonymy". Then when the
+draft is published the synonymy would be published on the tree output.
+
+*OR* we could *automatically* make the change in the draft tree and notify the APC team. This would imply that we would
+make the same change to all trees, not just the APC tree.
+
+*OR* we could have a *pre-publish check on changed synonymy* which brings up a report of all the changes in synonymy for
+instances on the tree you are about to publish. You review the changes and can select "update synonymy", or go back and
+further edit both the tree and instances.
+
+===== Technicallities
+
+Automatic changes:
+
+* When an instance is added, updated or deleted a database trigger adds a notification to the notification table
+* the notification service scans the notification table and processes the instance change
+ - if added check if its a synonym and if the cited_by instance is on any current tree version (tree_element.instance_id)
+ - if it is check if the tree has a default_draft, if so create a new tree_element with the updated synonymy and use that
+ in this tree_version. Note that the change will show in the tree diff for review before publishing the draft.
+ - send a notification email? and log the change...somewhere.
+
+To scale out the automatic changes, uber/composite trees would register with source shards for instance change
+notifications (via message passing, e.g. camel/rabbit ) and would run a similar update process.
+
+Pre-publish check using brute force:
+
+* When we validate the tree we can also run a synonymy change check which regenerates the synonymy for all instances used
+on the tree and compare them with the existing. If it has changed we report the change.
+* "update synonymy" would create new tree_elements for all changed concepts and populate it with the updated synonymy.
+* if you re-run the synonymy check there should now be no differences.
+
+Pre-publish check intelligent:
+
+* use the notification service to check changed instances/synonymys and log the change in the report
+* allow users to update all synonyms or pick the ones they want to use.
+* you could still send out notification emails when a relevant change occurs.
+
+To scale out the Pre-publish check the "intelligent" approach would be best becuase we can remotely notify other systems
+via message passing as changes happen. This improves asynchronous changes to trees. The intelligent method is also the
+most efficient and will not require the user to wait for the brute force check to complete.
+
+TIP: Ithink the pre-publish check intelligent method is probaly the simplest and best option for all users and for
+scaling to uber/compiled or just autonomous/random trees created by "others".
