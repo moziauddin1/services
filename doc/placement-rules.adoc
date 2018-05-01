@@ -393,6 +393,9 @@ make the same change to all trees, not just the APC tree.
 instances on the tree you are about to publish. You review the changes and can select "update synonymy", or go back and
 further edit both the tree and instances.
 
+TIP: I think the pre-publish check is probably the simplest and most understandable option for most users. It is also better
+for scaling to trees created by "others" that may not be on the system that records the instance/concept.
+
 ===== Technicallities
 
 Automatic changes:
@@ -424,5 +427,5 @@ To scale out the Pre-publish check the "intelligent" approach would be best becu
 via message passing as changes happen. This improves asynchronous changes to trees. The intelligent method is also the
 most efficient and will not require the user to wait for the brute force check to complete.
 
-TIP: Ithink the pre-publish check intelligent method is probaly the simplest and best option for all users and for
-scaling to uber/compiled or just autonomous/random trees created by "others".
+TIP: I think the pre-publish check intelligent method is probaly the simplest and most understandable option for most users.
+It is also better for scaling to trees created by "others" that may not be on the system that records the instance/concept.
