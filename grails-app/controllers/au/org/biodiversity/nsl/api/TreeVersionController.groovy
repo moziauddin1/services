@@ -1,13 +1,9 @@
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.*
-import grails.validation.ValidationException
-import org.apache.commons.lang.NotImplementedException
-import org.apache.shiro.authz.AuthorizationException
+import au.org.biodiversity.nsl.ObjectNotFoundException
+import au.org.biodiversity.nsl.TreeVersion
 
-import static org.springframework.http.HttpStatus.*
-
-class TreeVersionController implements WithTarget {
+class TreeVersionController extends BaseApiController {
 
     def treeService
     def treeReportService
@@ -96,30 +92,6 @@ class TreeVersionController implements WithTarget {
         }
     }
 
-    /**
-     * Report what trees and what versions are adversely affected by adding a synonym to an instance.
-     *
-     * check if name of cites instance is either on a tree or a synonym of something on a tree
-     * check if the name is already on the tree
-     *
-     * @param citedById
-     * @param citesId
-     */
-    def canAddSynonymOf(Long nameId, Long citedById, Long citesId) {
-        ResultObject results = require('cited by ID': citedById, 'cites ID': citesId)
-        Instance citedBy = Instance.get(citedById)
-        Instance cites = Instance.get(citesId)
-        handleResults(results) {
-            if (!citedBy) {
-                throw new ObjectNotFoundException("Cited by instance $citedById, not found.")
-            }
-            if (!cites) {
-                throw new ObjectNotFoundException("Cites instance $citedsId, not found.")
-            }
-
-        }
-    }
-
     def diff(Long v1, Long v2, Boolean embed) {
         ResultObject results = require('Version 1 ID': v1, 'Version 2 ID': v2)
 
@@ -147,48 +119,4 @@ class TreeVersionController implements WithTarget {
         }
     }
 
-    private handleResults(ResultObject results, Closure response, Closure work) {
-        if (results.ok) {
-            try {
-                work()
-            } catch (ObjectExistsException exists) {
-                results.ok = false
-                results.fail(exists.message, CONFLICT)
-            } catch (BadArgumentsException bad) {
-                results.ok = false
-                results.fail(bad.message, BAD_REQUEST)
-            } catch (ValidationException invalid) {
-                log.error("Validation failed ${params.action} : $invalid.message")
-                results.ok = false
-                results.fail(invalid.message, INTERNAL_SERVER_ERROR)
-            } catch (AuthorizationException authException) {
-                results.ok = false
-                results.fail("You are not authorised to ${params.action}. ${authException.message}", FORBIDDEN)
-                log.warn("You are not authorised to do this. $results.\n ${authException.message}")
-            } catch (NotImplementedException notImplementedException) {
-                results.ok = false
-                results.fail(notImplementedException.message, NOT_IMPLEMENTED)
-                log.error("$notImplementedException.message : $results")
-            } catch (ObjectNotFoundException notFound) {
-                results.ok = false
-                results.fail(notFound.message, NOT_FOUND)
-                log.error("$notFound.message : $results")
-            } catch (PublishedVersionException published) {
-                results.ok = false
-                results.fail(published.message, CONFLICT)
-                log.error("$published.message : $results")
-            }
-        }
-        response()
-    }
-
-    private handleResults(ResultObject results, Closure work) {
-        handleResults(results, { serviceRespond(results) }, work)
-    }
-
-    private serviceRespond(ResultObject resultObject) {
-        log.debug "result status is ${resultObject.status} $resultObject"
-        //noinspection GroovyAssignabilityCheck
-        respond(resultObject, [view: '/common/serviceResult', model: [data: resultObject], status: resultObject.remove('status')])
-    }
 }

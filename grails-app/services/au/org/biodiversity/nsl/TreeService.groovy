@@ -110,9 +110,14 @@ class TreeService implements ValidationUtils {
      */
     @Transactional(readOnly = true)
     TreeVersionElement findElementForInstance(Instance instance, TreeVersion treeVersion) {
-        if (instance && treeVersion) {
+        findElementForInstanceId(instance.id, treeVersion)
+    }
+
+    @Transactional(readOnly = true)
+    TreeVersionElement findElementForInstanceId(Long instanceId, TreeVersion treeVersion) {
+        if (instanceId && treeVersion) {
             return TreeVersionElement.find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.instanceId = :instanceId',
-                    [treeVersion: treeVersion, instanceId: instance.id])
+                    [treeVersion: treeVersion, instanceId: instanceId])
         }
         return null
     }
@@ -152,6 +157,33 @@ class TreeService implements ValidationUtils {
                     'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id desc',
                     [tree: tree, instanceId: instance.id])
             return new Tuple(first, last)
+        }
+        return null
+    }
+
+    /**
+     * Find any synonym that uses this instance in the tree version. In a particular tree version there *should* only be
+     * one synonym instance usage, but there are some multiple usages of instance on the tree so we return a list.
+     * @param instance
+     * @param treeVersion
+     * @return
+     */
+    @Transactional(readOnly = true)
+    List<TreeVersionElement> findElementsForSynonymInstance(Long instanceId, TreeVersion treeVersion, Sql sql = getSql()) {
+        if (instanceId && treeVersion) {
+            List<TreeVersionElement> tves = []
+            sql.eachRow('''
+        SELECT
+          tve.element_link as element_link
+        FROM tree_element el join tree_version_element tve on el.id = tve.tree_element_id,
+              jsonb_array_elements(synonyms -> 'list') AS tax_syn
+        WHERE tve.tree_version_id = :versionId
+            AND synonyms is not null 
+            AND synonyms ->> 'list' is not null
+            AND (tax_syn ->> 'instance_id'):: NUMERIC :: BIGINT = :instanceId''', [versionId: treeVersion.id, instanceId: instanceId]) { row ->
+                tves.add(TreeVersionElement.get(row.element_link as String))
+            }
+            return tves
         }
         return null
     }
@@ -1046,6 +1078,7 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param sql
      * @return
      */
+    @Deprecated
     def updateSynonomyOfInstance(Instance instance, Sql sql = getSql()) {
         log.debug "update synonymy of $instance"
         String host = configService.getServerUrl()
@@ -1059,6 +1092,7 @@ INSERT INTO tree_version_element (tree_version_id,
         ''', [instanceId: instance.id, host: host])
     }
 
+    @Deprecated
     def updateSynonomyBySynonymInstanceId(Long id, Sql sql = getSql()) {
         log.debug "update synonym by synonym instance $id"
         String query = """select distinct(te.instance_id) from tree_element te,
@@ -1075,6 +1109,104 @@ INSERT INTO tree_version_element (tree_version_id,
                 updateSynonomyOfInstance(instance, sql)
             }
         }
+    }
+
+    /**
+     * Checks if an instances synonymy has changed and creates an 'Synonymy Updated' EventRecord
+     * @param instance
+     * @param userName
+     */
+    def checkSynonomyUpdated(Instance instance, String userName) {
+        List<Tree> trees = Tree.list()
+        for (tree in trees) {
+            TreeVersionElement tve
+            if (tree.defaultDraftTreeVersion) {
+                tve = findElementForInstance(instance, tree.defaultDraftTreeVersion)
+            } else if (tree.currentTreeVersion) {
+                tve = findElementForInstance(instance, tree.currentTreeVersion)
+            }
+            if (tve) {
+                Synonyms synonyms = getSynonyms(instance)
+                if (tve.treeElement.synonymsHtml != synonyms.html()) {
+                    makeSynonymsUpdatedEventRecord(tree, tve, synonyms, userName)
+                }
+            }
+        }
+    }
+
+    private
+    static makeSynonymsUpdatedEventRecord(Tree tree, TreeVersionElement tve, Synonyms synonyms, String userName) {
+        Timestamp now = new Timestamp(System.currentTimeMillis())
+        Map data = [
+                treeId            : tree.id,
+                treeVersionElement: tve.elementLink,
+                synonyms          : synonyms.asMap(),
+                synonymsHtml      : synonyms.html()
+        ]
+        EventRecord event = new EventRecord(
+                type: EventRecordTypes.SYNONYMY_UPDATED,
+                dealtWith: false,
+                data: data,
+                createdAt: now,
+                createdBy: userName,
+                updatedAt: now,
+                updatedBy: userName
+        )
+        event.save()
+    }
+
+    /**
+     * Checks to see if any current trees use a deleted instance and create an appropriate EventRecord.
+     *
+     * An accepted instance *may* be deleted from a tree if the tree isn't on the same services database as the tree.
+     *
+     * @param instanceId
+     * @param userName
+     */
+    def checkUsageOfDeletedInstance(Long instanceId, String userName) {
+        List<Tree> trees = Tree.list()
+        for (tree in trees) {
+            TreeVersionElement tve
+            List<TreeVersionElement> synonymTves
+            if (tree.defaultDraftTreeVersion) {
+                tve = findElementForInstanceId(instanceId, tree.defaultDraftTreeVersion)
+                synonymTves = findElementsForSynonymInstance(instanceId, tree.defaultDraftTreeVersion)
+            } else if (tree.currentTreeVersion) {
+                tve = findElementForInstanceId(instanceId, tree.currentTreeVersion)
+                synonymTves = findElementsForSynonymInstance(instanceId, tree.currentTreeVersion)
+            }
+            if (tve) {
+                // found a usage of the instance on a tree as an accepted name
+                makeAcceptedInstanceDeletedEventRecord(tree, tve, userName)
+            }
+            if (synonymTves && !synonymTves.empty) {
+                for (synonymTve in synonymTves) {
+                    Synonyms synonyms = getSynonyms(synonymTve.treeElement.instance)
+                    if (synonymTve.treeElement.synonymsHtml != synonyms.html()) {
+                        makeSynonymsUpdatedEventRecord(tree, synonymTve, synonyms, userName)
+                    }
+                }
+            }
+        }
+    }
+
+    private
+    static makeAcceptedInstanceDeletedEventRecord(Tree tree, TreeVersionElement tve, String userName) {
+        Timestamp now = new Timestamp(System.currentTimeMillis())
+        Map data = [
+                treeId            : tree.id,
+                treeVersionElement: tve.elementLink,
+        ]
+        EventRecord event = new EventRecord(
+                type: EventRecordTypes.ACCEPTED_INSTANCE_DELETED,
+                dealtWith: false,
+                data: data,
+                createdAt: now,
+                createdBy: userName,
+                updatedAt: now,
+                updatedBy: userName
+        )
+        event.save()
     }
 
     /**
@@ -1731,4 +1863,3 @@ class DisplayElement {
         ]
     }
 }
-

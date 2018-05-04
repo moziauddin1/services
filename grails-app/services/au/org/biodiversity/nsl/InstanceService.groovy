@@ -223,13 +223,20 @@ class InstanceService {
 
     def checkInstanceChanges(Instance instance) {
         //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
-        //update the synonymy on the trees
+        //create synonymy changed EventRecords
         if (instance.citedBy) {
-            treeService.updateSynonomyOfInstance(instance.citedBy)
+            treeService.checkSynonomyUpdated(instance.citedBy, 'notification')
         }
     }
 
+    /**
+     * Check and update anything that may rely on this deleted instance ID e.g. trees.
+     * Since the instance is deleted, it's hard to tell what it is. So we just get the treeService to check if this
+     * instance id belongs to any current tree versions or is a synonym of any accepted tree element.
+     * @param id
+     * @return
+     */
     def checkInstanceDelete(Long id) {
-        treeService.updateSynonomyBySynonymInstanceId(id)
+        treeService.checkUsageOfDeletedInstance(id, 'notification')
     }
 }

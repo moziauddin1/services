@@ -58,7 +58,7 @@ class TargetParam {
         this.idNumber = tree.id
         this.versionNumber = null
         this.nameSpace = nameSpace
-        uri = "tree/namespace/$tree.name"
+        uri = "tree/$nameSpace/$tree.name"
     }
 
     TargetParam(TreeVersion treeVersion, String nameSpace) {

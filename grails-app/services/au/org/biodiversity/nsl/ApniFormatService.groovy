@@ -27,7 +27,7 @@ class ApniFormatService {
 
     Map getNameModel(Name name, TreeVersion version, Boolean draftInst) {
         if (!version) {
-            version = treeService.getTree(configService.classificationTreeName).currentTreeVersion
+            version = treeService.getTree(configService.classificationTreeName)?.currentTreeVersion
         }
         Name familyName = name.family
         TreeVersionElement treeVersionElement = version ? treeService.findElementForName(name, version) : null

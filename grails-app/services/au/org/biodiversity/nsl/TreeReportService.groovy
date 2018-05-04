@@ -76,7 +76,6 @@ where tve.treeVersion = :version
         )
     }
 
-
     Map validateTreeVersion(TreeVersion treeVersion) {
         if (!treeVersion) {
             throw new BadArgumentsException("Tree version needs to be set.")
@@ -90,18 +89,18 @@ where tve.treeVersion = :version
         return problems
     }
 
-    Map synonymsOfCitedInstance(Instance instance, Name name, Sql sql) {
-        sql.eachRow('''select distinct(t.name), te.id from tree_element te
-  join tree_version_element tve on te.id = tve.tree_element_id
-  join tree_version tv on tve.tree_version_id = tv.id
-  join tree t on tv.tree_id = t.id,
-      jsonb_array_elements(te.synonyms -> 'list') AS tax_syn
-where te.instance_id = :instanceId
-      and synonyms ->> 'list' is not null
-      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*\'
-      AND (tax_syn ->> 'name_id'):: NUMERIC :: BIGINT = :nameId''', [instanceId: instance.id, nameId: name.id]) { row ->
-
+    List<EventRecord> treeEventReport(Tree tree) {
+        Sql sql = getSql()
+        List<EventRecord> records = []
+        sql.eachRow('''select id
+from event_record
+where type = 'Synonymy Updated\'
+  and dealt_with = false
+and (data ->> 'treeId') :: NUMERIC :: BIGINT = :treeId
+''', [treeId: tree.id]) { row ->
+            records.add(EventRecord.get(row.id))
         }
+        return records
     }
 
     private static List<String> checkVersionSynonyms(Sql sql, TreeVersion treeVersion) {
