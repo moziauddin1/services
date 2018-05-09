@@ -982,9 +982,9 @@ INSERT INTO tree_version_element (tree_version_id,
         }
 
         //if there is an element that matches the new data use that element
-        Map elementData = elementDataFromElement(treeVersionElement.treeElement)
-        elementData.profile = profile
-        TreeElement foundElement = findTreeElement(elementData)
+        Map elementComparators = comparators(treeVersionElement.treeElement)
+        elementComparators.profile = profile
+        TreeElement foundElement = findTreeElement(elementComparators)
         if (foundElement) {
             log.debug "Reusing $foundElement"
             return changeElement(treeVersionElement, foundElement, userName)
@@ -1049,9 +1049,9 @@ INSERT INTO tree_version_element (tree_version_id,
         }
 
         //if there is an element that matches the new data use that element
-        Map elementData = elementDataFromElement(treeVersionElement.treeElement)
-        elementData.excluded = excluded
-        TreeElement foundElement = findTreeElement(elementData)
+        Map elementComparators = comparators(treeVersionElement.treeElement)
+        elementComparators.excluded = excluded
+        TreeElement foundElement = findTreeElement(elementComparators)
         if (foundElement) {
             return changeElement(treeVersionElement, foundElement, userName)
         }
@@ -1072,43 +1072,48 @@ INSERT INTO tree_version_element (tree_version_id,
     }
 
     /**
-     * update the local synonymy of all tree elements for an instance on any tree. This regenerates the synonymy json field
-     * and the synonymy html.
-     * @param instance
-     * @param sql
+     *
+     * @param treeVersionElement
+     * @param userName
      * @return
      */
-    @Deprecated
-    def updateSynonomyOfInstance(Instance instance, Sql sql = getSql()) {
-        log.debug "update synonymy of $instance"
-        String host = configService.getServerUrl()
-        sql.executeUpdate('''update tree_element
-        set synonyms_html = coalesce(synonyms_as_html(instance_id), '<synonyms></synonyms>')
-        where instance_id = :instanceId
-        ''', [instanceId: instance.id])
-        sql.executeUpdate('''update tree_element
-        set synonyms = synonyms_as_jsonb(instance_id, :host)
-        where instance_id = :instanceId
-        ''', [instanceId: instance.id, host: host])
-    }
+    TreeVersionElement updateElementFromInstanceData(TreeVersionElement treeVersionElement, String userName) {
+        mustHave(treeVersionElement: treeVersionElement, userName: userName)
+        notPublished(treeVersionElement)
+        treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
 
-    @Deprecated
-    def updateSynonomyBySynonymInstanceId(Long id, Sql sql = getSql()) {
-        log.debug "update synonym by synonym instance $id"
-        String query = """select distinct(te.instance_id) from tree_element te,
-        jsonb_array_elements(synonyms -> 'list') AS tax_syn
-        WHERE synonyms is not null
-        and synonyms ->> 'list' is not null
-        AND (tax_syn ->> 'instance_id') = '$id' """
-        log.debug query
-        sql.eachRow(query) { row ->
-            Long instId = row.instance_id.toLong()
-            Instance instance = Instance.get(instId)
-            log.debug "about to update instance $instance"
-            if (instance) {
-                updateSynonomyOfInstance(instance, sql)
-            }
+        //if there is an element that matches the new data use that element
+        TaxonData taxonData = findInstanceByUri(treeVersionElement.treeElement.instanceLink)
+        taxonData.excluded = treeVersionElement.treeElement.excluded
+        taxonData.profile = treeVersionElement.treeElement.profile
+        if (taxonData.equalsElement(treeVersionElement.treeElement)) {
+            return treeVersionElement // data equal, do nothing
         }
+
+        TreeElement foundElement = findTreeElement(taxonData)
+        if (foundElement) {
+            log.debug "Reusing $foundElement"
+            return changeElement(treeVersionElement, foundElement, userName)
+        }
+
+        //if this is not a draft only element clone it. Note check relies on treeVersionElement not being published
+        //as checked above.
+        if (treeVersionElement.treeElement.treeVersionElements.size() > 1) {
+            TreeElement updatedElement = makeTreeElementFromTaxonData(taxonData, treeVersionElement.treeElement, userName)
+            treeVersionElement = changeElement(treeVersionElement, updatedElement, userName)
+            // don't update taxonId above as the instance hasn't changed, and other taxon changes will have already
+            // updated the taxon id
+        } else {
+            treeVersionElement.treeElement.synonyms = taxonData.synonyms.asMap()
+            treeVersionElement.treeElement.synonymsHtml = taxonData.synonymsHtml
+            treeVersionElement.treeElement.save()
+        }
+
+        Timestamp now = new Timestamp(System.currentTimeMillis())
+        treeVersionElement.updatedBy = userName
+        treeVersionElement.updatedAt = now
+        treeVersionElement.save()
+        return treeVersionElement
     }
 
     /**
@@ -1128,20 +1133,37 @@ INSERT INTO tree_version_element (tree_version_id,
             if (tve) {
                 Synonyms synonyms = getSynonyms(instance)
                 if (tve.treeElement.synonymsHtml != synonyms.html()) {
-                    makeSynonymsUpdatedEventRecord(tree, tve, synonyms, userName)
+                    List<EventRecord> eventRecords = findSynonymsUpdatedEventRecord(tree, instance)
+                    if (eventRecords.empty) {
+                        makeSynonymsUpdatedEventRecord(tree, instance, userName)
+                    }
                 }
             }
         }
     }
 
-    private
-    static makeSynonymsUpdatedEventRecord(Tree tree, TreeVersionElement tve, Synonyms synonyms, String userName) {
+    private List<EventRecord> findSynonymsUpdatedEventRecord(Tree tree, Instance instance) {
+        Sql sql = getSql()
+        List<EventRecord> records = []
+        sql.eachRow('''select id
+from event_record
+where type = 'Synonymy Updated'
+  and dealt_with = false
+  and (data ->> 'treeId') = :treeId
+  and (data ->> 'instanceId') = :instanceId
+order by updated_at desc 
+''', [instanceId: "${instance.id}".toString(), treeId: "${tree.id}".toString()]) { row ->
+            records.add(EventRecord.get(row.id))
+        }
+        return records
+    }
+
+    private makeSynonymsUpdatedEventRecord(Tree tree, Instance instance, String userName) {
         Timestamp now = new Timestamp(System.currentTimeMillis())
         Map data = [
-                treeId            : tree.id,
-                treeVersionElement: tve.elementLink,
-                synonyms          : synonyms.asMap(),
-                synonymsHtml      : synonyms.html()
+                treeId      : tree.id,
+                instanceId  : instance.id,
+                instanceLink: linkService.getPreferredLinkForObject(instance)
         ]
         EventRecord event = new EventRecord(
                 type: EventRecordTypes.SYNONYMY_UPDATED,
@@ -1163,39 +1185,34 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param instanceId
      * @param userName
      */
-    def checkUsageOfDeletedInstance(Long instanceId, String userName) {
+    def checkUsageOfDeletedInstance(Long instanceId, Long citedById, String userName) {
         List<Tree> trees = Tree.list()
         for (tree in trees) {
             TreeVersionElement tve
-            List<TreeVersionElement> synonymTves
             if (tree.defaultDraftTreeVersion) {
                 tve = findElementForInstanceId(instanceId, tree.defaultDraftTreeVersion)
-                synonymTves = findElementsForSynonymInstance(instanceId, tree.defaultDraftTreeVersion)
             } else if (tree.currentTreeVersion) {
                 tve = findElementForInstanceId(instanceId, tree.currentTreeVersion)
-                synonymTves = findElementsForSynonymInstance(instanceId, tree.currentTreeVersion)
             }
             if (tve) {
                 // found a usage of the instance on a tree as an accepted name
-                makeAcceptedInstanceDeletedEventRecord(tree, tve, userName)
-            }
-            if (synonymTves && !synonymTves.empty) {
-                for (synonymTve in synonymTves) {
-                    Synonyms synonyms = getSynonyms(synonymTve.treeElement.instance)
-                    if (synonymTve.treeElement.synonymsHtml != synonyms.html()) {
-                        makeSynonymsUpdatedEventRecord(tree, synonymTve, synonyms, userName)
-                    }
+                makeAcceptedInstanceDeletedEventRecord(tree, tve, instanceId, userName)
+            } else if (citedById) {
+                Instance instance = Instance.get(citedById)
+                if (instance) {
+                    checkSynonomyUpdated(instance, userName)
                 }
             }
         }
     }
 
     private
-    static makeAcceptedInstanceDeletedEventRecord(Tree tree, TreeVersionElement tve, String userName) {
+    static makeAcceptedInstanceDeletedEventRecord(Tree tree, TreeVersionElement tve, Long instanceId, String userName) {
         Timestamp now = new Timestamp(System.currentTimeMillis())
         Map data = [
                 treeId            : tree.id,
                 treeVersionElement: tve.elementLink,
+                instanceId        : instanceId
         ]
         EventRecord event = new EventRecord(
                 type: EventRecordTypes.ACCEPTED_INSTANCE_DELETED,
@@ -1372,34 +1389,49 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         element.save()
     }
 
-    private static TreeElement findTreeElement(Map treeElementData) {
+    /**
+     * Use a map of fields to find a tree element
+     * Comparing json objects with json arrays doesn't work directly so we remove the synonyms object if present and
+     * rely on the synonymsHtml field
+     * @param treeElementData
+     * @return
+     */
+    protected static TreeElement findTreeElement(Map treeElementData) {
         return TreeElement.findWhere(treeElementData)
     }
 
-    private static TreeElement findTreeElement(TaxonData taxonData) {
-        findTreeElement(
-                [instanceId : taxonData.instanceId,
-                 nameId     : taxonData.nameId,
-                 excluded   : taxonData.excluded,
-                 simpleName : taxonData.simpleName,
-                 nameElement: taxonData.nameElement,
-                 sourceShard: taxonData.sourceShard,
-                 synonyms   : taxonData.synonyms.asMap(),
-                 profile    : taxonData.profile
-                ]
-        )
+    protected static TreeElement findTreeElement(TaxonData taxonData) {
+        findTreeElement(comparators(taxonData))
     }
 
-    protected static Map elementDataFromElement(TreeElement treeElement) {
+    /**
+     * returns a map of comparators from taxonData
+     * @param taxonData
+     * @return
+     */
+    protected static Map comparators(TaxonData taxonData) {
         [
-                instanceId : treeElement.instanceId,
-                nameId     : treeElement.nameId,
-                excluded   : treeElement.excluded,
-                simpleName : treeElement.simpleName,
-                nameElement: treeElement.nameElement,
-                sourceShard: treeElement.sourceShard,
-                synonyms   : treeElement.synonyms,
-                profile    : treeElement.profile
+                instanceId  : taxonData.instanceId,
+                nameId      : taxonData.nameId,
+                excluded    : taxonData.excluded,
+                simpleName  : taxonData.simpleName,
+                nameElement : taxonData.nameElement,
+                sourceShard : taxonData.sourceShard,
+                synonymsHtml: taxonData.synonymsHtml,
+                profile     : taxonData.profile
+        ]
+    }
+
+    protected static Map comparators(TreeElement treeElement) {
+        [
+                instanceId  : treeElement.instanceId,
+                nameId      : treeElement.nameId,
+                excluded    : treeElement.excluded,
+                simpleName  : treeElement.simpleName,
+                nameElement : treeElement.nameElement,
+                sourceShard : treeElement.sourceShard,
+                synonymsHtml: treeElement.synonymsHtml,
+                profile     : treeElement.profile
         ]
     }
 
@@ -1707,7 +1739,7 @@ and tve.element_link not in ($excludedLinks)
         return synonyms
     }
 
-    private TaxonData findInstanceByUri(String instanceUri) {
+    protected TaxonData findInstanceByUri(String instanceUri) {
         Instance taxon = linkService.getObjectForLink(instanceUri) as Instance
         TaxonData instanceData
         if (taxon) {
@@ -1820,6 +1852,22 @@ class TaxonData {
                 nomIlleg    : nomIlleg,
                 excluded    : excluded
         ]
+    }
+
+    Boolean equalsElement(TreeElement treeElement) {
+        treeElement.nameId == nameId &&
+                treeElement.instanceId == instanceId &&
+                treeElement.simpleName == simpleName &&
+                treeElement.nameElement == nameElement &&
+                treeElement.displayHtml == displayHtml &&
+                treeElement.synonymsHtml == synonymsHtml &&
+                treeElement.sourceShard == sourceShard &&
+                treeElement.synonyms == synonyms.asMap() &&
+                treeElement.rank == rank &&
+                treeElement.profile == profile &&
+                treeElement.nameLink == nameLink &&
+                treeElement.instanceLink == instanceLink &&
+                treeElement.excluded == excluded
     }
 }
 

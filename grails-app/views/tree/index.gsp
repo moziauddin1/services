@@ -266,9 +266,10 @@
                       publish
                     </button>
                     <g:if test="${tree.currentTreeVersion}">
-                      <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: tree.currentTreeVersion.id, v2: draft.id])}">diff</a>
+                      <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: tree.currentTreeVersion.id, v2: draft.id])}">diff</a>,
                     </g:if>
-                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'validate', params: [version: draft.id])}">validate</a>
+                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'validate', params: [version: draft.id])}">validate</a>,
+                    <a href="${createLink(namespace: 'api', controller: 'tree', action: 'eventReport', params: [treeId: tree.id])}">events</a>
                   </shiro:hasRole>
                 </span>
               </div>

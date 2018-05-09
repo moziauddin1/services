@@ -6,6 +6,7 @@ package au.org.biodiversity.nsl
  *
  */
 class Synonym {
+    final String host
     final Instance instance
     final String instanceLink
     final String simpleName
@@ -23,10 +24,11 @@ class Synonym {
     final Long year
 
     Synonym(Instance synonymInstance, LinkService linkService) {
-        nameLink = linkService.getPreferredLinkForObject(synonymInstance.name)
-        instanceLink = linkService.getPreferredLinkForObject(synonymInstance)
-        conceptLink = linkService.getPreferredLinkForObject(synonymInstance.cites)
-        citesLink = linkService.getPreferredLinkForObject(synonymInstance.cites?.reference)
+        host = linkService.getPreferredHost()
+        nameLink = linkService.getPreferredLinkForObject(synonymInstance.name) - host
+        instanceLink = linkService.getPreferredLinkForObject(synonymInstance) - host
+        conceptLink = linkService.getPreferredLinkForObject(synonymInstance.cites) - host
+        citesLink = linkService.getPreferredLinkForObject(synonymInstance.cites?.reference) - host
         instance = synonymInstance
         year = instance.cites?.reference?.year
         simpleName = synonymInstance.name.simpleName
@@ -43,6 +45,7 @@ class Synonym {
     Synonym(Map synonymMap) {
         instance = Instance.get(synonymMap.instance_id as Long)
 
+        host = synonymMap.host
         nameLink = synonymMap.name_link as String
         instanceLink = synonymMap.instance_link as String
         conceptLink = synonymMap.concept_link as String
@@ -76,7 +79,10 @@ class Synonym {
 
     Map asMap() {
         [
+                host          : host,
                 instance_id   : instance.id,
+                instance_link : instanceLink,
+                concept_link  : conceptLink,
                 simple_name   : simpleName,
                 type          : type,
                 name_id       : nameId,
@@ -86,6 +92,7 @@ class Synonym {
                 tax           : tax,
                 mis           : mis,
                 cites         : cites,
+                cites_link    : citesLink,
                 year          : year
         ]
     }
@@ -113,7 +120,7 @@ class Synonyms {
     }
 
     Map asMap() {
-        [list: (synonyms.collect { it.asMap() } ?: null)]
+        [list: (synonyms.collect { it.asMap() } ?: [])]
     }
 
     List<Synonym> nomSynonyms() {
@@ -134,11 +141,11 @@ class Synonyms {
 
 
     String html() {
-        """<synonyms>
-${nomSynonyms().collect { it.html() }.join('\n')}
-${taxSynonyms().collect { it.html() }.join('\n')}
-${misSynonyms().collect { it.html() }.join('\n')}
-${otherSynonyms().collect { it.html() }.join('\n')}
-</synonyms>"""
+        "<synonyms>" +
+                "${nomSynonyms().collect { it.html() }.join('')}" +
+                "${taxSynonyms().collect { it.html() }.join('')}" +
+                "${misSynonyms().collect { it.html() }.join('')}" +
+                "${otherSynonyms().collect { it.html() }.join('')}" +
+                "</synonyms>"
     }
 }

@@ -25,6 +25,7 @@ class InstanceService {
 
     def treeService
     def linkService
+    def auditService
 
     /**
      * Delete the instance
@@ -225,7 +226,7 @@ class InstanceService {
         //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
         //create synonymy changed EventRecords
         if (instance.citedBy) {
-            treeService.checkSynonomyUpdated(instance.citedBy, 'notification')
+            treeService.checkSynonomyUpdated(instance.citedBy, instance.updatedBy)
         }
     }
 
@@ -237,6 +238,7 @@ class InstanceService {
      * @return
      */
     def checkInstanceDelete(Long id) {
-        treeService.checkUsageOfDeletedInstance(id, 'notification')
+        Map instanceData = auditService.recoverDeletedInstanceData(id)
+        treeService.checkUsageOfDeletedInstance(id, instanceData.cited_by_id, instanceData.updated_by ?: 'notification')
     }
 }

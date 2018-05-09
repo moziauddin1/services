@@ -12,6 +12,8 @@ class TreeReportService implements ValidationUtils {
 
     DataSource dataSource_nsl
 
+    def treeService
+
     /**
      * create a difference between the first and second version. Normally the first version would be the currently
      * published version and the second version would be the "newer" draft version.
@@ -89,19 +91,20 @@ where tve.treeVersion = :version
         return problems
     }
 
-    List<EventRecord> treeEventReport(Tree tree) {
+    List<EventRecord> treeEventRecords(Tree tree) {
         Sql sql = getSql()
         List<EventRecord> records = []
         sql.eachRow('''select id
 from event_record
 where type = 'Synonymy Updated\'
   and dealt_with = false
-and (data ->> 'treeId') :: NUMERIC :: BIGINT = :treeId
+  and (data ->> 'treeId') :: NUMERIC :: BIGINT = :treeId
 ''', [treeId: tree.id]) { row ->
             records.add(EventRecord.get(row.id))
         }
         return records
     }
+
 
     private static List<String> checkVersionSynonyms(Sql sql, TreeVersion treeVersion) {
         List<String> problems = []
@@ -180,6 +183,59 @@ order by common_synonym;
     private Sql getSql() {
         //noinspection GroovyAssignabilityCheck
         return Sql.newInstance(dataSource_nsl)
+    }
+
+    Map synonymyUpdatedReport(EventRecord event, Tree tree) {
+        assert event.type == EventRecordTypes.SYNONYMY_UPDATED
+        TreeVersionElement tve
+        if (tree.defaultDraftTreeVersion) {
+            tve = treeService.findElementForInstanceId(event.data.instanceId as Long, tree.defaultDraftTreeVersion)
+        } else if (tree.currentTreeVersion) {
+            tve = treeService.findElementForInstanceId(event.data.instanceId as Long, tree.currentTreeVersion)
+        }
+        if (tve) {
+            tve.treeElement.refresh()
+            TaxonData taxonData = treeService.findInstanceByUri(event.data.instanceLink as String)
+            if (tve.treeElement.synonymsHtml != taxonData.synonymsHtml) {
+                return [
+                        taxonData         : taxonData,
+                        treeVersionElement: tve,
+                        instanceLink      : event.data.instanceLink,
+                        instanceId        : event.data.instanceId,
+                        eventId           : event.id,
+                        updatedBy         : event.updatedBy,
+                        updatedAt         : event.updatedAt
+                ]
+            } else {
+                event.dealtWith = true //synonymy is now the same so mark it as done
+            }
+        }
+        return null
+    }
+
+    /**
+     * Check the synonymy of all instances on the version to see if they match the current synonymy of the instance
+     * on the tree. This is a much longer process than the synonymyUpdatedReport.
+     * @param treeVersion
+     * @return
+     */
+    def checkCurrentSynonymy(TreeVersion treeVersion) {
+        Sql sql = getSql()
+        List<Map> results = []
+        sql.eachRow('''select tve.element_link, te.instance_link, te.instance_id from tree_element te
+          join tree_version_element tve on te.id = tve.tree_element_id
+        where tve.tree_version_id = :versionId 
+          and te.synonyms_html <> synonyms_as_html(te.instance_id);''', [versionId: treeVersion.id]) { row ->
+            TaxonData taxonData = treeService.findInstanceByUri(row.instance_link as String)
+            Map d = [
+                    taxonData         : taxonData,
+                    treeVersionElement: TreeVersionElement.get(row.element_link as String),
+                    instanceLink      : row.instance_link,
+                    instanceId        : row.instance_id
+            ]
+            results.add(d)
+        }
+        return results
     }
 }
 

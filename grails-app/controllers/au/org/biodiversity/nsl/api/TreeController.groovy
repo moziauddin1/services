@@ -1,5 +1,7 @@
 package au.org.biodiversity.nsl.api
 
+import au.org.biodiversity.nsl.EventRecord
+import au.org.biodiversity.nsl.EventRecordTypes
 import au.org.biodiversity.nsl.Tree
 import au.org.biodiversity.nsl.TreeVersion
 
@@ -105,8 +107,42 @@ class TreeController extends BaseApiController {
     def eventReport(Long treeId) {
         Tree tree = Tree.get(treeId)
         ResultObject results = requireTarget(tree, "Tree with id: $treeId")
-        handleResults(results) {
-            results.payload = treeReportService.treeEventReport(tree)
+        handleResults(results, { eventRespond(results, tree, false) }) {
+            List<EventRecord> eventRecords = treeReportService.treeEventRecords(tree)
+            results.payload = eventRecords.findAll { it.type == EventRecordTypes.SYNONYMY_UPDATED }
+                                          .collect { treeReportService.synonymyUpdatedReport(it, tree) }.findAll {
+                it != null
+            }
+        }
+    }
+
+    private eventRespond(ResultObject resultObject, Tree tree, Boolean embed) {
+        log.debug "result status is ${resultObject.status} $resultObject"
+        if (embed) {
+            //noinspection GroovyAssignabilityCheck
+            respond(resultObject, [view: '_eventContent', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
+        } else {
+            //noinspection GroovyAssignabilityCheck
+            respond(resultObject, [view: 'eventReport', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
+        }
+    }
+
+    def checkCurrentSynonymy(Long treeId) {
+        Tree tree = Tree.get(treeId)
+        ResultObject results = requireTarget(tree, "Tree with id: $treeId")
+        handleResults(results, { checkSynRespond(results, tree, false) }) {
+            results.payload = treeReportService.checkCurrentSynonymy(tree.defaultDraftTreeVersion)
+        }
+    }
+
+    private checkSynRespond(ResultObject resultObject, Tree tree, Boolean embed) {
+        log.debug "result status is ${resultObject.status} $resultObject"
+        if (embed) {
+            //noinspection GroovyAssignabilityCheck
+            respond(resultObject, [view: '_checkSynContent', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
+        } else {
+            //noinspection GroovyAssignabilityCheck
+            respond(resultObject, [view: 'checkSynReport', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
         }
     }
 

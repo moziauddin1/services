@@ -47,6 +47,24 @@ tree-note {
     display: inline;
 }
 
+span.draftStamp:before {
+    content: 'DRAFT';
+}
+
+span.draftStamp {
+    color: #730E1530;
+    text-transform: uppercase;
+    border-top: 4px solid #730E1530;
+    padding-top: 24px;
+    border-bottom: 4px solid #730E1530;
+    display: inline-block;
+    transform: rotate(-25deg);
+    position: absolute;
+    font-size: 3em;
+    z-index: -1;
+    left: 40px;
+}
+
 span.draft:after {
     content: '[DRAFT]';
     color: #730E15;

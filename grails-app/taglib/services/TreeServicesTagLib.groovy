@@ -16,10 +16,7 @@
 
 package services
 
-import au.org.biodiversity.nsl.Tree
-import au.org.biodiversity.nsl.TreeService
-import au.org.biodiversity.nsl.TreeVersion
-import au.org.biodiversity.nsl.TreeVersionElement
+import au.org.biodiversity.nsl.*
 
 class TreeServicesTagLib {
     @SuppressWarnings("GroovyUnusedDeclaration")
@@ -82,7 +79,7 @@ class TreeServicesTagLib {
         if (treeVersion == treeVersion.tree.currentTreeVersion) {
             out << "current"
         } else if (!treeVersion.published) {
-            out << "draft"
+            out << "<span class=\"draftStamp\"></span>draft"
         } else {
             out << "old"
         }

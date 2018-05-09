@@ -20,12 +20,12 @@ class TreeVersionController extends BaseApiController {
     ]
 
     static allowedMethods = [
-            createTreeVersion         : ['PUT'],
+            createTreeVersion         : ['PUT', 'POST'],
             delete                    : ['DELETE', 'POST'],
-            setDefaultDraftTreeVersion: ['PUT'],
+            setDefaultDraftTreeVersion: ['PUT', 'POST'],
             editTreeVersion           : ['POST'],
             validate                  : ['GET'],
-            publish                   : ['PUT'],
+            publish                   : ['PUT', 'POST'],
             diff                      : ['GET']
     ]
 

@@ -33,10 +33,10 @@
   <div class="rest-resource-content col-xs-6 col-sm-6  col-md-5 col-lg-4">
     <div>
       <g:if test="${treeVersion == currentTreeVersion}">
-        <h3>${treeVersion.tree.name} <span class="hint">(${treeVersion.id})</span></h3>
+        <h3>${treeVersion.tree.name} <span class="text-muted">(${treeVersion.id})</span></h3>
       </g:if>
       <g:elseif test="${!treeVersion.published}">
-        <h3>DRAFT Version of ${treeVersion.tree.name}</h3>
+        <h3><span class="draftStamp"></span> Draft Version of ${treeVersion.tree.name}</h3>
 
         <p>
           This is a draft version of APC. The <b>current version</b> is
@@ -86,11 +86,13 @@
                 <g:if test="${version.id != currentTreeVersion.id}">
                   <g:if test="${version.published}">
                     <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: version.id, v2: currentTreeVersion.id])}"
-                       title="Diff to current version">diff</a>
+                       title="Diff to current version">diff</a>,
                   </g:if>
                   <g:else>
                     <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: currentTreeVersion.id, v2: version.id])}"
-                       title="Diff from current version">diff</a>
+                       title="Diff from current version">diff</a>,
+                    <a href="${createLink(namespace: 'api', controller: 'tree', action: 'eventReport', params: [treeId: version.tree.id])}"
+                       title="Check Events">events</a>,
                   </g:else>
                 </g:if>
               </g:if>

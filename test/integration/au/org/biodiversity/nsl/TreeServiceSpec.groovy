@@ -24,7 +24,7 @@ class TreeServiceSpec extends Specification {
         service.treeReportService = new TreeReportService()
         service.treeReportService.transactionManager = getTransactionManager()
         service.treeReportService.dataSource_nsl = dataSource_nsl
-        service.linkService.getPreferredHost() >> 'localhost:7070/nsl-mapper'
+        service.linkService.getPreferredHost() >> 'http://localhost:7070/nsl-mapper'
     }
 
     def cleanup() {
@@ -70,7 +70,7 @@ class TreeServiceSpec extends Specification {
         tree2.name == 'aNotherTree'
         tree2.groupName == 'aGroup'
         tree2.referenceId == 12345l
-        tree2.hostName == 'localhost:7070/nsl-mapper'
+        tree2.hostName == 'http://localhost:7070/nsl-mapper'
     }
 
     void "Test editing tree"() {
@@ -306,6 +306,11 @@ class TreeServiceSpec extends Specification {
         Tree tree = Tree.findByName('APC')
         TreeVersion treeVersion = tree.currentTreeVersion
         Instance ficusVirens = Instance.get(781547)
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
 
         expect:
         tree
@@ -317,31 +322,9 @@ class TreeServiceSpec extends Specification {
         println taxonData.synonymsHtml
         println taxonData.synonyms.asMap()
 
-        then: 'I get 19 synonyms'
+        then: 'I get 20 synonyms'
         taxonData.synonyms.size() == 20
-        taxonData.synonymsHtml == '''<synonyms>
-
-<tax><scientific><name data-id='90571'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>caulobotrya</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='245725'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>cunninghami</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='90744'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>cunninghamii</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='91064'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>fraseri</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6832' title='Mueller, F.J.H. von'>F.Muell.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='91138'><scientific><name data-id='91097'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>glabella</element></name></scientific> <rank data-id='54412'>var.</rank> <element>nesophila</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='2897' title='Schumann, K.M.'>K.Schum.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='91343'><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element></name></scientific> <rank data-id='54412'>var.</rank> <element>cunninghamii</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='91363'><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element></name></scientific> <rank data-id='54412'>var.</rank> <element>fraseri</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='91381'><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element></name></scientific> <rank data-id='54412'>var.</rank> <element>psychotriifolium</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='91908'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>nesophila</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='50116647'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>psychotriaefolia</element> <authors><author data-id='6860' title='Domin, K.'>Domin</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='92451'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>psychotriifolia</element> <authors>(<base data-id='6872' title='Miquel, F.A.W.'>Miq.</base>) <author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='246717'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>cunninghami</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='105887'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>cunninghamii</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='105930'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>fraseri</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='106129'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>nesophilum</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='246718'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>psychotriaefolium</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<tax><scientific><name data-id='106369'><scientific><name data-id='105783'><element>Urostigma</element></name></scientific> <element>psychotriifolium</element> <authors><author data-id='6872' title='Miquel, F.A.W.'>Miq.</author></authors></name></scientific> <type>taxonomic synonym</type></tax>
-<mis><scientific><name data-id='91316'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>infectoria</element> <authors><author data-id='1884' title='Willdenow, C.L. von'>Willd.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='25068'><ref-section><author>Roxburgh, W.</author> <year>(1832)</year>, <par-title><i>Flora Indica; or descriptions of Indian Plants, by the late William Roxburgh</i></par-title> <edition>Edn. 2,</edition> <volume>3</volume></ref-section></ref></citation></mis>
-<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='33263'><ref-paper><author>Buchanan-Hamilton, F.</author> <year>(1827)</year>, <ref-title>A commentary on the third part of the Hortus Malabaricus.</ref-title> <par-title><i>Transactions of the Linnean Society of London</i></par-title> <volume>15</volume></ref-paper></ref></citation></mis>
-<mis><scientific><name data-id='91425'><scientific><name data-id='73030'><element>Ficus</element></name></scientific> <element>lacor</element> <authors><author data-id='8313' title='Buchanan-Hamilton, F.'>Buch.-Ham.</author></authors></name></scientific> <type>misapplied</type> by <citation><ref data-id='23509'><ref-paper><author>Specht, R.L.</author> <author>in Specht, R.L. & Mountford, C.P. (ed.)</author> <year>(1958)</year>, <ref-title>The Gymnospermae and Angiospermae collected on the Arnhem Land Expedition.</ref-title> <par-title><i>Records of the American-Australian Scientific Expedition to Arnhem Land No. 3 Botany and Plant Ecology</i></par-title></ref-paper></ref></citation></mis>
-</synonyms>'''
+        taxonData.synonymsHtml.startsWith('<synonyms><tax><scientific><name data-id=\'90571\'><scientific><name data-id=\'73030\'>')
     }
 
     def "test check synonyms"() {
@@ -349,6 +332,11 @@ class TreeServiceSpec extends Specification {
         Tree tree = Tree.findByName('APC')
         TreeVersion treeVersion = tree.currentTreeVersion
         Instance ficusVirensSublanceolata = Instance.get(692695)
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
 
         expect:
         tree
@@ -373,6 +361,11 @@ class TreeServiceSpec extends Specification {
         Tree tree = Tree.findByName('APC')
         TreeVersion treeVersion = tree.currentTreeVersion
         Instance xanthosiaPusillaBunge = Instance.get(712692)
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
 
         expect:
         tree
@@ -414,10 +407,11 @@ class TreeServiceSpec extends Specification {
         Instance asperaInstance = Instance.get(781104)
         TreeVersionElement doodiaElement = service.findElementBySimpleName('Doodia', draftVersion)
         TreeVersionElement asperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
-
-        //return a url that matches the name link of aspera
-        service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://something that does not match the name'
-        service.linkService.getPreferredLinkForObject(asperaInstance) >> asperaElement.treeElement.instanceLink
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
 
         expect:
         tree
@@ -527,10 +521,11 @@ class TreeServiceSpec extends Specification {
         Instance asperaInstance = Instance.get(781104)
         TreeVersionElement doodiaElement = service.findElementBySimpleName('Doodia', draftVersion)
         TreeVersionElement asperaElement = service.findElementBySimpleName('Doodia aspera', draftVersion)
-
-        //return a url that matches the name link of aspera
-        service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/70944'
-        service.linkService.getPreferredLinkForObject(asperaInstance) >> 'http://something that does not match the instance'
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
 
         expect:
         tree
@@ -545,7 +540,7 @@ class TreeServiceSpec extends Specification {
 
         then: 'I get bad argument, name is already on the tree'
         def e = thrown(BadArgumentsException)
-        e.message.startsWith("Can’t place this concept - Doodia aspera is accepted concept")
+        e.message.startsWith("Can’t place this concept - <data><scientific><name data-id='70944'>")
     }
 
     def "test place taxon"() {
@@ -564,10 +559,11 @@ class TreeServiceSpec extends Specification {
         String instanceUri = 'http://localhost:7070/nsl-mapper/instance/apni/781104'
         Long blechnaceaeTaxonId = blechnaceaeElement.taxonId
         Long doodiaTaxonId = doodiaElement.taxonId
-
-        //return a url that matches the name link of aspera
-        service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/70944'
-        service.linkService.getPreferredLinkForObject(asperaInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/781104'
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
 
         println TreeVersionElement.findAllByTaxonId(blechnaceaeElement.taxonId)
         printTve(blechnaceaeElement)
@@ -807,9 +803,11 @@ class TreeServiceSpec extends Specification {
 
         Instance asperaInstance = Instance.get(781104)
         String instanceUri = 'http://localhost:7070/nsl-mapper/instance/apni/781104'
-        //return a url that matches the name link of aspera
-        service.linkService.getPreferredLinkForObject(asperaInstance.name) >> 'http://localhost:7070/nsl-mapper/name/apni/70944'
-        service.linkService.getPreferredLinkForObject(asperaInstance) >> 'http://localhost:7070/nsl-mapper/instance/apni/781104'
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
         draftVersion.refresh()
 
         expect:
@@ -1182,6 +1180,51 @@ class TreeServiceSpec extends Specification {
         }
     }
 
+    def "test find tree element"() {
+        given:
+        TreeElement doodiaDissecta = TreeElement.findBySimpleNameAndUpdatedBy('Doodia dissecta', 'import')
+        service.linkService.getPreferredLinkForObject(_) >> {
+            String url = "http://localhost:7070/nsl-mapper/${it[0].class.simpleName.toLowerCase()}/apni/${it[0].id}"
+            println url
+            return url
+        }
+
+        expect:
+        doodiaDissecta
+
+        when: 'I try finding the element using its data'
+        Map edfe = service.comparators(doodiaDissecta)
+        TreeElement found1 = service.findTreeElement(edfe)
+
+        then:
+        found1
+        found1.id == doodiaDissecta.id
+
+        when: 'I compare element data to taxon data it matches'
+        TaxonData taxonData = service.elementDataFromInstance(doodiaDissecta.instance)
+        taxonData.excluded = doodiaDissecta.excluded
+        taxonData.profile = doodiaDissecta.profile
+        Map edfi = service.comparators(taxonData)
+
+        then:
+        2 * service.linkService.getPreferredHost() >> 'http://localhost:7070/nsl-mapper'
+
+        edfi.instanceId == edfe.instanceId
+        edfi.nameId == edfe.nameId
+        edfi.excluded == edfe.excluded
+        edfi.simpleName == edfe.simpleName
+        edfi.nameElement == edfe.nameElement
+        edfi.sourceShard == edfe.sourceShard
+        edfi.synonymsHtml == edfe.synonymsHtml
+        edfi.profile == edfe.profile
+
+        when: 'I get the TaxonData from the instance, it still works'
+        TreeElement found2 = service.findTreeElement(taxonData)
+
+        then:
+        found2
+        found2.id == doodiaDissecta.id
+    }
 
     static deleted(domainObject) {
         Name.withSession { session ->
@@ -1190,11 +1233,13 @@ class TreeServiceSpec extends Specification {
     }
 
     private Tree makeATestTree() {
-        service.createNewTree('aTree', 'aGroup', null, '<p>A description</p>', 'http://trees.org/aTree', false)
+        service.createNewTree('aTree', 'aGroup', null, '<p>A description</p>',
+                'http://trees.org/aTree', false)
     }
 
     private Tree makeBTestTree() {
-        service.createNewTree('bTree', 'aGroup', null, '<p>B description</p>', 'http://trees.org/bTree', false)
+        service.createNewTree('bTree', 'aGroup', null, '<p>B description</p>',
+                'http://trees.org/bTree', false)
     }
 
     private printTve(TreeVersionElement target) {

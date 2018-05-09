@@ -1,9 +1,6 @@
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.ObjectNotFoundException
-import au.org.biodiversity.nsl.TaxonData
-import au.org.biodiversity.nsl.TreeVersion
-import au.org.biodiversity.nsl.TreeVersionElement
+import au.org.biodiversity.nsl.*
 
 import static org.springframework.http.HttpStatus.NOT_FOUND
 
@@ -20,7 +17,9 @@ class TreeElementController extends BaseApiController {
             editElementProfile     : ['json', 'html'],
             editElementStatus      : ['json', 'html'],
             elementDataFromInstance: ['json', 'html'],
-            editComment            : ['html']
+            editComment            : ['html'],
+            updateSynonymy         : ['json', 'html'],
+
     ]
 
     static allowedMethods = [
@@ -30,7 +29,9 @@ class TreeElementController extends BaseApiController {
             editElementProfile     : ['POST'],
             editElementStatus      : ['POST'],
             elementDataFromInstance: ['GET'],
-            editComment            : ['POST']
+            editComment            : ['POST'],
+            updateSynonymy         : ['POST']
+
     ]
 
     /**
@@ -211,4 +212,71 @@ class TreeElementController extends BaseApiController {
         }
     }
 
+    def updateSynonymyByInstance() {
+        List<Long> instanceIds = paramIdList(params.instances)
+
+        log.debug instanceIds
+        ResultObject results = require('instances': instanceIds)
+
+        handleResults(results) {
+            Tree tree = got({ Tree.get(params.treeId as Long) }, "Tree $params.treeId")
+            String userName = treeService.authorizeTreeOperation(tree)
+            TreeVersion treeVersion = got({
+                tree.defaultDraftTreeVersion
+            }, "No default draft version for tree ${tree.name} found. Create a default draft first.")
+
+            List<TreeVersionElement> payload = []
+            for (Long instanceId in instanceIds) {
+                TreeVersionElement tve = got({
+                    treeService.findElementForInstanceId(instanceId as Long, treeVersion)
+                }, "Tree version element for instance (${instanceId}) not found.")
+                payload.add(treeService.updateElementFromInstanceData(tve, userName))
+            }
+            results.payload = payload
+        }
+    }
+
+    def updateSynonymyByEvent() {
+        List<Long> eventIds = paramIdList(params.events)
+        log.debug eventIds
+        ResultObject results = require('events': eventIds)
+
+        handleResults(results) {
+            List<TreeVersionElement> payload = []
+            for (Long eventId in eventIds) {
+                EventRecord event = EventRecord.get(eventId)
+                if (event && !event.dealtWith && event.type == EventRecordTypes.SYNONYMY_UPDATED) {
+                    Tree tree = got({ Tree.get(event.data.treeId as Long) }, "Tree ${event.data.treeId}.")
+                    String userName = treeService.authorizeTreeOperation(tree)
+                    TreeVersion treeVersion = got({
+                        tree.defaultDraftTreeVersion
+                    }, "No default draft version for tree ${tree.name} found. Create a default draft first.")
+                    TreeVersionElement tve = got({
+                        treeService.findElementForInstanceId(event.data.instanceId as Long, treeVersion)
+                    }, "Tree version element for instance (${event.data.instanceId}) not found.")
+                    payload.add(treeService.updateElementFromInstanceData(tve, userName))
+                    event.dealtWith = true
+                }
+            }
+        }
+    }
+
+    private static List<Long> paramIdList(val) {
+        if (!val) {
+            return null
+        }
+        if (val instanceof Object[]) {
+            val.collect { it as Long } as List
+        } else {
+            [val as Long]
+        }
+    }
+
+    private static Object got(Closure c, String msg) {
+        def result = c()
+        if (!result) {
+            throw new ObjectNotFoundException(msg)
+        }
+        return result
+    }
 }
