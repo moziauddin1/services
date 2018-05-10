@@ -142,13 +142,15 @@ WHERE tve1.tree_version_id = :treeVersionId
         List<Map> problems = []
         sql.eachRow('''
 SELECT
-  tax_syn2 ->> 'simple_name'                                        AS common_synonym,
+  tax_syn2 ->> 'simple_name'       AS common_synonym,
   jsonb_build_object(tax_syn2 ->> 'simple_name',
-  jsonb_object_agg(e1.simple_name,
-                   jsonb_build_object('html', '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>',
-                                      'name_link', e1.name_link,
-                                      'tree_link', tree.host_name || tve1.element_link,
-                                      'type', tax_syn2 ->> 'type'))) as names
+                     jsonb_agg(jsonb_build_object('html',
+                                                  '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>',
+                                                  'name_link', e1.name_link,
+                                                  'tree_link', tree.host_name || tve1.element_link,
+                                                  'type', tax_syn1 ->> 'type',
+                                                  'syn_name_id', tax_syn2 ->> 'name_id\'
+                               ))) as names
 FROM tree_version_element tve1
   JOIN tree_element e1 ON tve1.tree_element_id = e1.id
   ,

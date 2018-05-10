@@ -16,7 +16,10 @@
 
 package services
 
-import au.org.biodiversity.nsl.*
+import au.org.biodiversity.nsl.Tree
+import au.org.biodiversity.nsl.TreeService
+import au.org.biodiversity.nsl.TreeVersion
+import au.org.biodiversity.nsl.TreeVersionElement
 
 class TreeServicesTagLib {
     @SuppressWarnings("GroovyUnusedDeclaration")
@@ -111,6 +114,17 @@ class TreeServicesTagLib {
         List<TreeVersion> drafts = TreeVersion.findAllWhere(tree: tree, published: false)
         drafts.each { TreeVersion draft ->
             out << body(draft: draft, defaultDraft: draft.id == tree.defaultDraftTreeVersion?.id)
+        }
+    }
+
+    def commonSynonyms = { attrs, body ->
+        List<Map> results = attrs.results
+        if (results) {
+            for (Map result in results) {
+                String synonym = result.keySet().first()
+                List<Map> names = result[synonym] as List<Map>
+                out << body(synonym: result.keySet().first(), name1: names[0], name2: names[1])
+            }
         }
     }
 

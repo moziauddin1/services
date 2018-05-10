@@ -31,7 +31,7 @@ class TreeVersionController extends BaseApiController {
 
     def delete(Long id) {
         TreeVersion treeVersion = TreeVersion.get(id)
-        ResultObject results = requireTarget(treeVersion, "Tree version with id: $id")
+        ResultObject results = requireTarget(treeVersion, "No Tree version with id: $id found")
         handleResults(results) {
             treeService.authorizeTreeOperation(treeVersion.tree)
             results.payload = treeService.deleteTreeVersion(treeVersion)
@@ -40,7 +40,7 @@ class TreeVersionController extends BaseApiController {
 
     def setDefaultDraftTreeVersion(Long version) {
         TreeVersion treeVersion = TreeVersion.get(version)
-        ResultObject results = requireTarget(treeVersion, "Tree version $version")
+        ResultObject results = requireTarget(treeVersion, "No Tree version with id $version found")
         handleResults(results) {
             treeService.authorizeTreeOperation(treeVersion.tree)
             results.payload = treeService.setDefaultDraftVersion(treeVersion)
@@ -53,7 +53,7 @@ class TreeVersionController extends BaseApiController {
         String logEntry = data.logEntry
 
         TreeVersion treeVersion = TreeVersion.get(versionId)
-        ResultObject results = requireTarget(treeVersion, "Tree version with id: $versionId")
+        ResultObject results = requireTarget(treeVersion, "No Tree version with id: $versionId found")
         handleResults(results) {
             String userName = treeService.authorizeTreeOperation(treeVersion.tree)
             Boolean createNewDraft = treeVersion == treeVersion.tree.defaultDraftTreeVersion
@@ -73,7 +73,7 @@ class TreeVersionController extends BaseApiController {
         Boolean defaultVersion = data.defaultDraft
 
         TreeVersion treeVersion = TreeVersion.get(versionId)
-        ResultObject results = requireTarget(treeVersion, "Tree version with id: $versionId")
+        ResultObject results = requireTarget(treeVersion, "No Tree version with id: $versionId found")
         handleResults(results) {
             treeService.authorizeTreeOperation(treeVersion.tree)
             results.payload = treeService.editTreeVersion(treeVersion, draftName)
@@ -83,11 +83,12 @@ class TreeVersionController extends BaseApiController {
         }
     }
 
-    def validate(Long version) {
+    def validate(Long version, Boolean embed) {
         log.debug "validate tree version $version"
         TreeVersion treeVersion = TreeVersion.get(version)
-        ResultObject results = requireTarget(treeVersion, "Tree version with id: $version")
-        handleResults(results) {
+        ResultObject results = requireTarget(treeVersion, "No Tree version with id: $version found")
+        handleResults(results, { viewRespond('validate', results, embed) }) {
+            results.treeVersion = treeVersion
             results.payload = treeReportService.validateTreeVersion(treeVersion)
         }
     }
@@ -95,7 +96,7 @@ class TreeVersionController extends BaseApiController {
     def diff(Long v1, Long v2, Boolean embed) {
         ResultObject results = require('Version 1 ID': v1, 'Version 2 ID': v2)
 
-        handleResults(results, { diffRespond(results, embed) }) {
+        handleResults(results, { viewRespond('diff', results, embed) }) {
             TreeVersion first = TreeVersion.get(v1)
             if (!first) {
                 throw new ObjectNotFoundException("Version $v1, not found.")
@@ -108,14 +109,14 @@ class TreeVersionController extends BaseApiController {
         }
     }
 
-    private diffRespond(ResultObject resultObject, Boolean embed) {
-        log.debug "result status is ${resultObject.status} $resultObject"
+    private viewRespond(String view, ResultObject resultObject, Boolean embed) {
+        log.debug "result status is ${resultObject.status}"
         if (embed) {
             //noinspection GroovyAssignabilityCheck
-            respond(resultObject, [view: '_diffContent', model: [data: resultObject], status: resultObject.remove('status')])
+            respond(resultObject, [view: "_${view}Content", model: [data: resultObject], status: resultObject.remove('status')])
         } else {
             //noinspection GroovyAssignabilityCheck
-            respond(resultObject, [view: 'diff', model: [data: resultObject], status: resultObject.remove('status')])
+            respond(resultObject, [view: view, model: [data: resultObject], status: resultObject.remove('status')])
         }
     }
 

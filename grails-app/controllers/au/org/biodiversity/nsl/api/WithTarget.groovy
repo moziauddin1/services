@@ -86,14 +86,14 @@ trait WithTarget {
         return result
     }
 
-    ResultObject requireTarget(Object target, String targetInfo) {
+    ResultObject requireTarget(Object target, String errorMessage) {
         assert jsonRendererService
 
         ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
         result.ok = true
 
         if (!target) {
-            result.error("$targetInfo not found.")
+            result.error(errorMessage)
             result.status = NOT_FOUND
             result.ok = false
         }

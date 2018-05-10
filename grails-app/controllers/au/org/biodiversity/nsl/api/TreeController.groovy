@@ -65,7 +65,7 @@ class TreeController extends BaseApiController {
 
     def deleteTree(Long treeId) {
         Tree tree = Tree.get(treeId)
-        ResultObject results = requireTarget(tree, "Tree with id: $treeId")
+        ResultObject results = requireTarget(tree, "No Tree with id: $treeId found")
         handleResults(results) {
             treeService.authorizeTreeOperation(tree)
             treeService.deleteTree(tree)
@@ -104,10 +104,10 @@ class TreeController extends BaseApiController {
         }
     }
 
-    def eventReport(Long treeId) {
+    def eventReport(Long treeId, Boolean embed) {
         Tree tree = Tree.get(treeId)
-        ResultObject results = requireTarget(tree, "Tree with id: $treeId")
-        handleResults(results, { eventRespond(results, tree, false) }) {
+        ResultObject results = requireTarget(tree, "No Tree with id: $treeId found")
+        handleResults(results, { eventRespond(results, tree, embed) }) {
             List<EventRecord> eventRecords = treeReportService.treeEventRecords(tree)
             results.payload = eventRecords.findAll { it.type == EventRecordTypes.SYNONYMY_UPDATED }
                                           .collect { treeReportService.synonymyUpdatedReport(it, tree) }.findAll {
@@ -127,10 +127,10 @@ class TreeController extends BaseApiController {
         }
     }
 
-    def checkCurrentSynonymy(Long treeId) {
+    def checkCurrentSynonymy(Long treeId, Boolean embed) {
         Tree tree = Tree.get(treeId)
-        ResultObject results = requireTarget(tree, "Tree with id: $treeId")
-        handleResults(results, { checkSynRespond(results, tree, false) }) {
+        ResultObject results = requireTarget(tree, "No Tree with id: $treeId found")
+        handleResults(results, { checkSynRespond(results, tree, embed) }) {
             results.payload = treeReportService.checkCurrentSynonymy(tree.defaultDraftTreeVersion)
         }
     }
@@ -149,7 +149,7 @@ class TreeController extends BaseApiController {
     private withTree(Closure work) {
         Map data = request.JSON as Map
         Tree tree = Tree.get(data.id as Long)
-        ResultObject results = requireTarget(tree, "Tree with id: $data.id")
+        ResultObject results = requireTarget(tree, "No Tree with id: $data.id found")
         handleResults(results) {
             work(results, tree, data)
         }

@@ -11,8 +11,8 @@ import static org.springframework.http.HttpStatus.*
 
 class BaseApiController implements WithTarget {
 
-    def index() {}
     def jsonRendererService
+    def index() {}
 
     protected handleResults(ResultObject results, Closure response, Closure work) {
         if (results.ok) {
@@ -91,6 +91,4 @@ class BaseApiController implements WithTarget {
             }
         }
     }
-
-
 }

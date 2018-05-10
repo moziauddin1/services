@@ -57,15 +57,13 @@
                     ${raw(report.taxonData.synonymsHtml)}
                   </div>
                 </div>
-                <shiro:hasRole name="treebuilder">
-
-                  <div class="form-inline" style="float:right">
-                    <label>Select
-                      <input type="checkbox" name="events" class="form-control" value="${report.eventId}"
-                             checked="checked"/>
-                    </label>
-                  </div>
-                </shiro:hasRole>
+                %{-- we leave this here even if not a treebuilder because the editor will use it --}%
+                <div class="form-inline" style="float:right">
+                  <label>Select
+                    <input type="checkbox" name="events" class="form-control" value="${report.eventId}"
+                           checked="checked"/>
+                  </label>
+                </div>
               </td>
             </tr>
           </g:each>

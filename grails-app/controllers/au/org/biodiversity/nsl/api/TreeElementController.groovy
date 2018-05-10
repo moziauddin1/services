@@ -239,7 +239,7 @@ class TreeElementController extends BaseApiController {
     def updateSynonymyByEvent() {
         List<Long> eventIds = paramIdList(params.events)
         log.debug eventIds
-        ResultObject results = require('events': eventIds)
+        ResultObject results = requireTarget(eventIds, "No events supplied, updating nothing.")
 
         handleResults(results) {
             List<TreeVersionElement> payload = []
