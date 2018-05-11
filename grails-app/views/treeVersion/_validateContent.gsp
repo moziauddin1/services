@@ -3,7 +3,27 @@
 
   <g:if test="${data.payload?.synonymsOfAcceptedNames}">
     <h3>Synonyms of accepted names</h3>
+
+    <table class="table">
+      <g:each in="${data.payload?.synonymsOfAcceptedNames}" var="record">
+        <tr class="titleRow">
+          <td colspan="2">
+            ${record.description}
+          </td>
+        </tr>
+        <tr>
+          <td class="">
+            <div>${raw(record.accepted_html)}</div>
+          </td>
+          <td class="">
+            <div class="highlight-name"
+                 data-syn-id="${record.synonym_name_id}">${raw(record.synonym_accepted_html)}</div>
+          </td>
+        </tr>
+      </g:each>
+    </table>
   </g:if>
+
   <g:if test="${data.payload?.commonSynonyms}">
     <h3>Common synonyms</h3>
 

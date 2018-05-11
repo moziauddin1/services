@@ -772,8 +772,7 @@ INSERT INTO tree_version_element (tree_version_id,
         notPublished(parentTve)
 
         if (currentTve.treeElement.instanceLink == instanceUri) {
-            Map problems = treeReportService.validateTreeVersion(currentTve.treeVersion)
-            return [replacementElement: currentTve, problems: problems]
+            return [replacementElement: currentTve, problems: "#### Same instance #### \\n\\n *Didn't do anything*"]
         }
 
         TaxonData taxonData = findInstanceByUri(instanceUri)

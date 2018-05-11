@@ -106,34 +106,52 @@ where type = 'Synonymy Updated\'
     }
 
 
-    private static List<String> checkVersionSynonyms(Sql sql, TreeVersion treeVersion) {
-        List<String> problems = []
+    private static List<Map> checkVersionSynonyms(Sql sql, TreeVersion treeVersion) {
+        List<Map> problems = []
         sql.eachRow('''
 SELECT
-  e1.simple_name                    AS name1,
-  tve1.element_link AS link1,
-  e2.simple_name                    AS name2,
-  tve2.element_link AS link2,
-  tax_syn                           AS name2_synonym,
-  e2.synonyms -> tax_syn ->> 'type' AS type
+  e1.name_id                                                            AS accepted_name_id,
+  e1.simple_name                                                        AS accepted_name,
+  '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>' as accepted_html,
+  tve1.element_link                                                     AS accepted_name_tve,
+  e2.simple_name                                                        AS synonym_accepted_name,
+  '<div class="tr">' || e2.display_html || e2.synonyms_html || '</div>' as synonym_accepted_html,
+  tve2.element_link                                                     AS synonym_tve,
+  tax_syn                                                               AS synonym_record,
+  tax_syn ->> 'type'                                                    AS synonym_type,
+  tax_syn ->> 'name_id'                                                 as synonym_name_id,
+  tax_syn ->> 'simple_name'                                             as synonym_name
 FROM tree_version_element tve1
   JOIN tree_element e1 ON tve1.tree_element_id = e1.id
   ,
   tree_version_element tve2
   JOIN tree_element e2 ON tve2.tree_element_id = e2.id
   ,
-      jsonb_object_keys(e2.synonyms) AS tax_syn
+      jsonb_array_elements(e2.synonyms -> 'list') AS tax_syn
 WHERE tve1.tree_version_id = :treeVersionId
       AND tve2.tree_version_id = :treeVersionId
       AND tve2.tree_element_id <> tve1.tree_element_id
       AND e1.excluded = FALSE
       AND e2.excluded = FALSE
       AND e2.synonyms IS NOT NULL
-      AND (e2.synonyms -> tax_syn ->> 'name_id') :: NUMERIC :: BIGINT = e1.name_id
-      AND e2.synonyms -> tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*';
+      AND (tax_syn ->> 'name_id') :: NUMERIC :: BIGINT = e1.name_id
+      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*';
       ''', [treeVersionId: treeVersion.id]) { row ->
-            problems.add("Taxon concept <a href=\"${row['link2']}\" title=\"tree link\">${row['name2']}</a> " +
-                    "considers <a href=\"${row['link1']}\" title=\"tree link\">${row['name1']}</a> to be a ${row['type']}.")
+            Map record = [
+                    accepted_name_id     : row.accepted_name_id,
+                    accepted_name        : row.accepted_name,
+                    accepted_html        : row.accepted_html,
+                    accepted_name_tve    : row.accepted_name_tve,
+                    synonym_accepted_name: row.synonym_accepted_name,
+                    synonym_accepted_html: row.synonym_accepted_html,
+                    synonym_tve          : row.synonym_tve,
+                    synonym_record       : row.synonym_record,
+                    synonym_type         : row.synonym_type,
+                    synonym_name_id      : row.synonym_name_id,
+                    synonym_name         : row.synonym_name
+            ]
+            record.description = "Accepted name ${record.accepted_name} is a ${record.synonym_type} of accepted name ${record.synonym_accepted_name}."
+            problems.add(record)
         }
         return problems
     }
