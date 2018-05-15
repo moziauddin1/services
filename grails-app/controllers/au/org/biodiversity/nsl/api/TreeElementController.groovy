@@ -219,17 +219,17 @@ class TreeElementController extends BaseApiController {
         ResultObject results = require('instances': instanceIds)
 
         handleResults(results) {
-            Tree tree = got({ Tree.get(params.treeId as Long) }, "Tree $params.treeId")
+            Tree tree = got({ Tree.get(params.treeId as Long) }, "Tree $params.treeId") as Tree
             String userName = treeService.authorizeTreeOperation(tree)
             TreeVersion treeVersion = got({
                 tree.defaultDraftTreeVersion
-            }, "No default draft version for tree ${tree.name} found. Create a default draft first.")
+            }, "No default draft version for tree ${tree.name} found. Create a default draft first.") as TreeVersion
 
             List<TreeVersionElement> payload = []
             for (Long instanceId in instanceIds) {
                 TreeVersionElement tve = got({
                     treeService.findElementForInstanceId(instanceId as Long, treeVersion)
-                }, "Tree version element for instance (${instanceId}) not found.")
+                }, "Tree version element for instance (${instanceId}) not found.") as TreeVersionElement
                 payload.add(treeService.updateElementFromInstanceData(tve, userName))
             }
             results.payload = payload
@@ -246,14 +246,14 @@ class TreeElementController extends BaseApiController {
             for (Long eventId in eventIds) {
                 EventRecord event = EventRecord.get(eventId)
                 if (event && !event.dealtWith && event.type == EventRecordTypes.SYNONYMY_UPDATED) {
-                    Tree tree = got({ Tree.get(event.data.treeId as Long) }, "Tree ${event.data.treeId}.")
+                    Tree tree = got({ Tree.get(event.data.treeId as Long) }, "Tree ${event.data.treeId}.") as Tree
                     String userName = treeService.authorizeTreeOperation(tree)
                     TreeVersion treeVersion = got({
                         tree.defaultDraftTreeVersion
-                    }, "No default draft version for tree ${tree.name} found. Create a default draft first.")
+                    }, "No default draft version for tree ${tree.name} found. Create a default draft first.") as TreeVersion
                     TreeVersionElement tve = got({
                         treeService.findElementForInstanceId(event.data.instanceId as Long, treeVersion)
-                    }, "Tree version element for instance (${event.data.instanceId}) not found.")
+                    }, "Tree version element for instance (${event.data.instanceId}) not found.") as TreeVersionElement
                     payload.add(treeService.updateElementFromInstanceData(tve, userName))
                     event.dealtWith = true
                 }
@@ -272,11 +272,4 @@ class TreeElementController extends BaseApiController {
         }
     }
 
-    private static Object got(Closure c, String msg) {
-        def result = c()
-        if (!result) {
-            throw new ObjectNotFoundException(msg)
-        }
-        return result
-    }
 }

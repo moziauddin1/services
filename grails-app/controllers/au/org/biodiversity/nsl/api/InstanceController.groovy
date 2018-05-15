@@ -17,6 +17,8 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.Instance
+import au.org.biodiversity.nsl.ObjectNotFoundException
+import au.org.biodiversity.nsl.TaxonData
 import grails.transaction.Transactional
 import org.apache.shiro.SecurityUtils
 import org.grails.plugins.metrics.groovy.Timed
@@ -25,10 +27,11 @@ import static org.springframework.http.HttpStatus.FORBIDDEN
 import static org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED
 
 @Transactional
-class InstanceController implements WithTarget {
+class InstanceController extends BaseApiController {
 
     def jsonRendererService
     def instanceService
+    def treeService
 
     @SuppressWarnings("GroovyUnusedDeclaration")
     static responseFormats = ['json', 'xml', 'html']
@@ -45,7 +48,7 @@ class InstanceController implements WithTarget {
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << instanceService.deleteInstance(instance, reason)
-                if(!result.ok) {
+                if (!result.ok) {
                     result.status = FORBIDDEN
                 }
             } else if (request.method == 'GET') {
@@ -56,4 +59,17 @@ class InstanceController implements WithTarget {
         }
     }
 
+    def elementDataFromInstance(Long id) {
+        ResultObject results = require('Instance id': id)
+
+        handleResults(results) {
+            Instance instance = got({ Instance.get(id) }, "Instance with id $id not found.") as Instance
+            TaxonData taxonData = treeService.elementDataFromInstance(instance)
+            if (taxonData) {
+                results.payload = taxonData.asMap()
+            } else {
+                throw new ObjectNotFoundException("Couldn't get data for $instance.")
+            }
+        }
+    }
 }

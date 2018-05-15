@@ -17,6 +17,7 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.JsonRendererService
+import au.org.biodiversity.nsl.ObjectNotFoundException
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST
 import static org.springframework.http.HttpStatus.NOT_FOUND
@@ -96,6 +97,14 @@ trait WithTarget {
             result.error(errorMessage)
             result.status = NOT_FOUND
             result.ok = false
+        }
+        return result
+    }
+
+    static Object got(Closure c, String msg) {
+        def result = c()
+        if (!result) {
+            throw new ObjectNotFoundException(msg)
         }
         return result
     }
