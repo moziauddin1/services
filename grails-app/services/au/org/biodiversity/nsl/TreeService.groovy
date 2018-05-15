@@ -1770,7 +1770,7 @@ and tve.element_link not in ($excludedLinks)
  */
     private Map fetchInstanceData(String instanceUri) {
         Map result = [success: true]
-        String uri = "$instanceUri/api/tree/element-data-from-instance"
+        String uri = "$instanceUri/api/tree-element/element-data-from-instance"
         try {
             String failMessage = "Couldn't fetch $uri"
             restCallService.json('get', uri,
