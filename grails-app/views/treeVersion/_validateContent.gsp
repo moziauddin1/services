@@ -2,7 +2,8 @@
   <h2>Validate ${data.treeVersion.tree.name} ${data.treeVersion.draftName}</h2>
 
   <g:if test="${data.payload?.synonymsOfAcceptedNames}">
-    <h3>Synonyms of accepted names</h3>
+    <h3>Synonyms that are also accepted names <span
+        class="text-muted small">(${data.payload?.synonymsOfAcceptedNames.size()})</span></h3>
 
     <table class="table">
       <g:each in="${data.payload?.synonymsOfAcceptedNames}" var="record">
@@ -25,7 +26,7 @@
   </g:if>
 
   <g:if test="${data.payload?.commonSynonyms}">
-    <h3>Common synonyms</h3>
+    <h3>Common synonyms <span class="text-muted small">(${data.payload?.commonSynonyms.size()})</span></h3>
 
     <table class="table">
       <tree:commonSynonyms results="${data.payload?.commonSynonyms}">
