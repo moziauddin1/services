@@ -25,10 +25,10 @@ class Synonym {
 
     Synonym(Instance synonymInstance, LinkService linkService) {
         host = linkService.getPreferredHost()
-        nameLink = linkService.getPreferredLinkForObject(synonymInstance.name) - host
-        instanceLink = linkService.getPreferredLinkForObject(synonymInstance) - host
-        conceptLink = linkService.getPreferredLinkForObject(synonymInstance.cites) - host
-        citesLink = linkService.getPreferredLinkForObject(synonymInstance.cites?.reference) - host
+        nameLink = linkService.getPreferredLinkForObject(synonymInstance.name) ?: '' - host
+        instanceLink = linkService.getPreferredLinkForObject(synonymInstance) ?: '' - host
+        conceptLink = linkService.getPreferredLinkForObject(synonymInstance.cites) ?: '' - host
+        citesLink = linkService.getPreferredLinkForObject(synonymInstance.cites?.reference) ?: '' - host
         instance = synonymInstance
         year = instance.cites?.reference?.year
         simpleName = synonymInstance.name.simpleName
