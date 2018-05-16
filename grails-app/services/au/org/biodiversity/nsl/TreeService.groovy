@@ -1733,7 +1733,9 @@ and tve.element_link not in ($excludedLinks)
     private Synonyms getSynonyms(Instance instance) {
         Synonyms synonyms = new Synonyms()
         instance.instancesForCitedBy.each { Instance synonymInstance ->
-            synonyms.add(new Synonym(synonymInstance, linkService))
+            if (!synonymInstance.instanceType.unsourced) {
+                synonyms.add(new Synonym(synonymInstance, linkService))
+            }
         }
         return synonyms
     }
