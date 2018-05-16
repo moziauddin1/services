@@ -98,19 +98,19 @@ class SearchService {
                             params.remove('tree')
                         }
                     } else {
-                        ors << "n.nameType.${k} = true"
+                        ors << "n.nameType.${k} = true".toString()
                     }
                 }
             }
             if (ors.size()) {
-                and << "(${ors.join(' or ')})"
+                and << "(${ors.join(' or ')})".toString()
             }
         }
 
         if (params.advanced && params.ex) {
             params.ex.each { k, v ->
                 if (v == 'on') {
-                    and << "n.nameType.${k} = false"
+                    and << "n.nameType.${k} = false".toString()
                 }
             }
         }
@@ -180,9 +180,9 @@ class SearchService {
                         Set<String> pathOr = []
                         rankNames.eachWithIndex { String nameElement, int i ->
                             queryParams["path$i"] = "%/${nameElement}%"
-                            pathOr << "treeElement.namePath like :path$i"
+                            pathOr << "treeElement.namePath like :path$i".toString()
                         }
-                        and << "(${pathOr.join(' or ')})"
+                        and << "(${pathOr.join(' or ')})".toString()
                     } else {
                         return [count: 0, names: [], message: "${params.rankName} is not a ${inRank.name} in ${tree.name}"]
                     }
@@ -202,10 +202,10 @@ class SearchService {
             List<String> ors = []
             nameStrings.findAll { it }.eachWithIndex { n, i ->
                 queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                ors << "iregex(n.simpleName, :name${i}) = true"
-                ors << "iregex(n.fullName, :name${i}) = true"
+                ors << "iregex(n.simpleName, :name${i}) = true".toString()
+                ors << "iregex(n.fullName, :name${i}) = true".toString()
             }
-            and << "(${ors.join(' or ')})"
+            and << "(${ors.join(' or ')})".toString()
         }
     }
 
@@ -364,13 +364,14 @@ order by sortName
                 log.debug "This rank $rank, parent $rank.parentRank, parentSortOrder $parentSortOrder"
 
                 return Name.executeQuery('''
-select n from Name n, TreeElement element, Tree tree
+select n from Name n, TreeElement element, TreeVersionElement tve, Tree tree
 where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
 and n.nameRank.sortOrder < :sortOrder
 and n.nameRank.sortOrder >= :parentSortOrder
 and tree.name = :treeName
 and element.nameId = n.id
-and element.treeVersion = tree.currentTreeVersion
+and tve.treeElement = element
+and tve.treeVersion = tree.currentTreeVersion
 order by n.sortName asc''',
                         [
                                 query          : regexTokenizeNameQueryString(query.toLowerCase()),
@@ -384,11 +385,12 @@ order by n.sortName asc''',
 
             } else {
                 return Name.executeQuery('''
-select n from Name n, TreeElement element, Tree tree 
+select n from Name n, TreeElement element, TreeVersionElement tve, Tree tree 
 where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
 and tree.name = :treeName
 and element.nameId = n.id
-and element.treeVersion = tree.currentTreeVersion
+and tve.treeElement = element
+and tve.treeVersion = tree.currentTreeVersion
 order by n.sortName asc''',
                         [query   : regexTokenizeNameQueryString(query.toLowerCase()),
                          treeName: treeName], [max: 15])
