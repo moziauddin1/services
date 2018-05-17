@@ -10,14 +10,7 @@
          title="View name in APNI format.">
         <i class="fa fa-list-alt see-through"></i>
       </a>
-      ${raw(tve.treeElement.synonymsHtml)}
+      ${raw(syn)}
     </div>
   </div>
-  <g:if test="${tve.treeElement.profile}">
-    <dl class="dl-horizontal">
-      <g:each in="${tve.treeElement.profile}" var="profile">
-        <dt>${profile.key}</dt><dd>${profile.value['value']}</dd>
-      </g:each>
-    </dl>
-  </g:if>
 </div>

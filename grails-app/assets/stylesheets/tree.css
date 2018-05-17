@@ -228,9 +228,22 @@ tr.titleRow {
 }
 
 .target {
+    display: inline-block;
     font-weight: bold;
-    background-color: #ffff0020;
+    background-color: #ffff0030 !important;
     line-height: 2em;
-    padding: 5px;
+    padding: 2px;
     border-radius: 0 5px 0 5px;
+}
+
+.minus,
+div.tr synonyms scientific .minus {
+    color: red !important;
+    font-weight: bold;
+}
+
+.plus,
+div.tr synonyms scientific .plus {
+    color: green !important;
+    font-weight: bold;
 }

@@ -54,12 +54,23 @@
         </tr>
         </thead>
         <g:each in="${data.payload?.modified}" var="mod">
+          <tree:diffSynonyms a="${mod[1].treeElement.synonymsHtml}"
+                             b="${mod[0].treeElement.synonymsHtml}">
+            <tr>
+              <td class="diffBefore">
+                <g:render template="treeElement" model="[tve: mod[1], syn: diffA]"/>
+              </td>
+              <td class="diffAfter">
+                <g:render template="treeElement" model="[tve: mod[0], syn: diffB]"/>
+              </td>
+            </tr>
+          </tree:diffSynonyms>
           <tr>
             <td class="diffBefore">
-              <g:render template="treeElement" model="[tve: mod[1]]"/>
+              <tree:profile profile="${mod[1].treeElement.profile}"/>
             </td>
             <td class="diffAfter">
-              <g:render template="treeElement" model="[tve: mod[0]]"/>
+              <tree:profile profile="${mod[0].treeElement.profile}"/>
             </td>
           </tr>
         </g:each>

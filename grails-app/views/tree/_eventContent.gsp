@@ -21,51 +21,54 @@
           </tr>
           </thead>
           <g:each in="${data.payload}" var="report">
-            <tr>
-              <td class="diffBefore">
-                <div class="text-muted">
-                  Updated by ${report.treeVersionElement.updatedBy} <date>${report.treeVersionElement.updatedAt}</date>
-                </div>
-
-                <div
-                    class="tr ${report.treeVersionElement.treeElement.excluded ? 'excluded' : ''} level${report.treeVersionElement.depth}">
-                  <div class="wrap">
-                    <a href="${report.treeVersionElement.fullElementLink()}"
-                       title="link to tree element">${raw(report.treeVersionElement.treeElement.displayHtml)}</a>
-                    <a href="${report.treeVersionElement.treeElement.nameLink}/api/apni-format?versionId=${report.treeVersionElement.treeVersionId}&draft=true"
-                       title="View name in APNI format.">
-                      <i class="fa fa-list-alt see-through"></i>
-                    </a>
-                    ${raw(report.treeVersionElement.treeElement.synonymsHtml)}
+            <tree:diffSynonyms a="${report.treeVersionElement.treeElement.synonymsHtml}"
+                               b="${report.taxonData.synonymsHtml}">
+              <tr>
+                <td class="diffBefore">
+                  <div class="text-muted">
+                    Updated by ${report.treeVersionElement.updatedBy} <date>${report.treeVersionElement.updatedAt}</date>
                   </div>
-                </div>
-              </td>
-              <td class="diffAfter">
-                <div class="text-muted">
-                  Updated by ${report.updatedBy} <date>${report.updatedAt}</date>
-                </div>
 
-                <div
-                    class="tr ${report.treeVersionElement.treeElement.excluded ? 'excluded' : ''} level${report.treeVersionElement.depth}">
-                  <div class="wrap">
-                    <a href="${report.treeVersionElement.fullElementLink()}"
-                       title="link to tree element">${raw(report.treeVersionElement.treeElement.displayHtml)}</a>
-                    <a href="${report.treeVersionElement.treeElement.nameLink}/api/apni-format?versionId=${report.treeVersionElement.treeVersionId}&draft=true"
-                       title="View name in APNI format.">
-                      <i class="fa fa-list-alt see-through"></i>
-                    </a>
-                    ${raw(report.taxonData.synonymsHtml)}
+                  <div
+                      class="tr ${report.treeVersionElement.treeElement.excluded ? 'excluded' : ''} level${report.treeVersionElement.depth}">
+                    <div class="wrap">
+                      <a href="${report.treeVersionElement.fullElementLink()}"
+                         title="link to tree element">${raw(report.treeVersionElement.treeElement.displayHtml)}</a>
+                      <a href="${report.treeVersionElement.treeElement.nameLink}/api/apni-format?versionId=${report.treeVersionElement.treeVersionId}&draft=true"
+                         title="View name in APNI format.">
+                        <i class="fa fa-list-alt see-through"></i>
+                      </a>
+                      ${raw(diffA)}
+                    </div>
                   </div>
-                </div>
-                %{-- we leave this here even if not a treebuilder because the editor will use it --}%
-                <div class="form-inline" style="float:right">
-                  <label>Select
-                    <input type="checkbox" name="events" class="form-control" value="${report.eventId}"
-                           checked="checked"/>
-                  </label>
-                </div>
-              </td>
-            </tr>
+                </td>
+                <td class="diffAfter">
+                  <div class="text-muted">
+                    Updated by ${report.updatedBy} <date>${report.updatedAt}</date>
+                  </div>
+
+                  <div
+                      class="tr ${report.treeVersionElement.treeElement.excluded ? 'excluded' : ''} level${report.treeVersionElement.depth}">
+                    <div class="wrap">
+                      <a href="${report.treeVersionElement.fullElementLink()}"
+                         title="link to tree element">${raw(report.treeVersionElement.treeElement.displayHtml)}</a>
+                      <a href="${report.treeVersionElement.treeElement.nameLink}/api/apni-format?versionId=${report.treeVersionElement.treeVersionId}&draft=true"
+                         title="View name in APNI format.">
+                        <i class="fa fa-list-alt see-through"></i>
+                      </a>
+                      ${raw(diffB)}
+                    </div>
+                  </div>
+                  %{-- we leave this here even if not a treebuilder because the editor will use it --}%
+                  <div class="form-inline" style="float:right">
+                    <label>Select
+                      <input type="checkbox" name="events" class="form-control" value="${report.eventId}"
+                             checked="checked"/>
+                    </label>
+                  </div>
+                </td>
+              </tr>
+            </tree:diffSynonyms>
           </g:each>
         </table>
         <shiro:hasRole name="treebuilder">

@@ -128,4 +128,37 @@ class TreeServicesTagLib {
         }
     }
 
+    def diffSynonyms = { attrs, body ->
+        // split synonyms onto new lines
+        List<String> a = (attrs.a as String)?.replaceAll('</?synonyms>', '')
+                                            ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
+                                            ?.split('::')
+        List<String> b = (attrs.b as String)?.replaceAll('</?synonyms>', '')
+                                            ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
+                                            ?.split('::')
+
+        String diffA = '<synonyms>'
+        String diffB = '<synonyms>'
+
+        int size = Math.max(a.size(), b.size())
+        0.upto(size - 1) { i ->
+            String oldLine = a[i]
+            String newLine = b[i]
+            if (oldLine && !b.contains(oldLine)) {
+                diffA += '<span class="target plus">' + oldLine + "</span>"
+            } else if (oldLine) {
+                diffA += oldLine
+            }
+
+            if (newLine && !a.contains(newLine)) {
+                diffB += '<span class="target">' + newLine + "</span>"
+            } else if (newLine) {
+                diffB += newLine
+            }
+        }
+        diffA += '</synonyms>'
+        diffB += '</synonyms>'
+        out << body(diffA: diffA, diffB: diffB)
+    }
+
 }
