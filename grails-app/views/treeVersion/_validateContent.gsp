@@ -26,13 +26,13 @@
   </g:if>
 
   <g:if test="${data.payload?.commonSynonyms}">
-    <h3>Common synonyms <span class="text-muted small">(${data.payload?.commonSynonyms.size()})</span></h3>
+    <h3>Synonyms in common <span class="text-muted small">(${data.payload?.commonSynonyms.size()})</span></h3>
 
     <table class="table">
       <tree:commonSynonyms results="${data.payload?.commonSynonyms}">
         <tr class="titleRow">
           <td colspan="2">
-            ${synonym} is a common synonym in:
+            ${synonym} is a synonym in common for:
           </td>
         </tr>
         <tr>
