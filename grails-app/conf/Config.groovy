@@ -23,6 +23,7 @@ import com.theconnman.slacklogger.SlackAppender
 // in the classpath in ConfigSlurper format
 
 grails.config.locations = ["file:${userHome}/.nsl/${appName}-config.groovy"]
+updates.dir = "${userHome}/.nsl/updates"
 
 // if (System.properties["${appName}.config.location"]) {
 //    grails.config.locations << "file:" + System.properties["${appName}.config.location"]
