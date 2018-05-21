@@ -67,4 +67,20 @@ class NameConstructionService {
         throw new UnsupportedNomCode("Unsupported Nomenclatural code for name construction $name.nameType.nameGroup.name")
     }
 
+    String constructAuthor(Name name) {
+        if (!name) {
+            throw new NullPointerException("Name can't be null.")
+        }
+
+        if (name.nameType.nameGroup.name == 'botanical') {
+            return icnNameConstructionService.constructAuthor(name)
+        }
+
+        if (name.nameType.nameGroup.name == 'zoological') {
+            return icznNameConstructionService.constructAuthor(name)
+        }
+
+        throw new UnsupportedNomCode("Unsupported Nomenclatural code for name construction $name.nameType.nameGroup.name")
+
+    }
 }

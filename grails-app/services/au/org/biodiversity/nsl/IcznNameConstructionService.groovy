@@ -226,7 +226,7 @@ class IcznNameConstructionService implements NameConstructor {
         return ''
     }
 
-    private static String constructAuthor(Name name) {
+    String constructAuthor(Name name) {
         List<String> bits = []
         if (name.author) {
             if (name.baseAuthor) {

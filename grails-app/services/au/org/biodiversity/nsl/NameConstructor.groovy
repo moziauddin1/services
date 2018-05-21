@@ -16,4 +16,6 @@ interface NameConstructor {
      * @return Map [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
      */
     Map constructName(Name name)
+
+    String constructAuthor(Name name)
 }
