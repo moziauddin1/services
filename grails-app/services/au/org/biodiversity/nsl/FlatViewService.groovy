@@ -366,7 +366,7 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
    JOIN name_status acc_ns ON acc_name.name_status_id = acc_ns.id
    ,
        jsonb_array_elements(synonyms -> 'list') syn
-   JOIN NAME syn_name ON syn_name.id = (syn ->> 'name_id') :: BIGINT
+   JOIN NAME syn_name ON syn_name.id = (syn ->> 'name_id') :: NUMERIC :: BIGINT
    JOIN name_rank syn_rank ON syn_name.name_rank_id = syn_rank.id
    JOIN name_type syn_nt ON syn_name.name_type_id = syn_nt.id
    LEFT OUTER JOIN NAME firstHybridParent ON syn_name.parent_id = firstHybridParent.id AND syn_nt.hybrid
