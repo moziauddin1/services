@@ -914,7 +914,7 @@ INSERT INTO tree_version_element (tree_version_id,
 
         TreeVersionElement parent = treeVersionElement.parent
 
-        List<TreeVersionElement> elements = getAllChildElements(treeVersionElement)
+        List<TreeVersionElement> elements = getAllChildElements(treeVersionElement).reverse()
         elements.add(treeVersionElement)
         int count = elements.size()
 
@@ -934,12 +934,13 @@ INSERT INTO tree_version_element (tree_version_id,
             log.debug "Deleting $kid"
             kid.treeElement.removeFromTreeVersionElements(kid)
             kid.treeVersion.removeFromTreeVersionElements(kid)
-            kid.delete()
+            kid.delete(flush: true)
         }
+
+        elements.clear()
 
         updateParentTaxaId(parent)
 
-        elements.clear()
         //if this is removing new elements in a draft we may orphan some tree elements so it pays to clean up
         //this may be moved to a background garbage collection task if it is too slow.
         deleteOrphanedTreeElements()

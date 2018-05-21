@@ -44,7 +44,6 @@ class AdminController {
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         Boolean servicing = adminService.serviceMode()
         String dbInfo = postgresInfoService.connectionInfo.toString()
-        //todo iterate trees add back stats if they don't interrupt ops.
         [pollingNames: nameService.pollingStatus(), stats: stats, servicing: servicing, dbInfo: dbInfo]
     }
 
