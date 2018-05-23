@@ -375,7 +375,7 @@ Lets look at the simplest situation and the current vascular shard APC.
 We could use *workflow controls*, for example if the instance is on the APC tree:
 
 * we could alert the user that they are altering an instance that is on a published tree (we'll say published instance
-for short). It would be up to that user to alert the APC team that the synonomy has changed if they choose to go ahead
+for short). It would be up to that user to alert the APC team that the synonymy has changed if they choose to go ahead
 and change it
 - but lets assume that won't always happen because, people.
 * we could prevent the change, and the user would have to ask the APC team to make the change and update the draft tree...

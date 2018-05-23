@@ -208,7 +208,7 @@ compare taxon between versions, i.e. see if the concept has changed.
 The definition of a taxon for determining if it has changed is:
 
 * A taxon consists of the Name, it's Instance and it's children. Where an Instance defines the usage of the Name in a
-reference and it's Synonomy.
+reference and it's Synonymy.
 * A taxon does *not* include the status (Excluded from this classification) or the Profile data (Comments and Distribution)
 which are part of the classification as published.
 

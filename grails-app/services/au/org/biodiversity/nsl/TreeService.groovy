@@ -1121,7 +1121,7 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param instance
      * @param userName
      */
-    def checkSynonomyUpdated(Instance instance, String userName) {
+    def checkSynonymyUpdated(Instance instance, String userName) {
         List<Tree> trees = Tree.list()
         for (tree in trees) {
             TreeVersionElement tve
@@ -1200,7 +1200,7 @@ order by updated_at desc
             } else if (citedById) {
                 Instance instance = Instance.get(citedById)
                 if (instance) {
-                    checkSynonomyUpdated(instance, userName)
+                    checkSynonymyUpdated(instance, userName)
                 }
             }
         }

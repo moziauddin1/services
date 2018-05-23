@@ -226,7 +226,7 @@ class InstanceService {
         //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
         //create synonymy changed EventRecords
         if (instance.citedBy) {
-            treeService.checkSynonomyUpdated(instance.citedBy, instance.updatedBy)
+            treeService.checkSynonymyUpdated(instance.citedBy, instance.updatedBy)
         }
     }
 
