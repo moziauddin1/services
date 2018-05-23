@@ -180,7 +180,7 @@ class SearchService {
                         Set<String> pathOr = []
                         rankNames.eachWithIndex { String nameElement, int i ->
                             queryParams["path$i"] = "%/${nameElement}%"
-                            pathOr << "treeElement.namePath like :path$i".toString()
+                            pathOr << "treeVersionElement.namePath like :path$i".toString()
                         }
                         and << "(${pathOr.join(' or ')})".toString()
                     } else {
