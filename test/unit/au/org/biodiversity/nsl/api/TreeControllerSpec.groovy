@@ -271,7 +271,7 @@ class TreeControllerSpec extends Specification {
         then: 'It gives a not found error'
         response.status == 404
         data.ok == false
-        data.error == 'Tree with id: 23 not found.'
+        data.error == 'No Tree with id: 23 found'
     }
 
     void "test creating a new version"() {
