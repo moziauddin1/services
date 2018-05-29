@@ -1,19 +1,19 @@
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.ConfigService
 import org.grails.plugins.metrics.groovy.Timed
 
 
-class ExportController implements UnauthenticatedHandler {
+class ExportController {
 
     def flatViewService
+    def configService
 
     def index() {
 
         [
                 exports: [
-                        [label: "${ConfigService.nameTreeName} Names as CSV", url: 'namesCsv'],
-                        [label: "${ConfigService.classificationTreeName} Taxon as CSV", url: 'taxonCsv']
+                        [label: "${configService.nameTreeName} Names as CSV", url: 'namesCsv'],
+                        [label: "${configService.classificationTreeName} Taxon as CSV", url: 'taxonCsv']
                 ]
         ]
     }
@@ -30,26 +30,26 @@ class ExportController implements UnauthenticatedHandler {
             taxonCsv: ["GET"],
     ]
 
-    static namespace = "api"
-
     @Timed()
     namesCsv() {
+        File exportFile = null
         try {
-            File exportFile = flatViewService.exportNamesToCSV()
+            exportFile = flatViewService.exportNamesToCSV()
             render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
         } finally {
-            exportFile.delete()
+            exportFile?.delete()
 
         }
     }
 
     @Timed()
     taxonCsv() {
+        File exportFile = null
         try {
-            File exportFile = flatViewService.exportTaxonToCSV()
+            exportFile = flatViewService.exportTaxonToCSV()
             render(file: exportFile, fileName: exportFile.name, contentType: 'text/plain')
         } finally {
-            exportFile.delete()
+            exportFile?.delete()
         }
     }
 }

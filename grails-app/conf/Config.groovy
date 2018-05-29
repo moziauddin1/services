@@ -23,6 +23,7 @@ import com.theconnman.slacklogger.SlackAppender
 // in the classpath in ConfigSlurper format
 
 grails.config.locations = ["file:${userHome}/.nsl/${appName}-config.groovy"]
+updates.dir = "${userHome}/.nsl/updates"
 
 // if (System.properties["${appName}.config.location"]) {
 //    grails.config.locations << "file:" + System.properties["${appName}.config.location"]
@@ -318,18 +319,13 @@ grails.assets.minifyJs = false
 cors {
     url.pattern = '/*'
     headers = ['Access-Control-Allow-Origin' : '*',
-               'Access-Control-Allow-Headers': 'authorization, content-type'
+               'Access-Control-Allow-Headers': 'authorization, content-type, Content-Type'
     ]
 }
 
 shard {
     system.message.file = "${userHome}/.nsl/broadcast.txt"
     temp.file.directory = "/tmp"
-}
-
-nslTreePlugin {
-    nslInstanceNamespace = 'nsl-instance'
-    nslNameNamespace = 'nsl-name'
 }
 
 services {

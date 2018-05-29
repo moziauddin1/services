@@ -33,18 +33,21 @@ class SearchController implements RequestUtil {
         String remoteIP = remoteAddress(request)
         log.info "Search params $params, Referer: ${referer}, Remote: ${remoteIP}"
         max = max ?: 100
+        List<Tree> trees = Tree.list()
 
         if (!params.product && !SecurityUtils.subject?.authenticated) {
             params.product = configService.nameTreeName
             params.display = params.display ?: 'apni'
         }
 
-        if (params.product) {
-            Arrangement tree = Arrangement.findByNamespaceAndLabelIlike(configService.nameSpace, params.product as String)
+        Boolean treeSearch = params.product && params.product != configService.nameTreeName
+
+        if (treeSearch) {
+            Tree tree = Tree.findByNameIlike(params.product as String)
             if (tree) {
-                params.product = tree.label //force to the correct case for a product label
+                params.product = tree.name //force to the correct case for a product label
                 params.tree = [id: tree.id]
-                params.display = (params.product == configService.nameTreeName ? 'apni' : 'apc')
+                params.display = 'apc'
             } else {
                 flash.message = "Unknown product ${params.product}"
                 return redirect(url: '/search')
@@ -94,11 +97,15 @@ class SearchController implements RequestUtil {
                     return render(view: 'search',
                             model: [names         : models,
                                     query         : params,
+                                    treeSearch    : treeSearch,
                                     count         : results.count,
                                     total         : results.total,
                                     queryTime     : results.queryTime,
                                     max           : max,
-                                    displayFormats: displayFormats])
+                                    displayFormats: displayFormats,
+                                    trees         : trees
+                            ]
+                    )
                 }
                 json {
                     return render(contentType: 'application/json') { models }
@@ -152,8 +159,7 @@ class SearchController implements RequestUtil {
 
             return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: [:]]
         }
-
-        return [query: params, max: max, displayFormats: displayFormats]
+        return [query: params, max: max, displayFormats: displayFormats, treeSearch: treeSearch, trees: trees]
 
     }
 
@@ -162,19 +168,21 @@ class SearchController implements RequestUtil {
             params.product = configService.nameTreeName
         }
 
-        if (params.product) {
-            Arrangement tree = Arrangement.findByNamespaceAndLabel(configService.nameSpace, params.product.toUpperCase() as String)
+        Boolean treeSearch = params.product && params.product != configService.nameTreeName
+
+        if (treeSearch) {
+            Tree tree = Tree.findByNameIlike(params.product as String)
             if (tree) {
+                params.product = tree.name //force to the correct case for a product label
                 params.tree = [id: tree.id]
-                params.display = params.product
+                params.display = 'apc'
             } else {
                 flash.message = "Unknown product ${params.product}"
-                return redirect(url: '/')
+                return redirect(url: '/search')
             }
         } else {
             params.display = params.display ?: 'apni'
         }
-
 
         render([template: 'advanced-search-form', model: [query: params, max: 100]])
     }
@@ -182,10 +190,11 @@ class SearchController implements RequestUtil {
     def nameCheck(Integer max) {
         List<Map> results = searchService.nameCheck(params, max)
         params.product = configService.nameTreeName
+        String treeName = configService.classificationTreeName
         if (params.csv) {
             render(file: renderCsvResults(results).bytes, contentType: 'text/csv', fileName: 'name-check.csv')
         } else {
-            render(view: 'search', model: [results: results, query: params, max: max])
+            render(view: 'search', model: [results: results, query: params, max: max, treeName: treeName])
         }
     }
 
@@ -227,14 +236,14 @@ class SearchController implements RequestUtil {
                     Map flatViewRow = flatViewService.findNameRow(nameData.name as Name)
                     List values = [result.found,
                                    result.query,
-                                   apcStatus(nameData.apc),
+                                   (nameData.treeVersionelement.treeElement.excluded ? 'APC Excluded' : 'APC'),
                                    nameData.name.fullName,
                                    nameData.name.nameStatus.name,
                                    nameData.name.nameType.name,
                                    (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString(),
 
                     ]
-                    flatViewExportFields.each {fieldName ->
+                    flatViewExportFields.each { fieldName ->
                         values.add(flatViewRow[fieldName] ?: '')
                     }
 
@@ -243,17 +252,6 @@ class SearchController implements RequestUtil {
             }
         }
         return CsvRenderer.renderAsCsv(headers, csvResults)
-    }
-
-    private static String apcStatus(Node node) {
-        if (node) {
-            if (node.typeUriIdPart == 'ApcConcept') {
-                return 'APC'
-            } else {
-                return 'APC Excluded'
-            }
-        }
-        return '-'
     }
 
 }

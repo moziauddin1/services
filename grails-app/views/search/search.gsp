@@ -3,12 +3,12 @@
   Date: 16/09/14
 --%>
 
-<%@ page import="au.org.biodiversity.nsl.ConfigService; au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameType" contentType="text/html;charset=UTF-8" %>
+<%@ page import="au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameType" contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
   <meta name="layout" content="main">
   <title>
-    ${ConfigService.pageTitle}
+    <st:pageTitle/>
     <g:if test="${params.product}">
       ${params.product}
     </g:if>
@@ -24,7 +24,7 @@
   <g:render template="/search/searchTabs"/>
   <g:if test="${params.search || params.advanced}">
     <g:if test="${names}">
-      <div class="panel  ${(params.product == 'apc' ? 'panel-success' : 'panel-info')} ">
+      <div class="panel  ${st.panelClass(product: params.product)} ">
       <div class="panel-heading">
         <g:if test="${names}">
           <strong>Found ${total} names

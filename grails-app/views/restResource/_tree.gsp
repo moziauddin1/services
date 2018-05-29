@@ -1,1 +1,0 @@
-<span class="tree"><st:preferredLink target="${tree}">${tree.label ?: "Tree ${tree.id}"}</st:preferredLink></span>

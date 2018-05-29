@@ -1,37 +1,119 @@
-<%@ page import="au.org.biodiversity.nsl.*; au.org.biodiversity.nsl.tree.*" %>
-<%
-    tree = tree as Arrangement
-%>
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="layout" content="main">
-    <title>Tree ${tree?.label ?: tree?.id}</title>
+  <meta name="layout" content="main">
+  <title>Tree ${treeVersion.tree.name}</title>
+  <asset:stylesheet src="tree.css"/>
+
 </head>
 
 <body>
 <div class="rest-resource-content tree-gsp">
-    <h3>Tree ${tree?.label ?: tree?.id}</h3>
+  <h1>Tree <help>
+    <i class="fa fa-info-circle"></i>
 
-    <dl class="dl-horizontal">
-        <dt>Id</dt><dd>${tree.id}</dd>
-        <g:if test="${tree.label}"><dt>Label</dt><dd>${tree.label}</dd></g:if>
-        <g:if test="${tree.title}"><dt>Title</dt><dd>${tree.title}</dd></g:if>
-        <g:if test="${tree.description}"><dt>Description</dt><dd>${tree.description}</dd></g:if>
-        <dt>Root node</dt><dd><td><g:render template="node" model="${[node: tree.node]}"/></td></dd>
-        <g:if test="${tree.arrangementType == ArrangementType.P}">
-            <dt>Current node</dt><dd><td><g:render template="node" model="${[node: DomainUtils.getSingleSubnode(tree.node)]}"/></td></dd>
-        </g:if>
-    </dl>
+    <div>
+      <p>A tree is a classification tree structure. The tree has tree_elements that hold the position of a Taxon Concept
+      in an arrangement of taxon that we refer to generically as a tree.</p>
 
-    <% /* TODO: include some stats here */ %>
+      <p>A tree structure can change, so a tree contains many versions. Each version of a tree is immutable, i.e it
+      doesn't change. You can cite a tree element with confidence that the thing you cite will not change over time,
+      while being able to trace the history all the way to the current placement.</p>
+      <ul>
+        <li>At the bottom of this page are the citable links to this Instance object or just use the <i
+            class="fa fa-link"></i> icon.
+        You can "right click" in most browsers to copy it or open it in a new browser tab.</li>
+      </ul>
+    </div>
+  </help>
+  </h1>
 
-    <h3>Tree</h3>
-    <g:render template="branch" model="${[node: DomainUtils.getSingleSubnode(tree.node), depth:1]}"/>
+  <g:set var="currentTreeVersion" value="${treeVersion.tree.currentTreeVersion}"/>
 
+  <div class="rest-resource-content col-xs-6 col-sm-6  col-md-5 col-lg-4">
+    <div>
+      <g:if test="${treeVersion == currentTreeVersion}">
+        <h3>${treeVersion.tree.name} <span class="text-muted">(${treeVersion.id})</span></h3>
+      </g:if>
+      <g:elseif test="${!treeVersion.published}">
+        <h3><span class="draftStamp"></span> Draft Version of ${treeVersion.tree.name}</h3>
 
-    <g:render template="links"/>
+        <p>
+          This is a draft version of APC. The <b>current version</b> is
+        <st:preferredLink target="${currentTreeVersion}">${currentTreeVersion.id}</st:preferredLink>
+        </p>
+      </g:elseif>
+      <g:else>
+        <h3>Version ${treeVersion.id} of ${treeVersion.tree.name} (OLD)</h3>
 
+        <p>
+          This is an old version of APC. The current version is
+          <st:preferredLink target="${currentTreeVersion}">${currentTreeVersion.id}</st:preferredLink>
+        </p>
+      </g:else>
+      <tree:versionStats version="${treeVersion}">
+        ${elements} elements
+      </tree:versionStats>
+
+      <g:if test="${treeVersion.published}">
+        <st:preferredLink target="${treeVersion}">
+          published ${treeVersion.publishedAt.dateString} by ${treeVersion.publishedBy}
+        </st:preferredLink>
+      </g:if>
+      <g:else>NOT PUBLISHED</g:else>
+
+      <h4>Notes</h4>
+
+      <p>${treeVersion.logEntry}</p>
+    </div>
+
+    <div>
+      <h3>Other versions</h3>
+
+      <p>Below are all revisions of the ${treeVersion.tree.name}. Versions older than
+      <st:preferredLink
+          target="${currentTreeVersion}">${currentTreeVersion.id} published ${currentTreeVersion.publishedAt.dateString}</st:preferredLink>
+      are for reference only.</p>
+      <table class="table">
+        <tr><th>Version</th><th>published</th><th>Notes</th></tr>
+        <g:each in="${versions}" var="version">
+          <tr>
+            <td><st:preferredLink target="${version}">${version.id}</st:preferredLink></td>
+            <td>${version.published ? version.publishedAt.dateString : 'DRAFT'}</td>
+            <td>${version.published ? version.logEntry : version.draftName}</td>
+            <td>
+              <g:if test="${currentTreeVersion}">
+                <g:if test="${version.id != currentTreeVersion.id}">
+                  <g:if test="${version.published}">
+                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: version.id, v2: currentTreeVersion.id])}"
+                       title="Diff to current version">diff</a>,
+                  </g:if>
+                  <g:else>
+                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: currentTreeVersion.id, v2: version.id])}"
+                       title="Diff from current version">diff</a>,
+                    <a href="${createLink(namespace: 'api', controller: 'tree', action: 'eventReport', params: [treeId: version.tree.id])}"
+                       title="Check Events">events</a>,
+                  </g:else>
+                </g:if>
+              </g:if>
+              <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'validate', params: [version: version.id])}">validate</a>
+            </td>
+          </tr>
+        </g:each>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="col-xs-6 col-sm-6 col-md-7 col-lg-8 indented">
+    <g:each in="${children}" var="childElement">
+      <div class="tr ${childElement.excluded ? 'excluded' : ''} level${childElement.depth}">
+        <div class="wrap">
+          <a href="${childElement.elementLink}">${raw(childElement.displayHtml)}</a>
+        </div>
+      </div>
+    </g:each>
+  </div>
 </div>
 </body>
 </html>

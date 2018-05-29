@@ -23,8 +23,9 @@ import org.springframework.transaction.TransactionStatus
 @Transactional
 class InstanceService {
 
-    def classificationService
+    def treeService
     def linkService
+    def auditService
 
     /**
      * Delete the instance
@@ -50,7 +51,6 @@ class InstanceService {
                         return [ok: false, errors: errors]
                     }
 
-                    removeInstanceFromTrees(instance)
                     instance.refresh()
                     instance.delete()
                     t.flush()
@@ -87,7 +87,7 @@ class InstanceService {
         if (!reason) {
             errors << 'You need to supply a reason for deleting this instance.'
         }
-        if (classificationService.isInstanceInAcceptedTree(instance)) {
+        if (treeService.isInstanceInAnyTree(instance)) {
             errors << "This instance is in APC."
         }
         if (instance.instancesForCites) {
@@ -113,24 +113,6 @@ class InstanceService {
             return [ok: false, errors: errors]
         }
         return [ok: true]
-    }
-
-    /**
-     * * Removing from the tree may mean:
-     *
-     * 1. make sure it's a leaf node (no children)
-     * 2. set any FK references to the name to null
-     *
-     * @param name
-     */
-    void removeInstanceFromTrees(Instance instance) {
-        //set *all* the node, instance references to null
-        List<Node> nodeReferences = Node.findAllByInstance(instance)
-        nodeReferences.each { Node node ->
-            log.info "Setting node $node.id instance ids to null from $instance.id"
-            node.instance = null //set the instance references to null
-            node.save()
-        }
     }
 
     List<Instance> findPrimaryInstance(Name name) {
@@ -240,5 +222,23 @@ class InstanceService {
         }
     }
 
+    def checkInstanceChanges(Instance instance) {
+        //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
+        //create synonymy changed EventRecords
+        if (instance.citedBy) {
+            treeService.checkSynonymyUpdated(instance.citedBy, instance.updatedBy)
+        }
+    }
 
+    /**
+     * Check and update anything that may rely on this deleted instance ID e.g. trees.
+     * Since the instance is deleted, it's hard to tell what it is. So we just get the treeService to check if this
+     * instance id belongs to any current tree versions or is a synonym of any accepted tree element.
+     * @param id
+     * @return
+     */
+    def checkInstanceDelete(Long id) {
+        Map instanceData = auditService.recoverDeletedInstanceData(id)
+        treeService.checkUsageOfDeletedInstance(id, instanceData.cited_by_id, instanceData.updated_by ?: 'notification')
+    }
 }

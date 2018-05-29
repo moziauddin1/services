@@ -16,17 +16,14 @@
 
 package services
 
-import au.org.biodiversity.nsl.Author
-import au.org.biodiversity.nsl.Name
-import au.org.biodiversity.nsl.Notification
-import au.org.biodiversity.nsl.Reference
+import au.org.biodiversity.nsl.*
 import org.springframework.transaction.support.DefaultTransactionStatus
-
 
 class CheckNamesJob {
 
     def nameService
     def referenceService
+    def instanceService
     def concurrent = false
     def sessionRequired = true
 //    def grailsCacheManager
@@ -87,6 +84,20 @@ class CheckNamesJob {
                             break
                         case 'reference created':
                         case 'reference deleted':
+                            break
+                        case 'instance updated':
+                        case 'instance created':
+                            log.debug "Instance $note.objectId updated"
+                            Instance instance = Instance.get(note.objectId)
+                            if (instance) {
+                                instanceService.checkInstanceChanges(instance)
+                            } else {
+                                log.debug "Instance $note.objectId doesn't exist"
+                            }
+                            break
+                        case 'instance deleted':
+                            log.debug "Instance $note.objectId deleted."
+                            instanceService.checkInstanceDelete(note.objectId)
                             break
                         default:
                             //probably caused by previous error. This note will be deleted

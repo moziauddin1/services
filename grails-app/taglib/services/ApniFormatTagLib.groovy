@@ -24,13 +24,13 @@ import org.apache.shiro.SecurityUtils
 class ApniFormatTagLib {
 
     def nameConstructionService
-    def nameTreePathService
+    def treeService
     def instanceService
     LinkService linkService
     def configService
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     static defaultEncodeAs = 'raw'
-//    static encodeAsForTags = [replaceXics: 'raw']
 
     static namespace = "af"
 
@@ -41,12 +41,108 @@ class ApniFormatTagLib {
 
     def getDisplayableNonTypeNotes = { attrs, body ->
         List<String> types = ['Type', 'Lectotype', 'Neotype', 'EPBC Advice', 'EPBC Impact', 'Synonym']
+        if (attrs.incApc) {
+            types += ['APC Comment', 'APC Dist.']
+        }
         filterNotes(attrs, types, body, true)
     }
 
     def getAPCNotes = { attrs, body ->
         List<String> types = ['APC Comment', 'APC Dist.']
         filterNotes(attrs, types, body)
+    }
+
+    def ifOnTree = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        Instance instance = attrs.instance
+        if (tve && tve.treeElement.instanceId == instance?.id) {
+            out << body()
+        }
+    }
+
+    def rangeOnAcceptedTree = { attrs, body ->
+        Instance instance = attrs.instance
+        def (TreeVersionElement first, TreeVersionElement last) = treeService.findFirstAndLastElementForInstance(instance,
+                Tree.findByAcceptedTree(true))
+        if (first) {
+            Boolean current = last.treeVersion.id == last.treeVersion.tree.currentTreeVersion.id
+            out << body("first": first, "last": last, "current": current)
+        }
+    }
+
+    def ifEverOnAcceptedTree = { attrs, body ->
+        Instance instance = attrs.instance
+        TreeVersionElement excludedTve = attrs.exclude
+        TreeVersionElement tve = treeService.findLatestElementForInstance(instance,
+                Tree.findByAcceptedTree(true))
+        if (tve && tve != excludedTve) {
+            out << body("tve": tve)
+        }
+    }
+
+    def ifNeverOnAcceptedTreeSet = { attrs, body ->
+        Instance instance = attrs.instance
+        String varName = attrs.var
+        Object settable = attrs.set ?: true
+        TreeVersionElement tve = treeService.findLatestElementForInstance(instance,
+                Tree.findByAcceptedTree(true))
+        out << body((varName): tve ? settable : null)
+    }
+
+    def treeComment = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        Boolean showEmpty = attrs.showEmpty
+        Boolean create = attrs.createIfNull
+        if (tve) {
+            Map comment = treeService.profileComment(tve)
+            if (comment && (showEmpty || comment.value)) {
+                out << body((var): comment)
+            } else if (create) {
+                comment = new ProfileValue('Enter new comment', SecurityUtils.subject.principal.toString()).toMap()
+                out << body((var): comment)
+            }
+        }
+    }
+
+    def treeDistribution = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        Boolean showEmpty = attrs.showEmpty
+        Boolean create = attrs.createIfNull
+        if (tve) {
+            Map dist = treeService.profileDistribution(tve)
+            if (dist && (showEmpty || dist.value)) {
+                out << body((var): dist)
+            } else if (create) {
+                dist = new ProfileValue('Enter new distribution', SecurityUtils.subject.principal.toString()).toMap()
+                out << body((var): dist)
+            }
+        }
+    }
+
+    def previousComments = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        if (tve) {
+            Map comment = treeService.profileComment(tve)
+            while (comment && comment.previous) {
+                comment = comment.previous
+                out << body((var): comment)
+            }
+        }
+    }
+
+    def previousDistribution = { attrs, body ->
+        TreeVersionElement tve = attrs.tve
+        String var = attrs.var ?: "note"
+        if (tve) {
+            Map dist = treeService.profileDistribution(tve)
+            while (dist && dist.previous) {
+                dist = dist.previous
+                out << body((var): dist)
+            }
+        }
     }
 
     private void filterNotes(Map attrs, List<String> types, body, boolean invertMatch = false) {
@@ -95,10 +191,6 @@ class ApniFormatTagLib {
         }
     }
 
-    def replaceXics = { attrs ->
-        out << ApniFormatService.transformXics(attrs.text)
-    }
-
     def apcSortedInstances = { attrs, body ->
         List<Instance> instances = new ArrayList<>(attrs.instances as Set)
         String var = attrs.var ?: "instance"
@@ -135,21 +227,21 @@ class ApniFormatTagLib {
     def branch = { attrs, body ->
         Name name = attrs.name
         String treeName = attrs.tree ?: configService.classificationTreeName
-        NameTreePath nameTreePath = nameTreePathService.findCurrentNameTreePath(name, treeName)
-        if (nameTreePath) {
+        TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, treeService.getTree(treeName))
+        if (treeVersionElement) {
             out << "<branch title=\"click to see branch in $treeName.\">"
             out << body()
 
-            List<Node> nodesInBranch = nameTreePathService.getCurrentNodesInBranch(nameTreePath)
+            List<TreeVersionElement> elementPath = treeService.getElementPath(treeVersionElement)
 
             out << '<ul>'
             out << "<li>$treeName</li>"
-            nodesInBranch.each { Node n ->
-                String link = linkService.getPreferredLinkForObject(n)
+            elementPath.each { TreeVersionElement tve ->
+                String link = tve.fullElementLink()
                 if (link) {
-                    out << "<li><a href='${link}'>${n.name.nameElement}</a> <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                    out << "<li><a href='${link}'>${tve.treeElement.name?.nameElement}</a> <span class=\"text-muted\">(${tve.treeElement.name?.nameRank?.abbrev})</span></li>"
                 } else {
-                    out << "<li>${n.name.nameElement} <span class=\"text-muted\">(${n.name.nameRank.abbrev})</span></li>"
+                    out << "<li>${tve.treeElement.name?.nameElement} <span class=\"text-muted\">(${tve.treeElement.name?.nameRank?.abbrev})</span></li>"
                 }
             }
             out << '</ul></branch>'
@@ -189,7 +281,7 @@ class ApniFormatTagLib {
         } else {
             //if not logged in force to name tree name
             if (!SecurityUtils.subject?.principal) {
-                params << [product: ConfigService.nameTreeName]
+                params << [product: configService.nameTreeName]
             }
         }
         out << g.createLink(absolute: true, controller: 'search', action: 'search', params: params)
@@ -234,27 +326,38 @@ class ApniFormatTagLib {
         }
     }
 
-    def apc = { attrs ->
-        Node apcNode = attrs.apc
-        Instance instance = attrs.instance ?: apcNode.instance
-        if (apcNode && instance && apcNode.instance.id == instance.id) {
-            String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: apcNode.name.id)
-            String tree = ConfigService.classificationTreeName
-            out << """<a href="${link}">"""
-            switch (apcNode.typeUriIdPart) {
-                case 'ApcConcept':
-                    out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>"""
-                    break
-                case 'ApcExcluded':
-                    out << """<apc title="excluded from $tree"><i class="fa fa-ban"></i> ${tree}</apc>"""
-                    break
-                case 'DeclaredBt':
-                    out << """<apc title="Declared broader term in $tree">BT ${tree}</apc>"""
-                    break
-                case 'ApcRecord':
-                    break
+    /**
+     * add an "apc" tag with link and title for a given tree element
+     * you must provide an "element" attribute.
+     * if an "instance" attribute is supplied it is compared with the element attribute to decide if to display
+     * the apc tag.
+     * This is generic and can be used on any tree.
+     *
+     * attrs.element is a TreeVersionElement
+     *
+     */
+    def onTree = { attrs ->
+        TreeVersionElement treeVersionElement = attrs.element
+        if (treeVersionElement) {
+            TreeElement treeElement = treeVersionElement.treeElement
+            Instance instance = attrs.instance ?: treeElement.instance
+            if (treeElement && instance && treeElement.instance.id == instance.id) {
+                String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: treeElement.name.id)
+                String tree = treeVersionElement.treeVersion.tree.name
+                if (!treeVersionElement.treeVersion.published) {
+                    tree += ": ${treeVersionElement.treeVersion.draftName}"
+                }
+
+                out << """<a href="${link}">""".toString()
+
+                if (treeElement.excluded) {
+                    out << """<apc title="excluded from $tree"><i class="fa fa-ban"></i> ${tree}</apc>""".toString()
+                } else {
+                    out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>""".toString()
+                }
+                out << "</a>"
             }
-            out << "</a>"
         }
     }
+
 }

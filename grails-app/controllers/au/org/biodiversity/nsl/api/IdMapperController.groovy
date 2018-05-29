@@ -19,13 +19,12 @@ package au.org.biodiversity.nsl.api
 import au.org.biodiversity.nsl.*
 import grails.transaction.Transactional
 
-import static org.springframework.http.HttpStatus.*
+import static org.springframework.http.HttpStatus.NOT_FOUND
 
 @Transactional(readOnly = true)
 class IdMapperController {
 
     static responseFormats = ['json', 'xml']
-    static namespace = "api"
 
     def checkId(Long id) {
         Name name = Name.get(id)

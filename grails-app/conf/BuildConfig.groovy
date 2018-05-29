@@ -70,12 +70,14 @@ grails.project.dependency.resolution = {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes e.g.
         // runtime 'mysql:mysql-connector-java:5.1.29'
         runtime 'org.postgresql:postgresql:9.3-1101-jdbc41'
+        runtime 'joda-time:joda-time:2.9.9'
         test "org.grails:grails-datastore-test-support:1.0-grails-2.4"
         compile 'net.htmlparser.jericho:jericho-html:3.2', {
             excludes 'log4j', 'commons-logging-api','slf4j-api'
         }
         compile "io.jsonwebtoken:jjwt:0.7.0"
         test "org.gebish:geb-spock:0.12.2"
+        test 'cglib:cglib-nodep:2.2.2'       // For mocking classes
     }
 
     plugins {
@@ -87,7 +89,7 @@ grails.project.dependency.resolution = {
         compile ':cache:1.1.8'
         compile "org.grails.plugins:cache-ehcache:1.0.5"
         compile ":asset-pipeline:2.1.0"
-        compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.8-SNAPSHOT"
+        compile "au.org.biodiversity.grails.plugins:nsl-domain-plugin:1.9-SNAPSHOT" //new tree
         compile ':rest-client-builder:2.0.3'
         compile ":simple-suggestions:0.3"
 		compile ":twitter-bootstrap:3.3.0"
