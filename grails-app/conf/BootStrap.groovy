@@ -23,6 +23,7 @@ class BootStrap {
     def grailsApplication
     def jsonRendererService
     def searchService
+    def nameService
     def nslDomainService
     def shiroSecurityManager
     def shiroSubjectDAO
@@ -50,11 +51,16 @@ class BootStrap {
             println "key: $keyString"
         }
         environments {
+            test {
+
+            }
             development {
                 photoService.refresh()
+                nameService.startUpdatePolling()
             }
             production {
                 photoService.refresh()
+                nameService.startUpdatePolling()
             }
         }
     }
