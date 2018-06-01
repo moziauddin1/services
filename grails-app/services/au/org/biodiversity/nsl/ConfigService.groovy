@@ -175,7 +175,7 @@ class ConfigService {
                 webUserName           : getWebUserName(),
                 classificationTreeName: classificationTreeName,
                 nameTreeName          : nameTreeName,
-                nameSpace             : nameSpace
+                nameSpace             : getNameSpace().name.toLowerCase()
         ]
     }
 }
