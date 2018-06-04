@@ -30,11 +30,7 @@ class RestResourceController {
     GrailsApplication grailsApplication
     def linkService
     def apniFormatService
-
-//    @SuppressWarnings("GroovyUnusedDeclaration")
-//    static responseFormats = ['json', 'xml', 'html']
-
-    static allowedMethods = ['*': "GET", 'bulkFetch': 'POST']
+    def treeService
 
     @Timed()
     def name(String shard, Long idNumber) {
@@ -43,7 +39,7 @@ class RestResourceController {
             return notFound("No name in $shard with id $idNumber found")
         }
         def links = linkService.getLinksForObject(name)
-        Map model = apniFormatService.getNameModel(name)
+        Map model = apniFormatService.getNameModel(name, null, false)
         model << [links: links]
         respond name, [model: model, status: OK]
     }
@@ -90,53 +86,127 @@ class RestResourceController {
 
     @Timed()
     def tree(String shard, Long idNumber) {
-        Arrangement tree = Arrangement.get(idNumber);
+        TreeVersion treeVersion
+        Tree tree = Tree.get(idNumber)
         if (tree == null) {
-            return notFound("No tree in $shard with id $idNumber found")
+            return notFound("We couldn't find a tree with id $idNumber in $shard")
         }
-        def links = linkService.getLinksForObject(tree)
-        respond tree, [model: [tree: tree, links: links], status: OK]
+
+        List<TreeVersion> versions = TreeVersion.findAllByTree(tree, [sort: 'id', order: 'desc'])
+
+        if (!versions) {
+            return notFound("We couldn't find any versions for $tree.name. You need to create one.")
+        }
+        treeVersion = tree.currentTreeVersion ?: versions.first()
+
+        if (response.format == 'html') {
+            List<DisplayElement> children = treeService.displayElementsToLimit(treeVersion, 2000)
+            log.debug "Showing ${children.size()} child elements."
+            respond treeVersion, [model: [treeVersion: treeVersion, versions: versions, children: children], status: OK]
+        } else {
+            List<DisplayElement> children = treeService.displayElementsToDepth(treeVersion, 1)
+            log.debug "Showing ${children.size()} child elements."
+            respond treeVersion, [model: [treeVersion: treeVersion, versions: versions], status: OK]
+        }
     }
 
+    @Timed()
+    def treeVersion(String shard, Long idNumber) {
+        TreeVersion treeVersion
+        treeVersion = TreeVersion.get(idNumber)
+        if (treeVersion == null) {
+            return notFound("We couldn't find a tree version with id $idNumber")
+        }
+        List<TreeVersion> versions = TreeVersion.findAllByTree(treeVersion.tree, [sort: 'id', order: 'desc'])
+        List<DisplayElement> children = treeService.displayElementsToLimit(treeVersion, 2000)
+        log.debug "Showing ${children.size()} child elements."
+        respond(treeVersion, [view: 'tree', model: [treeVersion: treeVersion, versions: versions, children: children], status: OK])
+    }
+
+    /**
+     *
+     * @param shard - actually version number
+     * @param idNumber of the tree Element
+     * @return
+     */
+    @Timed()
+    def treeElement(Long shard, Long idNumber) {
+        if (idNumber == 0) {
+            forward(action: 'tree', model: [version: shard])
+        }
+        log.debug "Tree Element version $shard, element $idNumber"
+        TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(shard, idNumber)
+
+        if (treeVersionElement) {
+            List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
+            List<TreeVersionElement> path = treeService.getElementPath(treeVersionElement)
+            respond(treeVersionElement, [model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
+            return
+        }
+        notFound("Couldn't find element $idNumber in tree version $shard.")
+    }
+
+    /**
+     * Node id's really only gave you access to the latest version of the tree that the node participates in,
+     * not the tree from the point in time that it was referenced. The tree below the node will look the same
+     * though the rest of the tree around the node may have changed, including the placement of the node.
+     *
+     * This gets the latest version of the the tree element with the node id given and displays that.
+     *
+     * @param shard
+     * @param idNumber
+     * @return
+     */
     @Timed()
     def node(String shard, Long idNumber) {
-        Node node = Node.get(idNumber)
-        if (node == null) {
-            return notFound("No node in $shard with id $idNumber found")
+        Object[] result = TreeVersionElement.executeQuery('''select tve.treeElement.id, max(tve.treeVersion.id) as mx 
+from TreeVersionElement tve 
+where taxonLink like :query
+and treeVersion.published = true
+group by tve.treeElement.id
+order by mx''', [query: "%node/$shard/$idNumber"]).last()
+        if (result && result.size() == 2) {
+            TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(result[1] as Long, result[0] as Long)
+
+            if (treeVersionElement) {
+                List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
+                List<TreeVersionElement> path = treeService.getElementPath(treeVersionElement)
+                respond(treeVersionElement, [view: 'taxon', model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
+            } else {
+                notFound("Couldn't find element ${result[0]} in tree version ${result[1]}.")
+            }
+        } else {
+            notFound("Couldn't find node $idNumber in $shard.")
         }
-        def links = linkService.getLinksForObject(node)
-        respond node, [model: [node: node, links: links], status: OK]
     }
 
-    @Timed()
-    def event(String shard, Long idNumber) {
-        Event event = Event.get(idNumber)
-        if (event == null) {
-            return notFound("No event in $shard with id $idNumber found")
+    def taxon(String shard, Long idNumber) {
+        Object[] result = TreeVersionElement.executeQuery('''select tve.treeElement.id, max(tve.treeVersion.id) as mx 
+from TreeVersionElement tve 
+where taxonId = :idNumber
+group by tve.treeElement.id
+order by mx''', [idNumber: idNumber]).last()
+        if (result && result.size() == 2) {
+            TreeVersionElement treeVersionElement = treeService.getTreeVersionElement(result[1] as Long, result[0] as Long)
+
+            if (treeVersionElement) {
+                List<DisplayElement> children = treeService.childDisplayElements(treeVersionElement)
+                List<TreeVersionElement> path = treeService.getElementPath(treeVersionElement)
+                respond(treeVersionElement, [model: [treeVersionElement: treeVersionElement, path: path, children: children, status: OK]])
+            } else {
+                notFound("Couldn't find element ${result[0]} in tree version ${result[1]}.")
+            }
+        } else {
+            notFound("Couldn't find node $idNumber in $shard.")
         }
-        def links = linkService.getLinksForObject(event)
-        respond event, [model: [event: event, links: links], status: OK]
     }
 
     // not sure why this needs to be wrapped in a transaction
-
     @Timed()
     @Transactional
     def bulkFetch() {
-        /*
-            TODO:
-            it would be nice if this call accepted content type url-list and text/plain, understood
-            as just a simple list of uris.
-            It might also be nice for this service to not assume JSON, or at least to rase a 406
-            if the caller won't accept it.
-            But for now, this works ok.
-
-            Note that JSON is not implemented correctly (by anyone). Technically, you can't send a
-            bare array or primitive as JSON. But everybody does, regardless.
-         */
-
         log.debug "Bulk Fetch request: $request.JSON"
-        return render (request.JSON.collect { uri -> linkService.getObjectForLink(uri as String) } as JSON)
+        return render(request.JSON.collect { uri -> linkService.getObjectForLink(uri as String) } as JSON)
     }
 
     private notFound(String errorText) {

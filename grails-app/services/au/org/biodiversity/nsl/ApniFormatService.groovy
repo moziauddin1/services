@@ -22,25 +22,24 @@ import grails.transaction.Transactional
 class ApniFormatService {
 
     def configService
-    def classificationService
     def linkService
+    TreeService treeService
 
-    Map getNameModel(Name name) {
-        String acceptedTree = configService.getClassificationTreeName()
-        String nameTree = configService.getNameTreeName()
-
-        Map<String, Name> familyByTree = RankUtils.getFamilyByTrees(name)
-        Name familyName = familyByTree[nameTree]
-        Node apc = classificationService.isNameInClassification(name, configService.getNameSpace(), acceptedTree)
+    Map getNameModel(Name name, TreeVersion version, Boolean draftInst) {
+        if (!version) {
+            version = treeService.getTree(configService.classificationTreeName)?.currentTreeVersion
+        }
+        Name familyName = name.family
+        TreeVersionElement treeVersionElement = version ? treeService.findElementForName(name, version) : null
         String link = linkService.getPreferredLinkForObject(name)
-        Map model = [name: name, apc: apc, familyName: familyName, preferredNameLink: link, familyByTree: familyByTree]
-        model.putAll(nameReferenceInstanceMap(name) as Map)
+        Map model = [name: name, treeVersionElement: treeVersionElement, familyName: familyName, preferredNameLink: link]
+        model.putAll(nameReferenceInstanceMap(name, draftInst) as Map)
         return model
     }
 
-    Map nameReferenceInstanceMap(Name name) {
+    Map nameReferenceInstanceMap(Name name, Boolean draftInst) {
         Map<Reference, List<Instance>> refGroups = name.instances.findAll { instance ->
-            (!instance.draft)
+            (draftInst || !instance.draft)
         }.groupBy { instance ->
             instance.reference
         }

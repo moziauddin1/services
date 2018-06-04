@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -10,29 +9,29 @@
 <body>
 
 <div id="page-body" role="main" class="container">
-  <h1 class="header">${ConfigService.bannerText} NSL Services</h1>
+  <h1 class="header"><st:bannerText/> NSL Services</h1>
 
   <div class="card horizontal">
 
     <div class="card-image">
-      <asset:image src="${ConfigService.cardImage}" height="300px"/>
+      <asset:image src="${st.cardImage().toString()}" height="300px"/>
     </div>
 
     <div class="card-stacked">
       <div class="card-content">
-        ${raw(ConfigService.shardDescriptionHtml)}
+        <st:shardDescription/>
       </div>
 
       <div class="card-action">
         <p>In the menu above you can:-</p>
         <ul>
           <li>
-            click <a href="${ConfigService.nameTreeName}">Names (${ConfigService.nameTreeName})</a>
+            click <a href="${st.nameTree()}">Names (<st:nameTree/>)</a>
             to search bibliographic information on names, or
           </li>
           <li>
-            click <a href="${ConfigService.classificationTreeName}">
-            Taxonomy (${ConfigService.classificationTreeName})</a> to search the ${ConfigService.classificationTreeName} taxonomic data.
+            click <a href="${st.primaryClassification()}">
+            Taxonomy (<st:primaryClassification/>)</a> to search the <st:primaryClassification/> taxonomic data.
           </li>
         </ul>
       </div>

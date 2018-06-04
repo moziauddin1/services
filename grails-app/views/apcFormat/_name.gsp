@@ -10,7 +10,7 @@
         <g:else>
           <excluded-name title='excluded name'><a href="${preferredNameLink + '/api/apni-format'}">
             ${raw(name.fullNameHtml)}</a>
-            <af:apc apc="${apcNode}"/></excluded-name>
+            <af:onTree element="${treeVersionElement}"/></excluded-name>
         </g:else>
         <name-status class="${name.nameStatus.name}">${name.nameStatus.name}</name-status>
         <af:branch name="${name}"><i class="fa fa-code-fork"></i></af:branch>
@@ -34,13 +34,21 @@
           <g:if test="${instances}">
             <g:render template="hasSynonym" model="[instances: instances]"/>
           </g:if>
-          <ul class="instance-notes list-unstyled">
-            <af:getAPCNotes instance="${apcInstance}" var="instanceNote">
-              <li>
-                <instance-note>${raw(instanceNote.value)}</instance-note>
-              </li>
-            </af:getAPCNotes>
-          </ul>
+          <af:ifOnTree instance="${apcInstance}" tve="${treeVersionElement}">
+            <ul class="instance-notes list-unstyled">
+              <af:treeComment tve="${treeVersionElement}">
+                <li>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeComment>
+              <af:treeDistribution tve="${treeVersionElement}">
+                <li>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeDistribution>
+            </ul>
+          </af:ifOnTree>
+
         </div>
       </div>
 

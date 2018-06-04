@@ -1,4 +1,3 @@
-<%@ page import="au.org.biodiversity.nsl.Name; au.org.biodiversity.nsl.ConfigService" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -52,9 +51,9 @@
       <span class="vertbar">
         <st:preferredLink target="${name}"><i title="citable link to name" class="fa fa-link"></i></st:preferredLink>
       </span>
-      <g:if test="${apc}">
+      <g:if test="${treeVersionElement}">
         <span class="vertbar">
-          <af:apc apc="${apc}"/>
+          <af:onTree element="${treeVersionElement}"/>
         </span>
       </g:if>
 

@@ -21,9 +21,8 @@ import org.grails.plugins.metrics.groovy.Timed
 class SearchService {
 
     def suggestService
-    def nameTreePathService
+    def treeService
     def linkService
-    def classificationService
     def configService
 
     @Timed(name = "SearchTimer")
@@ -99,19 +98,19 @@ class SearchService {
                             params.remove('tree')
                         }
                     } else {
-                        ors << "n.nameType.${k} = true"
+                        ors << "n.nameType.${k} = true".toString()
                     }
                 }
             }
             if (ors.size()) {
-                and << "(${ors.join(' or ')})"
+                and << "(${ors.join(' or ')})".toString()
             }
         }
 
         if (params.advanced && params.ex) {
             params.ex.each { k, v ->
                 if (v == 'on') {
-                    and << "n.nameType.${k} = false"
+                    and << "n.nameType.${k} = false".toString()
                 }
             }
         }
@@ -153,46 +152,39 @@ class SearchService {
         return [count: count, total: total, names: names, queryTime: (System.currentTimeMillis() - start)]
     }
 
-    private Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
+    private static Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {
         if (params.tree?.id) {
-            Arrangement root = Arrangement.get(params.tree.id as Long)
-            queryParams.root = root
-            from.add('Node node')
-            and << "node.root = :root and node.checkedInAt is not null and node.next is null and node.internalType = 'T'"
+            Tree tree = Tree.get(params.tree.id as Long)
+            TreeVersion treeVersion = tree.currentTreeVersion
+            queryParams.treeVersion = treeVersion
+            from.add('TreeVersionElement treeVersionElement')
+            from.add('TreeElement treeElement')
+            and << "treeVersionElement.treeVersion = :treeVersion and treeElement = treeVersionElement.treeElement"
 
-            if (root.label == ConfigService.nameTreeName || params.exclSynonym == 'on') {
-                and << "n.id = node.name.id"
+            if (params.exclSynonym == 'on') {
+                and << "n.id = treeElement.nameId"
             } else {
                 from.add('Instance i')
                 from.add('Instance s')
-                and << "n = s.name and (s.citedBy = i or s = i) and i.id = node.instance.id and (s.instanceType.synonym = true or s = i)"
+                and << "n = s.name and (s.citedBy = i or s = i) and i.id = treeElement.instanceId"
             }
 
             if (params.inRank?.id) {
                 NameRank inRank = NameRank.get(params.inRank?.id as Long)
                 String rankNameString = params.rankName.trim()
                 if (rankNameString) {
-                    List<Name> rankNames = Name.findAllByFullNameIlikeAndNameRank("${rankNameString}%", inRank)
+                    Set<String> rankNames = Name.findAllByFullNameIlikeAndNameRank("${rankNameString}%", inRank).collect {
+                        it.nameElement
+                    }
                     if (rankNames && !rankNames.empty) {
-                        List<NameTreePath> ntps = nameTreePathService.findAllCurrentNameTreePathsForNames(rankNames, root)
-                        if (ntps && !ntps.empty) {
-                            from.add('NameTreePath ntp')
-                            if (root.label == ConfigService.nameTreeName || params.exclSynonym == 'on') {
-                                and << "n = ntp.name and ntp.tree = :root"
-                            } else {
-                                and << "i.name = ntp.name and ntp.tree = :root"
-                            }
-                            Set<String> pathOr = []
-                            ntps.eachWithIndex { ntp, i ->
-                                queryParams["path$i"] = "${ntp.nameIdPath}%"
-                                pathOr << "ntp.nameIdPath like :path$i"
-                            }
-                            and << "(${pathOr.join(' or ')})"
-                        } else {
-                            return [count: 0, names: [], message: "Name tree path for ${params.rankName} not found in ${root.label}"]
+                        Set<String> pathOr = []
+                        rankNames.eachWithIndex { String nameElement, int i ->
+                            queryParams["path$i"] = "%/${nameElement}%"
+                            pathOr << "treeVersionElement.namePath like :path$i".toString()
                         }
+                        and << "(${pathOr.join(' or ')})".toString()
                     } else {
-                        return [count: 0, names: [], message: "Rank name ${params.rankName} does not exist in rank ${inRank.name} in ${root.label}"]
+                        return [count: 0, names: [], message: "${params.rankName} is not a ${inRank.name} in ${tree.name}"]
                     }
                 } else {
                     params.remove('inRank') //blank name so set it to any
@@ -210,10 +202,10 @@ class SearchService {
             List<String> ors = []
             nameStrings.findAll { it }.eachWithIndex { n, i ->
                 queryParams["name${i}"] = regexTokenizeNameQueryString(n)
-                ors << "iregex(n.simpleName, :name${i}) = true"
-                ors << "iregex(n.fullName, :name${i}) = true"
+                ors << "iregex(n.simpleName, :name${i}) = true".toString()
+                ors << "iregex(n.fullName, :name${i}) = true".toString()
             }
-            and << "(${ors.join(' or ')})"
+            and << "(${ors.join(' or ')})".toString()
         }
     }
 
@@ -333,9 +325,9 @@ order by sortName
 ''', [q: nameString.toLowerCase()], [max: max])
                     Boolean found = (names != null && !names.empty)
                     List<Map> r = names.collect { Name name ->
-                        Node apc = classificationService.isNameInAcceptedTree(name)
-                        Name family = RankUtils.getFamily(name, ConfigService.nameTreeName)
-                        [apc: apc, name: name, family: family]
+                        TreeVersionElement treeVersionElement = treeService.findCurrentElementForName(name, treeService.getAcceptedTree())
+                        Name family = name.family
+                        [treeVersionElement: treeVersionElement, name: name, family: family]
                     }
                     [query: nameString, found: found, names: r, count: names.size()]
                 }
@@ -359,7 +351,7 @@ order by sortName
     def registerSuggestions() {
         // add apc name search
         suggestService.addSuggestionHandler('apc-search') { String subject, String query, Map params ->
-            String treeName = ConfigService.classificationTreeName
+            String treeName = configService.classificationTreeName
 
             log.debug "apc-search suggestion handler params: $params"
             Instance instance
@@ -372,22 +364,17 @@ order by sortName
                 log.debug "This rank $rank, parent $rank.parentRank, parentSortOrder $parentSortOrder"
 
                 return Name.executeQuery('''
-select n from Name n
-where lower(n.fullName) like :query
+select n from Name n, TreeElement element, TreeVersionElement tve, Tree tree
+where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
 and n.nameRank.sortOrder < :sortOrder
 and n.nameRank.sortOrder >= :parentSortOrder
-and exists (
-  select 1
-  from Node nd
-  where nd.root.label = :treeName
-  and nd.checkedInAt is not null
-  and nd.replacedAt is null
-  and nd.nameUriNsPart.label = 'nsl-name'
-  and nd.nameUriIdPart = cast(n.id as string)
-)
+and tree.name = :treeName
+and element.nameId = n.id
+and tve.treeElement = element
+and tve.treeVersion = tree.currentTreeVersion
 order by n.sortName asc''',
                         [
-                                query          : query.toLowerCase() + '%',
+                                query          : regexTokenizeNameQueryString(query.toLowerCase()),
                                 sortOrder      : rank.sortOrder,
                                 parentSortOrder: parentSortOrder,
                                 treeName       : treeName
@@ -398,19 +385,14 @@ order by n.sortName asc''',
 
             } else {
                 return Name.executeQuery('''
-select n from Name n 
-where lower(n.fullName) like :query
-and exists (
-  select 1 
-  from Node nd
-  where nd.root.label = :treeName
-  and nd.checkedInAt is not null
-  and nd.replacedAt is null
-  and nd.nameUriNsPart.label = 'nsl-name'
-  and nd.nameUriIdPart = cast(n.id as string)
-)
+select n from Name n, TreeElement element, TreeVersionElement tve, Tree tree 
+where (iregex(n.simpleName, :query) = true or iregex(n.fullName, :query) = true)
+and tree.name = :treeName
+and element.nameId = n.id
+and tve.treeElement = element
+and tve.treeVersion = tree.currentTreeVersion
 order by n.sortName asc''',
-                        [query   : query.toLowerCase() + '%',
+                        [query   : regexTokenizeNameQueryString(query.toLowerCase()),
                          treeName: treeName], [max: 15])
                            .collect { name ->
                     [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml]

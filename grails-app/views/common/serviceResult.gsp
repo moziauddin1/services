@@ -3,16 +3,17 @@
   <st:displayMap map="${data}"/>
 </g:if>
 <g:else>
-<html>
-<head>
-  <meta name="layout" content="main">
-  <title>${params.action}</title>
-</head>
+  <html>
+  <head>
+    <meta name="layout" content="main">
+    <title>${params.action}</title>
+    <asset:stylesheet src="tree.css"/>
+  </head>
 
-<body>
-<div class="container">
-  <st:displayMap map="${data}"/>
-</div>
-</body>
-</html>
+  <body>
+  <div class="container">
+    <st:displayMap map="${data}"/>
+  </div>
+  </body>
+  </html>
 </g:else>

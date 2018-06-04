@@ -12,8 +12,7 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
 import static org.springframework.http.HttpStatus.OK
 
 @Transactional
-class AuthorController implements UnauthenticatedHandler, WithTarget {
-    static namespace = "api"
+class AuthorController implements WithTarget {
 
     static responseFormats = [
             index      : ['html'],

@@ -1,6 +1,7 @@
 package au.org.biodiversity.nsl
 
 import groovy.sql.GroovyResultSet
+import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
 
 import java.sql.Timestamp
@@ -61,6 +62,42 @@ WHERE action_tstamp_tx > :from
         }
         userReport
     }
+
+    Map recoverDeletedInstanceData(Long instanceId) {
+        withSql { Sql sql ->
+            GroovyRowResult rowResult = sql.firstRow('''SELECT (row_data -> 'reference_id') :: NUMERIC :: BIGINT as reference_id,
+  (row_data -> 'cites_id') :: NUMERIC :: BIGINT as cites_id,
+  (row_data -> 'created_at') as created_at,
+  (row_data -> 'source_id_string') as source_id_string,
+  (row_data -> 'updated_at') as updated_at,
+  (row_data -> 'draft') :: BOOLEAN as draft,
+  (row_data -> 'id') :: NUMERIC :: BIGINT as id,
+  (row_data -> 'instance_type_id') :: NUMERIC :: BIGINT as instance_type_id,
+  (row_data -> 'cited_by_id') :: NUMERIC :: BIGINT as cited_by_id,
+  (row_data -> 'lock_version') :: NUMERIC :: BIGINT as lock_version,
+  (row_data -> 'source_system') as source_system,
+  (row_data -> 'name_id') :: NUMERIC :: BIGINT as name_id,
+  (row_data -> 'created_by') as created_by,
+  (row_data -> 'trash') :: BOOLEAN as trash,
+  (row_data -> 'bhl_url') as bhl_url,
+  (row_data -> 'namespace_id') :: NUMERIC :: BIGINT as namespace_id,
+  (row_data -> 'parent_id') :: NUMERIC :: BIGINT as parent_id,
+  (row_data -> 'nomenclatural_status') as nomenclatural_status,
+  (row_data -> 'valid_record') :: BOOLEAN as valid_record,
+  (row_data -> 'updated_by') as updated_by,
+  (row_data -> 'page_qualifier') as page_qualifier,
+  (row_data -> 'verbatim_name_string') as verbatim_name_string,
+  (row_data -> 'page') as page,
+  (row_data -> 'source_id') :: NUMERIC :: BIGINT as source_id
+FROM audit.logged_actions
+WHERE action = 'D\'
+      AND table_name = 'instance\'
+      and (row_data -> 'id') :: NUMERIC :: BIGINT = :instanceId
+order by action_tstamp_tx desc;''', [instanceId: instanceId])
+            return new HashMap(rowResult as Map)
+        } as Map
+    }
+
 
     private static Map defaultUserThingReport(List<String> things) {
         Map defMap = [:]

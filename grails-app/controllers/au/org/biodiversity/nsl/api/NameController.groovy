@@ -24,15 +24,17 @@ import org.grails.plugins.metrics.groovy.Timed
 import static org.springframework.http.HttpStatus.*
 
 @Transactional
-class NameController implements UnauthenticatedHandler, WithTarget {
+class NameController implements WithTarget {
 
     def nameConstructionService
-    def classificationService
     def jsonRendererService
     def nameService
     def apniFormatService
     def instanceService
     def flatViewService
+    def treeService
+    def linkService
+    def configService
 
     @SuppressWarnings("GroovyUnusedDeclaration")
     static responseFormats = [
@@ -67,7 +69,6 @@ class NameController implements UnauthenticatedHandler, WithTarget {
             apc               : ["GET"],
             taxonSearch       : ["GET", "POST"]
     ]
-    static namespace = "api"
 
     @Timed()
     index() {
@@ -120,7 +121,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     nameStrings(Name name) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             result.result = nameConstructionService.constructName(name)
             result.result.fullName = nameConstructionService.stripMarkUp(result.result.fullMarkedUpName as String)
             result.result.simpleName = nameConstructionService.stripMarkUp(result.result.simpleMarkedUpName as String)
@@ -139,7 +140,7 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     delete(Name name, String reason) {
-        withTarget(name) { ResultObject result ->
+        withTarget(name) { ResultObject result, target ->
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << nameService.deleteName(name, reason)
@@ -156,11 +157,9 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     family(Name name) {
-        withTarget(name) { ResultObject result ->
-            Name familyName = classificationService.getNameTreeFamilyName(name)
-
-            if (familyName) {
-                result << [familyName: familyName]
+        withTarget(name) { ResultObject result, target ->
+            if (name.family) {
+                result << [familyName: name.family]
             } else {
                 result << [error: 'Family name not found']
                 result.status = NOT_FOUND
@@ -170,40 +169,38 @@ class NameController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     branch(Name name) {
-        withTarget(name) { ResultObject result ->
-            List<Name> namesInBranch = classificationService.getPathFromNameTree(name)
+        withTarget(name) { ResultObject result, target ->
+            List<TreeVersionElement> tvePath = treeService.getElementPath(treeService.findCurrentElementForName(name, treeService.getAcceptedTree()))
+            List<Name> namesInBranch = tvePath.collect { it.treeElement.name }
             result << [branch: namesInBranch]
         }
     }
 
     @Timed()
     apc(Name name) {
-        withTarget(name) { ResultObject result ->
-            Node node = classificationService.isNameInAcceptedTree(name)
-            result << ["inAPC"   : node != null,
-                       excluded  : node?.typeUriIdPart == 'ApcExcluded',
+        withTarget(name) { ResultObject result, target ->
+            TreeVersionElement tve = treeService.findCurrentElementForName(name, treeService.getAcceptedTree())
+            result << ["inAPC"   : tve != null,
+                       excluded  : tve.treeElement.excluded,
                        operation : params.action,
                        "nsl-name": name.id,
-                       nameNs    : node?.nameUriNsPart?.label,
-                       nameId    : node?.nameUriIdPart,
-                       taxonNs   : node?.taxonUriNsPart?.label,
-                       taxonId   : node?.taxonUriIdPart,
-                       type      : node?.typeUriIdPart
+                       nameNs    : "${tve.treeVersion.tree.name}-name",
+                       nameId    : linkService.getPreferredLinkForObject(name),
+                       taxonNs   : "${tve.treeVersion.tree.name}-name",
+                       taxonId   : tve.fullTaxonLink(),
+                       type      : "${tve.treeVersion.tree.name}Concept"
             ]
         }
     }
 
     @Timed()
     apni(Name name) {
-        withTarget(name) { ResultObject result ->
-            Node node = classificationService.isNameInNameTree(name)
-            result << ["inAPNI"  : node != null,
+        withTarget(name) { ResultObject result, target ->
+            result << ["inAPNI"  : name != null,
                        operation : params.action,
                        "nsl-name": name.id,
-                       nameNs    : node?.nameUriNsPart?.label,
-                       nameId    : node?.nameUriIdPart,
-                       taxonNs   : node?.taxonUriNsPart?.label,
-                       taxonId   : node?.taxonUriIdPart]
+                       nameNs    : "${configService.nameSpaceName}-name",
+                       nameId    : linkService.getPreferredLinkForObject(name)]
         }
     }
 
@@ -260,8 +257,8 @@ order by n.simpleName asc''',
     @Timed()
     findConcept(Name name, String term) {
         log.debug "search concepts for $term"
-        withTarget(name) { ResultObject result ->
-            List<String> terms = term.replaceAll('(,|&)', '').split(' ')
+        withTarget(name) { ResultObject result, target ->
+            List<String> terms = term.replaceAll('([,&])', '').split(' ')
             log.debug "terms are $terms"
             Integer highestRank = 0
             Instance match = null
@@ -291,17 +288,12 @@ order by n.simpleName asc''',
         }
 
         log.info "getting APNI concept for $name"
-        withTarget(name) { ResultObject result ->
-            Map nameModel = apniFormatService.getNameModel(name)
+        withTarget(name) { ResultObject result, target ->
+            Map nameModel = apniFormatService.getNameModel(name, null, false)
             result.name = jsonRendererService.getBriefNameWithHtml(name)
-            if (nameModel.apc != null) {
-                if (nameModel.apc.typeUriIdPart == 'ApcConcept') {
+            if (nameModel.treeVersionElement != null) {
                     result.name.inAPC = true
-                    result.name.APCExcluded = false
-                } else {
-                    result.name.inAPC = true
-                    result.name.APCExcluded = true
-                }
+                result.name.APCExcluded = nameModel.treeVersionElement.treeElement.excluded
             } else {
                 result.name.inAPC = false
             }
@@ -401,6 +393,7 @@ order by n.simpleName asc''',
         }
     }
 
+    //TODO the taxon view needs to be re-written to make this work again
     //see NSL-1805
     @Timed
     taxonSearch() {

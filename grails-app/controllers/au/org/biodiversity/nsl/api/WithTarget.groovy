@@ -17,7 +17,9 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.JsonRendererService
+import au.org.biodiversity.nsl.ObjectNotFoundException
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST
 import static org.springframework.http.HttpStatus.NOT_FOUND
 
 /**
@@ -39,11 +41,12 @@ trait WithTarget {
 
         if (target) {
             result.briefObject(target)
-            work(result)
+            work(result, target)
         } else {
             result.error("$targetInfo not found.")
             result.status = NOT_FOUND
         }
+        log.debug "result status is ${result.status} $result"
         respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
     }
 
@@ -60,14 +63,50 @@ trait WithTarget {
                 result.briefObject(targets[key], key as String)
             }
         }
-        if(ok) {
+        if (ok) {
             work(result)
         } else {
             result.ok = false
         }
-
-        log.debug "result status is ${result.status}"
+        log.debug "result status is ${result.status} $result"
         respond(result, [view: '/common/serviceResult', model: [data: result], status: result.remove('status')])
+    }
+
+    ResultObject require(Map requirements) {
+        assert jsonRendererService
+        ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+        result.ok = true
+
+        for (key in requirements.keySet()) {
+            if (requirements[key] == null) {
+                result.status = BAD_REQUEST
+                result.error("$key not supplied. You must supply $key.")
+                result.ok = false
+            }
+        }
+        return result
+    }
+
+    ResultObject requireTarget(Object target, String errorMessage) {
+        assert jsonRendererService
+
+        ResultObject result = new ResultObject([action: params.action], jsonRendererService as JsonRendererService)
+        result.ok = true
+
+        if (!target) {
+            result.error(errorMessage)
+            result.status = NOT_FOUND
+            result.ok = false
+        }
+        return result
+    }
+
+    static Object got(Closure c, String msg) {
+        def result = c()
+        if (!result) {
+            throw new ObjectNotFoundException(msg)
+        }
+        return result
     }
 
 }

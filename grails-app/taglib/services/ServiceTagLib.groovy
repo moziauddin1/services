@@ -40,10 +40,19 @@ class ServiceTagLib {
         map.each { k, v ->
             out << "<li>"
             out << "<b>${k.encodeAsHTML()}:</b>&nbsp;"
-            out << displayValue(v: v)
+            if (k =~ /(?i)html/) {
+                out << v
+                out << '<br><pre>' + v.encodeAsHTML() + '</pre>'
+            } else {
+                out << displayValue(v: v)
+            }
             out << '</li>'
         }
         out << '</ul>'
+    }
+
+    private static String anchorLinks(String value) {
+        value.replaceAll(/(https?:\/\/[^ )]*)/, '<a href="$1">$1</a>')
     }
 
     def displayValue = { attrs ->
@@ -60,8 +69,8 @@ class ServiceTagLib {
             }
             out << '</ul>'
         } else {
-            if (v.toString().startsWith('http://')) {
-                out << "<a href='$v'>${v.encodeAsHTML()}</a>"
+            if (v.toString().contains('http')) {
+                out << anchorLinks(v.toString())
             } else {
                 out << v.encodeAsHTML()
             }
@@ -89,6 +98,21 @@ class ServiceTagLib {
         String colourScheme = grailsApplication.config.shard.colourScheme
         if (colourScheme) {
             out << colourScheme
+        }
+    }
+
+    def preferredUrl = { attrs ->
+        def target = attrs.target
+        if (target) {
+            target = HibernateDomainUtils.initializeAndUnproxy(target)
+            try {
+                String link = linkService.getPreferredLinkForObject(target)
+                if (link) {
+                    out << link
+                }
+            } catch (e) {
+                log.debug e.message
+            }
         }
     }
 
@@ -277,9 +301,9 @@ class ServiceTagLib {
     }
 
     def productBrief = { attrs ->
-        Arrangement arrangement = Arrangement.findByLabel(attrs.product)
+        Tree arrangement = Tree.findByName(attrs.product)
         if (arrangement) {
-            out << arrangement.description
+            out << arrangement.descriptionHtml
         } else {
             out << ''
         }
@@ -287,6 +311,36 @@ class ServiceTagLib {
 
     def productDescription = { attrs ->
         out << configService.getProductDescription(attrs.product)
+    }
+
+    def shardDescription = { attrs ->
+        out << configService.getShardDescriptionHtml()
+    }
+
+    def bannerText = { attrs ->
+        out << configService.getBannerText()
+    }
+
+    def bannerImage = { attrs ->
+        out << configService.getBannerImage()
+    }
+
+    def pageTitle = { attrs ->
+        out << configService.getPageTitle()
+    }
+
+    def cardImage = { attrs ->
+        out << configService.getCardImage()
+    }
+
+    def panelClass = { attrs ->
+        String product = attrs.product
+        out << (product == configService.classificationTreeName ? 'panel-success' : 'panel-info')
+    }
+
+    def alertClass = { attrs ->
+        String product = attrs.product
+        out << (product == configService.classificationTreeName ? 'alert-success' : 'alert-info')
     }
 
     def randomName = { attrs ->
@@ -323,7 +377,7 @@ class ServiceTagLib {
 
     def diffValue = { attrs ->
         def val = attrs.value
-        if(val) {
+        if (val) {
             switch (val.class.simpleName) {
                 case 'Name':
                     Name name = (Name) val

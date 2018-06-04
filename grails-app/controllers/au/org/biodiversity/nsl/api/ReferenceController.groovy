@@ -28,7 +28,7 @@ import org.grails.plugins.metrics.groovy.Timed
 import static org.springframework.http.HttpStatus.*
 
 @Transactional
-class ReferenceController implements UnauthenticatedHandler, WithTarget {
+class ReferenceController implements WithTarget {
 
     def referenceService
     def jsonRendererService
@@ -48,8 +48,6 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
             move             : ["DELETE"]
     ]
 
-    static namespace = "api"
-
     def list(Integer max) {
         params.max = Math.min(max ?: 10, 100)
         def refs = Reference.list(params)
@@ -58,7 +56,7 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
 
     @Timed()
     citationStrings(Reference reference) {
-        withTarget(reference) { ResultObject result ->
+        withTarget(reference) { ResultObject result, target ->
 
             Author unknownAuthor = Author.findByName('-')
             RefAuthorRole editor = RefAuthorRole.findByName('Editor')
@@ -70,19 +68,17 @@ class ReferenceController implements UnauthenticatedHandler, WithTarget {
                             citation    : NameConstructionService.stripMarkUp(citationHtml)
                     ]
             ]
+
             if (request.method == 'PUT') {
                 SecurityUtils.subject.checkRole('admin')
-                reference.citation = result.result.citation
-                reference.citationHtml = result.result.citationHtml
-                reference.save()
+                referenceService.setCitation(target, result.result.citation, result.result.citationHtml)
             }
-            respond(result as Object, [status: OK])
         }
     }
 
     @Timed()
     delete(Reference reference, String reason) {
-        withTarget(reference) { ResultObject result ->
+        withTarget(reference) { ResultObject result, target ->
             if (request.method == 'DELETE') {
                 SecurityUtils.subject.checkRole('admin')
                 result << referenceService.deleteReference(reference, reason)

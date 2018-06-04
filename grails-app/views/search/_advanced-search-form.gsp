@@ -1,7 +1,6 @@
 <%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameTag" %>
 <g:form name="search" role="form" controller="search" action="search" method="GET" class="closable checkbig">
   <div class="row">
-    <g:if test="${params.product != au.org.biodiversity.nsl.ConfigService.nameTreeName}">
       <div class="col-md-2">
         <g:render template="/search/using-tree"/>
 
@@ -11,7 +10,6 @@
           </label>
         </div>
       </div>
-    </g:if>
 
     <div class="col-md-6">
       <label>Names
@@ -184,7 +182,7 @@
           <label><g:checkBox name="inc.autonym" value="${query.inc?.autonym}"/>Autonyms</label>
         </div>
 
-        <g:if test="${params.product != au.org.biodiversity.nsl.ConfigService.classificationTreeName}">
+        <g:if test="${params.product != st.primaryClassification().toString()}">
           <div class="checkbox">
             <label><g:checkBox name="inc.other" value="${query.inc?.other}"/>Other names, e.g. common</label>
           </div>

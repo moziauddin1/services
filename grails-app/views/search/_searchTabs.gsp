@@ -1,6 +1,5 @@
-<%@ page import="au.org.biodiversity.nsl.ConfigService" %>
 <g:set var="panelClass"
-       value="panel ${((params.product == ConfigService.classificationTreeName) ? 'panel-success' : 'panel-info')}"/>
+       value="panel ${st.panelClass(product: params.product)}"/>
 <g:render template="/search/common-search-heading"/>
 
 <div role="tabpanel">
@@ -55,7 +54,12 @@
         </div>
 
         <div class="panel-body">
-          <g:render template="/search/advanced-search-form"/>
+          <g:if test="${treeSearch}">
+            <g:render template="/search/advanced-search-form"/>
+          </g:if>
+          <g:else>
+            <g:render template="/search/advanced-name-search-form"/>
+          </g:else>
         </div>
       </div>
     </div>

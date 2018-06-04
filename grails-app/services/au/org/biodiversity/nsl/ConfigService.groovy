@@ -19,6 +19,8 @@ import grails.transaction.Transactional
 import groovy.sql.Sql
 import org.apache.commons.logging.LogFactory
 
+import javax.sql.DataSource
+
 /**
  * This is a helper service for abstracting, accessing and managing configuration of the services.
  *
@@ -33,18 +35,43 @@ import org.apache.commons.logging.LogFactory
 @Transactional
 class ConfigService {
 
+    DataSource dataSource_nsl
+
     def grailsApplication
 
-    private static String getShardConfigOrfail(String key) {
-        String value = ShardConfig.findByName(key)?.value
-        if (!value) {
+    private String nameSpaceName
+    private Map shardConfig = null
+
+    private String getShardConfigOrfail(String key) {
+        if (shardConfig == null) {
+            fetchShardConfig()
+        }
+        if (shardConfig.containsKey(key)) {
+            shardConfig[key]
+        } else {
             throw new Exception("Config error. Add '$key' to shard_config.")
         }
-        return value
+    }
+
+    private fetchShardConfig() {
+        Sql sql = getSqlForNSLDB()
+        shardConfig = [:]
+        sql.eachRow('SELECT * FROM shard_config') { row ->
+            shardConfig.put(row.name, row.value)
+            log.debug "read config: $row.name: $row.value"
+        }
+        sql.close()
+    }
+
+    String getNameSpaceName() {
+        if (!nameSpaceName) {
+            nameSpaceName = getShardConfigOrfail('name space')
+        }
+        return nameSpaceName
     }
 
     Namespace getNameSpace() {
-        String nameSpaceName = getShardConfigOrfail('name space')
+        nameSpaceName = getNameSpaceName()
         Namespace nameSpace = Namespace.findByName(nameSpaceName)
         if (!nameSpace) {
             log.error "Namespace not correctly set in config. Add 'name space' to shard_config, and make sure Namespace exists."
@@ -52,11 +79,11 @@ class ConfigService {
         return nameSpace
     }
 
-    static String getNameTreeName() {
+    String getNameTreeName() {
         return getShardConfigOrfail('name tree label')
     }
 
-    static String getClassificationTreeName() {
+    String getClassificationTreeName() {
         try {
             return getShardConfigOrfail('classification tree key')
         } catch (e) {
@@ -65,27 +92,27 @@ class ConfigService {
         return getShardConfigOrfail('classification tree label')
     }
 
-    static String getShardDescriptionHtml() {
+    String getShardDescriptionHtml() {
         return getShardConfigOrfail('description html')
     }
 
-    static String getPageTitle() {
+    String getPageTitle() {
         return getShardConfigOrfail('page title')
     }
 
-    static String getBannerText() {
+    String getBannerText() {
         return getShardConfigOrfail('banner text')
     }
 
-    static String getBannerImage() {
+    String getBannerImage() {
         return getShardConfigOrfail('banner image')
     }
 
-    static String getCardImage() {
+    String getCardImage() {
         return getShardConfigOrfail('card image')
     }
 
-    static String getProductDescription(String productName) {
+    String getProductDescription(String productName) {
         return getShardConfigOrfail("$productName description")
     }
 
@@ -124,13 +151,18 @@ class ConfigService {
         throw new Exception("Config error. Add JWT config.")
     }
 
+    String getServerUrl() {
+        if (grailsApplication.config?.grails.serverURL) {
+            return grailsApplication.config.grails.serverURL
+        }
+        throw new Exception("Config error. Add serverURL.")
+    }
 
     Sql getSqlForNSLDB() {
         String dbUrl = grailsApplication.config.dataSource_nsl.url
         String username = grailsApplication.config.dataSource_nsl.username
         String password = grailsApplication.config.dataSource_nsl.password
         String driverClassName = grailsApplication.config.dataSource_nsl.driverClassName
-        log.debug "Getting sql for $dbUrl, $username, $password, $driverClassName"
         Sql.newInstance(dbUrl, username, password, driverClassName)
     }
 
@@ -143,7 +175,7 @@ class ConfigService {
                 webUserName           : getWebUserName(),
                 classificationTreeName: classificationTreeName,
                 nameTreeName          : nameTreeName,
-                nameSpace             : nameSpace
+                nameSpace             : getNameSpace().name.toLowerCase()
         ]
     }
 }

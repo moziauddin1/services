@@ -276,6 +276,13 @@ class ReferenceService {
     }
 
     @Transactional
+    def setCitation(Reference reference, String citation, String citationHtml) {
+        reference.citation = citation
+        reference.citationHtml = citationHtml
+        reference.save()
+    }
+
+    @Transactional
     Map deduplicateMarked(String user) {
         List<Map> refs = []
         //remove nested duplicates first

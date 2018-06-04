@@ -16,9 +16,9 @@
 
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.ConfigService
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.RankUtils
+import au.org.biodiversity.nsl.TreeVersion
 import grails.converters.JSON
 import org.grails.plugins.metrics.groovy.Timed
 
@@ -31,6 +31,7 @@ class ApniFormatController {
     def apniFormatService
     def jsonRendererService
     def photoService
+    def configService
 
     static responseFormats = [
             display: ['html'],
@@ -46,9 +47,9 @@ class ApniFormatController {
      * @param Name
      */
     @Timed()
-    display(Name name) {
+    display(Name name, Long versionId, Boolean drafts) {
         if (name) {
-            params.product = ConfigService.nameTreeName
+            params.product = configService.nameTreeName
             String inc = g.cookie(name: 'searchInclude')
             if (inc) {
                 params.inc = JSON.parse(inc) as Map
@@ -61,12 +62,13 @@ class ApniFormatController {
                 photoSearch = photoService.searchUrl(name.simpleName)
             }
 
-            apniFormatService.getNameModel(name) << [
-                    query: [name: "$name.fullName", product: ConfigService.nameTreeName, inc: params.inc],
-                    stats: [:],
-                    names: [name],
-                    photo: photoSearch,
-                    count: 1, max: 100]
+            apniFormatService.getNameModel(name, TreeVersion.get(versionId), drafts) << [
+                    drafts: drafts,
+                    query : [name: "$name.fullName", product: configService.nameTreeName, inc: params.inc],
+                    stats : [:],
+                    names : [name],
+                    photo : photoSearch,
+                    count : 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')
@@ -74,15 +76,15 @@ class ApniFormatController {
     }
 
     @Timed()
-    name(Name name) {
+    name(Name name, Long versionId, Boolean drafts) {
         if (name) {
-            log.info "getting ${ConfigService.nameTreeName} name $name"
-            ResultObject model = new ResultObject(apniFormatService.getNameModel(name))
+            log.info "getting ${configService.nameTreeName} name $name"
+            ResultObject model = new ResultObject(apniFormatService.getNameModel(name, TreeVersion.get(versionId), drafts))
             String photoSearch = null
             if (RankUtils.nameAtRankOrLower(name, 'Species') && photoService.hasPhoto(name.simpleName)) {
                 photoSearch = photoService.searchUrl(name.simpleName)
             }
-            model << [photo: photoSearch]
+            model << [drafts: drafts, photo: photoSearch]
             render(view: '_name', model: model)
         } else {
             render(status: 404, text: 'Name not found.')
