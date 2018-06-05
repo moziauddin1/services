@@ -1779,7 +1779,7 @@ and tve.element_link not in ($excludedLinks)
             restCallService.json('get', uri,
                     { Map data ->
                         log.debug "Fetched $uri. Response: $data"
-                        result.data = data
+                        result.data = data.payload
                     },
                     { Map data, List errors ->
                         log.error "$failMessage. Errors: $errors"
