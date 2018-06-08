@@ -45,7 +45,7 @@ class TreeReportService implements ValidationUtils {
             List<Long> treeElementsAddedToSecond = treeElementsNotInFirst - modified.collect { mod -> mod[0].treeElement.id }
             List<TreeVersionElement> added = getTvesInVersion(treeElementsAddedToSecond, second)
 
-            List<Long> treeElementsRemovedFromSecond = treeElementsNotInSecond - modified.collect { mod -> mod[0].treeElement.previousElement.id }
+            List<Long> treeElementsRemovedFromSecond = treeElementsNotInSecond - modified.collect { mod -> mod[1].treeElement.id }
             List<TreeVersionElement> removed = getTvesInVersion(treeElementsRemovedFromSecond, first)
 
             [v1: first, v2: second, added: added, removed: removed, modified: modified, changed: true, overflow: false]
@@ -62,7 +62,7 @@ select tve, ptve
     from TreeVersionElement tve, TreeVersionElement ptve
 where tve.treeVersion = :version
     and ptve.treeVersion =:previousVersion
-    and ptve.treeElement = tve.treeElement.previousElement
+    and ptve.treeElement.nameId = tve.treeElement.nameId
     and tve.treeElement.id in :elementIds
 ''', [version: second, previousVersion: first, elementIds: treeElementsNotInFirst])) as List<List<TreeVersionElement>>
     }

@@ -18,7 +18,7 @@
       <table class="table">
         <g:each in="${data.payload?.added}" var="tve">
           <tr>
-            <td><g:render template="treeElement" model="[tve: tve]"/></td>
+            <td><g:render template="treeElement" model="[tve: tve, syn: tve.treeElement.synonymsHtml]"/></td>
           </tr>
         </g:each>
       </table>
@@ -33,7 +33,7 @@
       <table class="table">
         <g:each in="${data.payload?.removed}" var="tve">
           <tr>
-            <td><g:render template="treeElement" model="[tve: tve]"/></td>
+            <td><g:render template="treeElement" model="[tve: tve, syn: tve.treeElement.synonymsHtml]"/></td>
           </tr>
         </g:each>
       </table>
