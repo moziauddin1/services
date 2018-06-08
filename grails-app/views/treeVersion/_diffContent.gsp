@@ -54,9 +54,20 @@
         </tr>
         </thead>
         <g:each in="${data.payload?.modified}" var="mod">
+          <tree:diffPath a="${mod[1].namePath}"
+                         b="${mod[0].namePath}">
+            <tr class="noBottom sep">
+              <td class="diffBefore">
+                ${raw(pathA)}
+              </td>
+              <td class="diffAfter">
+                ${raw(pathB)}
+              </td>
+            </tr>
+          </tree:diffPath>
           <tree:diffSynonyms a="${mod[1].treeElement.synonymsHtml}"
                              b="${mod[0].treeElement.synonymsHtml}">
-            <tr>
+            <tr class="noTop noBottom">
               <td class="diffBefore">
                 <g:render template="treeElement" model="[tve: mod[1], syn: diffA]"/>
               </td>
@@ -65,7 +76,7 @@
               </td>
             </tr>
           </tree:diffSynonyms>
-          <tr>
+          <tr class="noTop">
             <td class="diffBefore">
               <tree:profile profile="${mod[1].treeElement.profile}"/>
             </td>

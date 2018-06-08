@@ -161,4 +161,31 @@ class TreeServicesTagLib {
         out << body(diffA: diffA, diffB: diffB)
     }
 
+    def diffPath = { attrs, body ->
+        // split synonyms onto new lines
+        List<String> a = (attrs.a as String)?.split('/')
+        List<String> b = (attrs.b as String)?.split('/')
+
+        int size = Math.max(a.size(), b.size())
+        0.upto(size - 1) { i ->
+            String oldLine = a[i]
+            String newLine = b[i]
+            if (oldLine && !b.contains(oldLine)) {
+                a[i] = '<span class="targetHighlight">' + oldLine + '</span>'
+            }
+
+            if (newLine && !a.contains(newLine)) {
+                b[i] = '<span class="targetHighlight">' + newLine + '</span>'
+            }
+        }
+        out << body(pathA: a.join(' / '), pathB: b.join(' / '))
+    }
+
+    def children = { attrs ->
+        TreeVersionElement tve = attrs.tve
+        if (tve) {
+            out << treeService.countAllChildElements(tve)
+        }
+    }
+
 }
