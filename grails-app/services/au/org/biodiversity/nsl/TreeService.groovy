@@ -663,6 +663,8 @@ INSERT INTO tree_version_element (tree_version_id,
                  fromVersionIdMatch: "/${fromVersion.id}/".toString(),
                  toVersionIdMatch  : "/${toVersion.id}/".toString()])
 
+        //we need this for the postgresql edge case of not regenerating the stats for tree_version_element and picking the wrong strategy
+        sql.execute('analyse tree_version_element (tree_version_id);')
         toVersion.refresh()
 
         if (fromVersion.treeVersionElements.size() != toVersion.treeVersionElements.size()) {

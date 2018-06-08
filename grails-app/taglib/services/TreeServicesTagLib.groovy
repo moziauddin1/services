@@ -145,13 +145,13 @@ class TreeServicesTagLib {
             String oldLine = a[i]
             String newLine = b[i]
             if (oldLine && !b.contains(oldLine)) {
-                diffA += '<span class="target plus">' + oldLine + "</span>"
+                diffA += oldLine.replaceFirst('<name ', '<name class="target" ')
             } else if (oldLine) {
                 diffA += oldLine
             }
 
             if (newLine && !a.contains(newLine)) {
-                diffB += '<span class="target">' + newLine + "</span>"
+                diffB += newLine.replaceFirst('<name ', '<name class="target" ')
             } else if (newLine) {
                 diffB += newLine
             }
