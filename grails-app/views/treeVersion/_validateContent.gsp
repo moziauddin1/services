@@ -32,7 +32,7 @@
       <tree:commonSynonyms results="${data.payload?.commonSynonyms}">
         <tr class="titleRow">
           <td colspan="2">
-            ${synonym} is a synonym in common for:
+            ${raw(synonym)} is a synonym in common for:
           </td>
         </tr>
         <tr>

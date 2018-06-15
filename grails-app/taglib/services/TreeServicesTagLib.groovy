@@ -16,10 +16,7 @@
 
 package services
 
-import au.org.biodiversity.nsl.Tree
-import au.org.biodiversity.nsl.TreeService
-import au.org.biodiversity.nsl.TreeVersion
-import au.org.biodiversity.nsl.TreeVersionElement
+import au.org.biodiversity.nsl.*
 
 class TreeServicesTagLib {
     @SuppressWarnings("GroovyUnusedDeclaration")
@@ -121,9 +118,17 @@ class TreeServicesTagLib {
         List<Map> results = attrs.results
         if (results) {
             for (Map result in results) {
-                String synonym = result.keySet().first()
-                List<Map> names = result[synonym] as List<Map>
-                out << body(synonym: result.keySet().first(), name1: names[0], name2: names[1])
+                Name synonym = result.commonSynonym
+                List<Map> names = result.elements as List<Map>
+                if (names.size() > 2) {
+                    log.debug "multiple common synonyms for ${result.commonSynonym}"
+                    List<Map> commonSyns = names.groupBy { it.tree_link }.collect { it.value.first() }
+                    for (int i = 1; i < commonSyns.size(); i++) {
+                        out << body(synonym: synonym.fullNameHtml, name1: commonSyns[0], name2: commonSyns[i])
+                    }
+                } else {
+                    out << body(synonym: synonym.fullNameHtml, name1: names[0], name2: names[1])
+                }
             }
         }
     }

@@ -87,7 +87,7 @@ where tve.treeVersion = :version
         Map problems = [:]
 
         problems.synonymsOfAcceptedNames = checkVersionSynonyms(sql, treeVersion)
-        problems.commonSynonyms = checkVersionCommonSynonyms(sql, treeVersion)
+        problems.commonSynonyms = sortCommonSynonyms(checkVersionCommonSynonyms(sql, treeVersion))
         return problems
     }
 
@@ -100,7 +100,7 @@ where type = 'Synonymy Updated\'
   and dealt_with = false
   and (data ->> 'treeId') :: NUMERIC :: BIGINT = :treeId
 ''', [treeId: tree.id]) { row ->
-            records.add(EventRecord.get(row.id))
+            records.add(EventRecord.get(row.id as Long))
         }
         return records
     }
@@ -156,12 +156,27 @@ WHERE tve1.tree_version_id = :treeVersionId
         return problems
     }
 
+    @SuppressWarnings("GrMethodMayBeStatic")
+    private sortCommonSynonyms(List<Map> commonSynonyms) {
+        for (Map result in commonSynonyms) {
+            String nameId = result.keySet().first()
+            result.elements = result.remove(nameId) as List<Map>
+            Name synonym = Name.get(nameId as Long)
+            result.commonSynonym = synonym
+            if (!synonym) {
+                log.error "No name found for ${result.keySet().first()}"
+                log.debug result
+            }
+        }
+        return commonSynonyms.sort { it.commonSynonym?.sortName }
+    }
+
     private static List<Map> checkVersionCommonSynonyms(Sql sql, TreeVersion treeVersion) {
         List<Map> problems = []
         sql.eachRow('''
 SELECT
-  tax_syn2 ->> 'simple_name'       AS common_synonym,
-  jsonb_build_object(tax_syn2 ->> 'simple_name',
+  (tax_syn2 ->> 'name_id')       AS common_synonym,
+  jsonb_build_object((tax_syn2 ->> 'name_id'),
                      jsonb_agg(jsonb_build_object('html',
                                                   '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>',
                                                   'name_link', e1.name_link,
@@ -195,7 +210,7 @@ order by common_synonym;
       ''', [treeVersionId: treeVersion.id]) { row ->
             String jsonString = row['names']
 
-            problems.add(JSON.parse(jsonString))
+            problems.add(JSON.parse(jsonString) as Map)
         }
         return problems
     }
