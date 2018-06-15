@@ -64,6 +64,7 @@ where tve.treeVersion = :version
     and ptve.treeVersion =:previousVersion
     and ptve.treeElement.nameId = tve.treeElement.nameId
     and tve.treeElement.id in :elementIds
+    order by tve.namePath
 ''', [version: second, previousVersion: first, elementIds: treeElementsNotInFirst])) as List<List<TreeVersionElement>>
     }
 
@@ -73,7 +74,7 @@ where tve.treeVersion = :version
             return []
         }
         return TreeVersionElement.executeQuery(
-                'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in :elementIds',
+                'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in :elementIds order by namePath',
                 [version: version, elementIds: elementIds]
         )
     }
@@ -114,6 +115,7 @@ SELECT
   e1.simple_name                                                        AS accepted_name,
   '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>' as accepted_html,
   tve1.element_link                                                     AS accepted_name_tve,
+  tve1.name_path                                                        AS accepted_name_path,
   e2.simple_name                                                        AS synonym_accepted_name,
   '<div class="tr">' || e2.display_html || e2.synonyms_html || '</div>' as synonym_accepted_html,
   tve2.element_link                                                     AS synonym_tve,
@@ -135,13 +137,15 @@ WHERE tve1.tree_version_id = :treeVersionId
       AND e2.excluded = FALSE
       AND e2.synonyms IS NOT NULL
       AND (tax_syn ->> 'name_id') :: NUMERIC :: BIGINT = e1.name_id
-      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*';
+      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
+order by accepted_name_path;
       ''', [treeVersionId: treeVersion.id]) { row ->
             Map record = [
                     accepted_name_id     : row.accepted_name_id,
                     accepted_name        : row.accepted_name,
                     accepted_html        : row.accepted_html,
                     accepted_name_tve    : row.accepted_name_tve,
+                    accepted_name_path   : row.accepted_name_path,
                     synonym_accepted_name: row.synonym_accepted_name,
                     synonym_accepted_html: row.synonym_accepted_html,
                     synonym_tve          : row.synonym_tve,
