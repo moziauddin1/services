@@ -9,6 +9,7 @@
       <g:each in="${data.payload?.synonymsOfAcceptedNames}" var="record">
         <tr class="titleRow">
           <td colspan="2">
+            <div class="smaller text-muted"><tree:prettyNamePath path="${record.accepted_name_path}"/></div>
             ${record.description}
           </td>
         </tr>
@@ -32,6 +33,7 @@
       <tree:commonSynonyms results="${data.payload?.commonSynonyms}">
         <tr class="titleRow">
           <td colspan="2">
+            <div class="smaller text-muted"><tree:prettyNamePath path="${namePath}"/></div>
             ${raw(synonym)} is a synonym in common for:
           </td>
         </tr>

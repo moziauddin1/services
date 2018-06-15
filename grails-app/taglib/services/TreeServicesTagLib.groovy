@@ -124,10 +124,10 @@ class TreeServicesTagLib {
                     log.debug "multiple common synonyms for ${result.commonSynonym}"
                     List<Map> commonSyns = names.groupBy { it.tree_link }.collect { it.value.first() }
                     for (int i = 1; i < commonSyns.size(); i++) {
-                        out << body(synonym: synonym.fullNameHtml, name1: commonSyns[0], name2: commonSyns[i])
+                        out << body(namePath: synonym.namePath, synonym: synonym.fullNameHtml, name1: commonSyns[0], name2: commonSyns[i])
                     }
                 } else {
-                    out << body(synonym: synonym.fullNameHtml, name1: names[0], name2: names[1])
+                    out << body(namePath: synonym.namePath, synonym: synonym.fullNameHtml, name1: names[0], name2: names[1])
                 }
             }
         }
@@ -184,6 +184,11 @@ class TreeServicesTagLib {
             }
         }
         out << body(pathA: a.join(' / '), pathB: b.join(' / '))
+    }
+
+    def prettyNamePath = { attrs ->
+        String path = attrs.path
+        out << path.split('/').join(' / ')
     }
 
     def children = { attrs ->
