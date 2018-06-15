@@ -168,7 +168,7 @@ WHERE tve1.tree_version_id = :treeVersionId
                 log.debug result
             }
         }
-        return commonSynonyms.sort { it.commonSynonym?.sortName }
+        return commonSynonyms.sort { it.commonSynonym?.namePath }
     }
 
     private static List<Map> checkVersionCommonSynonyms(Sql sql, TreeVersion treeVersion) {
