@@ -110,9 +110,9 @@ class TreeController extends BaseApiController {
         handleResults(results, { eventRespond(results, tree, embed) }) {
             List<EventRecord> eventRecords = treeReportService.treeEventRecords(tree)
             results.payload = eventRecords.findAll { it.type == EventRecordTypes.SYNONYMY_UPDATED }
-                                          .collect { treeReportService.synonymyUpdatedReport(it, tree) }.findAll {
-                it != null
-            }
+                                          .collect { treeReportService.synonymyUpdatedReport(it, tree) }
+                                          .findAll { it != null }
+                                          .sort { it.tve.namePath }
         }
     }
 

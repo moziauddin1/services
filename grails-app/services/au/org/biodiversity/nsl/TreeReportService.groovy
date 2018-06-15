@@ -264,7 +264,8 @@ order by common_synonym;
         sql.eachRow('''select tve.element_link, te.instance_link, te.instance_id from tree_element te
           join tree_version_element tve on te.id = tve.tree_element_id
         where tve.tree_version_id = :versionId 
-          and te.synonyms_html <> synonyms_as_html(te.instance_id);''', [versionId: treeVersion.id]) { row ->
+          and te.synonyms_html <> synonyms_as_html(te.instance_id)
+          order by tve.name_path;''', [versionId: treeVersion.id]) { row ->
             TaxonData taxonData = treeService.findInstanceByUri(row.instance_link as String)
             Map d = [
                     taxonData         : taxonData,
