@@ -81,9 +81,13 @@ SELECT
   'http://id.biodiversity.org.au/name/${namespace}/' || n.id                            AS "scientificNameID",
 
   nt.name                                                                       AS "nameType",
-  CASE WHEN te IS NULL
+  CASE WHEN (select te.excluded from tree_element te
+     JOIN tree_version_element tve ON te.id = tve.tree_element_id
+     JOIN tree ON tve.tree_version_id = tree.current_tree_version_id AND tree.accepted_tree = TRUE
+      where te.name_id = n.id
+    ) IS NULL
     THEN 'unplaced'
-  ELSE CASE WHEN te.excluded
+  ELSE CASE WHEN true
     THEN 'excluded'
        ELSE 'accepted'
        END
@@ -199,11 +203,6 @@ FROM name n
   JOIN instance_type bit ON bit.id = basionym_inst.instance_type_id AND bit.name = 'basionym'
   JOIN NAME basionym ON basionym.id = basionym_inst.name_id
     ON basionym_inst.cited_by_id = primary_inst.id
-
-
-  LEFT OUTER JOIN tree_element te ON n.id = te.name_id
-  JOIN tree_version_element tve ON te.id = tve.tree_element_id
-  JOIN tree ON tve.tree_version_id = tree.current_tree_version_id AND tree.accepted_tree = TRUE
   ,
   (SELECT DISTINCT name_path
    FROM tree_version_element tve
@@ -212,7 +211,7 @@ FROM name n
 WHERE exists(SELECT 1
              FROM instance
              WHERE name_id = n.id)
-ORDER BY tve.name_path, n.simple_name;
+ORDER BY n.sort_name;
 """
     }
 
