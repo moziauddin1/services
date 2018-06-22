@@ -112,7 +112,7 @@ class TreeController extends BaseApiController {
             results.payload = eventRecords.findAll { it.type == EventRecordTypes.SYNONYMY_UPDATED }
                                           .collect { treeReportService.synonymyUpdatedReport(it, tree) }
                                           .findAll { it != null }
-                                          .sort { it.tve.namePath }
+                                          .sort { it.treeVersionElement.namePath }
         }
     }
 
