@@ -64,6 +64,7 @@ where tve.treeVersion = :version
     and ptve.treeVersion =:previousVersion
     and ptve.treeElement.nameId = tve.treeElement.nameId
     and tve.treeElement.id in :elementIds
+    order by tve.namePath
 ''', [version: second, previousVersion: first, elementIds: treeElementsNotInFirst])) as List<List<TreeVersionElement>>
     }
 
@@ -73,7 +74,7 @@ where tve.treeVersion = :version
             return []
         }
         return TreeVersionElement.executeQuery(
-                'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in :elementIds',
+                'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in :elementIds order by namePath',
                 [version: version, elementIds: elementIds]
         )
     }
@@ -87,7 +88,7 @@ where tve.treeVersion = :version
         Map problems = [:]
 
         problems.synonymsOfAcceptedNames = checkVersionSynonyms(sql, treeVersion)
-        problems.commonSynonyms = checkVersionCommonSynonyms(sql, treeVersion)
+        problems.commonSynonyms = sortCommonSynonyms(checkVersionCommonSynonyms(sql, treeVersion))
         return problems
     }
 
@@ -100,7 +101,7 @@ where type = 'Synonymy Updated\'
   and dealt_with = false
   and (data ->> 'treeId') :: NUMERIC :: BIGINT = :treeId
 ''', [treeId: tree.id]) { row ->
-            records.add(EventRecord.get(row.id))
+            records.add(EventRecord.get(row.id as Long))
         }
         return records
     }
@@ -114,6 +115,7 @@ SELECT
   e1.simple_name                                                        AS accepted_name,
   '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>' as accepted_html,
   tve1.element_link                                                     AS accepted_name_tve,
+  tve1.name_path                                                        AS accepted_name_path,
   e2.simple_name                                                        AS synonym_accepted_name,
   '<div class="tr">' || e2.display_html || e2.synonyms_html || '</div>' as synonym_accepted_html,
   tve2.element_link                                                     AS synonym_tve,
@@ -135,13 +137,15 @@ WHERE tve1.tree_version_id = :treeVersionId
       AND e2.excluded = FALSE
       AND e2.synonyms IS NOT NULL
       AND (tax_syn ->> 'name_id') :: NUMERIC :: BIGINT = e1.name_id
-      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*';
+      AND tax_syn ->> 'type' !~ '.*(misapp|pro parte|common|vernacular).*'
+order by accepted_name_path;
       ''', [treeVersionId: treeVersion.id]) { row ->
             Map record = [
                     accepted_name_id     : row.accepted_name_id,
                     accepted_name        : row.accepted_name,
                     accepted_html        : row.accepted_html,
                     accepted_name_tve    : row.accepted_name_tve,
+                    accepted_name_path   : row.accepted_name_path,
                     synonym_accepted_name: row.synonym_accepted_name,
                     synonym_accepted_html: row.synonym_accepted_html,
                     synonym_tve          : row.synonym_tve,
@@ -156,12 +160,27 @@ WHERE tve1.tree_version_id = :treeVersionId
         return problems
     }
 
+    @SuppressWarnings("GrMethodMayBeStatic")
+    private sortCommonSynonyms(List<Map> commonSynonyms) {
+        for (Map result in commonSynonyms) {
+            String nameId = result.keySet().first()
+            result.elements = result.remove(nameId) as List<Map>
+            Name synonym = Name.get(nameId as Long)
+            result.commonSynonym = synonym
+            if (!synonym) {
+                log.error "No name found for ${result.keySet().first()}"
+                log.debug result
+            }
+        }
+        return commonSynonyms.sort { it.commonSynonym?.namePath }
+    }
+
     private static List<Map> checkVersionCommonSynonyms(Sql sql, TreeVersion treeVersion) {
         List<Map> problems = []
         sql.eachRow('''
 SELECT
-  tax_syn2 ->> 'simple_name'       AS common_synonym,
-  jsonb_build_object(tax_syn2 ->> 'simple_name',
+  (tax_syn2 ->> 'name_id')       AS common_synonym,
+  jsonb_build_object((tax_syn2 ->> 'name_id'),
                      jsonb_agg(jsonb_build_object('html',
                                                   '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>',
                                                   'name_link', e1.name_link,
@@ -195,7 +214,7 @@ order by common_synonym;
       ''', [treeVersionId: treeVersion.id]) { row ->
             String jsonString = row['names']
 
-            problems.add(JSON.parse(jsonString))
+            problems.add(JSON.parse(jsonString) as Map)
         }
         return problems
     }
@@ -245,7 +264,8 @@ order by common_synonym;
         sql.eachRow('''select tve.element_link, te.instance_link, te.instance_id from tree_element te
           join tree_version_element tve on te.id = tve.tree_element_id
         where tve.tree_version_id = :versionId 
-          and te.synonyms_html <> synonyms_as_html(te.instance_id);''', [versionId: treeVersion.id]) { row ->
+          and te.synonyms_html <> synonyms_as_html(te.instance_id)
+          order by tve.name_path;''', [versionId: treeVersion.id]) { row ->
             TaxonData taxonData = treeService.findInstanceByUri(row.instance_link as String)
             Map d = [
                     taxonData         : taxonData,

@@ -33,6 +33,7 @@ class DashboardController {
 
         Map stats = [:]
         stats.names = Name.count()
+        stats.namesWithInstances = Name.executeQuery("select count( n ) from Name n where exists (select 1 from Instance where name = n)").first()
         stats.references = Reference.count()
         stats.authors = Author.count()
         stats.instancesOfNameUsage = Instance.count()
