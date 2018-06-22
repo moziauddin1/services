@@ -1751,6 +1751,9 @@ and tve.element_link not in ($excludedLinks)
         } else {
             Map instanceDataMap = fetchInstanceData(instanceUri)
             if (instanceDataMap.success) {
+                List<Map> synonymsDataList = instanceDataMap.data.synonyms.list as List
+                instanceDataMap.data.synonyms = new Synonyms(synonymsDataList)
+                instanceDataMap.data.profile = (instanceDataMap.data.profile as Map)
                 instanceData = new TaxonData(instanceDataMap.data as Map)
             } else {
                 instanceData = null
@@ -1837,6 +1840,8 @@ class TaxonData {
     Boolean nomIlleg
     Boolean excluded
     Synonyms synonyms
+
+    TaxonData() {}
 
     Map asMap() {
         [
