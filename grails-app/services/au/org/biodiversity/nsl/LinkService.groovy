@@ -74,6 +74,7 @@ class LinkService {
 
     @Timed()
     String addTargetLink(target) {
+        //noinspection GroovyAssignabilityCheck
         String identity = new TargetParam(target, nameSpace()).addIdentityParamString()
         return addIdentifier(identity, target.toString())
     }
@@ -157,6 +158,7 @@ class LinkService {
         return postIt(sendData, url, action, result)
     }
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     Map bulkRemoveUris(List<String> targets) {
         String mapper = mapper(true)
         Map result = [success: true]
@@ -298,7 +300,6 @@ class LinkService {
     private static Object getDomainObjectFromIdentity(Map identity, String uri) {
 
         Long idNumber = identity.idNumber
-        Long versionNumber = identity.versionNumber
 
         switch (identity.objectType) {
             case 'name':
@@ -371,6 +372,7 @@ class LinkService {
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {
+        //noinspection GroovyAssignabilityCheck
         String identity = new TargetParam(target, nameSpace()).identityParamString()
         if (identity) {
             String mapper = mapper(internal)
@@ -442,9 +444,11 @@ class LinkService {
     }
 
     Map moveTargetLinks(Reference from, Reference to) {
+        evictAllCache(from)
+        evictAllCache(to)
         if (from && to) {
             Map paramsMap = new TargetParam(from, nameSpace()).paramMap('fromNameSpace', 'fromObjectType', 'fromIdNumber', 'fromVersionNumber') +
-                    new TargetParam(from, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
+                    new TargetParam(to, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
             moveTargetLinks(paramsMap)
         } else {
             return [success: false, errors: "Invalid targets $from, $to."]
@@ -452,9 +456,11 @@ class LinkService {
     }
 
     Map moveTargetLinks(Author from, Author to) {
+        evictAllCache(from)
+        evictAllCache(to)
         if (from && to) {
             Map paramsMap = new TargetParam(from, nameSpace()).paramMap('fromNameSpace', 'fromObjectType', 'fromIdNumber', 'fromVersionNumber') +
-                    new TargetParam(from, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
+                    new TargetParam(to, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
             moveTargetLinks(paramsMap)
         } else {
             return [success: false, errors: "Invalid targets $from, $to."]
@@ -462,9 +468,11 @@ class LinkService {
     }
 
     Map moveTargetLinks(Name from, Name to) {
+        evictAllCache(from)
+        evictAllCache(to)
         if (from && to) {
             Map paramsMap = new TargetParam(from, nameSpace()).paramMap('fromNameSpace', 'fromObjectType', 'fromIdNumber', 'fromVersionNumber') +
-                    new TargetParam(from, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
+                    new TargetParam(to, nameSpace()).paramMap('toNameSpace', 'toObjectType', 'toIdNumber', 'toVersionNumber')
             moveTargetLinks(paramsMap)
         } else {
             return [success: false, errors: "Invalid targets $from, $to."]
@@ -475,26 +483,24 @@ class LinkService {
         String mapper = mapper(true)
         Map result = [success: true]
         try {
-            evictAllCache(from)
-            evictAllCache(to)
 
             String url = "$mapper/admin/moveIdentity?${mapperAuth()}"
 
             restCallService.jsonPost(paramsMap, url,
                     { Map data ->
-                        log.debug "Moved $from to $to. Response: $data"
+                        log.debug "Moved $paramsMap. Response: $data"
                     },
                     { Map data, List errors ->
-                        log.error "Couldn't move $from to $to. Errors: $errors"
+                        log.error "Couldn't move $paramsMap. Errors: $errors"
                         result = [success: false, errors: errors]
                     },
                     { data ->
-                        log.error "Couldn't move $from to $to. Not found response: $data"
-                        result = [success: false, errors: ["Couldn't move $from to $to. Not found response: $data"]]
+                        log.error "Couldn't move $paramsMap. Not found response: $data"
+                        result = [success: false, errors: ["Couldn't move $paramsMap. Not found response: $data"]]
                     },
                     { data ->
-                        log.error "Couldn't move $from to $to. Response: $data"
-                        result = [success: false, errors: ["Couldn't move $from to $to. Response: $data"]]
+                        log.error "Couldn't move $paramsMap. Response: $data"
+                        result = [success: false, errors: ["Couldn't move $paramsMap. Response: $data"]]
                     }
             )
         } catch (RestCallException e) {
@@ -510,12 +516,14 @@ class LinkService {
         removeTargetLink(identity, uri)
     }
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     Map removeInstanceLink(Instance instance, String uri) {
         String identity = new TargetParam(instance, nameSpace()).identityParamString()
         evictAllCache(instance)
         removeTargetLink(identity, uri)
     }
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     Map removeReferenceLink(Reference reference, String uri) {
         String identity = new TargetParam(reference, nameSpace()).identityParamString()
         evictAllCache(reference)

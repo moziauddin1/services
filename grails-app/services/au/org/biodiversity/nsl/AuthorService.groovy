@@ -29,6 +29,7 @@ class AuthorService {
     def autoDeduplicate(String user) {
         runAsync {
             List<Author> authorsMarkedAsDuplicates = Author.findAllByDuplicateOfIsNotNull()
+            log.debug "duplicate authors: $authorsMarkedAsDuplicates"
             authorsMarkedAsDuplicates.each { Author author ->
                 dedup(author, author.duplicateOf, user)
             }
@@ -101,7 +102,9 @@ class AuthorService {
                     targetAuthor.duplicateOf = null
                     targetAuthor.save()
                 } catch (e) {
-                    result.error = "Deduplication failed: ($e.message)"
+                    result.error = "Author deduplication failed: ($e.message)"
+                    log.error(result.error)
+                    e.printStackTrace()
                     tx.setRollbackOnly()
                     success = false
                 }
