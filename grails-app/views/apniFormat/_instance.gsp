@@ -100,22 +100,24 @@
           </ul>
         </af:ifEverOnAcceptedTree>
 
-        <af:ifOnTree instance="${instance}" tve="${treeVersionElement}">
-          <ul class="instance-notes list-unstyled">
-            <af:treeComment tve="${treeVersionElement}">
-              <li>
-                <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
-                <tree-note>${raw(note.value)}</tree-note>
-              </li>
-            </af:treeComment>
-            <af:treeDistribution tve="${treeVersionElement}">
-              <li>
-                <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
-                <tree-note>${raw(note.value)}</tree-note>
-              </li>
-            </af:treeDistribution>
-          </ul>
-        </af:ifOnTree>
+        <g:if test="${!versionId}">
+          <af:ifOnTree instance="${instance}" tve="${treeVersionElement}">
+            <ul class="instance-notes list-unstyled">
+              <af:treeComment tve="${treeVersionElement}">
+                <li>
+                  <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeComment>
+              <af:treeDistribution tve="${treeVersionElement}">
+                <li>
+                  <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeDistribution>
+            </ul>
+          </af:ifOnTree>
+        </g:if>
 
         <af:ifNeverOnAcceptedTreeSet instance="${instance}" var="incApcNotes">
           <ul class="instance-notes list-unstyled">

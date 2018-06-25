@@ -344,6 +344,7 @@ class ApniFormatTagLib {
             if (treeElement && instance && treeElement.instance.id == instance.id) {
                 String link = g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: treeElement.name.id)
                 String tree = treeVersionElement.treeVersion.tree.name
+                Boolean previous = treeVersionElement.treeVersion.published && (treeVersionElement.treeVersion != treeVersionElement.treeVersion.tree.currentTreeVersion)
                 if (!treeVersionElement.treeVersion.published) {
                     tree += ": ${treeVersionElement.treeVersion.draftName}"
                 }
@@ -356,6 +357,9 @@ class ApniFormatTagLib {
                     out << """<apc title="$tree concept"><i class="fa fa-check"></i>${tree}</apc>""".toString()
                 }
                 out << "</a>"
+                if (previous) {
+                    out << "&nbsp;<span class=\"text-muted\">(version ${treeVersionElement.treeVersion.publishedAt.format('dd/MM/yyyy')})</span>"
+                }
             }
         }
     }
