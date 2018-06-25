@@ -364,4 +364,17 @@ class ApniFormatTagLib {
         }
     }
 
+    def legacyAPCInstanceNotes = { attrs, body ->
+        Instance instance = attrs.instance
+        Map notes = [:]
+        notes.comment = instance.instanceNotes.find { InstanceNote note ->
+            note.instanceNoteKey.name == 'APC Comment'
+        }
+        notes.dist = instance.instanceNotes.find { InstanceNote note ->
+            note.instanceNoteKey.name == 'APC Dist.'
+        }
+        if (notes.comment || notes.dist) {
+            out << body(notes: notes)
+        }
+    }
 }

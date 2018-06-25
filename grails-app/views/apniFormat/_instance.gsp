@@ -42,6 +42,10 @@
         </g:else>
         <g:render template="edit_profile" model="[tve: last]"/>
       </af:rangeOnAcceptedTree>
+      <af:legacyAPCInstanceNotes instance="${instance}">
+        <g:render template="edit_note" model="[notes: notes]"/>
+      </af:legacyAPCInstanceNotes>
+
 
       <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
       <instance data-instanceId="${instance.id}">

@@ -261,6 +261,10 @@ function clearDistribution(el) {
   $(el).parent().parent('form').find('[name="distribution"]').val('');
 }
 
+function clearValue(el) {
+  $(el).parent().parent('form').find('[name="value"]').val('');
+}
+
 function confirmDelete(el) {
   $(el).prop('disabled', true).next('div').show().focus();
   $(el).parent('form').find('[name="reason"]').val('Deleted, incorrect.');
