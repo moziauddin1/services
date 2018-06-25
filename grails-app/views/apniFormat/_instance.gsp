@@ -30,13 +30,13 @@
       <af:rangeOnAcceptedTree instance="${instance}">
         <g:if test="${current}">
           <a href="${last.fullElementLink()}" class="small text-info"
-             title="in current tree since ${first.treeVersion.publishedAt.dateString}">
+             title="in current tree since ${first.treeVersion.publishedAt.format('dd/MM/yyyy')}">
             <i class="fa fa-tree"></i>
           </a>
         </g:if>
         <g:else>
           <a href="${last.fullElementLink()}" class="small text-info"
-             title="previously published from ${first.treeVersion.publishedAt.dateString} to ${last.treeVersion.publishedAt.dateString}">
+             title="previously accepted till ${last.treeVersion.publishedAt.format('dd/MM/yyyy')}">
             <i class="fa fa-tree"></i>
           </a>
         </g:else>
