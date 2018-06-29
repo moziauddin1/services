@@ -102,7 +102,7 @@ class Synonyms {
     @Delegate
     final List<Synonym> synonyms = []
     Closure sortSyn = { a, b ->
-        a.simpleName <=> b.simpleName ?: a.year <=> b.year
+        a.simpleName <=> b.simpleName ?: a.year <=> b.year ?: a.instance.cites?.id <=> b.instance.cites?.id ?: a.nameId <=> b.nameId
     }
 
     Synonyms() {}

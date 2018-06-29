@@ -22,6 +22,7 @@ class TreeService implements ValidationUtils {
     def linkService
     def restCallService
     def treeReportService
+    def eventService
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)
 
     /**
@@ -615,6 +616,7 @@ DROP TABLE IF EXISTS orphans;
         )
         tree.addToTreeVersions(newVersion)
         tree.save(flush: true)
+        EventRecord event = eventService.createDraftTreeEvent([tree: tree.id, version: newVersion.id], userName)
 
         String link = linkService.addTargetLink(newVersion)
         log.debug "added TreeVersion link $link"
@@ -623,6 +625,7 @@ DROP TABLE IF EXISTS orphans;
             copyVersion(fromVersion, newVersion)
             newVersion.previousVersion = fromVersion
         }
+        eventService.dealWith(event)
         return newVersion
     }
 
@@ -1094,8 +1097,14 @@ INSERT INTO tree_version_element (tree_version_id,
 
         TreeElement foundElement = findTreeElement(taxonData)
         if (foundElement) {
-            log.debug "Reusing $foundElement"
-            return changeElement(treeVersionElement, foundElement, userName)
+            log.debug "Reusing $foundElement with $treeVersionElement.elementLink"
+            if (foundElement.id != treeVersionElement.treeElementId) {
+                return changeElement(treeVersionElement, foundElement, userName)
+            } else {
+                //nothing has actually changed
+                log.debug "No change to treeversion element detected, returning $treeVersionElement.elementLink."
+                return treeVersionElement
+            }
         }
 
         //if this is not a draft only element clone it. Note check relies on treeVersionElement not being published
@@ -1149,34 +1158,24 @@ INSERT INTO tree_version_element (tree_version_id,
         List<EventRecord> records = []
         sql.eachRow('''select id
 from event_record
-where type = 'Synonymy Updated'
+where type = :type
   and dealt_with = false
   and (data ->> 'treeId') = :treeId
   and (data ->> 'instanceId') = :instanceId
 order by updated_at desc 
-''', [instanceId: "${instance.id}".toString(), treeId: "${tree.id}".toString()]) { row ->
+''', [instanceId: "${instance.id}".toString(), treeId: "${tree.id}".toString(), type: EventRecordTypes.SYNONYMY_UPDATED]) { row ->
             records.add(EventRecord.get(row.id))
         }
         return records
     }
 
     private makeSynonymsUpdatedEventRecord(Tree tree, Instance instance, String userName) {
-        Timestamp now = new Timestamp(System.currentTimeMillis())
         Map data = [
                 treeId      : tree.id,
                 instanceId  : instance.id,
                 instanceLink: linkService.getPreferredLinkForObject(instance)
         ]
-        EventRecord event = new EventRecord(
-                type: EventRecordTypes.SYNONYMY_UPDATED,
-                dealtWith: false,
-                data: data,
-                createdAt: now,
-                createdBy: userName,
-                updatedAt: now,
-                updatedBy: userName
-        )
-        event.save()
+        eventService.createSynonymyUpdatedEvent(data, userName)
     }
 
     /**
@@ -1208,24 +1207,13 @@ order by updated_at desc
         }
     }
 
-    private
-    static makeAcceptedInstanceDeletedEventRecord(Tree tree, TreeVersionElement tve, Long instanceId, String userName) {
-        Timestamp now = new Timestamp(System.currentTimeMillis())
+    private makeAcceptedInstanceDeletedEventRecord(Tree tree, TreeVersionElement tve, Long instanceId, String userName) {
         Map data = [
                 treeId            : tree.id,
                 treeVersionElement: tve.elementLink,
                 instanceId        : instanceId
         ]
-        EventRecord event = new EventRecord(
-                type: EventRecordTypes.ACCEPTED_INSTANCE_DELETED,
-                dealtWith: false,
-                data: data,
-                createdAt: now,
-                createdBy: userName,
-                updatedAt: now,
-                updatedBy: userName
-        )
-        event.save()
+        eventService.createAcceptedInstanceDeletedEvent(data, userName)
     }
 
     /**
@@ -1733,7 +1721,7 @@ and tve.element_link not in ($excludedLinks)
         )
     }
 
-    private Synonyms getSynonyms(Instance instance) {
+    protected Synonyms getSynonyms(Instance instance) {
         Synonyms synonyms = new Synonyms()
         instance.instancesForCitedBy.each { Instance synonymInstance ->
             if (!synonymInstance.instanceType.unsourced) {
@@ -1741,6 +1729,17 @@ and tve.element_link not in ($excludedLinks)
             }
         }
         return synonyms
+    }
+
+    /**
+     * this is not meant to be used to set synonyms html but for testing.
+     * @param instance
+     * @param sql
+     * @return
+     */
+    protected String getSynonymsHtmlViaDBFunction(Long instanceId, Sql sql = getSql()) {
+        def row = sql.firstRow('''select synonyms_as_html(:instanceId) synonyms_html;''', [instanceId: instanceId])
+        return row.synonyms_html
     }
 
     protected TaxonData findInstanceByUri(String instanceUri) {
