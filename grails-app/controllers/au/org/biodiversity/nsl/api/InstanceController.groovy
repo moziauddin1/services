@@ -16,12 +16,13 @@
 
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.Instance
-import au.org.biodiversity.nsl.ObjectNotFoundException
-import au.org.biodiversity.nsl.TaxonData
+import au.org.biodiversity.nsl.*
 import grails.transaction.Transactional
 import org.apache.shiro.SecurityUtils
+import org.apache.shiro.authz.annotation.RequiresRoles
 import org.grails.plugins.metrics.groovy.Timed
+
+import java.sql.Timestamp
 
 import static org.springframework.http.HttpStatus.FORBIDDEN
 import static org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED
@@ -32,6 +33,7 @@ class InstanceController extends BaseApiController {
     def jsonRendererService
     def instanceService
     def treeService
+    def linkService
 
     @SuppressWarnings("GroovyUnusedDeclaration")
     static responseFormats = ['json', 'xml', 'html']
@@ -70,6 +72,29 @@ class InstanceController extends BaseApiController {
             } else {
                 throw new ObjectNotFoundException("Couldn't get data for $instance.")
             }
+        }
+    }
+
+
+    @RequiresRoles('treeBuilder')
+    def editInstanceNote(Long id, String value) {
+        InstanceNote note = InstanceNote.get(id)
+        String user = treeService.authorizeTreeBuilder()
+        if (note) {
+            Name name = note.instance.name
+            String nameLink = linkService.getPreferredLinkForObject(name) + "/api/apni-format"
+            if (value) {
+                note.value = value
+                note.updatedAt = new Timestamp(System.currentTimeMillis())
+                note.updatedBy = user
+                note.save()
+            } else {
+                log.warn "Deleting instance note $note.id: $note.instanceNoteKey.name: $note.value"
+                note.delete()
+            }
+            redirect(url: nameLink)
+        } else {
+            throw new ObjectNotFoundException("Couldn't get note with id $id.")
         }
     }
 }

@@ -30,18 +30,22 @@
       <af:rangeOnAcceptedTree instance="${instance}">
         <g:if test="${current}">
           <a href="${last.fullElementLink()}" class="small text-info"
-             title="in current tree since ${first.treeVersion.publishedAt.dateString}">
+             title="in current tree since ${first.treeVersion.publishedAt.format('dd/MM/yyyy')}">
             <i class="fa fa-tree"></i>
           </a>
         </g:if>
         <g:else>
           <a href="${last.fullElementLink()}" class="small text-info"
-             title="previously published from ${first.treeVersion.publishedAt.dateString} to ${last.treeVersion.publishedAt.dateString}">
+             title="previously accepted till ${last.treeVersion.publishedAt.format('dd/MM/yyyy')}">
             <i class="fa fa-tree"></i>
           </a>
         </g:else>
         <g:render template="edit_profile" model="[tve: last]"/>
       </af:rangeOnAcceptedTree>
+      <af:legacyAPCInstanceNotes instance="${instance}">
+        <g:render template="edit_note" model="[notes: notes]"/>
+      </af:legacyAPCInstanceNotes>
+
 
       <instance-type class="${instance?.instanceType?.name}">[${instance?.instanceType?.name}]</instance-type>
       <instance data-instanceId="${instance.id}">
@@ -100,22 +104,24 @@
           </ul>
         </af:ifEverOnAcceptedTree>
 
-        <af:ifOnTree instance="${instance}" tve="${treeVersionElement}">
-          <ul class="instance-notes list-unstyled">
-            <af:treeComment tve="${treeVersionElement}">
-              <li>
-                <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
-                <tree-note>${raw(note.value)}</tree-note>
-              </li>
-            </af:treeComment>
-            <af:treeDistribution tve="${treeVersionElement}">
-              <li>
-                <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
-                <tree-note>${raw(note.value)}</tree-note>
-              </li>
-            </af:treeDistribution>
-          </ul>
-        </af:ifOnTree>
+        <g:if test="${!versionId}">
+          <af:ifOnTree instance="${instance}" tve="${treeVersionElement}">
+            <ul class="instance-notes list-unstyled">
+              <af:treeComment tve="${treeVersionElement}">
+                <li>
+                  <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeComment>
+              <af:treeDistribution tve="${treeVersionElement}">
+                <li>
+                  <tree-note class="${treeVersionElement.treeVersion.tree.name} key">${note.name}:</tree-note>
+                  <tree-note>${raw(note.value)}</tree-note>
+                </li>
+              </af:treeDistribution>
+            </ul>
+          </af:ifOnTree>
+        </g:if>
 
         <af:ifNeverOnAcceptedTreeSet instance="${instance}" var="incApcNotes">
           <ul class="instance-notes list-unstyled">

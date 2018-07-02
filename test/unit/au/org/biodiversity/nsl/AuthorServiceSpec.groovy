@@ -8,9 +8,6 @@ import spock.lang.Specification
 
 import java.sql.Timestamp
 
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
-import static org.springframework.http.HttpStatus.OK
-
 /**
  * See the API for {@link grails.test.mixin.support.GrailsUnitTestMixin} for usage instructions
  */
@@ -49,7 +46,7 @@ class AuthorServiceSpec extends Specification {
         result.success == false
         Author.get(dupId)
         Author.get(targetId)
-        result.error == 'Deduplication failed: (relinking [Author 2: Duplicate Author] failed. Linker error: (It was meant to fail))'
+        result.error == 'Author deduplication failed: (relinking [Author 2: Duplicate Author] failed. Linker error: (It was meant to fail))'
 
         when: "link service works"
         def linkServiceMock = mockFor(LinkService)

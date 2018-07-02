@@ -4,6 +4,7 @@ import grails.test.mixin.TestFor
 import grails.validation.ValidationException
 import org.hibernate.engine.spi.Status
 import spock.lang.Specification
+import spock.lang.Unroll
 
 import javax.sql.DataSource
 import java.sql.Timestamp
@@ -21,10 +22,14 @@ class TreeServiceSpec extends Specification {
         service.dataSource_nsl = dataSource_nsl
         service.configService = new ConfigService(grailsApplication: grailsApplication)
         service.linkService = Mock(LinkService)
+        service.eventService = Mock(EventService)
         service.treeReportService = new TreeReportService()
         service.treeReportService.transactionManager = getTransactionManager()
         service.treeReportService.dataSource_nsl = dataSource_nsl
         service.linkService.getPreferredHost() >> 'http://localhost:7070/nsl-mapper'
+        service.eventService.createDraftTreeEvent(_, _) >> { data, user ->
+            return new EventRecord(data: data, dealtWith: false, updatedBy: user, createdBy: user)
+        }
     }
 
     def cleanup() {
@@ -141,7 +146,6 @@ class TreeServiceSpec extends Specification {
         given:
         Tree tree = makeATestTree()
         service.linkService.bulkAddTargets(_) >> [success: true]
-
         expect:
         tree
 
@@ -1224,6 +1228,39 @@ class TreeServiceSpec extends Specification {
         then:
         found2
         found2.id == doodiaDissecta.id
+    }
+
+    @Unroll("test repeat #i")
+    def "test db synonymy against app synonymy"() {
+        given:
+        TreeElement physalisHederifolia = TreeElement.findBySimpleName('Physalis hederifolia')
+        TreeElement abrotanellaScapigera = TreeElement.findBySimpleName('Abrotanella scapigera')
+
+        expect:
+        physalisHederifolia
+        abrotanellaScapigera
+
+        when: "we generate the synonyms html for physalis"
+        String physalisSynonymsDb = service.getSynonymsHtmlViaDBFunction(physalisHederifolia.instanceId)
+        String physalisSynonymsHtml = service.getSynonyms(physalisHederifolia.instance).html()
+
+        then: "we get them and they are equal"
+        physalisSynonymsDb
+        physalisSynonymsHtml
+        physalisSynonymsDb == physalisSynonymsHtml
+
+        when: "we generate the synonyms html for abrotanella"
+        String abrotanellaSynonymsDb = service.getSynonymsHtmlViaDBFunction(abrotanellaScapigera.instanceId)
+        String abrotanellaSynonymsHtml = service.getSynonyms(abrotanellaScapigera.instance).html()
+
+        then: "we get them and they are equal"
+        abrotanellaSynonymsDb
+        abrotanellaSynonymsHtml
+        abrotanellaSynonymsDb == abrotanellaSynonymsHtml
+
+        where:
+
+        i << (1..10)
     }
 
     static deleted(domainObject) {

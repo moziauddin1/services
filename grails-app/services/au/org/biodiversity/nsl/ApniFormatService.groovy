@@ -30,7 +30,7 @@ class ApniFormatService {
             version = treeService.getTree(configService.classificationTreeName)?.currentTreeVersion
         }
         Name familyName = name.family
-        TreeVersionElement treeVersionElement = version ? treeService.findElementForName(name, version) : null
+        TreeVersionElement treeVersionElement = (version ? treeService.findElementForName(name, version) : null)
         String link = linkService.getPreferredLinkForObject(name)
         Map model = [name: name, treeVersionElement: treeVersionElement, familyName: familyName, preferredNameLink: link]
         model.putAll(nameReferenceInstanceMap(name, draftInst) as Map)

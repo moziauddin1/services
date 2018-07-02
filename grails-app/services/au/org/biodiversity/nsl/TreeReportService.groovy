@@ -13,6 +13,7 @@ class TreeReportService implements ValidationUtils {
     DataSource dataSource_nsl
 
     def treeService
+    def eventService
 
     /**
      * create a difference between the first and second version. Normally the first version would be the currently
@@ -92,15 +93,15 @@ where tve.treeVersion = :version
         return problems
     }
 
-    List<EventRecord> treeEventRecords(Tree tree) {
+    List<EventRecord> currentSynonymyUpdatedEventRecords(Tree tree) {
         Sql sql = getSql()
         List<EventRecord> records = []
         sql.eachRow('''select id
 from event_record
-where type = 'Synonymy Updated\'
+where type = :type
   and dealt_with = false
   and (data ->> 'treeId') :: NUMERIC :: BIGINT = :treeId
-''', [treeId: tree.id]) { row ->
+''', [treeId: tree.id, type: EventRecordTypes.SYNONYMY_UPDATED]) { row ->
             records.add(EventRecord.get(row.id as Long))
         }
         return records
@@ -246,7 +247,7 @@ order by common_synonym;
                         updatedAt         : event.updatedAt
                 ]
             } else {
-                event.dealtWith = true //synonymy is now the same so mark it as done
+                eventService.dealWith(event) //synonymy is now the same so mark it as done
             }
         }
         return null

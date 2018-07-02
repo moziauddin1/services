@@ -1,7 +1,6 @@
 package au.org.biodiversity.nsl.api
 
 import au.org.biodiversity.nsl.EventRecord
-import au.org.biodiversity.nsl.EventRecordTypes
 import au.org.biodiversity.nsl.Tree
 import au.org.biodiversity.nsl.TreeVersion
 
@@ -108,9 +107,8 @@ class TreeController extends BaseApiController {
         Tree tree = Tree.get(treeId)
         ResultObject results = requireTarget(tree, "No Tree with id: $treeId found")
         handleResults(results, { eventRespond(results, tree, embed) }) {
-            List<EventRecord> eventRecords = treeReportService.treeEventRecords(tree)
-            results.payload = eventRecords.findAll { it.type == EventRecordTypes.SYNONYMY_UPDATED }
-                                          .collect { treeReportService.synonymyUpdatedReport(it, tree) }
+            List<EventRecord> eventRecords = treeReportService.currentSynonymyUpdatedEventRecords(tree)
+            results.payload = eventRecords.collect { treeReportService.synonymyUpdatedReport(it, tree) }
                                           .findAll { it != null }
                                           .sort { it.treeVersionElement.namePath }
         }

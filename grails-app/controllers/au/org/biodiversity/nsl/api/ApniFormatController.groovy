@@ -63,12 +63,13 @@ class ApniFormatController {
             }
 
             apniFormatService.getNameModel(name, TreeVersion.get(versionId), drafts) << [
-                    drafts: drafts,
-                    query : [name: "$name.fullName", product: configService.nameTreeName, inc: params.inc],
-                    stats : [:],
-                    names : [name],
-                    photo : photoSearch,
-                    count : 1, max: 100]
+                    drafts   : drafts,
+                    versionId: versionId,
+                    query    : [name: "$name.fullName", product: configService.nameTreeName, inc: params.inc],
+                    stats    : [:],
+                    names    : [name],
+                    photo    : photoSearch,
+                    count    : 1, max: 100]
         } else {
             flash.message = "Name not found."
             redirect(action: 'search')
@@ -84,7 +85,9 @@ class ApniFormatController {
             if (RankUtils.nameAtRankOrLower(name, 'Species') && photoService.hasPhoto(name.simpleName)) {
                 photoSearch = photoService.searchUrl(name.simpleName)
             }
-            model << [drafts: drafts, photo: photoSearch]
+            model << [drafts   : drafts,
+                      versionId: versionId,
+                      photo    : photoSearch]
             render(view: '_name', model: model)
         } else {
             render(status: 404, text: 'Name not found.')
