@@ -61,15 +61,12 @@
                       ${raw(diffB)}
                     </div>
                   </div>
-
-                  <shiro:hasRole name="treebuilder">
                     <div class="form-inline" style="float:right">
                       <label>Select
                         <input type="checkbox" name="instances" class="form-control" value="${report.instanceId}"
                                checked="checked"/>
                       </label>
                     </div>
-                  </shiro:hasRole>
                 </td>
               </tr>
             </tree:diffSynonyms>
