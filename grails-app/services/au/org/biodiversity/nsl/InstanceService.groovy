@@ -88,7 +88,14 @@ class InstanceService {
             errors << 'You need to supply a reason for deleting this instance.'
         }
         if (treeService.isInstanceInAnyTree(instance)) {
-            errors << "This instance is in APC."
+            List<String> trees = treeService.findTreesByInstance(instance).collect { tree ->
+                TreeVersionElement firstPublished = treeService.firstPublished(instance, tree)
+                TreeVersionElement last = treeService.lastAnyVersion(instance, tree)
+                String since = firstPublished?.updatedAt?.format('dd/MM/yyyy')
+                String till = last.treeVersion.published ? last.treeVersion.publishedAt.format('dd/MM/yyyy') : "Draft: $last.treeVersion.draftName"
+                "$tree.name: ${since ?: 'unpublished'} -> $till"
+            }
+            errors << "This instance is in ${trees.join(', ')}."
         }
         if (instance.instancesForCites) {
             errors << "There are ${instance.instancesForCites.size()} instances that cite this."
