@@ -37,26 +37,32 @@ WHERE action_tstamp_tx > :from
     Map report(Timestamp from, Timestamp to, List<String> things = ['name', 'author', 'reference', 'instance']) {
         Map userReport = [:]
         withSql { Sql sql ->
-            things.each { String thing ->
-                String query = "select count(t) as count, t.created_by as uname from $thing t where created_at > :from and created_at < :to group by created_by"
-                sql.eachRow(query, [from: from, to: to]) { GroovyResultSet row ->
-                    log.debug row
-                    userReport.get(row.uname, defaultUserThingReport(things)).get(thing).created = row.count
-                }
-                String q2 = "select count(t) as count, t.updated_by as uname from $thing t where updated_at > :from and updated_at < :to group by updated_by"
-                sql.eachRow(q2, [from: from, to: to]) { GroovyResultSet row ->
-                    log.debug row
-                    userReport.get(row.uname, defaultUserThingReport(things)).get(thing).updated = row.count
-                }
-                String q3 = """SELECT count(event_id) as count, row_data -> 'updated_by' as uname FROM audit.logged_actions
+            sql.withTransaction {
+                sql.execute("set local work_mem to '20MB'")
+                things.each { String thing ->
+                    //created
+                    String query = "select count(t) as count, t.created_by as uname from $thing t where created_at > :from and created_at < :to group by created_by"
+                    sql.eachRow(query, [from: from, to: to]) { GroovyResultSet row ->
+                        log.debug row
+                        userReport.get(row.uname, defaultUserThingReport(things)).get(thing).created = row.count
+                    }
+                    //updated
+                    String q2 = "select count(t) as count, t.updated_by as uname from $thing t where updated_at > :from and updated_at < :to group by updated_by"
+                    sql.eachRow(q2, [from: from, to: to]) { GroovyResultSet row ->
+                        log.debug row
+                        userReport.get(row.uname, defaultUserThingReport(things)).get(thing).updated = row.count
+                    }
+                    //deleted
+                    String q3 = """SELECT count(event_id) as count, row_data -> 'updated_by' as uname FROM audit.logged_actions
                 WHERE action_tstamp_tx > :from
                 AND action_tstamp_tx < :to
                 AND action = 'D'
                 AND table_name = '$thing'
                 group by row_data -> 'updated_by'"""
-                sql.eachRow(q3, [from: from, to: to]) { GroovyResultSet row ->
-                    log.debug row
-                    userReport.get(row.uname, defaultUserThingReport(things)).get(thing).deleted = row.count
+                    sql.eachRow(q3, [from: from, to: to]) { GroovyResultSet row ->
+                        log.debug row
+                        userReport.get(row.uname, defaultUserThingReport(things)).get(thing).deleted = row.count
+                    }
                 }
             }
         }
