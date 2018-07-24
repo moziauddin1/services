@@ -34,7 +34,7 @@ class NameConstructionUtils {
 
     static Name firstMajorRankedParent(Name name) {
         int count = 5
-        while (count-- > 0) {
+        while (name && name.parent && count-- > 0) {
             if (name.parent.nameRank.name != '[unranked]' && name.parent.nameRank.major) {
                 return name.parent
             }
