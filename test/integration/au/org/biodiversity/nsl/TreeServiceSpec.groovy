@@ -1235,10 +1235,14 @@ class TreeServiceSpec extends Specification {
         given:
         TreeElement physalisHederifolia = TreeElement.findBySimpleName('Physalis hederifolia')
         TreeElement abrotanellaScapigera = TreeElement.findBySimpleName('Abrotanella scapigera')
+        TreeElement hibbertiaHirticalyx = TreeElement.findBySimpleName('Hibbertia hirticalyx')
+        TreeElement cardamineLilacina = TreeElement.findBySimpleName('Cardamine lilacina')
 
         expect:
         physalisHederifolia
         abrotanellaScapigera
+        hibbertiaHirticalyx
+        cardamineLilacina
 
         when: "we generate the synonyms html for physalis"
         String physalisSynonymsDb = service.getSynonymsHtmlViaDBFunction(physalisHederifolia.instanceId)
@@ -1257,6 +1261,24 @@ class TreeServiceSpec extends Specification {
         abrotanellaSynonymsDb
         abrotanellaSynonymsHtml
         abrotanellaSynonymsDb == abrotanellaSynonymsHtml
+
+        when: "we generate the synonyms html for hibbertia"
+        String hibbertiaSynonymsDb = service.getSynonymsHtmlViaDBFunction(hibbertiaHirticalyx.instanceId)
+        String hibbertiaSynonymsHtml = service.getSynonyms(hibbertiaHirticalyx.instance).html()
+
+        then: "we get them and they are equal"
+        hibbertiaSynonymsDb
+        hibbertiaSynonymsHtml
+        hibbertiaSynonymsDb == hibbertiaSynonymsHtml
+
+        when: "we generate the synonyms html for cardamine"
+        String cardamineSynonymsDb = service.getSynonymsHtmlViaDBFunction(cardamineLilacina.instanceId)
+        String cardamineSynonymsHtml = service.getSynonyms(cardamineLilacina.instance).html()
+
+        then: "we get them and they are equal"
+        cardamineSynonymsDb
+        cardamineSynonymsHtml
+        cardamineSynonymsDb == cardamineSynonymsHtml
 
         where:
 
