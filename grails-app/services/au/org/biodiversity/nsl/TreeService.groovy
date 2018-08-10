@@ -1764,12 +1764,17 @@ and tve.element_link not in ($excludedLinks)
         )
     }
 
-    protected Synonyms getSynonyms(Instance instance) {
+    /**
+     * Gets the synonyms of an instance in apni output order
+     * @param instance
+     * @param sql
+     * @return
+     */
+    protected Synonyms getSynonyms(Instance instance, Sql sql = getSql()) {
         Synonyms synonyms = new Synonyms()
-        instance.instancesForCitedBy.each { Instance synonymInstance ->
-            if (!synonymInstance.instanceType.unsourced) {
-                synonyms.add(new Synonym(synonymInstance, linkService))
-            }
+        sql.eachRow('''select * from apni_ordered_synonymy(:instanceId);''', [instanceId: instance.id]) { row ->
+            Long instanceId = row.instance_id
+            synonyms << new Synonym(Instance.get(instanceId), linkService)
         }
         return synonyms
     }

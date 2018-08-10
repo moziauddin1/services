@@ -24,6 +24,12 @@ class Synonym {
     final Long year
 
     Synonym(Instance synonymInstance, LinkService linkService) {
+        if (!synonymInstance) {
+            throw new NullPointerException('You can create a Synonym with a null synonym Instance')
+        }
+        if (!linkService) {
+            throw new NullPointerException('linService is null.')
+        }
         host = linkService.getPreferredHost()
         nameLink = linkService.getPreferredLinkForObject(synonymInstance.name) ?: '' - host
         instanceLink = linkService.getPreferredLinkForObject(synonymInstance) ?: '' - host
@@ -59,6 +65,7 @@ class Synonym {
         nom = synonymMap.nom as Boolean
         tax = synonymMap.tax as Boolean
         mis = synonymMap.mis as Boolean
+        syn = synonymMap.syn as Boolean
         cites = synonymMap.cites as String
     }
 
@@ -101,9 +108,6 @@ class Synonym {
 class Synonyms {
     @Delegate
     final List<Synonym> synonyms = []
-    Closure sortSyn = { a, b ->
-        a.simpleName <=> b.simpleName ?: a.year <=> b.year ?: a.instance.cites?.id <=> b.instance.cites?.id ?: a.nameId <=> b.nameId
-    }
 
     Synonyms() {}
 
@@ -123,29 +127,11 @@ class Synonyms {
         [list: (synonyms.collect { it.asMap() } ?: [])]
     }
 
-    List<Synonym> nomSynonyms() {
-        synonyms.findAll { it.nom }.sort(sortSyn)
-    }
-
-    List<Synonym> taxSynonyms() {
-        synonyms.findAll { it.tax }.sort(sortSyn)
-    }
-
-    List<Synonym> misSynonyms() {
-        synonyms.findAll { it.mis }.sort(sortSyn)
-    }
-
-    List<Synonym> otherSynonyms() {
-        synonyms.findAll { !it.nom && !it.tax && !it.mis }.sort(sortSyn)
-    }
-
-
+    /**
+     * Synonyms should be added in order, so just use the order of the synonyms provided
+     * @return
+     */
     String html() {
-        "<synonyms>" +
-                "${nomSynonyms().collect { it.html() }.join('')}" +
-                "${taxSynonyms().collect { it.html() }.join('')}" +
-                "${misSynonyms().collect { it.html() }.join('')}" +
-                "${otherSynonyms().collect { it.html() }.join('')}" +
-                "</synonyms>"
+        "<synonyms>${synonyms.collect { it.html() }.join('')}</synonyms>"
     }
 }

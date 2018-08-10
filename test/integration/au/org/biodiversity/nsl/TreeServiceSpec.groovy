@@ -1265,6 +1265,8 @@ class TreeServiceSpec extends Specification {
         when: "we generate the synonyms html for hibbertia"
         String hibbertiaSynonymsDb = service.getSynonymsHtmlViaDBFunction(hibbertiaHirticalyx.instanceId)
         String hibbertiaSynonymsHtml = service.getSynonyms(hibbertiaHirticalyx.instance).html()
+        println hibbertiaSynonymsDb
+        println hibbertiaSynonymsHtml
 
         then: "we get them and they are equal"
         hibbertiaSynonymsDb
