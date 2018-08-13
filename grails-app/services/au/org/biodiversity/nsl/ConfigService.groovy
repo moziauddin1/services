@@ -116,6 +116,15 @@ class ConfigService {
         return getShardConfigOrfail("$productName description")
     }
 
+    /**
+     * used next to banner text when a product is defined. See _service_navigation.gsp
+     * @param productName
+     * @return label text
+     */
+    String getProductLabel(String productName) {
+        return getShardConfigOrfail("$productName label")
+    }
+
     String getPhotoServiceUri() {
         if(grailsApplication.config?.services?.photoService?.url) {
             return grailsApplication.config.services.photoService.url

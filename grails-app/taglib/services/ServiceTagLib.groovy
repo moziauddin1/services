@@ -300,12 +300,10 @@ class ServiceTagLib {
         out << configService.getNameTreeName()
     }
 
-    def productBrief = { attrs ->
-        Tree arrangement = Tree.findByName(attrs.product)
-        if (arrangement) {
-            out << arrangement.descriptionHtml
-        } else {
-            out << ''
+    def productLabel = { attrs, body ->
+        String product = attrs.product
+        if (product) {
+            out << body(label: configService.getProductLabel(product))
         }
     }
 
