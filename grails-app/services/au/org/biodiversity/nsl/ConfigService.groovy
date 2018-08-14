@@ -161,7 +161,7 @@ class ConfigService {
     }
 
     String getServerUrl() {
-        if (grailsApplication.config?.grails.serverURL) {
+        if (grailsApplication.config?.grails?.serverURL) {
             return grailsApplication.config.grails.serverURL
         }
         throw new Exception("Config error. Add serverURL.")

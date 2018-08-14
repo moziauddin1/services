@@ -35,29 +35,46 @@ class SearchController implements RequestUtil {
         max = max ?: 100
         List<Tree> trees = Tree.list()
 
-        if (!params.product && !SecurityUtils.subject?.authenticated) {
-            params.product = configService.nameTreeName
-            params.display = params.display ?: 'apni'
+        String lowerProductName = (params.product as String)?.toLowerCase()
+        String defaultProduct = configService.nameTreeName
+
+        Map validProducts = [:]
+        validProducts.put(defaultProduct.toLowerCase(), defaultProduct)
+        Tree.list().each { Tree t ->
+            validProducts.put(t.name.toLowerCase(), t.name)
         }
 
-        Boolean treeSearch = params.product && params.product != configService.nameTreeName
+        Boolean knownProduct = validProducts.keySet().contains(lowerProductName)
 
-        if (treeSearch) {
-            Tree tree = Tree.findByNameIlike(params.product as String)
-            if (tree) {
-                params.product = tree.name //force to the correct case for a product label
-                params.tree = [id: tree.id]
-                params.display = 'apc'
-            } else {
-                flash.message = "Unknown product ${params.product}"
-                return redirect(url: '/search')
+        if (knownProduct) {
+            params.product = validProducts[lowerProductName] //preserve case ??
+        } else {
+            if (!SecurityUtils.subject?.authenticated) {
+                params.product = defaultProduct
+                params.display = params.display ?: 'apni'
+            }
+        }
+        String productName = params.product
+
+        Tree tree = determineTree(params.tree?.id ?: productName)
+
+        if (tree) {
+            params.tree = [id: tree.id]
+            params.display = 'apc'
+            if (productName != tree.name && !SecurityUtils.subject?.authenticated) {
+                params.product = tree.name
             }
         } else {
-            params.display = params.display ?: 'apni'
+            params.remove('tree.id')
+            params.remove('tree')
         }
 
-
         Map incMap = searchService.checked(params, 'inc')
+
+        //cater for searches that dont use the form
+        if (params.name && params.search != 'true' && params.advanced != 'true' && params.nameCheck != 'true') {
+            params.search = 'true'
+        }
 
         if (incMap.isEmpty() && params.search != 'true' && params.advanced != 'true' && params.nameCheck != 'true') {
             String inc = g.cookie(name: 'searchInclude')
@@ -97,7 +114,7 @@ class SearchController implements RequestUtil {
                     return render(view: 'search',
                             model: [names         : models,
                                     query         : params,
-                                    treeSearch    : treeSearch,
+                                    treeSearch    : tree != null,
                                     count         : results.count,
                                     total         : results.total,
                                     queryTime     : results.queryTime,
@@ -159,9 +176,17 @@ class SearchController implements RequestUtil {
 
             return [query: params, max: max, displayFormats: displayFormats, uriPrefixes: uriPrefixes, stats: [:]]
         }
-        return [query: params, max: max, displayFormats: displayFormats, treeSearch: treeSearch, trees: trees]
+        return [query: params, max: max, displayFormats: displayFormats, treeSearch: tree != null, trees: trees]
 
     }
+
+    private static Tree determineTree(String treeId) {
+        if (treeId.isLong()) {
+            return Tree.get(treeId as Long)
+        }
+        Tree.findByNameIlike(treeId)
+    }
+
 
     def searchForm() {
         if (!params.product && !SecurityUtils.subject?.authenticated) {
