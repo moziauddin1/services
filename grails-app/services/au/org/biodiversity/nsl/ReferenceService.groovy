@@ -525,6 +525,8 @@ class ReferenceService {
             if (reference.citationHtml != citationHtml) {
                 reference.citationHtml = citationHtml
                 reference.citation = NameConstructionService.stripMarkUp(citationHtml)
+                reference.updatedBy = author.updatedBy
+                reference.updatedAt = new Timestamp(System.currentTimeMillis())
                 reference.save()
                 log.debug "saved $reference.citationHtml"
             } else {

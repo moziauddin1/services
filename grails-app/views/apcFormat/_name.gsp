@@ -68,7 +68,7 @@
                                                                class="fa fa-book"></i></st:preferredLink>
               <name-status class="${name.nameStatus.name}">${name.nameStatus.name}</name-status>
             </g:else>
-            <g:if test="${synonym.instanceType.proParte}">, p.p.</g:if>
+            <g:if test="${synonym.instanceType.proParte}">blah, p.p.</g:if>
             =
             <accepted-name title='Accepted name'>
               <st:preferredLink target="${synonym.citedBy.name}"
@@ -103,7 +103,7 @@
               auct. non <af:author name="${synonym.name}"/>:
 
               <g:if
-                  test="${!synonym.instanceType.unsourced}">sensu ${raw(synonym.cites?.reference?.citationHtml)}</g:if>
+                  test="${!synonym.instanceType.unsourced}">sensu ${raw(synonym.cites?.reference?.citationHtml)}: ${synonym.cites?.page ?: '-'}</g:if>
             </span>
           </g:if>
           <g:else>
@@ -112,7 +112,9 @@
                                                                      class="fa fa-book"></i></st:preferredLink>
             <name-status class="${name.nameStatus.name}">${name.nameStatus.name}</name-status>
           </g:else>
-          <g:if test="${synonym.instanceType.proParte}">, p.p.</g:if>
+          <g:if test="${synonym.instanceType.proParte}">
+            <g:if test="${synonym.instanceType.unsourced}">p.p.</g:if><g:else>, p.p.</g:else>
+          </g:if>
           =
           <accepted-name title='Accepted name'>
             <st:preferredLink target="${synonym.citedBy.name}"

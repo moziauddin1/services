@@ -44,6 +44,20 @@ class TreeServicesTagLib {
         }
     }
 
+    def diffProfiles = { attrs, body ->
+        Map profileA = attrs.a ?: [:]
+        Map profileB = attrs.b ?: [:]
+        List<String> allKeys = (profileA.keySet() + profileB.keySet()).sort() as List<String>
+        allKeys.each { String key ->
+            String valueA = profileA[key]?.value
+            String valueB = profileB[key]?.value
+
+            TextDiff diffForward = new TextDiff(valueA, valueB)
+            TextDiff diffBackward = new TextDiff(valueB, valueA)
+            out << body(key: key, diffA: diffBackward.diffHtml('span', 'missing'), diffB: diffForward.diffHtml('span', 'added'))
+        }
+    }
+
     def profile = { attrs ->
         Map profileData = attrs.profile
         if (profileData) {

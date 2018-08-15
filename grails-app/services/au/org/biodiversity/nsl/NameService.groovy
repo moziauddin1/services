@@ -21,6 +21,8 @@ import org.apache.shiro.grails.annotations.RoleRequired
 import org.quartz.Scheduler
 import org.springframework.transaction.TransactionStatus
 
+import java.sql.Timestamp
+
 @Transactional
 class NameService {
 
@@ -161,25 +163,31 @@ class NameService {
         seen.add(note.id)
 
         author.namesForAuthor.each { Name name ->
-            updateFullName(name)
+            updateFullName(name, author.updatedBy)
+            log.debug "Author change updated name of $name.fullName ($name.id)"
         }
         author.namesForExAuthor.each { Name name ->
-            updateFullName(name)
+            updateFullName(name, author.updatedBy)
+            log.debug "Author change updated name of $name.fullName ($name.id)"
         }
         author.namesForBaseAuthor.each { Name name ->
-            updateFullName(name)
+            updateFullName(name, author.updatedBy)
+            log.debug "Author change updated name of $name.fullName ($name.id)"
         }
         author.namesForExBaseAuthor.each { Name name ->
-            updateFullName(name)
+            updateFullName(name, author.updatedBy)
+            log.debug "Author change updated name of $name.fullName ($name.id)"
         }
     }
 
-    private void updateFullName(Name name) {
+    private void updateFullName(Name name, String updatedBy) {
         Map fullNameMap = nameConstructionService.constructName(name)
         name.fullNameHtml = fullNameMap.fullMarkedUpName
         name.simpleNameHtml = fullNameMap.simpleMarkedUpName
         name.simpleName = nameConstructionService.stripMarkUp(fullNameMap.simpleMarkedUpName)
         name.fullName = nameConstructionService.stripMarkUp(fullNameMap.fullMarkedUpName)
+        name.updatedBy = updatedBy
+        name.updatedAt = new Timestamp(System.currentTimeMillis())
         name.save()
     }
 

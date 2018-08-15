@@ -82,14 +82,21 @@
               </td>
             </tr>
           </tree:diffSynonyms>
-          <tr class="noTop">
-            <td class="diffBefore">
-              <tree:profile profile="${mod[1].treeElement.profile}"/>
-            </td>
-            <td class="diffAfter">
-              <tree:profile profile="${mod[0].treeElement.profile}"/>
-            </td>
-          </tr>
+          <tree:diffProfiles a="${mod[1].treeElement.profile}"
+                             b="${mod[0].treeElement.profile}">
+            <tr class="noTop">
+              <td class="diffBefore">
+                <dl class="dl-horizontal">
+                  <dt>${key}</dt><dd>${raw(diffA)}</dd>
+                </dl>
+              </td>
+              <td class="diffAfter">
+                <dl class="dl-horizontal">
+                  <dt>${key}</dt><dd>${raw(diffB)}</dd>
+                </dl>
+              </td>
+            </tr>
+          </tree:diffProfiles>
         </g:each>
       </table>
     </g:if>

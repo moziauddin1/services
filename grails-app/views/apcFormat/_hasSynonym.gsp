@@ -29,12 +29,12 @@
       </g:else>
 
       <g:if test="${synonym.cites}">
-        ${raw(synonym.cites.reference.citationHtml)}<g:if
-          test="${synonym.instanceType.proParte}">, p.p.</g:if>: ${synonym?.cites?.page ?: '-'}
+        ${raw(synonym.cites.reference.citationHtml)}: ${synonym?.cites?.page ?: '-'}<g:if
+          test="${synonym.instanceType.proParte}">, p.p.</g:if>
       </g:if>
       <g:else>
       %{--unsourced reference--}%
-        <g:if test="${synonym.instanceType.proParte}">, p.p.</g:if>
+        <g:if test="${synonym.instanceType.proParte}">p.p.</g:if>
       </g:else>
 
     </has-synonym>

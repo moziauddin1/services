@@ -149,17 +149,45 @@ class TreeService implements ValidationUtils {
     }
 
     @Transactional(readOnly = true)
-    List<TreeVersionElement> findFirstAndLastElementForInstance(Instance instance, Tree tree) {
+    List<TreeVersionElement> findFirstAndLastElementForInstance(Instance instance, Tree tree, Boolean publishedOny = true) {
         if (instance && tree) {
-            TreeVersionElement first = TreeVersionElement.find(
-                    'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id asc',
-                    [tree: tree, instanceId: instance.id])
-            TreeVersionElement last = TreeVersionElement.find(
-                    'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id desc',
-                    [tree: tree, instanceId: instance.id])
+            TreeVersionElement first = publishedOny ? firstPublished(instance, tree) : firstAnyVersion(instance, tree)
+            TreeVersionElement last = publishedOny ? lastPublished(instance, tree) : lastAnyVersion(instance, tree)
             return new Tuple(first, last)
         }
         return null
+    }
+
+    @Transactional(readOnly = true)
+    TreeVersionElement firstPublished(Instance instance, Tree tree) {
+        // note bug in GORM find, it doesn't seem to like new lines which is why I haven't used multiline strings here
+        TreeVersionElement.find(
+                'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id asc',
+                [tree: tree, instanceId: instance.id])
+    }
+
+    @Transactional(readOnly = true)
+    TreeVersionElement firstAnyVersion(Instance instance, Tree tree) {
+        // note bug in GORM find, it doesn't seem to like new lines which is why I haven't used multiline strings here
+        TreeVersionElement.find(
+                'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId order by treeVersion.id asc',
+                [tree: tree, instanceId: instance.id])
+    }
+
+    @Transactional(readOnly = true)
+    TreeVersionElement lastPublished(Instance instance, Tree tree) {
+        // note bug in GORM find, it doesn't seem to like new lines which is why I haven't used multiline strings here
+        TreeVersionElement.find(
+                'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId and treeVersion.published = true order by treeVersion.id desc',
+                [tree: tree, instanceId: instance.id])
+    }
+
+    @Transactional(readOnly = true)
+    TreeVersionElement lastAnyVersion(Instance instance, Tree tree) {
+        // note bug in GORM find, it doesn't seem to like new lines which is why I haven't used multiline strings here
+        TreeVersionElement.find(
+                'from TreeVersionElement where treeVersion.tree = :tree and treeElement.instanceId = :instanceId order by treeVersion.id desc',
+                [tree: tree, instanceId: instance.id])
     }
 
     /**
@@ -188,6 +216,21 @@ class TreeService implements ValidationUtils {
         }
         return null
     }
+
+    /**
+     * Find all the trees on this shard that contain this instance
+     * @param instance
+     * @return List < Tree >
+     */
+    List<Tree> findTreesByInstance(Instance instance) {
+        Tree.executeQuery('''select distinct t 
+    from Tree t, TreeVersionElement as tve 
+    where tve.treeElement.instanceId = :instanceId
+        and t = tve.treeVersion.tree''',
+                [instanceId: instance.id]) as List<Tree>
+    }
+
+    /************* End Finds *************/
 
     /**
      * get the tree path as a list of TreeVersionElements
@@ -1815,9 +1858,7 @@ and tve.element_link not in ($excludedLinks)
     }
 
     boolean isInstanceInAnyTree(Instance instance) {
-        TreeElement te = TreeElement.findByInstanceId(instance.id)
-        TreeVersionElement tve = TreeVersionElement.findByTreeElement(te)
-        return te != null && tve != null
+        !findTreesByInstance(instance).empty
     }
 
 }

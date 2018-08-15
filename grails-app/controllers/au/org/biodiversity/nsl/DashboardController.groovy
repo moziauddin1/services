@@ -114,7 +114,7 @@ class DashboardController {
                 flash.message = "No period set, using last 7 days."
             }
 
-            List rows = auditService.list(userName, from, to)
+            List rows = userName ? auditService.list(userName, from, to) : []
             Map stats = auditService.report(from, to)
             log.debug stats
             [auditRows: rows, query: params, stats: stats]
