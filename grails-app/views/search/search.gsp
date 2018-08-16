@@ -52,7 +52,7 @@
         <div class="results">
           <g:each in="${names}" var="name">
             <div>
-              <div class='unfetched name' id="${name.id}" data-format="${params.display}Format"
+              <div class='unfetched name' id="${name.id}" data-format="${params.display}-format"
                    data-nameId="${name.id}" data-product="${params.product ?: ''}">
 
                 <div class="name" id="${name.id}">

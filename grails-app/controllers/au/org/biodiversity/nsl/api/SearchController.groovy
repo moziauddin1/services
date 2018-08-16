@@ -46,12 +46,13 @@ class SearchController implements RequestUtil {
 
         Boolean knownProduct = validProducts.keySet().contains(lowerProductName)
 
+        params.display = params.display ?: 'apni' //if not set set it to apni by default
+
         if (knownProduct) {
             params.product = validProducts[lowerProductName] //preserve case ??
         } else {
             if (!SecurityUtils.subject?.authenticated) {
                 params.product = defaultProduct
-                params.display = params.display ?: 'apni'
             }
         }
         String productName = params.product
