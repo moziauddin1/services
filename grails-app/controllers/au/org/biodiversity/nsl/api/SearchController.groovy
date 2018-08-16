@@ -182,7 +182,7 @@ class SearchController implements RequestUtil {
     }
 
     private static Tree determineTree(String treeId) {
-        if (treeId.isLong()) {
+        if (treeId?.isLong()) {
             return Tree.get(treeId as Long)
         }
         Tree.findByNameIlike(treeId)
