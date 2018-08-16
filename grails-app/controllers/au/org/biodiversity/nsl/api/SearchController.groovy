@@ -260,9 +260,13 @@ class SearchController implements RequestUtil {
             } else {
                 result.names.each { Map nameData ->
                     Map flatViewRow = flatViewService.findNameRow(nameData.name as Name)
+                    String census = ''
+                    if (nameData.treeVersionElement?.treeElement) {
+                        census = nameData.treeVersionElement?.treeElement?.excluded ? 'APC Excluded' : 'APC'
+                    }
                     List values = [result.found,
                                    result.query,
-                                   (nameData.treeVersionelement.treeElement.excluded ? 'APC Excluded' : 'APC'),
+                                   census,
                                    nameData.name.fullName,
                                    nameData.name.nameStatus.name,
                                    nameData.name.nameType.name,
