@@ -245,7 +245,7 @@ class SearchController implements RequestUtil {
                 'secondHybridParentName',
                 'secondHybridParentNameID'
         ]
-        List<String> headers = ['Found?', 'Search term', 'Census', 'Matched name(s)', 'Name status', 'Name type', 'Name family', 'Tags']
+        List<String> headers = ['Found?', 'Search term', 'Census', 'Matched name(s)', 'Name status', 'Name type', 'Tags']
         headers.addAll(flatViewExportFields)
         results.each { Map result ->
             if (result.names.empty) {
@@ -270,8 +270,7 @@ class SearchController implements RequestUtil {
                                    nameData.name.fullName,
                                    nameData.name.nameStatus.name,
                                    nameData.name.nameType.name,
-                                   nameData.name.family?.simpleName ?: '',
-                                   (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString()
+                                   (nameData.name.tags.collect { NameTagName tag -> tag.tag.name }).toString(),
 
                     ]
                     flatViewExportFields.each { fieldName ->
