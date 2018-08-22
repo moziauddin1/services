@@ -294,7 +294,7 @@ class NameService {
                             Map constructedNames = nameConstructionService.constructName(name)
                             String strippedName = nameConstructionService.stripMarkUp(constructedNames.fullMarkedUpName)
                             if (name.fullName != strippedName) {
-                                String msg = "$name.id, \"${name.nameType.name}\", \"${name.nameRank.name}\", \"$name.fullName\", \"${strippedName}\""
+                                String msg = "$name.id, \"${name.nameType.name}\", \"${name.nameRank.displayName}\", \"$name.fullName\", \"${strippedName}\""
                                 log.info(msg)
                                 tempFile.append("$msg\n")
                             }

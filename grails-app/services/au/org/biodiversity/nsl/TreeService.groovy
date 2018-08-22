@@ -1527,7 +1527,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
 
         //is rank below parent
         if (!RankUtils.rankHigherThan(parentRank, taxonRank)) {
-            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.name is not below rank $parentRank.name of $parentElement.treeElement.simpleName.")
+            throw new BadArgumentsException("Name $taxonData.simpleName of rank $taxonRank.displayName is not below rank $parentRank.displayName of $parentElement.treeElement.simpleName.")
         }
 
         //polynomials must be placed under parent
@@ -1756,7 +1756,7 @@ and tve.element_link not in ($excludedLinks)
                 synonymsHtml: synonymsHtml,
                 sourceShard: configService.nameSpaceName,
                 synonyms: synonyms,
-                rank: instance.name.nameRank.name,
+                rank: instance.name.nameRank.displayName,
                 nameLink: linkService.getPreferredLinkForObject(instance.name),
                 instanceLink: linkService.getPreferredLinkForObject(instance),
                 nomInval: instance.name.nameStatus.nomInval,

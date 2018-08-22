@@ -226,12 +226,14 @@ ORDER BY n.sort_name;
     }
 
     def refreshNameView(String namespace, Sql sql) {
+        log.debug "Refreshing name view..."
         if (viewExists(sql, NAME_VIEW)) {
             String refresh = "REFRESH MATERIALIZED VIEW $NAME_VIEW"
             sql.execute(refresh)
         } else {
             createNameView(namespace, sql)
         }
+        log.debug "Refreshing name view complete."
     }
 
     def refreshNameView(String namespace) {
@@ -484,12 +486,14 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
     }
 
     def refreshTaxonView(String namespace, Sql sql) {
+        log.debug "Refreshing taxon view..."
         if (viewExists(sql, TAXON_VIEW)) {
             String refresh = "REFRESH MATERIALIZED VIEW ${TAXON_VIEW}"
             sql.execute(refresh)
         } else {
             createTaxonView(namespace, sql)
         }
+        log.debug "Refreshing taxon view complete."
     }
 
     def refreshTaxonView(String namespace) {
