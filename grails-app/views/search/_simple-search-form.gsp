@@ -30,7 +30,7 @@
           <i class="fa fa-info-circle"></i>
 
           <div>
-            Pick the types of name to include. If none are checked, then Scientific and Cultigens will be included.
+            Pick the types of name to include. If none are checked, then Scientific and cultivated plant names will be included.
           </div>
         </help>
       </h4>
@@ -42,9 +42,7 @@
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Cultigens
-            <a title="definition on Wikipedia" href="https://en.wikipedia.org/wiki/Cultigen"><i
-                class="fa fa-external-link"></i></a>
+          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Names of cultivated plants
           </label>
         </div>
         <g:if test="${params.product != st.primaryClassification().toString()}">
