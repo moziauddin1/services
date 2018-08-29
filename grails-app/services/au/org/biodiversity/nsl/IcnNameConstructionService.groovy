@@ -65,7 +65,7 @@ class IcnNameConstructionService implements NameConstructor {
         return [fullMarkedUpName: (name.nameElement?.encodeAsHTML() ?: '?'), simpleMarkedUpName: (name.nameElement.encodeAsHTML() ?: '?')]
     }
 
-    private static Map constructInformalName(Name name) {
+    private Map constructInformalName(Name name) {
         List<String> bits = ["<element>${name.nameElement.encodeAsHTML()}</element>", constructAuthor(name)]
 
         String markedUpName = "<informal><name data-id='$name.id'>${join(bits)}</name></informal>"
