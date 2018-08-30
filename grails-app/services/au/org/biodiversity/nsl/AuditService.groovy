@@ -38,7 +38,6 @@ WHERE action_tstamp_tx > :from
         Map userReport = [:]
         withSql { Sql sql ->
             sql.withTransaction {
-                sql.execute("set local work_mem to '20MB'")
                 things.each { String thing ->
                     //created
                     String query = "select count(t) as count, t.created_by as uname from $thing t where created_at > :from and created_at < :to group by created_by"
