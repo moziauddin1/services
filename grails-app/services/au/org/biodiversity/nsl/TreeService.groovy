@@ -414,8 +414,17 @@ select count(tve)
 
     @Transactional(readOnly = true)
     Map profileItem(TreeVersionElement tve, String key) {
-        Map value = tve.treeElement.profile?.get(key) as Map
-        value ? [name: key] + value : null
+        profileItem(tve.treeElement.profile as Map, key)
+    }
+
+    Map profileItem(Map profile, String key) {
+        if (profile?.containsKey(key)) {
+            Map value = profile.get(key) as Map
+            if (value) {
+                return [name: key] + value
+            }
+        }
+        return null
     }
 
     @Transactional(readOnly = true)
@@ -1031,8 +1040,25 @@ INSERT INTO tree_version_element (tree_version_id,
 
         //if there is an element that matches the new data use that element
         Map elementComparators = comparators(treeVersionElement.treeElement)
-        elementComparators.profile = profile
-        TreeElement foundElement = findTreeElement(elementComparators)
+
+        //we don't want to check the whole profile, just the *values* of the comment and distribution
+        //so remove the profile and then compare the values for all the matches
+
+        elementComparators.remove('profile')
+        //order by latest first so the first match will be the latest. (yes there are mutilple exact matches in some datasets)
+        List<TreeElement> matchingElements = TreeElement.findAllWhere(elementComparators).sort { a,b -> b.id <=> a.id }
+        log.debug "Found ${matchingElements.size()} matching elements"
+
+        TreeElement foundElement = null
+
+        if (matchingElements?.size()) {
+            foundElement = matchingElements.find { TreeElement te ->
+                log.debug te
+                profile && te.profile &&
+                        compareProfileMapValues(profile, te.profile)
+            }
+        }
+
         if (foundElement) {
             log.debug "Reusing $foundElement"
             return changeElement(treeVersionElement, foundElement, userName)
@@ -1055,6 +1081,18 @@ INSERT INTO tree_version_element (tree_version_id,
         treeVersionElement.save()
         return treeVersionElement
     }
+
+    private static boolean compareProfileMapValues(Map m, Map n) {
+        if (m.keySet() == n.keySet()) {
+            String result = m.keySet().find { key ->
+                log.debug "Comparing ${m[key].value} to ${n[key].value} : (${n[key]})"
+                m[key].value != n[key].value
+            }
+            return result == null
+        }
+        return false
+    }
+
 
     TreeVersionElement minorEditDistribution(TreeVersionElement treeVersionElement, String distribution, String reason, String userName) {
         String distKey = distributionKey(treeVersionElement)
@@ -1861,102 +1899,4 @@ and tve.element_link not in ($excludedLinks)
         !findTreesByInstance(instance).empty
     }
 
-}
-
-class TaxonData {
-
-    Long nameId
-    Long instanceId
-    String simpleName
-    String nameElement
-    String displayHtml
-    String synonymsHtml
-    String sourceShard
-    String rank
-    Map profile
-    String nameLink
-    String instanceLink
-    Boolean nomInval
-    Boolean nomIlleg
-    Boolean excluded
-    Synonyms synonyms
-
-    TaxonData() {}
-
-    Map asMap() {
-        [
-                nameId      : nameId,
-                instanceId  : instanceId,
-                simpleName  : simpleName,
-                nameElement : nameElement,
-                displayHtml : displayHtml,
-                synonymsHtml: synonymsHtml,
-                sourceShard : sourceShard,
-                synonyms    : synonyms.asMap(),
-                rank        : rank,
-                profile     : profile,
-                nameLink    : nameLink,
-                instanceLink: instanceLink,
-                nomInval    : nomInval,
-                nomIlleg    : nomIlleg,
-                excluded    : excluded
-        ]
-    }
-
-    Boolean equalsElement(TreeElement treeElement) {
-        treeElement.nameId == nameId &&
-                treeElement.instanceId == instanceId &&
-                treeElement.simpleName == simpleName &&
-                treeElement.nameElement == nameElement &&
-                treeElement.displayHtml == displayHtml &&
-                treeElement.synonymsHtml == synonymsHtml &&
-                treeElement.sourceShard == sourceShard &&
-                treeElement.synonyms == synonyms.asMap() &&
-                treeElement.rank == rank &&
-                treeElement.profile == profile &&
-                treeElement.nameLink == nameLink &&
-                treeElement.instanceLink == instanceLink &&
-                treeElement.excluded == excluded
-    }
-}
-
-class DisplayElement {
-
-    @SuppressWarnings("GrFinalVariableAccess")
-    public final String displayHtml
-    @SuppressWarnings("GrFinalVariableAccess")
-    public final String elementLink
-    @SuppressWarnings("GrFinalVariableAccess")
-    public final String nameLink
-    @SuppressWarnings("GrFinalVariableAccess")
-    public final String instanceLink
-    @SuppressWarnings("GrFinalVariableAccess")
-    public final Boolean excluded
-    @SuppressWarnings("GrFinalVariableAccess")
-    public final Integer depth
-    @SuppressWarnings("GrFinalVariableAccess")
-    public final String synonymsHtml
-
-    DisplayElement(List data, String hostPart) {
-        assert data.size() == 7
-        this.displayHtml = data[0] as String
-        this.elementLink = hostPart + data[1] as String
-        this.nameLink = data[2] as String
-        this.instanceLink = data[3] as String
-        this.excluded = data[4] as Boolean
-        this.depth = data[5] as Integer
-        this.synonymsHtml = data[6] as String
-    }
-
-    Map asMap() {
-        [
-                displayHtml : displayHtml,
-                elementLink : elementLink,
-                nameLink    : nameLink,
-                instanceLink: instanceLink,
-                excluded    : excluded,
-                depth       : depth,
-                synonymsHtml: synonymsHtml
-        ]
-    }
 }

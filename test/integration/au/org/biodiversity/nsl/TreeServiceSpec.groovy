@@ -897,6 +897,7 @@ class TreeServiceSpec extends IntegrationSpec {
 
         expect:
         tree
+        tree.config.distribution_key == "Dist." // note not the same as the APC Dist below
         draftVersion
         draftVersion.treeVersionElements.size() == 30
         publishedVersion
