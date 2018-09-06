@@ -47,7 +47,7 @@ class InstanceService {
                     Map response = linkService.deleteInstanceLinks(instance, reason)
                     if (!response.success) {
                         List<String> errors = ["Error deleting link from the mapper"]
-                        errors.addAll(response.errors)
+                        errors.addAll(response.errors as List<String>)
                         return [ok: false, errors: errors]
                     }
 
@@ -94,26 +94,26 @@ class InstanceService {
                 String since = firstPublished?.updatedAt?.format('dd/MM/yyyy')
                 String till = last.treeVersion.published ? last.treeVersion.publishedAt.format('dd/MM/yyyy') : "Draft: $last.treeVersion.draftName"
                 "$tree.name: ${since ?: 'unpublished'} -> $till"
-            }
-            errors << "This instance is in ${trees.join(', ')}."
+            } as List<String>
+            errors << "This instance is in ${trees.join(', ')}.".toString()
         }
         if (instance.instancesForCites) {
-            errors << "There are ${instance.instancesForCites.size()} instances that cite this."
+            errors << "There are ${instance.instancesForCites.size()} instances that cite this.".toString()
         }
         if (instance.instancesForCitedBy) {
-            errors << "There are ${instance.instancesForCitedBy.size()} instances that say this cites it."
+            errors << "There are ${instance.instancesForCitedBy.size()} instances that say this cites it.".toString()
         }
         if (instance.instancesForParent) {
-            errors << "This is a parent for ${instance.instancesForParent.size()} instances."
+            errors << "This is a parent for ${instance.instancesForParent.size()} instances.".toString()
         }
         if (instance.instanceNotes) {
-            errors << "There are ${instance.instanceNotes.size()} instances notes on this."
+            errors << "There are ${instance.instanceNotes.size()} instances notes on this.".toString()
         }
         if (instance.comments) {
-            errors << "There are ${instance.comments.size()} comments for this instance."
+            errors << "There are ${instance.comments.size()} comments for this instance.".toString()
         }
         if (instance.resources) {
-            errors << "There are ${instance.resources.size()} resources for this instance."
+            errors << "There are ${instance.resources.size()} resources for this instance.".toString()
         }
 
         if (errors.size() > 0) {
@@ -246,6 +246,6 @@ class InstanceService {
      */
     def checkInstanceDelete(Long id) {
         Map instanceData = auditService.recoverDeletedInstanceData(id)
-        treeService.checkUsageOfDeletedInstance(id, instanceData.cited_by_id, instanceData.updated_by ?: 'notification')
+        treeService.checkUsageOfDeletedInstance(id, instanceData.cited_by_id as Long, instanceData.updated_by ?: 'notification')
     }
 }

@@ -27,7 +27,7 @@ class TestUte {
 
     /**
      * you need to mock
-     * @mock([NameGroup, NameCategory, NameType, NameStatus, NameRank])
+     * @mock ( [ NameGroup , NameCategory , NameType , NameStatus , NameRank] )
      *
      * to use in unit tests
      */
@@ -192,48 +192,40 @@ class TestUte {
 
         NameRank.withTransaction { status ->
             [
-                    [hasParent: false, major: true, sortOrder: 10, visibleInName: false, name: 'Regnum', abbrev: 'reg.', parentRank: ''],
-                    [hasParent: false, major: true, sortOrder: 20, visibleInName: false, name: 'Division', abbrev: 'div.', parentRank: ''],
-                    [hasParent: false, major: true, sortOrder: 30, visibleInName: false, name: 'Classis', abbrev: 'cl.', parentRank: ''],
-                    [hasParent: false, major: false, sortOrder: 40, visibleInName: false, name: 'Subclassis', abbrev: 'subcl.', parentRank: ''],
-                    [hasParent: false, major: false, sortOrder: 50, visibleInName: false, name: 'Superordo', abbrev: 'superordo', parentRank: ''],
-                    [hasParent: false, major: true, sortOrder: 60, visibleInName: false, name: 'Ordo', abbrev: 'ordo', parentRank: ''],
-                    [hasParent: false, major: false, sortOrder: 70, visibleInName: false, name: 'Subordo', abbrev: 'subordo', parentRank: ''],
-
-                    [hasParent: false, major: true, sortOrder: 80, visibleInName: false, name: 'Familia', abbrev: 'fam.', parentRank: ''],
-
-                    [hasParent: true, major: false, sortOrder: 90, visibleInName: true, name: 'Subfamilia', abbrev: 'subfam.', parentRank: 'Familia'],
-                    [hasParent: true, major: true, sortOrder: 100, visibleInName: true, name: 'Tribus', abbrev: 'trib.', parentRank: 'Familia'],
-                    [hasParent: true, major: false, sortOrder: 110, visibleInName: true, name: 'Subtribus', abbrev: 'subtrib.', parentRank: 'Familia'],
-
-                    [hasParent: false, major: true, sortOrder: 120, visibleInName: false, name: 'Genus', abbrev: 'gen.', parentRank: ''],
-
-                    [hasParent: true, major: false, sortOrder: 130, visibleInName: true, name: 'Subgenus', abbrev: 'subg.', parentRank: 'Genus'],
-                    [hasParent: true, major: false, sortOrder: 140, visibleInName: true, name: 'Sectio', abbrev: 'sect.', parentRank: 'Genus'],
-                    [hasParent: true, major: false, sortOrder: 150, visibleInName: true, name: 'Subsectio', abbrev: 'subsect.', parentRank: 'Genus'],
-                    [hasParent: true, major: false, sortOrder: 160, visibleInName: true, name: 'Series', abbrev: 'ser.', parentRank: 'Genus'],
-                    [hasParent: true, major: false, sortOrder: 170, visibleInName: true, name: 'Subseries', abbrev: 'subser.', parentRank: 'Genus'],
-                    [hasParent: true, major: false, sortOrder: 180, visibleInName: true, name: 'Superspecies', abbrev: 'supersp.', parentRank: 'Genus'],
-
-                    [hasParent: true, major: true, sortOrder: 190, visibleInName: false, name: 'Species', abbrev: 'sp.', parentRank: 'Genus'],
-
-                    [hasParent: true, major: false, sortOrder: 200, visibleInName: true, name: 'Subspecies', abbrev: 'subsp.', parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 210, visibleInName: true, name: 'Nothovarietas', abbrev: 'nothovar.', parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 210, visibleInName: true, name: 'Varietas', abbrev: 'var.', parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 220, visibleInName: true, name: 'Subvarietas', abbrev: 'subvar.', parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 230, visibleInName: true, name: 'Forma', abbrev: 'f.', parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 240, visibleInName: true, name: 'Subforma', abbrev: 'subf.', parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 250, visibleInName: false, name: 'form taxon', abbrev: 'form taxon', deprecated: true, parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 260, visibleInName: false, name: 'morphological var.', abbrev: 'morph.', deprecated: true, parentRank: 'Species'],
-                    [hasParent: true, major: false, sortOrder: 270, visibleInName: false, name: 'nothomorph.', abbrev: 'nothomorph', deprecated: true, parentRank: 'Species'],
-
-                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[unranked]', abbrev: '[unranked]', parentRank: ''],
-                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[infrafamily]', abbrev: '[infrafamily]', parentRank: 'Familia'],
-                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[infragenus]', abbrev: '[infragenus]', parentRank: 'Genus'],
-                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[infraspecies]', abbrev: '[infrasp.]', parentRank: 'Species'],
-
-                    [hasParent: false, major: false, sortOrder: 500, visibleInName: false, name: '[n/a]', abbrev: '[n/a]', parentRank: ''],
-                    [hasParent: false, major: false, sortOrder: 500, visibleInName: false, name: '[unknown]', abbrev: '[unknown]', deprecated: true, parentRank: '']
+                    [hasParent: false, major: true, sortOrder: 10, visibleInName: false, name: 'Regnum', displayName: 'Regnum', abbrev: 'reg.', parentRank: ''],
+                    [hasParent: false, major: true, sortOrder: 20, visibleInName: false, name: 'Division', displayName: 'Division', abbrev: 'div.', parentRank: ''],
+                    [hasParent: false, major: true, sortOrder: 30, visibleInName: false, name: 'Classis', displayName: 'Classis', abbrev: 'cl.', parentRank: ''],
+                    [hasParent: false, major: false, sortOrder: 40, visibleInName: false, name: 'Subclassis', displayName: 'Subclassis', abbrev: 'subcl.', parentRank: ''],
+                    [hasParent: false, major: false, sortOrder: 50, visibleInName: false, name: 'Superordo', displayName: 'Superordo', abbrev: 'superordo', parentRank: ''],
+                    [hasParent: false, major: true, sortOrder: 60, visibleInName: false, name: 'Ordo', displayName: 'Ordo', abbrev: 'ordo', parentRank: ''],
+                    [hasParent: false, major: false, sortOrder: 70, visibleInName: false, name: 'Subordo', displayName: 'Subordo', abbrev: 'subordo', parentRank: ''],
+                    [hasParent: false, major: true, sortOrder: 80, visibleInName: false, name: 'Familia', displayName: 'Familia', abbrev: 'fam.', parentRank: ''],
+                    [hasParent: true, major: false, sortOrder: 90, visibleInName: true, name: 'Subfamilia', displayName: 'Subfamilia', abbrev: 'subfam.', parentRank: 'Familia'],
+                    [hasParent: true, major: true, sortOrder: 100, visibleInName: true, name: 'Tribus', displayName: 'Tribus', abbrev: 'trib.', parentRank: 'Familia'],
+                    [hasParent: true, major: false, sortOrder: 110, visibleInName: true, name: 'Subtribus', displayName: 'Subtribus', abbrev: 'subtrib.', parentRank: 'Familia'],
+                    [hasParent: false, major: true, sortOrder: 120, visibleInName: false, name: 'Genus', displayName: 'Genus', abbrev: 'gen.', parentRank: ''],
+                    [hasParent: true, major: false, sortOrder: 130, visibleInName: true, name: 'Subgenus', displayName: 'Subgenus', abbrev: 'subg.', parentRank: 'Genus'],
+                    [hasParent: true, major: false, sortOrder: 140, visibleInName: true, name: 'Sectio', displayName: 'Sectio', abbrev: 'sect.', parentRank: 'Genus'],
+                    [hasParent: true, major: false, sortOrder: 150, visibleInName: true, name: 'Subsectio', displayName: 'Subsectio', abbrev: 'subsect.', parentRank: 'Genus'],
+                    [hasParent: true, major: false, sortOrder: 160, visibleInName: true, name: 'Series', displayName: 'Series', abbrev: 'ser.', parentRank: 'Genus'],
+                    [hasParent: true, major: false, sortOrder: 170, visibleInName: true, name: 'Subseries', displayName: 'Subseries', abbrev: 'subser.', parentRank: 'Genus'],
+                    [hasParent: true, major: false, sortOrder: 180, visibleInName: true, name: 'Superspecies', displayName: 'Superspecies', abbrev: 'supersp.', parentRank: 'Genus'],
+                    [hasParent: true, major: true, sortOrder: 190, visibleInName: false, name: 'Species', displayName: 'Species', abbrev: 'sp.', parentRank: 'Genus'],
+                    [hasParent: true, major: false, sortOrder: 200, visibleInName: true, name: 'Subspecies', displayName: 'Subspecies', abbrev: 'subsp.', parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 210, visibleInName: true, name: 'Nothovarietas', displayName: 'Nothovarietas', abbrev: 'nothovar.', parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 210, visibleInName: true, name: 'Varietas', displayName: 'Varietas', abbrev: 'var.', parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 220, visibleInName: true, name: 'Subvarietas', displayName: 'Subvarietas', abbrev: 'subvar.', parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 230, visibleInName: true, name: 'Forma', displayName: 'Forma', abbrev: 'f.', parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 240, visibleInName: true, name: 'Subforma', displayName: 'Subforma', abbrev: 'subf.', parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 250, visibleInName: false, name: 'form taxon', displayName: 'form taxon', abbrev: 'form taxon', deprecated: true, parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 260, visibleInName: false, name: 'morphological var.', displayName: 'morphological var.', abbrev: 'morph.', deprecated: true, parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 270, visibleInName: false, name: 'nothomorph.', displayName: 'nothomorph.', abbrev: 'nothomorph', deprecated: true, parentRank: 'Species'],
+                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[unranked]', displayName: '[unranked]', abbrev: '[unranked]', parentRank: ''],
+                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[infrafamily]', displayName: '[infrafamily]', abbrev: '[infrafamily]', parentRank: 'Familia'],
+                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[infragenus]', displayName: '[infragenus]', abbrev: '[infragenus]', parentRank: 'Genus'],
+                    [hasParent: true, major: false, sortOrder: 500, visibleInName: true, name: '[infraspecies]', displayName: '[infraspecies]', abbrev: '[infrasp.]', parentRank: 'Species'],
+                    [hasParent: false, major: false, sortOrder: 500, visibleInName: false, name: '[n/a]', displayName: '[n/a]', abbrev: '[n/a]', parentRank: ''],
+                    [hasParent: false, major: false, sortOrder: 500, visibleInName: false, name: '[unknown]', displayName: '[unknown]', abbrev: '[unknown]', deprecated: true, parentRank: '']
 
             ].each { values ->
                 if (values.parentRank) {

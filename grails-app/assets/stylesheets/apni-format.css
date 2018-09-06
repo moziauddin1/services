@@ -105,7 +105,8 @@ element {
     font-style: italic;
 }
 
-common element {
+common element,
+informal element {
     font-style: normal;
 }
 

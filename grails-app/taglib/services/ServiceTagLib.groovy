@@ -348,7 +348,10 @@ class ServiceTagLib {
         }
         String simpleName = Name.findBySimpleNameIlike("$q%")?.simpleName
         if (!simpleName) {
-            simpleName = Name.list(max: 1)?.first()?.simpleName
+            List simpleNameList = Name.list(max: 1)
+            if(simpleNameList && !simpleNameList.empty) {
+                simpleName = simpleNameList.first().simpleName
+            }
         }
         if (!simpleName) {
             simpleName = 'Doodia'

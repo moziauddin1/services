@@ -1,4 +1,4 @@
-<%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameTag" %>
+<%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameTag" %>
 <g:form name="search" role="form" controller="search" action="search" method="GET" class="closable checkbig">
   <div class="row">
       <div class="col-md-2">
