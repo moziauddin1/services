@@ -84,24 +84,22 @@ class ReferenceService {
 
             List<String> bits = []
             //prefix
-            switch (reference.refType.name) {
-                case 'Section':
-                case 'Paper':
-                case 'Book':
-                default:
-                    bits << authorName.wrap('<author>', '</author>')
-                    bits << parentAuthorName.wrap('<author>', '</author>')
-                    bits << pubDate.wrap('<year>', '</year>').comma()
-                    if (superReferenceTitle) {
-                        bits << '<ref-title>'
-                        bits << referenceTitle.comma()
-                        bits << "in"
-                        bits << superReferenceTitle.fullStop()
-                        bits << '</ref-title>'
+            bits << authorName.wrap('<author>', '</author>')
+            bits << parentAuthorName.wrap('<author>', '</author>')
+            bits << pubDate.wrap('<year>', '</year>').comma()
 
-                    } else {
-                        bits << referenceTitle.fullStop().wrap('<ref-title>', '</ref-title>')
-                    }
+            if (superReferenceTitle) {  //only in book
+                bits << '<ref-title>'
+                bits << referenceTitle.comma()
+                bits << "in"
+                bits << superReferenceTitle.fullStop()
+                bits << '</ref-title>'
+            } else {
+                if (parentTitle) {
+                    bits << referenceTitle.fullStop().wrap('<ref-title>', '</ref-title>')
+                } else {
+                    bits << referenceTitle.wrap('<i>', '</i>').wrap('<ref-title>', '</ref-title>')
+                }
             }
 
             //middle
@@ -534,6 +532,7 @@ class ReferenceService {
             }
         }
     }
+
 }
 
 class ReferenceStringCategory {

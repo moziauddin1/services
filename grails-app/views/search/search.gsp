@@ -3,7 +3,7 @@
   Date: 16/09/14
 --%>
 
-<%@ page import="au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameType" contentType="text/html;charset=UTF-8" %>
+<%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameType" contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
   <meta name="layout" content="main">
@@ -52,7 +52,7 @@
         <div class="results">
           <g:each in="${names}" var="name">
             <div>
-              <div class='unfetched name' id="${name.id}" data-format="${params.display}Format"
+              <div class='unfetched name' id="${name.id}" data-format="${params.display}-format"
                    data-nameId="${name.id}" data-product="${params.product ?: ''}">
 
                 <div class="name" id="${name.id}">

@@ -16,21 +16,36 @@
 
 package au.org.biodiversity.nsl.api
 
-import au.org.biodiversity.nsl.LinkService
-import au.org.biodiversity.nsl.Name
+import au.org.biodiversity.nsl.*
+import grails.test.mixin.Mock
 import grails.test.mixin.TestFor
+import grails.test.mixin.TestMixin
+import grails.test.mixin.domain.DomainClassUnitTestMixin
 import spock.lang.Specification
 
 @TestFor(NameController)
+@TestMixin(DomainClassUnitTestMixin)
+@Mock([Name, NameGroup, NameCategory, NameStatus, NameRank, NameType, Namespace])
 class NameControllerSpec extends Specification {
     @SuppressWarnings("GroovyUnusedDeclaration")
     static transactional = true
 
+    def linkService = Mock(LinkService)
+    Name doodia
+
     def setup() {
-        def linkServiceMock = mockFor(LinkService)
-        linkServiceMock.demand.getLinksForObject(0..1) { Object thing -> ["first $thing link", "second $thing link"] }
-        linkServiceMock.demand.getPreferredLinkForObject(0..1) { Object thing -> "Link for $thing" }
-        controller.jsonRendererService.linkService = linkServiceMock.createMock()
+        controller.jsonRendererService = new JsonRendererService()
+        controller.jsonRendererService.registerObjectMashallers()
+        controller.jsonRendererService.linkService = linkService
+        linkService.getLinksForObject(_) >> { Object thing -> ["first $thing link", "second $thing link"] }
+        linkService.getPreferredLinkForObject(_) >> { Object thing -> "Link for $thing" }
+        controller.nameConstructionService = new NameConstructionService()
+        controller.nameConstructionService.icnNameConstructionService = new IcnNameConstructionService()
+
+        Namespace namespace = new Namespace(name: 'test', rfId: 'blah', descriptionHtml: '<p>blah</p>')
+        TestUte.setUpNameInfrastructure()
+        doodia = TestUte.makeName('Doodia', 'Genus', null, namespace)
+        doodia.save()
     }
 
     def cleanup() {
@@ -65,16 +80,15 @@ class NameControllerSpec extends Specification {
         controller.response.status == 404
         controller.response.text == '{"action":null,"error":"Object not found."}'
 
-        when: "Doodia aspera is provided"
+        when: "Doodia is provided"
         controller.response.reset()
         controller.response.format = 'json'
-        Name doodiaAspera = Name.get(70944)
-        controller.nameStrings(doodiaAspera)
+        controller.nameStrings(doodia)
 
         then: "expected name strings are returned"
         controller.response.status == 200
-        controller.response.text == '{"action":null,"name":{"class":"au.org.biodiversity.nsl.Name","_links":{"permalink":{"link":"Link for Name 70944: Doodia aspera R.Br.","preferred":true,"resources":1}},"nameElement":"aspera","fullNameHtml":"<scientific><name data-id=\'70944\'><scientific><name data-id=\'70914\'><element>Doodia<\\u002felement><\\u002fname><\\u002fscientific> <element>aspera<\\u002felement> <authors><author data-id=\'1441\' title=\'Brown, R.\'>R.Br.<\\u002fauthor><\\u002fauthors><\\u002fname><\\u002fscientific>"},"result":{"fullMarkedUpName":"<scientific><name data-id=\'70944\'><scientific><name data-id=\'70914\'><element>Doodia<\\u002felement><\\u002fname><\\u002fscientific> <element>aspera<\\u002felement> <authors><author data-id=\'1441\' title=\'Brown, R.\'>R.Br.<\\u002fauthor><\\u002fauthors><\\u002fname><\\u002fscientific>","simpleMarkedUpName":"<scientific><name data-id=\'70944\'><scientific><name data-id=\'70914\'><element>Doodia<\\u002felement><\\u002fname><\\u002fscientific> <element>aspera<\\u002felement><\\u002fname><\\u002fscientific>","fullName":"Doodia aspera R.Br.","simpleName":"Doodia aspera","sortName":"doodia aspera"}}'
-        controller.response.json.result.fullName == 'Doodia aspera R.Br.'
+        controller.response.text == '{"action":null,"name":{"class":"au.org.biodiversity.nsl.Name","_links":{"permalink":{"link":"Link for [Name 1: Doodia]","preferred":true,"resources":1}},"nameElement":"Doodia","fullNameHtml":null},"result":{"fullMarkedUpName":"<scientific><name data-id=\'1\'><element>Doodia<\\u002felement><\\u002fname><\\u002fscientific>","simpleMarkedUpName":"<scientific><name data-id=\'1\'><element>Doodia<\\u002felement><\\u002fname><\\u002fscientific>","fullName":"Doodia","simpleName":"Doodia","sortName":"doodia"}}'
+        controller.response.json.result.fullName == 'Doodia'
     }
 
 }

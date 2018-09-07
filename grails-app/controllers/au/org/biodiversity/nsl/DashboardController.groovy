@@ -43,7 +43,7 @@ class DashboardController {
         stats.NameStatusStats = Name.executeQuery(
                 'select ns.name, count(*) as total from Name n, NameStatus ns where ns = n.nameStatus group by ns.id order by total desc')
         stats.NameRankStats = Name.executeQuery(
-                'select nr.name, count(*) as total from Name n, NameRank nr where nr = n.nameRank group by nr.id order by total desc')
+                'select nr.displayName, count(*) as total from Name n, NameRank nr where nr = n.nameRank group by nr.id order by total desc')
 
         stats.instanceTypeStats = Instance.executeQuery(
                 'select t.name, count(*) as total from Instance i, InstanceType t where t = i.instanceType group by t.id order by total desc')

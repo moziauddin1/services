@@ -116,6 +116,15 @@ class ConfigService {
         return getShardConfigOrfail("$productName description")
     }
 
+    /**
+     * used next to banner text when a product is defined. See _service_navigation.gsp
+     * @param productName
+     * @return label text
+     */
+    String getProductLabel(String productName) {
+        return getShardConfigOrfail("$productName label")
+    }
+
     String getPhotoServiceUri() {
         if(grailsApplication.config?.services?.photoService?.url) {
             return grailsApplication.config.services.photoService.url
@@ -152,7 +161,7 @@ class ConfigService {
     }
 
     String getServerUrl() {
-        if (grailsApplication.config?.grails.serverURL) {
+        if (grailsApplication.config?.grails?.serverURL) {
             return grailsApplication.config.grails.serverURL
         }
         throw new Exception("Config error. Add serverURL.")

@@ -184,7 +184,7 @@ class SearchService {
                         }
                         and << "(${pathOr.join(' or ')})".toString()
                     } else {
-                        return [count: 0, names: [], message: "${params.rankName} is not a ${inRank.name} in ${tree.name}"]
+                        return [count: 0, names: [], message: "${params.rankName} is not a ${inRank.displayName} in ${tree.name}"]
                     }
                 } else {
                     params.remove('inRank') //blank name so set it to any

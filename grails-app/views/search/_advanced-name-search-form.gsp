@@ -1,4 +1,4 @@
-<%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.Arrangement; au.org.biodiversity.nsl.NameTag" %>
+<%@ page import="au.org.biodiversity.nsl.NameRank; au.org.biodiversity.nsl.NameTag" %>
 <g:form name="search" role="form" controller="search" action="search" method="GET" class="closable checkbig">
   <div class="row">
 
@@ -130,10 +130,7 @@
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Cultigens
-            <a title="definition on Wikipedia" href="https://en.wikipedia.org/wiki/Cultigen"><i
-                class="fa fa-external-link"></i></a>
-          </label>
+          <label><g:checkBox name="inc.cultivar" value="${query.inc?.cultivar}"/>Names of cultivated plants</label>
         </div>
 
         <div class="checkbox">
@@ -171,7 +168,7 @@
         </div>
 
         <div class="checkbox">
-          <label><g:checkBox name="ex.cultivar" value="${query.ex?.cultivar}"/>Cultigens</label>
+          <label><g:checkBox name="ex.cultivar" value="${query.ex?.cultivar}"/>Names of cultivated plants</label>
         </div>
 
         <div class="checkbox">

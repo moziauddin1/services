@@ -6,7 +6,8 @@
     <div class="col-sm-12">
     <h1><st:bannerText/>
       <g:if test="${params?.product}">
-        <span class="small">${params.product} - <st:productBrief product="${params.product}"/></span></h1>
+        <span class="small"><st:productLabel
+            product="${params.product}">${label} (${params.product})</st:productLabel></span></h1>
       </g:if>
     </div>
   </div>

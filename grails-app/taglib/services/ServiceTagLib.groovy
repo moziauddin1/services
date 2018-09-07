@@ -300,12 +300,10 @@ class ServiceTagLib {
         out << configService.getNameTreeName()
     }
 
-    def productBrief = { attrs ->
-        Tree arrangement = Tree.findByName(attrs.product)
-        if (arrangement) {
-            out << arrangement.descriptionHtml
-        } else {
-            out << ''
+    def productLabel = { attrs, body ->
+        String product = attrs.product
+        if (product) {
+            out << body(label: configService.getProductLabel(product))
         }
     }
 
@@ -350,7 +348,10 @@ class ServiceTagLib {
         }
         String simpleName = Name.findBySimpleNameIlike("$q%")?.simpleName
         if (!simpleName) {
-            simpleName = Name.list(max: 1)?.first()?.simpleName
+            List simpleNameList = Name.list(max: 1)
+            if(simpleNameList && !simpleNameList.empty) {
+                simpleName = simpleNameList.first().simpleName
+            }
         }
         if (!simpleName) {
             simpleName = 'Doodia'

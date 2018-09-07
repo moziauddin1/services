@@ -30,26 +30,11 @@ class IcznNameConstructionService implements NameConstructor {
         }
 
         if (name.nameType.scientific) {
-            if (name.nameType.formula) {
-                return constructHybridFormulaScientificName(name)
-            }
+
             if (name.nameType.autonym) {
                 return constructAutonymScientificName(name)
             }
             return constructScientificName(name)
-        }
-
-        if (name.nameType.cultivar) {
-            if (name.nameType.formula && name.nameType.hybrid) {
-                return constructHybridFormulaCultivarName(name)
-            }
-            if (name.nameType.formula) {
-                return constructGraftChimeraName(name)
-            }
-            if (name.nameType.hybrid) {
-                return constructHybridCultivarName(name)
-            }
-            return constructCultivarName(name)
         }
 
         if (name.nameType.name == 'informal') {
@@ -70,81 +55,6 @@ class IcznNameConstructionService implements NameConstructor {
 
         String markedUpName = "<informal><name data-id='$name.id'>${join(bits)}</name></informal>"
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
-    }
-
-    private Map constructHybridCultivarName(Name name) {
-        use(NameConstructionUtils) {
-            List<String> bits = []
-            String htmlNameElement = name.nameElement.encodeAsHTML()
-            //NSL-856 cultivar hybrid display genus + epithet
-            Name parent = name.nameParentOfRank('Genus')
-            if (parent) {
-                bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
-                bits << (name.nameType.connector) ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : ''
-                bits << "<element>&lsquo;${htmlNameElement}&rsquo;</element>"
-            } else {
-                bits << "<element>${htmlNameElement}</element>"
-            }
-            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
-            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
-        }
-    }
-
-    private Map constructGraftChimeraName(Name name) {
-        use(NameConstructionUtils) {
-            List<String> bits = []
-            Name parent = name.parent
-            bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
-            bits << (name.nameType.connector ? "<formula data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</formula>" : '')
-            bits << (name.secondParent ? constructName(name.secondParent).simpleMarkedUpName?.removeManuscript() : '')
-            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
-            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
-        }
-    }
-
-    private Map constructHybridFormulaCultivarName(Name name) {
-        use(NameConstructionUtils) {
-            List<String> bits = []
-            Name parent = name.parent
-            bits << constructName(parent).simpleMarkedUpName?.removeManuscript()
-            bits << (name.nameType.connector ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : '')
-            bits << (name.secondParent ? constructName(name.secondParent).simpleMarkedUpName?.removeManuscript() : '')
-            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
-            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
-        }
-    }
-
-    private Map constructCultivarName(Name name) {
-        use(NameConstructionUtils) {
-            List<String> bits = []
-            //NSL-927 cultivar display to lowest parent rank
-            if (name.parent) {
-                Map n = constructName(name.parent)
-                bits << n.simpleMarkedUpName?.removeManuscript()
-                bits << (name.nameType.connector ? "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>" : '')
-                bits << "<element>&lsquo;${name.nameElement.encodeAsHTML()}&rsquo;</element>"
-            } else {
-                bits << "'<element>${name.nameElement.encodeAsHTML()}</element>"
-            }
-            String markedUpName = "<cultivar><name data-id='$name.id'>${join(bits)}</name></cultivar>"
-            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
-        }
-    }
-
-
-    private Map constructHybridFormulaScientificName(Name name) {
-        use(NameConstructionUtils) {
-            String firstParent = constructPrecedingNameString(name.parent, name)
-            String connector = makeConnectorString(name, null)
-            String secondParent = name.secondParent ? constructPrecedingNameString(name.secondParent, name) : '<element>?</element>'
-            String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
-
-            List<String> simpleNameParts = [firstParent, connector, secondParent, manuscript]
-
-            String markedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
-            //need to remove Authors below from simple name because preceding name includes author in parent
-            return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName.removeAuthors()]
-        }
     }
 
     private Map constructAutonymScientificName(Name name) {
