@@ -154,6 +154,8 @@ class RestCallService {
                 worker(jsonData)
             }
         } else {
+            // note this may just be an empty response if the json is a list, e.g. []
+            // todo: try and handle empty json list response and not log as an error
             log.error "No JSON response: ${response.text}"
             worker(null)
         }

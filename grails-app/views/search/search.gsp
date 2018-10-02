@@ -32,7 +32,8 @@
           %{--${rankCount.value} ${rankCount.key},--}%
           %{--</g:each>--}%
           </strong>
-          <span class="text-muted">in ${queryTime}ms. Limited to ${max} result<g:if test="${max == 0 || max > 1}">s</g:if>. </span>
+          <span class="text-muted">in ${queryTime}ms. Limited to ${max} result<g:if
+              test="${max == 0 || max > 1}">s</g:if>.</span>
         </g:if>
         <div class="btn-group hideSearch hidden-print">
           <button id="expandAll" class="btn btn-success"><i class="fa fa-caret-down"></i> view detail</button>
@@ -52,34 +53,39 @@
         <div class="results">
           <g:each in="${names}" var="name">
             <div>
-              <div class='unfetched name' id="${name.id}" data-format="${params.display}-format"
-                   data-nameId="${name.id}" data-product="${params.product ?: ''}">
+              <g:if test="${params.display == 'apni' && name.apniJson}">
+                <g:render template="/apniFormat/apniJsonName" model="[name: name]"/>
+              </g:if>
+              <g:else>
+                <div class='unfetched name' id="${name.id}" data-format="${params.display}-format"
+                     data-nameId="${name.id}" data-product="${params.product ?: ''}">
 
-                <div class="name" id="${name.id}">
-                  <family>
-                    <g:if test="${familyName}">
-                      ${raw(familyName.fullNameHtml)} <af:branch name="${name}" tree="APC"><i
-                        class="fa fa-code-fork"></i></af:branch>
-                    </g:if>
-                  </family>
+                  <div class="name" id="${name.id}">
+                    <family>
+                      <g:if test="${familyName}">
+                        ${raw(familyName.fullNameHtml)} <af:branch name="${name}" tree="APC"><i
+                          class="fa fa-code-fork"></i></af:branch>
+                      </g:if>
+                    </family>
 
-                  <div data-nameId="${name.id}">
-                    %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
-                    <accepted-name>${raw(name.fullNameHtml)}
-                    </accepted-name><name-status
-                      class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
-                      class="${name.nameType.name}">, ${name.nameType.name}</name-type>
-                    <editor class="hidden-print">
-                      <st:editorLink nameId="${name.id}"><i class="fa fa-edit" title="Edit"></i></st:editorLink>
-                    </editor>
+                    <div data-nameId="${name.id}">
+                      %{--do not reformat the next line it inserts a space between the comma and the fullName--}%
+                      <accepted-name>${raw(name.fullNameHtml)}
+                      </accepted-name><name-status
+                        class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
+                        class="${name.nameType.name}">, ${name.nameType.name}</name-type>
+                      <editor class="hidden-print">
+                        <st:editorLink nameId="${name.id}"><i class="fa fa-edit" title="Edit"></i></st:editorLink>
+                      </editor>
 
-                    <a class="loadFormat"
-                       href="${g.createLink(controller: (params.display + 'Format'), action: 'name', id: name.id)}">
-                      <i class="fa fa-caret-down"></i>
-                    </a>
+                      <a class="loadFormat"
+                         href="${g.createLink(controller: (params.display + 'Format'), action: 'name', id: name.id)}">
+                        <i class="fa fa-caret-down"></i>
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </g:else>
             </div>
           </g:each>
         </div>

@@ -17,6 +17,10 @@
 package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
+import groovy.sql.GroovyResultSet
+import groovy.sql.Sql
+
+import javax.sql.DataSource
 
 @Transactional
 class ApniFormatService {
@@ -24,6 +28,68 @@ class ApniFormatService {
     def configService
     def linkService
     TreeService treeService
+    DataSource dataSource_nsl
+
+    List<ApniReferenceRecord> getApniNameModel(Name name) {
+        Sql sql = getSql()
+        List<ApniReferenceRecord> orderedApniRefs = getApniOrderedReferences(name.id, sql)
+        orderedApniRefs.each { ApniReferenceRecord referenceRecord ->
+            referenceRecord.synonymy = getOrderedSynonymy(referenceRecord.instanceId, sql)
+            referenceRecord.synonymy.addAll(getSynonymRecord(referenceRecord.instanceId, sql))
+            referenceRecord.typeNotes = getTypeNoteRecord(referenceRecord.instanceId, sql)
+            referenceRecord.nonTypeNotes = getNonTypeNoteRecord(referenceRecord.instanceId, sql)
+            referenceRecord.acceptedProfile = getAcceptedProfileRecord(referenceRecord.instanceId, sql)
+        }
+        return orderedApniRefs
+    }
+
+    protected List<ApniReferenceRecord> getApniOrderedReferences(Long nameId, Sql sql = getSql()) {
+        List<ApniReferenceRecord> orderedApniRefs = []
+        sql.eachRow('''select * from apni_ordered_refrences(:nameId);''', [nameId: nameId]) { GroovyResultSet row ->
+            orderedApniRefs << new ApniReferenceRecord(row)
+        }
+        return orderedApniRefs
+    }
+
+    protected List<ApniSynonymRecord> getOrderedSynonymy(Long instanceId, Sql sql = getSql()) {
+        List<ApniSynonymRecord> synonymRecords = []
+        sql.eachRow('''select * from apni_ordered_synonymy(:instanceId);''', [instanceId: instanceId]) { GroovyResultSet row ->
+            synonymRecords << new ApniSynonymRecord(row)
+        }
+        return synonymRecords
+    }
+
+    protected List<ApniSynonymRecord> getSynonymRecord(Long instanceId, Sql sql = getSql()) {
+        List<ApniSynonymRecord> synonymRecords = []
+        sql.eachRow('''select * from apni_synonym(:instanceId);''', [instanceId: instanceId]) { GroovyResultSet row ->
+            synonymRecords << new ApniSynonymRecord(row)
+        }
+        return synonymRecords
+    }
+
+    protected List<InstanceNoteRecord> getTypeNoteRecord(Long instanceId, Sql sql = getSql()) {
+        List<InstanceNoteRecord> records = []
+        sql.eachRow('''select * from type_notes(:instanceId);''', [instanceId: instanceId]) { GroovyResultSet row ->
+            records << new InstanceNoteRecord(row)
+        }
+        return records
+    }
+
+    protected List<InstanceNoteRecord> getNonTypeNoteRecord(Long instanceId, Sql sql = getSql()) {
+        List<InstanceNoteRecord> records = []
+        sql.eachRow('''select * from non_type_notes(:instanceId);''', [instanceId: instanceId]) { GroovyResultSet row ->
+            records << new InstanceNoteRecord(row)
+        }
+        return records
+    }
+
+    protected AcceptedProfileRecord getAcceptedProfileRecord(Long instanceId, Sql sql = getSql()) {
+        List<AcceptedProfileRecord> records = []
+        sql.eachRow('''select * from latest_accepted_profile(:instanceId);''', [instanceId: instanceId]) { GroovyResultSet row ->
+            records << new AcceptedProfileRecord(row)
+        }
+        return records.empty ? null : records.first()
+    }
 
     Map getNameModel(Name name, TreeVersion version, Boolean draftInst) {
         if (!version) {
@@ -79,6 +145,11 @@ class ApniFormatService {
             text = text.replaceAll(k, v)
         }
         return HTMLSanitiser.encodeInvalidMarkup(text).trim()
+    }
+
+    private Sql getSql() {
+        //noinspection GroovyAssignabilityCheck
+        return Sql.newInstance(dataSource_nsl)
     }
 
     /**
@@ -258,4 +329,85 @@ class ApniFormatService {
                                                 '<F,17>α<F,4>': '⟫', //\u27EB
     ]
 
+}
+//TODO add reference id and perhaps link
+class ApniReferenceRecord {
+    final Long instanceId
+    final String instanceType
+    final String citation
+    final String citationHtml
+    final Integer year
+    final String pages
+    final String page
+    List<ApniSynonymRecord> synonymy
+    List<InstanceNoteRecord> typeNotes
+    List<InstanceNoteRecord> nonTypeNotes
+    AcceptedProfileRecord acceptedProfile
+
+    ApniReferenceRecord(GroovyResultSet data) {
+        instanceId = data.getAt('instance_id') as Long
+        instanceType = data.getAt('instance_type')
+        citation = data.getAt('citation')
+        citationHtml = data.getAt('citation_html')
+        year = data.getAt('year') as Integer
+        pages = data.getAt('pages')
+        page = data.getAt('page')
+    }
+}
+
+//TODO add instance draft, bhl link
+class ApniSynonymRecord {
+    Long instanceId
+    String instanceType
+    Long instanceTypeId
+    Long nameId
+    String fullName
+    String fullNameHtml
+    String nameStatus
+    String citation
+    String citationHtml
+    Integer year
+    String page
+    String sortName
+    Boolean misapplied
+
+    ApniSynonymRecord(GroovyResultSet data) {
+        instanceId = data.getAt('instance_id') as Long
+        instanceType = data.getAt('instance_type')
+        instanceTypeId = data.getAt('instance_type_id') as Long
+        nameId = data.getAt('name_id') as Long
+        fullName = data.getAt('full_name')
+        fullNameHtml = data.getAt('full_name_html')
+        nameStatus = data.getAt('name_status')
+        citation = data.getAt('citation')
+        citationHtml = data.getAt('citation_html')
+        year = data.getAt('year') as Integer
+        page = data.getAt('page')
+        sortName = data.getAt('sort_name')
+        misapplied = data.getAt('misapplied')
+    }
+}
+
+class InstanceNoteRecord {
+    final String key
+    final String value
+
+    InstanceNoteRecord(GroovyResultSet data) {
+        key = data.getAt('note_key')
+        value = data.getAt('note')
+    }
+}
+
+class AcceptedProfileRecord {
+    String commentKey
+    String commentValue
+    String distKey
+    String distValue
+
+    AcceptedProfileRecord(GroovyResultSet data) {
+        commentKey = data.getAt('comment_key')
+        commentValue = data.getAt('comment_value')
+        distKey = data.getAt('dist_key')
+        distValue = data.getAt('dist_value')
+    }
 }

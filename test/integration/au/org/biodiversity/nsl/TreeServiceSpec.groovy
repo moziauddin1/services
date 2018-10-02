@@ -4,6 +4,7 @@ import grails.test.spock.IntegrationSpec
 import grails.transaction.Rollback
 import grails.validation.ValidationException
 import org.hibernate.engine.spi.Status
+import spock.lang.Unroll
 
 import javax.sql.DataSource
 import java.sql.Timestamp
@@ -328,7 +329,7 @@ class TreeServiceSpec extends IntegrationSpec {
 
         then: 'I get 20 synonyms'
         taxonData.synonyms.size() == 20
-        taxonData.synonymsHtml.startsWith('<synonyms><tax><scientific><name data-id=\'90571\'><scientific><name data-id=\'73030\'>')
+        taxonData.synonymsHtml.startsWith('<synonyms><tax><scientific><name data-id=\'92451\'><scientific><name data-id=\'73030\'><element>Ficus</element>')
     }
 
     def "test check synonyms"() {
@@ -1231,61 +1232,60 @@ class TreeServiceSpec extends IntegrationSpec {
         found2.id == doodiaDissecta.id
     }
 
-    //TODO re-instate: temporarily commented out while working on synonym ordering
-//    @Unroll("test repeat #i")
-//    def "test db synonymy against app synonymy"() {
-//        given:
-//        TreeElement physalisHederifolia = TreeElement.findBySimpleName('Physalis hederifolia')
-//        TreeElement abrotanellaScapigera = TreeElement.findBySimpleName('Abrotanella scapigera')
-//        TreeElement hibbertiaHirticalyx = TreeElement.findBySimpleName('Hibbertia hirticalyx')
-//        TreeElement cardamineLilacina = TreeElement.findBySimpleName('Cardamine lilacina')
-//
-//        expect:
-//        physalisHederifolia
-//        abrotanellaScapigera
-//        hibbertiaHirticalyx
-//        cardamineLilacina
-//
-//        when: "we generate the synonyms html for physalis"
-//        String physalisSynonymsDb = service.getSynonymsHtmlViaDBFunction(physalisHederifolia.instanceId)
-//        String physalisSynonymsHtml = service.getSynonyms(physalisHederifolia.instance).html()
-//
-//        then: "we get them and they are equal"
-//        physalisSynonymsDb
-//        physalisSynonymsHtml
-//        physalisSynonymsDb == physalisSynonymsHtml
-//
-//        when: "we generate the synonyms html for abrotanella"
-//        String abrotanellaSynonymsDb = service.getSynonymsHtmlViaDBFunction(abrotanellaScapigera.instanceId)
-//        String abrotanellaSynonymsHtml = service.getSynonyms(abrotanellaScapigera.instance).html()
-//
-//        then: "we get them and they are equal"
-//        abrotanellaSynonymsDb
-//        abrotanellaSynonymsHtml
-//        abrotanellaSynonymsDb == abrotanellaSynonymsHtml
-//
-//        when: "we generate the synonyms html for hibbertia"
-//        String hibbertiaSynonymsDb = service.getSynonymsHtmlViaDBFunction(hibbertiaHirticalyx.instanceId)
-//        String hibbertiaSynonymsHtml = service.getSynonyms(hibbertiaHirticalyx.instance).html()
-//
-//        then: "we get them and they are equal"
-//        hibbertiaSynonymsDb
-//        hibbertiaSynonymsHtml
-//        hibbertiaSynonymsDb == hibbertiaSynonymsHtml
-//
-//        when: "we generate the synonyms html for cardamine"
-//        String cardamineSynonymsDb = service.getSynonymsHtmlViaDBFunction(cardamineLilacina.instanceId)
-//        String cardamineSynonymsHtml = service.getSynonyms(cardamineLilacina.instance).html()
-//
-//        then: "we get them and they are equal"
-//        cardamineSynonymsDb
-//        cardamineSynonymsHtml
-//        cardamineSynonymsDb == cardamineSynonymsHtml
-//
-//        where:
-//
-//        i << (1..10)
-//    }
+    @Unroll("test repeat #i")
+    def "test db synonymy against app synonymy"() {
+        given:
+        TreeElement physalisHederifolia = TreeElement.findBySimpleName('Physalis hederifolia')
+        TreeElement abrotanellaScapigera = TreeElement.findBySimpleName('Abrotanella scapigera')
+        TreeElement hibbertiaHirticalyx = TreeElement.findBySimpleName('Hibbertia hirticalyx')
+        TreeElement cardamineLilacina = TreeElement.findBySimpleName('Cardamine lilacina')
+
+        expect:
+        physalisHederifolia
+        abrotanellaScapigera
+        hibbertiaHirticalyx
+        cardamineLilacina
+
+        when: "we generate the synonyms html for physalis"
+        String physalisSynonymsDb = treeService.getSynonymsHtmlViaDBFunction(physalisHederifolia.instanceId)
+        String physalisSynonymsHtml = treeService.getSynonyms(physalisHederifolia.instance).html()
+
+        then: "we get them and they are equal"
+        physalisSynonymsDb
+        physalisSynonymsHtml
+        physalisSynonymsDb == physalisSynonymsHtml
+
+        when: "we generate the synonyms html for abrotanella"
+        String abrotanellaSynonymsDb = treeService.getSynonymsHtmlViaDBFunction(abrotanellaScapigera.instanceId)
+        String abrotanellaSynonymsHtml = treeService.getSynonyms(abrotanellaScapigera.instance).html()
+
+        then: "we get them and they are equal"
+        abrotanellaSynonymsDb
+        abrotanellaSynonymsHtml
+        abrotanellaSynonymsDb == abrotanellaSynonymsHtml
+
+        when: "we generate the synonyms html for hibbertia"
+        String hibbertiaSynonymsDb = treeService.getSynonymsHtmlViaDBFunction(hibbertiaHirticalyx.instanceId)
+        String hibbertiaSynonymsHtml = treeService.getSynonyms(hibbertiaHirticalyx.instance).html()
+
+        then: "we get them and they are equal"
+        hibbertiaSynonymsDb
+        hibbertiaSynonymsHtml
+        hibbertiaSynonymsDb == hibbertiaSynonymsHtml
+
+        when: "we generate the synonyms html for cardamine"
+        String cardamineSynonymsDb = treeService.getSynonymsHtmlViaDBFunction(cardamineLilacina.instanceId)
+        String cardamineSynonymsHtml = treeService.getSynonyms(cardamineLilacina.instance).html()
+
+        then: "we get them and they are equal"
+        cardamineSynonymsDb
+        cardamineSynonymsHtml
+        cardamineSynonymsDb == cardamineSynonymsHtml
+
+        where:
+
+        i << (1..10)
+    }
 
     static deleted(domainObject) {
         Name.withSession { session ->

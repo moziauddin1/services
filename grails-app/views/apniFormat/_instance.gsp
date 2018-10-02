@@ -86,7 +86,7 @@
         <g:if test="${instance.instanceType.misapplied && !instance.instanceType.unsourced}">
           <g:render template="/apniFormat/missappliedTo" model="[instance: instance]"/>
         </g:if>
-
+      %{-- old comment and distribution from tree (for APC only) --}%
         <af:ifEverOnAcceptedTree instance="${instance}" exclude="${treeVersionElement}">
           <ul class="instance-notes list-unstyled">
             <af:treeComment tve="${tve}">
@@ -103,7 +103,7 @@
             </af:treeDistribution>
           </ul>
         </af:ifEverOnAcceptedTree>
-
+      %{-- current tree profile data --}%
         <g:if test="${!versionId}">
           <af:ifOnTree instance="${instance}" tve="${treeVersionElement}">
             <ul class="instance-notes list-unstyled">
@@ -122,18 +122,16 @@
             </ul>
           </af:ifOnTree>
         </g:if>
-
-        <af:ifNeverOnAcceptedTreeSet instance="${instance}" var="incApcNotes">
-          <ul class="instance-notes list-unstyled">
-            <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote" incApc="${incApcNotes}">
-              <li>
-                <instance-note-key
-                    class="${instanceNote.instanceNoteKey.name}">${instanceNote.instanceNoteKey.name}:</instance-note-key>
-                <instance-note>${instanceNote.value}</instance-note>
-              </li>
-            </af:getDisplayableNonTypeNotes>
-          </ul>
-        </af:ifNeverOnAcceptedTreeSet>
+      %{-- other displayable instance notes --}%
+        <ul class="instance-notes list-unstyled">
+          <af:getDisplayableNonTypeNotes instance="${instance}" var="instanceNote">
+            <li>
+              <instance-note-key
+                  class="${instanceNote.instanceNoteKey.name}"> ${instanceNote.instanceNoteKey.name}:</instance-note-key>
+              <instance-note>${instanceNote.value}</instance-note>
+            </li>
+          </af:getDisplayableNonTypeNotes>
+        </ul>
       </instance>
     </g:if>
   </af:sortedInstances>

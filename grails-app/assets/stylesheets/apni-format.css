@@ -285,3 +285,14 @@ bhl-link img {
 .undo {
     text-decoration: grey line-through;
 }
+
+/* apni json specific */
+
+.jslink {
+    color: #023C6E;
+}
+
+.jslink:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}

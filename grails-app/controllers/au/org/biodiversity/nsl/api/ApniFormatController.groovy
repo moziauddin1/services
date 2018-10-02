@@ -16,6 +16,7 @@
 
 package au.org.biodiversity.nsl.api
 
+
 import au.org.biodiversity.nsl.Name
 import au.org.biodiversity.nsl.RankUtils
 import au.org.biodiversity.nsl.TreeVersion
@@ -32,6 +33,8 @@ class ApniFormatController {
     def jsonRendererService
     def photoService
     def configService
+    def treeService
+    def linkService
 
     static responseFormats = [
             display: ['html'],
@@ -75,37 +78,6 @@ class ApniFormatController {
             redirect(action: 'search')
         }
     }
-
-    @Timed()
-    displayName(Name name, Long versionId, Boolean drafts) {
-        if (name) {
-            params.product = configService.nameTreeName
-            String inc = g.cookie(name: 'searchInclude')
-            if (inc) {
-                params.inc = JSON.parse(inc) as Map
-            } else {
-                params.inc = [scientific: 'on']
-            }
-
-            String photoSearch = null
-            if (RankUtils.nameAtRankOrLower(name, 'Species') && photoService.hasPhoto(name.simpleName)) {
-                photoSearch = photoService.searchUrl(name.simpleName)
-            }
-
-            apniFormatService.getNameModel(name, TreeVersion.get(versionId), drafts) << [
-                    drafts   : drafts,
-                    versionId: versionId,
-                    query    : [name: "$name.fullName", product: configService.nameTreeName, inc: params.inc],
-                    stats    : [:],
-                    names    : [name],
-                    photo    : photoSearch,
-                    count    : 1, max: 100]
-        } else {
-            flash.message = "Name not found."
-            redirect(action: 'search')
-        }
-    }
-
 
     @Timed()
     name(Name name, Long versionId, Boolean drafts) {

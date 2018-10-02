@@ -230,6 +230,52 @@ class LinkService {
         } as String
     }
 
+    String getPreferredLinkForInstanceId(Long instanceId) {
+        if (instanceId == null) {
+            log.warn "Can't get link for null object"
+            return null
+        }
+        doUsingCache(getLinkCache(), instanceId) {
+            String url = getInstanceLinkServiceUrl(instanceId, 'preferredLink', true)
+            return getLink(url, instanceId)
+        } as String
+    }
+
+    String getPreferredLinkForNameId(Long nameId) {
+        if (nameId == null) {
+            log.warn "Can't get link for null object"
+            return null
+        }
+        doUsingCache(getLinkCache(), nameId) {
+            String url = getNameLinkServiceUrl(nameId, 'preferredLink', true)
+            return getLink(url, nameId)
+        } as String
+    }
+
+    private String getLink(String url, long id) {
+        try {
+            restCallService.json('get', url,
+                    { Map data ->
+                        return data.link
+                    },
+                    { Map data, List errors ->
+                        log.error "Couldn't get links for $id. Errors: $errors"
+                    },
+                    {
+                        String link = addTargetLink(id)
+                        if (!link) {
+                            log.error "Link not found for $id, and couldn't be added."
+                        }
+                    },
+                    { data ->
+                        log.error "Something went wrong getting $url. Response: $data"
+                    }
+            )
+        } catch (RestCallException e) {
+            log.error "Error $e.message getting preferred link for $id"
+        }
+    }
+
     /**
      * Ask the mapper for the preferred host name and context path (sans protocol e.g. http://)
      * @return
@@ -369,6 +415,28 @@ class LinkService {
             }
             return identity
         } as Map
+    }
+
+    String getInstanceLinkServiceUrl(instanceId, String endPoint = 'links', Boolean internal = false) {
+        //noinspection GroovyAssignabilityCheck
+        String identity = TargetParam.typeIdentityParamString('instance', instanceId, nameSpace(), 0)
+        if (identity) {
+            String mapper = mapper(internal)
+            String url = "${mapper}/broker/${endPoint}?${identity}"
+            return url
+        }
+        return null
+    }
+
+    String getNameLinkServiceUrl(nameId, String endPoint = 'links', Boolean internal = false) {
+        //noinspection GroovyAssignabilityCheck
+        String identity = TargetParam.typeIdentityParamString('name', nameId, nameSpace(), 0)
+        if (identity) {
+            String mapper = mapper(internal)
+            String url = "${mapper}/broker/${endPoint}?${identity}"
+            return url
+        }
+        return null
     }
 
     String getLinkServiceUrl(target, String endPoint = 'links', Boolean internal = false) {

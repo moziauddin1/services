@@ -130,7 +130,7 @@ class SearchService {
         String whereClause = "where ${and.join(' and ')}"
 
         String countQuery = "select count(distinct n) as count, n.nameRank.name as rank, n.nameRank.sortOrder $fromClause $whereClause group by n.nameRank.name, n.nameRank.sortOrder order by n.nameRank.sortOrder"
-        String query = "select distinct(n), n.sortName, n.nameRank.sortOrder $fromClause $whereClause order by n.sortName, n.nameRank.sortOrder asc"
+        String query = "select distinct(n) $fromClause $whereClause order by n.namePath"
 
         log.debug query
         log.debug queryParams
@@ -142,14 +142,10 @@ class SearchService {
             total += c[0] as Integer
             count.put(c[1], c[0])
         }
-        List<List> nameResults = (Name.executeQuery(query, queryParams, [max: max])) as List<List>
+        List<Name> nameResults = (Name.executeQuery(query, queryParams, [max: max]))
         log.debug "query took ${System.currentTimeMillis() - start}ms"
         //filter for just names.
-        List<Name> names = nameResults.collect { result ->
-            result[0] as Name
-        }
-
-        return [count: count, total: total, names: names, queryTime: (System.currentTimeMillis() - start)]
+        return [count: count, total: total, names: nameResults, queryTime: (System.currentTimeMillis() - start)]
     }
 
     private static Map queryTreeParams(Map params, Map queryParams, Set<String> from, Set<String> and) {

@@ -90,6 +90,10 @@ class TargetParam {
     }
 
     String identityParamString() {
+        return typeIdentityParamString(objectType, idNumber, nameSpace, versionNumber)
+    }
+
+    static String typeIdentityParamString(String objectType, Long idNumber, String nameSpace, Long versionNumber) {
         return "nameSpace=${nameSpace}" +
                 param("&objectType", objectType) +
                 param("&idNumber", idNumber) +

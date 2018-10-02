@@ -27,6 +27,7 @@ class SearchController implements RequestUtil {
     def configService
     def searchService
     FlatViewService flatViewService
+    def linkService
 
     def search(Integer max) {
         String referer = request.getHeader('Referer')
@@ -121,7 +122,8 @@ class SearchController implements RequestUtil {
                                     queryTime     : results.queryTime,
                                     max           : max,
                                     displayFormats: displayFormats,
-                                    trees         : trees
+                                    trees         : trees,
+                                    idHost: linkService
                             ]
                     )
                 }

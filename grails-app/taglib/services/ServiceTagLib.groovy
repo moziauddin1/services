@@ -141,6 +141,44 @@ class ServiceTagLib {
         }
     }
 
+    def getPreferredNameMapperLink = { attrs ->
+        Long targetId = attrs.targetId
+        if(targetId) {
+            try {
+                String link = linkService.getNameLinkServiceUrl(targetId, 'preferredLink', false)
+                if (link) {
+                    out << link
+                }
+            } catch (e) {
+                log.debug e.message
+            }
+        }
+    }
+
+    def preferredInstanceLink = { attrs, body ->
+        Long targetId = attrs.targetId
+        String api = attrs.api
+        if(targetId) {
+            try {
+                String link = linkService.getPreferredLinkForInstanceId(targetId)
+                if (link) {
+                    if (api) {
+                        link += "/$api"
+                    }
+                    out << "<a href='${link}'>".toString()
+                    out << body(link: link)
+                    out << "</a>"
+                } else {
+                    out << body(link: '/')
+                }
+            } catch (e) {
+                log.debug e.message
+            }
+        } else {
+            out << '<span class="text-danger">Link not available.</span>'
+        }
+    }
+
     def editorLink = { attrs, body ->
         def nameId = attrs.nameId
         if (nameId) {
