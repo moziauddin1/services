@@ -379,9 +379,7 @@ order by n.sortName asc''',
                                 parentSortOrder: parentSortOrder,
                                 treeName       : treeName
                         ], [max: 15])
-                           .collect { name ->
-                    [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml]
-                }
+                           .collect { name -> name.fullName }
 
             } else {
                 return Name.executeQuery('''
@@ -394,9 +392,7 @@ and tve.treeVersion = tree.currentTreeVersion
 order by n.sortName asc''',
                         [query   : regexTokenizeNameQueryString(query.toLowerCase()),
                          treeName: treeName], [max: 15])
-                           .collect { name ->
-                    [id: name.id, fullName: name.fullName, fullNameHtml: name.fullNameHtml]
-                }
+                           .collect { name -> name.fullName }
             }
         }
 
