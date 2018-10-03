@@ -25,11 +25,11 @@ class DashboardController {
     def grailsApplication
     VocabularyTermsService vocabularyTermsService
     def auditService
+    def configService
     private static final WEEK_MS = 604800000l
 
     def index() {
-        String url = grailsApplication.config.grails.serverURL
-        log.debug "in dashboard: $url, $grailsApplication.config.grails.config.locations"
+        String url = configService.serverUrl
 
         Map stats = [:]
         stats.names = Name.count()

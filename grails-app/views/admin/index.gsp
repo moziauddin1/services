@@ -222,24 +222,31 @@
         <div class="panel panel-info">
 
           <div class="panel-heading">
-            Database
+            Configuration
           </div>
 
           <div class="panel-body">
-            ${dbInfo}
+            <h2>Database</h2>
+
+            <div>
+              ${dbInfo}
+            </div>
+            <h2>Config</h2>
+            <pre>
+              ${appConfig.replaceAll('(,)', ',\n')}
+            </pre>
           </div>
         </div>
       </div>
     </div>
 
-
   </div>
 
   <div id='logs' class="row">
 
-    </div>
-
   </div>
+
+</div>
 
 </body>
 </html>

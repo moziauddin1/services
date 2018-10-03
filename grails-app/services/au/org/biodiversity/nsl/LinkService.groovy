@@ -389,11 +389,11 @@ class LinkService {
     }
 
     private String mapper(Boolean internal) {
-        return (internal ? grailsApplication.config.services.link.internalMapperURL : grailsApplication.config.services.link.mapperURL)
+        return (internal ? configService.internalMapperURL : configService.publicMapperURL)
     }
 
     private String mapperAuth() {
-        return "apiKey=${grailsApplication.config.services.mapper.apikey}"
+        return "apiKey=${configService.mapperApiKey}"
     }
 
     Map deleteNameLinks(Name name, String reason) {

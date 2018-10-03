@@ -44,7 +44,8 @@ class AdminController {
         stats.deletedNames = Name.executeQuery("select n from Name n where n.nameStatus.name = '[deleted]'")
         Boolean servicing = adminService.serviceMode()
         String dbInfo = postgresInfoService.connectionInfo.toString()
-        [pollingNames: nameService.pollingStatus(), stats: stats, servicing: servicing, dbInfo: dbInfo]
+        String appConfig = configService.printAppConfig()
+        [pollingNames: nameService.pollingStatus(), stats: stats, servicing: servicing, dbInfo: dbInfo, appConfig: appConfig]
     }
 
     @RequiresRoles('admin')
