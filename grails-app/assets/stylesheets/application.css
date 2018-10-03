@@ -87,6 +87,26 @@ span.cell {
     z-index: 10000;
 }
 
+.slider {
+    animation-duration: 10s;
+    animation-name: slidein;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+@keyframes slidein {
+    from {
+        margin-left: 80%;
+        width: 100%;
+    }
+
+    to {
+        margin-left: 0%;
+        width: 100%;
+    }
+}
+
+
 @media(min-width:992px) and (max-width:1100px){
     div.logo img {
         -ms-transform: rotate(90deg) translate(50px, 50px);
