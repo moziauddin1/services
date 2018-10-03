@@ -252,31 +252,6 @@ dt.divide {
     color: darkgray;
 }
 
-div#page-footer {
-    background: white none repeat scroll 0 0;
-    color: black;
-    border-top: 1px solid gray;
-    bottom: 0;
-    height: 4em;
-    position: fixed;
-    width: 100%;
-    padding-top: 0.5em;
-    padding-left: 1em;
-    padding-right: 1em;
-}
-
-div#page-footer a.twitter-link {
-    color: black;
-}
-
-span#page-footer-inner-right {
-    display: inline-block;
-    margin-top: 1em;
-}
-
-div#main-content {
-    margin-bottom: 5em;
-}
 
 bhl-link img {
     vertical-align: baseline;

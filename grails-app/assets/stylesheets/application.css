@@ -45,18 +45,19 @@
 
 body {
     min-width: 400px !important;
+    min-height: 100vh;
 }
 
 body.test {
-    background-color: rgba(246, 243, 87, 0.05);
+    border-left: #7a43b6 15px solid;
 }
 
 body.local {
-    background-color: rgba(159, 255, 0, 0.08);
+    border-left: #41b622 15px solid;
 }
 
 body.stage {
-    background-color: #a3cbdd;
+    border-left: #2e3ab6 15px solid;
 }
 
 div.logo {
@@ -146,6 +147,37 @@ div.logo div.sublogo {
     font-size: 0.9em;
     color: #66512c;
 }
+
+div#page-footer {
+
+    background: white none repeat scroll 0 0;
+    color: black;
+    border-top: 1px solid gray;
+    bottom: 0;
+    height: 4em;
+    position: fixed;
+    width: 100vh;
+    padding-top: 0.5em;
+    padding-left: 1em;
+    padding-right: 1em;
+    left: 0;
+
+}
+
+div#page-footer a.twitter-link {
+    color: black;
+}
+
+span#page-footer-inner-right {
+    display: inline-block;
+    margin-top: 1em;
+}
+
+div#main-content {
+    margin-bottom: 5em;
+}
+
+
 
 /* styles for basic CRUD pages */
 li.fieldcontain {
