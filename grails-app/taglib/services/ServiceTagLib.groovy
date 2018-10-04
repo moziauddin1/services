@@ -78,7 +78,7 @@ class ServiceTagLib {
     }
 
     def systemNotification = { attrs ->
-        String messageFileName = grailsApplication.config.shard.system.message.file //default config ensures this exists
+        String messageFileName = configService.systemMessageFilename
         if (messageFileName) {
             File message = new File(messageFileName)
             if (message.exists()) {
@@ -95,7 +95,7 @@ class ServiceTagLib {
     }
 
     def scheme = { attrs ->
-        String colourScheme = grailsApplication.config.shard.colourScheme
+        String colourScheme = configService.colourScheme
         if (colourScheme) {
             out << colourScheme
         }
@@ -183,7 +183,7 @@ class ServiceTagLib {
         def nameId = attrs.nameId
         if (nameId) {
             try {
-                String link = (grailsApplication.config.services.link.editor ?: 'https://biodiversity.org.au/nsl-editor') +
+                String link = configService.editorlink +
                         "/search?query=id:${nameId}&query_field=name-instances&query_on=instance"
                 if (link) {
                     out << "<a href='${link}'>"

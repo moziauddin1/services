@@ -520,7 +520,7 @@ CREATE MATERIALIZED VIEW ${TAXON_VIEW} AS
 
     private File exportToCSV(String viewName, String namePrefix, Closure viewDefn) {
         Date date = new Date()
-        String tempFileDir = grailsApplication.config.shard.temp.file.directory
+        String tempFileDir = configService.tempFileDir
         String fileName = "$namePrefix-${date.format('yyyy-MM-dd-mmss')}.csv"
         File outputFile = new File(tempFileDir, fileName)
         withSql { Sql sql ->
