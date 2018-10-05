@@ -6,7 +6,7 @@
   </family>
 
   <div data-nameId="${name.id}">
-    <accepted-name>${raw(name.fullNameHtml)}
+    <accepted-name><a href="${mapperHost + '/' + name.uri + '/api/apni-format'}">${raw(name.fullNameHtml)}</a>
     </accepted-name><name-status class="${name.nameStatus.name}">, ${name.nameStatus.name}</name-status><name-type
       class="${name.nameType.name}">, ${name.nameType.name}</name-type>
     <g:each in="${name.tags}" var="tag">
@@ -16,9 +16,9 @@
       <st:editorLink nameId="${name.id}"><i class="fa fa-edit" title="Edit"></i></st:editorLink>
     </editor>
 
-    %{--<span class="vertbar hidden-print">--}%
-    %{--<a href="${preferredNameLink}"><i title="Link to Name" class="fa fa-link"></i></a>--}%
-    %{--</span>--}%
+    <span class="vertbar hidden-print">
+      <a href="${mapperHost + '/' + name.uri}"><i title="Link to Name" class="fa fa-link"></i></a>
+    </span>
 
     <span class="toggleNext vertbar  hidden-print">
       <i class="fa fa-caret-up"></i><i class="fa fa-caret-down" style="display: none"></i>
@@ -32,7 +32,11 @@
       <g:if test="${name.apniJson.detail.empty}">No references.</g:if>
       <g:each in="${name.apniJson.detail}" var="ref">
         <reference>
-          <ref-citation data-instanceId="${ref.instance_id as int}">${raw(ref.ref_citation_html)}</ref-citation> %{--TODO Link, draft --}%
+          <ref-citation data-instanceId="${mapperHost + '/' + ref.instance_uri}">
+            <a href="${mapperHost + '/' + ref.instance_uri}">
+              ${raw(ref.ref_citation_html)}
+            </a>
+          </ref-citation> %{--TODO Link, draft --}%
           <page>${ref.page}</page> %{--TODO handle common name page ~ see af:page--}%
           <g:each in="${ref.resources}" var="resource">
             <a href="${resource.url}" title="${resource.description}">
@@ -42,7 +46,27 @@
           <a href="${g.createLink(absolute: true, controller: 'search', action: 'search',
               params: [publication: ref.citation, search: true, advanced: true, display: 'apni'])}"
              class="hidden-print"><i class="fa fa-search"></i></a>
-          %{--End reference section--}%
+        %{-- On Accepted tree --}%
+          <g:each in="${ref.tree}" var="tree">
+            <g:if test="${tree.current}">
+              <g.createLink absolute="true" controller="apcFormat" action="display" id="${name.id}"></g.createLink>
+              <a href="${g.createLink(absolute: true, controller: 'apcFormat', action: 'display', id: name.id)}">
+                <apc title="${tree.tree_name} concept"><i class="fa fa-check"></i>${tree.tree_name}</apc>
+              </a>
+              <a href="${mapperHost + tree.element_link}" class="small text-info"
+                 title="in current tree since TODO">
+                <i class="fa fa-tree"></i>
+              </a>
+            </g:if>
+            <g:else>
+              <a href="${mapperHost + tree.element_link}" class="small text-info"
+                 title="previously accepted till TODO">
+                <i class="fa fa-tree"></i>
+              </a>
+            </g:else>
+          </g:each>
+
+        %{--End reference section--}%
           <instance-type class="${ref.instance_type}">[${ref.instance_type}]</instance-type>
           <instance>
             <ul class="instance-notes list-unstyled">
@@ -58,15 +82,17 @@
             <g:each in="${ref.synonyms}" var="synonym">
               <g:if test="${synonym.misapplied}">
                 <misapplication data_syntype="${synonym.instance_type}">
-                  ${synonym.instance_type}: ${raw(synonym.full_name_html)} <name-status
-                    class="${synonym.name_status}">${synonym.name_status}</name-status>
+                  ${synonym.instance_type}:
+                  <a href="${mapperHost + '/' + synonym.name_uri}/api/apni-format"> ${raw(synonym.full_name_html)} </a>
+                  <name-status class="${synonym.name_status}">${synonym.name_status}</name-status>
                   by ${raw(synonym.citation_html)}
                 </misapplication>
               </g:if>
               <g:else>
                 <has-synonym data_syntype="${synonym.instance_type}">
-                  ${synonym.instance_type}: ${raw(synonym.full_name_html)} <name-status
-                    class="${synonym.name_status}">${synonym.name_status}</name-status>
+                  ${synonym.instance_type}:
+                  <a href="${mapperHost + '/' + synonym.name_uri}/api/apni-format"> ${raw(synonym.full_name_html)} </a>
+                  <name-status class="${synonym.name_status}">${synonym.name_status}</name-status>
                 </has-synonym>
               </g:else>
             </g:each>

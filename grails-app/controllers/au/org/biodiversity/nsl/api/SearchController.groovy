@@ -123,7 +123,7 @@ class SearchController implements RequestUtil {
                                     max           : max,
                                     displayFormats: displayFormats,
                                     trees         : trees,
-                                    idHost: linkService
+                                    mapperHost    : configService.publicMapperURL
                             ]
                     )
                 }

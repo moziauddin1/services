@@ -56,23 +56,6 @@ $(function () {
   };
   window.setTimeout(lazyLoad, 100);
 
-  $('scientific > name').each(function () {
-    var id = $(this).data('id');
-    var link = 'http://localhost:7070/nsl-mapper/name/apni/' + id + '/api/apni-format';
-    $(this).addClass('jslink').attr('title', link).click(function () {
-      window.location = link;
-    });
-  });
-
-  $('ref-citation[data-instanceid]').each(function () {
-    var id = $(this).data('instanceid');
-    var link = 'http://localhost:7070/nsl-mapper/instance/apni/' + id;
-    $(this).addClass('jslink').attr('title', link).click(function () {
-      window.location = link;
-    });
-  });
-
-
   $('.toggleNext').unbind('click').click(function () {
     toggleNext(this);
   });
