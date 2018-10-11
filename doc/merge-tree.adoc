@@ -1,0 +1,58 @@
+= Merge Tree
+v1.0, August 2017
+:imagesdir: resources/images/
+:toc: left
+:toclevels: 4
+:toc-class: toc2
+:icons: font
+:iconfont-cdn: //cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css
+:stylesdir: resources/style/
+:stylesheet: asciidoctor.css
+:description: New tree structure documentation
+:keywords: documentation, NSL, APNI, API, APC, tree
+:links:
+:numbered:
+
+This documents the process of merging a version of the tree with another version
+
+== Why?
+
+If you have two draft copies of a tree and you make changes to one then publish that draft, the second draft will
+not contain the changes made to the currently published tree. That is, the second draft will be "behind" the published
+tree.
+
+If the second draft is published without updates it will overwrite the changes of the first draft, so they will "revert"
+back to the previous version.
+
+To fix this, when a draft is published, remaining drafts need to "Pull" or "Merge" the changes on the newly published
+tree with their drafts.
+
+== Usage
+
+When the editor of a draft tries to publish a draft that came from an older version than the currently published version
+they will be blocked and asked to merge changes from the published tree first. They would be presented with a diff of
+the two versions showing simple updates and "clashes".
+
+* A simple update is one that does not overwrite a change made in the draft.
+* A clash is on update that would overwrite changes made in the draft.
+
+Simple updates would be automatically made to the draft. Clashing updates would require to user to decide what to do:
+
+1. Accept the published changes, overwriting the draft changes.
+2. Reject the published changes, effectively overwriting the published changes.
+3. Merge the changes from both the published and draft versions.
+
+=== Simplifications to get it happening
+
+Merging the changes will initially be the same as Rejecting the published changes where the user will have to manually
+copy the the changes across to their version.
+
+Ideally we should try to merge all non clashing changes, e.g. if production has a change to the comment and the draft
+has a change to distribution then the merge should just add the comment and leave the distribution change.
+
+=== Complications
+
+Changes in synonymy will show up in altered synonymy reports and can be applied to any draft at any time. The services
+code should choose and re-use identical tree elements and remove orphaned elements as you go but minor changes (such as
+double spaces in comments) can cause an inconsequential change to be recorded. It may be wise to implement some form
+of clean up for inconsequential changes such as double spaces which don't show up in the HTML output.
