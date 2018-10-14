@@ -259,14 +259,14 @@ order by common_synonym;
      * @param treeVersion
      * @return
      */
-    def checkCurrentSynonymy(TreeVersion treeVersion) {
+    def checkCurrentSynonymy(TreeVersion treeVersion, Integer limit = 100) {
         Sql sql = getSql()
         List<Map> results = []
         sql.eachRow('''select tve.element_link, te.instance_link, te.instance_id from tree_element te
           join tree_version_element tve on te.id = tve.tree_element_id
         where tve.tree_version_id = :versionId 
           and te.synonyms_html <> synonyms_as_html(te.instance_id)
-          order by tve.name_path;''', [versionId: treeVersion.id]) { row ->
+          order by tve.name_path;''', [versionId: treeVersion.id], 0, limit) { row ->
             TaxonData taxonData = treeService.findInstanceByUri(row.instance_link as String)
             Map d = [
                     taxonData         : taxonData,

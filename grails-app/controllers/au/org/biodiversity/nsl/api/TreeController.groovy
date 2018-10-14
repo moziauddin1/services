@@ -129,7 +129,7 @@ class TreeController extends BaseApiController {
         Tree tree = Tree.get(treeId)
         ResultObject results = requireTarget(tree, "No Tree with id: $treeId found")
         handleResults(results, { checkSynRespond(results, tree, embed) }) {
-            results.payload = treeReportService.checkCurrentSynonymy(tree.defaultDraftTreeVersion)
+            results.payload = treeReportService.checkCurrentSynonymy(tree.defaultDraftTreeVersion, 100)
         }
     }
 
