@@ -1298,10 +1298,12 @@ order by updated_at desc
     }
 
     /**
-     * Take replace and existing tree version element with a new one using a different tree element.
+     * Replace an existing tree version element with a new one using a different tree element.
      *
-     * This updates the tree version element tree path and deletes the existing treeVersionElement, so make sure it's
-     * not published before calling this.
+     * This updates the tree version element tree path and deletes the existing treeVersionElement.
+     *
+     * You must make sure the existing treeVersionElement not published before calling this (i.e. it is on a draft tree.
+     * Since you should only edit a draft tree that should be true.)
      *
      * @param treeVersionElement
      * @param newElement
