@@ -16,7 +16,7 @@
 
 package au.org.biodiversity.nsl
 
-class IcnvNameConstructionService implements NameConstructor {
+class IcvcnNameConstructionService implements NameConstructor {
 
     static transactional = false
 
@@ -69,8 +69,7 @@ class IcnvNameConstructionService implements NameConstructor {
             List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
 
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
-            //need to remove Authors below from simple name because preceding name includes author in autonyms
-            return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: fullMarkedUpName.removeAuthors()]
+            return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: fullMarkedUpName]
         }
     }
 
@@ -86,10 +85,9 @@ class IcnvNameConstructionService implements NameConstructor {
             String rank = nameParent ? makeRankString(name) : ''
             String connector = makeConnectorString(name, rank)
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
-            String author = constructAuthor(name)
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> fullNameParts = [precedingName, rank, connector, element, author, manuscript]
+            List<String> fullNameParts = [precedingName, rank, connector, element, manuscript]
             List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
 
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
