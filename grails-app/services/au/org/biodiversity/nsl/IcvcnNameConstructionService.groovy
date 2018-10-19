@@ -66,7 +66,7 @@ class IcvcnNameConstructionService implements NameConstructor {
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
+            List<String> simpleNameParts = [rank, connector, element, manuscript]
 
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
             return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: fullMarkedUpName]
@@ -87,8 +87,8 @@ class IcvcnNameConstructionService implements NameConstructor {
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> fullNameParts = [precedingName, rank, connector, element, manuscript]
-            List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
+            List<String> fullNameParts = [rank, connector, element, manuscript]
+            List<String> simpleNameParts = [rank, connector, element, manuscript]
 
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
             String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
