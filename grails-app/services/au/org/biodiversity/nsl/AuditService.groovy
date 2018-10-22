@@ -99,7 +99,7 @@ WHERE action = 'D\'
       AND table_name = 'instance\'
       and (row_data -> 'id') :: NUMERIC :: BIGINT = :instanceId
 order by action_tstamp_tx desc;''', [instanceId: instanceId])
-            return new HashMap(rowResult as Map)
+            return (rowResult && !rowResult.isEmpty()) ? new HashMap(rowResult as Map) : null
         } as Map
     }
 
