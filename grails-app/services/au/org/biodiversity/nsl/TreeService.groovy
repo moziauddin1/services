@@ -1569,7 +1569,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
 
         //polynomials must be placed under parent
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        if(!configService.disableCheckPolynomialsBelowNameParent) {
+            checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        }
         return warnings
     }
 
