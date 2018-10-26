@@ -93,6 +93,8 @@
                        title="Diff from current version">diff</a>,
                     <a href="${createLink(namespace: 'api', controller: 'tree', action: 'eventReport', params: [treeId: version.tree.id])}"
                        title="Check Events">events</a>,
+                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'mergeReport', params: [draftId: version.id])}"
+                       title="Check Events">merge</a>,
                   </g:else>
                 </g:if>
               </g:if>

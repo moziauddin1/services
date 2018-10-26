@@ -1,4 +1,5 @@
 <div>
+  <g:if test="${tve}">
   <div class="text-muted">
     Updated by ${tve.updatedBy} <date>${tve.updatedAt}</date>
   </div>
@@ -13,4 +14,8 @@
       ${raw(syn)}
     </div>
   </div>
+  </g:if>
+  <g:else>
+    [This page left intentionally blank.]
+  </g:else>
 </div>

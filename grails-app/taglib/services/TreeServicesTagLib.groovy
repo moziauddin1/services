@@ -148,11 +148,15 @@ class TreeServicesTagLib {
     }
 
     def diffSynonyms = { attrs, body ->
+
+        String synA = attrs.a ?: ''
+        String synB = attrs.b ?: ''
+
         // split synonyms onto new lines
-        List<String> a = (attrs.a as String)?.replaceAll('</?synonyms>', '')
+        List<String> a = (synA)?.replaceAll('</?synonyms>', '')
                                             ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
                                             ?.split('::')
-        List<String> b = (attrs.b as String)?.replaceAll('</?synonyms>', '')
+        List<String> b = (synB)?.replaceAll('</?synonyms>', '')
                                             ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
                                             ?.split('::')
 
@@ -180,10 +184,16 @@ class TreeServicesTagLib {
         out << body(diffA: diffA, diffB: diffB)
     }
 
+
+
     def diffPath = { attrs, body ->
-        // split synonyms onto new lines
-        List<String> a = (attrs.a as String)?.split('/')
-        List<String> b = (attrs.b as String)?.split('/')
+
+        String pathA = attrs.a ?: ''
+        String pathB = attrs.b ?: ''
+
+        // split path onto new lines
+        List<String> a = (pathA)?.split('/')
+        List<String> b = (pathB)?.split('/')
 
         int size = Math.max(a.size(), b.size())
         0.upto(size - 1) { i ->

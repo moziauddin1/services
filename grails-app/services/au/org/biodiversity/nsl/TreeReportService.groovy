@@ -1,9 +1,13 @@
 package au.org.biodiversity.nsl
 
 import au.org.biodiversity.nsl.api.ValidationUtils
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import grails.converters.JSON
 import grails.transaction.Transactional
 import groovy.sql.Sql
+import org.codehaus.groovy.grails.web.json.JSONElement
+import org.codehaus.groovy.grails.web.json.JSONObject
 
 import javax.sql.DataSource
 
@@ -26,58 +30,136 @@ class TreeReportService implements ValidationUtils {
      * @param second
      * @return
      */
-    Map diffReport(TreeVersion first, TreeVersion second) {
-        mustHave("version 1": first, "version 2": second)
-        use(TreeReportUtils) {
+    TreeChangeSet diffReport(TreeVersion first, TreeVersion second) {
+        new TreeChangeSet(first, second, getSql(), 1000)
+    }
+
+    MergeReport mergeReport(TreeVersion draft) {
+        if (isBehindHead(draft)) {
             Sql sql = getSql()
-
-            List<Long> treeElementsNotInSecond = first.notIn(second, sql)
-            List<Long> treeElementsNotInFirst = second.notIn(first, sql)
-            if (treeElementsNotInSecond.empty && treeElementsNotInFirst.empty) {
-                return [v1: first, v2: second, added: [], removed: [], modified: [], changed: false, overflow: false]
-            }
-
-            if (treeElementsNotInSecond.size() > 1000 || treeElementsNotInFirst.size() > 1000) {
-                return [v1: first, v2: second, added: [], removed: [], modified: [], changed: true, overflow: true]
-            }
-
-            List<List<TreeVersionElement>> modified = findModified(first, second, treeElementsNotInFirst)
-
-            List<Long> treeElementsAddedToSecond = treeElementsNotInFirst - modified.collect { mod -> mod[0].treeElement.id }
-            List<TreeVersionElement> added = getTvesInVersion(treeElementsAddedToSecond, second)
-
-            List<Long> treeElementsRemovedFromSecond = treeElementsNotInSecond - modified.collect { mod -> mod[1].treeElement.id }
-            List<TreeVersionElement> removed = getTvesInVersion(treeElementsRemovedFromSecond, first)
-
-            [v1: first, v2: second, added: added, removed: removed, modified: modified, changed: true, overflow: false]
+            TreeChangeSet headChangeset = new TreeChangeSet(draft.previousVersion, draft.tree.currentTreeVersion, sql, 0)
+            TreeChangeSet draftChangeSet = new TreeChangeSet(draft.previousVersion, draft, sql, 0)
+            MergeReport report = new MergeReport(
+                    from: draft.tree.currentTreeVersion,
+                    to: draft,
+                    upToDate: false,
+                    conflicts: markConflicts(findConflictingChanges(headChangeset, draftChangeSet)),
+                    nonConflicts: findNonConflictingChanges(headChangeset, draftChangeSet, draft))
+            report.idDiffs()
+            return report
         }
-    }
-
-    private
-    static List<List<TreeVersionElement>> findModified(TreeVersion first, TreeVersion second, List<Long> treeElementsNotInFirst) {
-        if (treeElementsNotInFirst.empty) {
-            return []
-        }
-        (TreeVersionElement.executeQuery('''
-select tve, ptve 
-    from TreeVersionElement tve, TreeVersionElement ptve
-where tve.treeVersion = :version
-    and ptve.treeVersion =:previousVersion
-    and ptve.treeElement.nameId = tve.treeElement.nameId
-    and tve.treeElement.id in :elementIds
-    order by tve.namePath
-''', [version: second, previousVersion: first, elementIds: treeElementsNotInFirst])) as List<List<TreeVersionElement>>
-    }
-
-    private static getTvesInVersion(List<Long> elementIds, TreeVersion version) {
-        printf "querying ${elementIds.size()} elements"
-        if (elementIds.empty) {
-            return []
-        }
-        return TreeVersionElement.executeQuery(
-                'select tve from TreeVersionElement tve where treeVersion = :version and treeElement.id in :elementIds order by namePath',
-                [version: version, elementIds: elementIds]
+        return new MergeReport(
+                from: draft.tree.currentTreeVersion,
+                to: draft,
+                upToDate: true,
+                conflicts: [],
+                nonConflicts: []
         )
+    }
+
+    MergeReport rehydrateReport(String jsonChangeset) {
+        JSONObject changeset = JSON.parse(jsonChangeset) as JSONObject
+        MergeReport report = new MergeReport(
+                from: TreeVersion.get(changeset.mergeReport.fromVersionId as Long),
+                to: TreeVersion.get(changeset.mergeReport.toVersionId as Long),
+                upToDate: changeset.mergeReport.upToDate,
+        )
+        report.conflicts = changeset.mergeReport.conflicts.collect { diffFromData(it.tveDiff)  }
+        report.nonConflicts = changeset.mergeReport.nonConflicts.collect { diffFromData(it.tveDiff)  }
+        return report
+    }
+
+    private static TveDiff diffFromData(Map diffData){
+        TreeVersionElement from = diffData.from ? TreeVersionElement.get(diffData.from) : null
+        TreeVersionElement to = diffData.to ? TreeVersionElement.get(diffData.to) : null
+        TveDiff tveDiff = new TveDiff(from, to, diffData.fromType, diffData.toType)
+        tveDiff.id = diffData.id
+        return tveDiff
+    }
+
+    /**
+     * Find changes to names that are only in head, not in draft
+     *
+     * find all the TVEs in the head changeset that are not in the draft changeset by name id then get to matching draft
+     * TVE in the draft tree if it exists and create a TveDiff.
+     *
+     * @param head
+     * @param draft
+     * @return a set of diffs from draft to head
+     */
+    List<TveDiff> findNonConflictingChanges(TreeChangeSet head, TreeChangeSet draft, TreeVersion draftVersion) {
+        List<Long> nonConflictingNameIds = head.all.collect { it.treeElement.nameId } - draft.all.collect { it.treeElement.nameId }
+        List<TveDiff> diffs = []
+        head.added.findAll { nonConflictingNameIds.contains(it.treeElement.nameId) }.each { tve ->
+            TreeVersionElement draftTve = treeService.findElementForNameId(tve.treeElement.nameId, draftVersion)
+            diffs.add(new TveDiff(draftTve, tve, TveDiff.UNCHANGED, TveDiff.ADDED))
+        }
+        head.removed.findAll { nonConflictingNameIds.contains(it.treeElement.nameId) }.each { tve ->
+            TreeVersionElement draftTve = treeService.findElementForNameId(tve.treeElement.nameId, draftVersion)
+            diffs.add(new TveDiff(draftTve, tve, TveDiff.UNCHANGED, TveDiff.REMOVED))
+        }
+        head.modifiedResult.findAll { nonConflictingNameIds.contains(it.treeElement.nameId) }.each { tve ->
+            TreeVersionElement draftTve = treeService.findElementForNameId(tve.treeElement.nameId, draftVersion)
+            diffs.add(new TveDiff(draftTve, tve, TveDiff.UNCHANGED, TveDiff.MODIFIED))
+        }
+        return diffs
+    }
+
+    List<TveDiff> markConflicts(List<TveDiff> conflicts) {
+        conflicts.each { TveDiff diff ->
+            diff.to.mergeConflict = true
+        }
+        return conflicts
+    }
+
+    /**
+     * Find changes to names in both head and draft versions
+     * @param head
+     * @param draft
+     * @return
+     */
+    List<TveDiff> findConflictingChanges(TreeChangeSet head, TreeChangeSet draft) {
+        List<TveDiff> diffs = []
+        conflictSet(diffs, head.added, draft, TveDiff.ADDED)
+        conflictSet(diffs, head.removed, draft, TveDiff.REMOVED)
+        conflictSet(diffs, head.modifiedResult, draft, TveDiff.MODIFIED)
+        return diffs
+    }
+
+    List<TveDiff> conflictSet(List<TveDiff> diffs, List<TreeVersionElement> head, TreeChangeSet draft, int fromType) {
+        conflictSet(diffs, head, draft.added, fromType, TveDiff.ADDED)
+        if (fromType != TveDiff.REMOVED) { //both removed this name, not a conflict
+            conflictSet(diffs, head, draft.removed, fromType, TveDiff.REMOVED)
+        }
+        conflictSet(diffs, head, draft.modifiedResult, fromType, TveDiff.MODIFIED)
+        return diffs
+    }
+
+    List<TveDiff> conflictSet(List<TveDiff> diffs, List<TreeVersionElement> head, List<TreeVersionElement> draft, int fromType, int toType) {
+        head.each { TreeVersionElement headTve ->
+            draft.each { TreeVersionElement draftTve ->
+                if (headTve.treeElement.nameId == draftTve.treeElement.nameId) {
+                    diffs << new TveDiff(draftTve, headTve, toType, fromType)
+                }
+            }
+        }
+        return diffs
+    }
+
+    /**
+     * check if this version is behind the current published (head) version.
+     *
+     * If the version you are checking is published it checks the published dates
+     * If it's not published it checks if the previous version id equals the current published
+     * version, if not then it is behind.
+     * @param version
+     * @return
+     */
+    Boolean isBehindHead(TreeVersion version) {
+        if (version.published) {
+            return version.tree.currentTreeVersion.publishedAt > version.publishedAt
+        }
+        version.tree.currentTreeVersion.id != version.previousVersion.id
     }
 
     Map validateTreeVersion(TreeVersion treeVersion) {
@@ -236,7 +318,7 @@ order by common_synonym;
         if (tve) {
             tve.treeElement.refresh()
             TaxonData taxonData = treeService.findInstanceByUri(event.data.instanceLink as String)
-            if (tve.treeElement.synonymsHtml != taxonData.synonymsHtml) {
+            if (taxonData && tve.treeElement.synonymsHtml != taxonData.synonymsHtml) {
                 return [
                         taxonData         : taxonData,
                         treeVersionElement: tve,

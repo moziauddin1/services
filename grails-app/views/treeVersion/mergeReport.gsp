@@ -2,12 +2,12 @@
 <html>
 <head>
   <meta name="layout" content="main">
-  <title>Tree - diff</title>
+  <title>Tree - merge report</title>
   <asset:stylesheet src="tree.css"/>
 
 </head>
 
 <body>
-<g:render template="diffContent"/>
+<g:render template="mergeContent"/>
 </body>
 </html>

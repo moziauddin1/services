@@ -73,9 +73,20 @@ class TreeService implements ValidationUtils {
      */
     @Transactional(readOnly = true)
     TreeVersionElement findElementForName(Name name, TreeVersion treeVersion) {
-        if (name && treeVersion) {
+        findElementForNameId(name?.id, treeVersion)
+    }
+
+    /**
+     * get the TreeElement for a name in the given version of a tree
+     * @param name
+     * @param treeVersion
+     * @return TreeVersionElement or null if not on the tree
+     */
+    @Transactional(readOnly = true)
+    TreeVersionElement findElementForNameId(Long nameId, TreeVersion treeVersion) {
+        if (nameId && treeVersion) {
             return TreeVersionElement.find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.nameId = :nameId',
-                    [treeVersion: treeVersion, nameId: name.id])
+                    [treeVersion: treeVersion, nameId: nameId])
         }
         return null
     }
@@ -1046,7 +1057,7 @@ INSERT INTO tree_version_element (tree_version_id,
 
         elementComparators.remove('profile')
         //order by latest first so the first match will be the latest. (yes there are mutilple exact matches in some datasets)
-        List<TreeElement> matchingElements = TreeElement.findAllWhere(elementComparators).sort { a,b -> b.id <=> a.id }
+        List<TreeElement> matchingElements = TreeElement.findAllWhere(elementComparators).sort { a, b -> b.id <=> a.id }
         log.debug "Found ${matchingElements.size()} matching elements"
 
         TreeElement foundElement = null
@@ -1399,6 +1410,14 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
     }
 
+    /**
+     * deletes a tree version element.
+     *
+     * WARNING: you must check this is a draft before calling this.
+     *
+     * @param target
+     * @return
+     */
     private deleteTreeVersionElement(TreeVersionElement target) {
         removeLink(target)
         target.treeElement.removeFromTreeVersionElements(target)
@@ -1571,7 +1590,9 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
 
         //polynomials must be placed under parent
-        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        if (!configService.disableCheckPolynomialsBelowNameParent) {
+            checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
+        }
         return warnings
     }
 
@@ -1899,6 +1920,138 @@ and tve.element_link not in ($excludedLinks)
 
     boolean isInstanceInAnyTree(Instance instance) {
         !findTreesByInstance(instance).empty
+    }
+
+    Map merge(TreeVersion draftVersion, MergeReport report, String userName) {
+        if (draftVersion.published) {
+            throw new ServiceException("Error: $userName tried to merge into published version of ${draftVersion.tree.name}")
+        }
+        if (draftVersion.tree.currentTreeVersion.id == draftVersion.previousVersion.id) {
+            return [message: 'Nothing to do, merge report may be out of date?', merged: 0, complete: true, report: []]
+        }
+
+        if (report.from == draftVersion.tree.currentTreeVersion && report.to == draftVersion) {
+            return doMerge(draftVersion, report, userName)
+        } else {
+            return [message: "Merge report may is out of date. From and To versions don't match", merged: 0, complete: true, report: []]
+        }
+    }
+
+    /**
+     * merge the selected changes
+     * collect all *useFrom* diffs and clear the from tve mergeConflict
+     * collect all useTo removed - sort bottom up by treePath and call removeTreeVersionElement on fromTve if exists
+     * collect all useTo added - sort top down by treePath and call placePublished on toTve
+     * collect all useTo modified where tree_element differs between from and to tve and call changeElement
+     * collect all useTo modified where tree_element is the same for from and to tve and update the placement/tve data(?)
+     *
+     * @param draftVersion
+     * @param report
+     * @param userName
+     * @return
+     */
+    private Map doMerge(TreeVersion draftVersion, MergeReport report, String userName) {
+        List<String> mergeLog = []
+
+        // collect all *useFrom* diffs and clear the from tve mergeConflict
+        report.getUseFrom().each { diff ->
+            diff.from.mergeConflict = false
+            mergeLog.add "Kept ${diff.from.treeElement.simpleName}: ${diff.from.elementLink}"
+        }
+
+        // collect all useTo removed - sort bottom up by treePath and call removeTreeVersionElement on fromTve if exists
+        report.getUseToType(TveDiff.REMOVED)
+              .sort { a, b -> b.to.namePath <=> a.to.namePath }
+              .each { diff ->
+            if (diff.from) {
+                removeTreeVersionElement(diff.from)
+                mergeLog.add "Removed ${diff.to.treeElement.simpleName}"
+            }
+        }
+
+        // collect all useTo added - sort top down by treePath and call placePublished on toTve
+        report.getUseToType(TveDiff.ADDED)
+              .sort { a, b -> a.to.namePath <=> b.to.namePath }
+              .each { diff ->
+            TreeVersionElement newTve = placePublishedTve(diff.to, draftVersion, userName)
+            mergeLog.add "Added ${newTve.treeElement.simpleName}: ${newTve.elementLink} "
+        }
+
+        // collect all useTo modified where tree_element differs between from and to tve and change the element
+        // collect all useTo modified where tree_element is the same for from and to tve and update the placement/tve data(?)
+        report.getUseToType(TveDiff.MODIFIED)
+              .each { diff ->
+            TreeVersionElement newTve = updateFromPublised(diff.from, diff.to, userName)
+            mergeLog.add "Updated ${newTve.treeElement.simpleName}: ${newTve.elementLink} "
+        }
+
+        List<TreeVersionElement> conflicted = TreeVersionElement.findAllByMergeConflictAndTreeVersion(true, draftVersion)
+        if (conflicted.size()) {
+            return [message: "Merge incomplete: merged ${mergeLog.size()} elements, ${conflicted.size()} conflicts remaining.", merged: mergeLog.size(), complete: false, report: mergeLog]
+        }
+        draftVersion.previousVersion = draftVersion.tree.currentTreeVersion
+        draftVersion.save()
+        return [message: "Merge complete: merged ${mergeLog.size()} elements, 0 conflicts remaining.", merged: mergeLog.size(), complete: true, report: mergeLog]
+
+    }
+
+    private TreeVersionElement placePublishedTve(TreeVersionElement publishedTve, TreeVersion draftVersion, String userName) {
+        TreeVersionElement draftParentTve = findElementForNameId(publishedTve.parent.treeElement.nameId, draftVersion)
+        TreeVersionElement replacementTve = saveTreeVersionElement(publishedTve.treeElement, draftParentTve,
+                draftVersion, publishedTve.taxonId, publishedTve.taxonLink, userName)
+        return replacementTve
+    }
+
+    private TreeVersionElement updateFromPublised(TreeVersionElement currentTve, TreeVersionElement publishedTve, String userName) {
+        notPublished(currentTve)
+
+        TreeVersionElement newParentTve = findElementForNameId(publishedTve.parent.treeElement.nameId, currentTve.treeVersion)
+
+        Boolean elementChanged = currentTve.treeElement != publishedTve.treeElement
+        if (elementChanged) {
+            return copyPublishedTve(publishedTve, newParentTve, currentTve, userName)
+        } else {
+            return updateExistingTve(currentTve, newParentTve, userName)
+        }
+    }
+
+    private updateExistingTve(TreeVersionElement currentTve, TreeVersionElement newParentTve, String userName) {
+        String oldTreePath = currentTve.treePath
+        String oldNamePath = currentTve.namePath
+        TreeVersionElement oldParent = currentTve.parent
+        currentTve.parent = newParentTve
+        currentTve.treePath = makeTreePath(newParentTve, currentTve.treeElement)
+        currentTve.namePath = makeNamePath(newParentTve, currentTve.treeElement)
+        currentTve.depth = (newParentTve?.depth ?: 0) + 1
+        currentTve.updatedBy = userName
+        currentTve.updatedAt = new Timestamp(System.currentTimeMillis())
+
+        updateChildTreePath(currentTve.treePath, oldTreePath, currentTve.treeVersion)
+        updateChildNamePath(currentTve.namePath, oldNamePath, currentTve.treeVersion)
+        updateChildNameDepth(currentTve.namePath, currentTve.treeVersion)
+
+        updateParentTaxaId(newParentTve)
+        if (oldParent != currentTve.parent) {
+            updateParentTaxaId(oldParent)
+        }
+        return currentTve
+    }
+
+    private copyPublishedTve(TreeVersionElement publishedTve, TreeVersionElement newParentTve, TreeVersionElement currentTve, String userName) {
+        TreeVersionElement replacementTve = saveTreeVersionElement(publishedTve.treeElement, newParentTve,
+                currentTve.treeVersion, publishedTve.taxonId, publishedTve.taxonLink, userName)
+        updateParentId(currentTve, replacementTve)
+        updateChildTreePath(replacementTve, currentTve)
+        updateChildNamePath(replacementTve, currentTve)
+        updateChildNameDepth(replacementTve)
+
+        updateParentTaxaId(newParentTve)
+        if (newParentTve != currentTve.parent) {
+            updateParentTaxaId(currentTve.parent)
+        }
+
+        deleteTreeVersionElement(currentTve)
+        return replacementTve
     }
 
 }

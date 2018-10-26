@@ -300,4 +300,30 @@ $(function () {
   });
 
   replaceDates();
+
+  // merge stuff
+  $('div.tve-diff-from label').each(function () {
+    var parentid = $(this).data('parentid');
+    if (parentid !== undefined && parentid !== "") {
+      $(this).addClass('disabled').find('input').attr('disabled', 'disabled');
+    }
+    $(this).find('input').on('click', function () {
+      var parentid = $(this).data('diffid');
+      console.log('Clicked from ' + parentid);
+      var sel = 'div.tve-diff-from label[data-parentid="' + parentid + '"]';
+      $(sel).removeClass('disabled').find('input').removeAttr('disabled').click();
+    });
+  });
+
+  $('div.tve-diff-to label input').on('click', function () {
+    var parentid = $(this).data('diffid');
+    console.log('Clicked to ' + parentid);
+    $('div.tve-diff-from label[data-parentid="' + parentid + '"]')
+      .addClass('disabled')
+      .find('input')
+      .attr('disabled', 'disabled');
+    $('div.tve-diff-to label[data-parentid="' + parentid + '"] input').click();
+  });
+
+
 });
