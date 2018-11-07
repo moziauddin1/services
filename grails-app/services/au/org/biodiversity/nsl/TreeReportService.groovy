@@ -263,7 +263,7 @@ order by accepted_name_path;
         sql.eachRow('''
 SELECT
   (tax_syn2 ->> 'name_id')       AS common_synonym,
-  jsonb_build_object((tax_syn2 ->> 'name_id'),
+  jsonb_build_object((tax_syn2 ->> 'name_id') ::NUMERIC :: BIGINT,
                      jsonb_agg(jsonb_build_object('html',
                                                   '<div class="tr">' || e1.display_html || e1.synonyms_html || '</div>',
                                                   'name_link', e1.name_link,
