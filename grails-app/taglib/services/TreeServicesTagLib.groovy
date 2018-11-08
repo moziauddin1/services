@@ -120,6 +120,22 @@ class TreeServicesTagLib {
         }
     }
 
+    def previously = {attrs, body ->
+        TreeVersionElement tve = attrs.element
+        TreeVersionElement lastChanged = treeService.lastChangeVersion(tve)
+        if(lastChanged){
+            out << body(lastChanged: lastChanged)
+        }
+    }
+
+    def history = {attrs, body ->
+        TreeVersionElement tve = attrs.element
+        List<TreeVersionElement> history = treeService.historyForName(tve.treeElement.nameId, tve.treeVersion.tree)
+        for(element in history) {
+            out << body(historyElement: element, currentPos: tve.elementLink == element.elementLink)
+        }
+    }
+
     def drafts = { attrs, body ->
         Tree tree = attrs.tree
         List<TreeVersion> drafts = TreeVersion.findAllWhere(tree: tree, published: false)

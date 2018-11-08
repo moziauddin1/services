@@ -228,6 +228,48 @@ class TreeService implements ValidationUtils {
         return null
     }
 
+    @Transactional(readOnly = true)
+    TreeVersionElement lastChangeVersion(TreeVersionElement tve) {
+        TreeElement previousElement = tve.treeElement.previousElement
+        if (previousElement) {
+            return TreeVersionElement.find(
+                    'from TreeVersionElement where treeVersion.tree = :tree and treeElement = :element order by treeVersion.id desc',
+                    [tree: tve.treeVersion.tree, element: previousElement])
+        } else {
+            List<TreeVersionElement> history = historyForName(tve.treeElement.nameId, tve.treeVersion.tree)
+            Integer idx = 0
+            while (idx < history.size() && (history[idx++].elementLink != tve.elementLink))
+
+            if (idx < history.size() && history[idx].elementLink != tve.elementLink) {
+                return history[idx]
+            }
+        }
+        return null
+    }
+
+    /**
+     * get a list of TreeVersionElements in reverse chronological order at the last version a tree element was used.
+     * @param nameId
+     * @param tree
+     * @return
+     */
+    @Transactional(readOnly = true)
+    List<TreeVersionElement> historyForName(Long nameId, Tree tree) {
+        List<TreeVersionElement> tves = TreeVersionElement.findAll(
+                'from TreeVersionElement  where treeVersion.tree = :tree and treeElement.nameId = :nameId and treeVersion.published = true order by treeVersion.id desc',
+                [tree: tree, nameId: nameId]
+        )
+        Long elementId = 0
+        List<TreeVersionElement> history = tves.findAll {
+            if (it.treeElementId != elementId) {
+                elementId = it.treeElementId
+                return true
+            }
+            return false
+        }
+        return history
+    }
+
     /**
      * Find all the trees on this shard that contain this instance
      * @param instance

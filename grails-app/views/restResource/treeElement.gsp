@@ -13,6 +13,7 @@
 
 <div>
   <h1>
+    <a href="${treeVersionElement.fullElementLink()}"><i class="fa fa-link"></i></a>
     <g:if test="${treeVersionElement.treeElement.excluded}">
       <apc style="font-size: 1em" title="excluded from ${treeVersionElement.treeVersion.tree.name}"><i
           class="fa fa-ban"></i> ${treeVersionElement.treeVersion.tree.name}</apc>
@@ -20,17 +21,6 @@
     <g:else>
       ${treeVersionElement.treeVersion.tree.name}: ${treeVersionElement.treeElement.simpleName}
     </g:else>
-    <span class="small text-info">(<tree:versionStatus version="${treeVersionElement.treeVersion}"/>)</span>
-
-    <tree:findCurrentVersion element="${treeVersionElement}">
-      <span class="small">
-        <i class="fa fa-long-arrow-right"></i>
-        <a href='${currentElement.fullElementLink()}'>
-          current version.
-        </a>
-      </span>
-    </tree:findCurrentVersion>
-
 
     <help>
       <i class="fa fa-info-circle"></i>
@@ -45,17 +35,36 @@
         </ul>
       </div>
     </help>
+
+    <span class="small text-info">(<tree:versionStatus version="${treeVersionElement.treeVersion}"/>)</span>
+
+    <tree:findCurrentVersion element="${treeVersionElement}">
+      <span class="small">
+        <i class="fa fa-long-arrow-right"></i>
+        <a href='${currentElement.fullElementLink()}'>
+          current version.
+        </a>
+      </span>
+    </tree:findCurrentVersion>
+
   </h1>
 
   <st:preferredLink target="${treeVersionElement.treeVersion}"
                     title="Go to tree version ${treeVersionElement.treeVersion.id}">
-    <i class="fa fa-link"></i> ${treeVersionElement.treeVersion.tree.name} (version ${treeVersionElement.treeVersion.id})
+    ${treeVersionElement.treeVersion.tree.name} (version ${treeVersionElement.treeVersion.id})
     <g:if test="${treeVersionElement.treeVersion.published}">
       published ${treeVersionElement.treeVersion.publishedAt.dateString} by ${treeVersionElement.treeVersion.publishedBy}
     </g:if>
     <g:else>DRAFT</g:else>
   </st:preferredLink>
-
+  <div class="timeline">
+    <b>Changes:</b> <span class="timeline">Now</span>
+  <tree:history element="${treeVersionElement}">
+    <i class="fa fa-long-arrow-right"></i><span class="timeline ${currentPos ? 'active' : ''}">
+      <a href="${historyElement.fullElementLink()}" title="taxon ID: ${historyElement.taxonLink}"><date>${historyElement.updatedAt}</date></a>
+    </span>
+  </tree:history>
+  </div>
   <hr>
 </div>
 

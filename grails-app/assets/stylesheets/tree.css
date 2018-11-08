@@ -257,3 +257,19 @@ div.tr synonyms scientific .plus {
     color: green !important;
     font-weight: bold;
 }
+
+div.timeline {
+    color: grey;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+span.timeline {
+    border: 1px grey solid;
+    border-radius: 1em;
+    padding: 5px 5px;
+}
+
+span.timeline.active {
+    font-weight: bold;
+}
