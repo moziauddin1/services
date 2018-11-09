@@ -3,6 +3,7 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import groovy.sql.Sql
+import groovy.transform.Synchronized
 import org.apache.shiro.SecurityUtils
 
 import javax.sql.DataSource
@@ -240,9 +241,9 @@ class TreeService implements ValidationUtils {
             Integer idx = 0
             while (idx < history.size() && (history[idx++].elementLink != tve.elementLink))
 
-            if (idx < history.size() && history[idx].elementLink != tve.elementLink) {
-                return history[idx]
-            }
+                if (idx < history.size() && history[idx].elementLink != tve.elementLink) {
+                    return history[idx]
+                }
         }
         return null
     }
@@ -1216,9 +1217,11 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param userName
      * @return
      */
+    @Synchronized
     TreeVersionElement updateElementFromInstanceData(TreeVersionElement treeVersionElement, String userName) {
         mustHave(treeVersionElement: treeVersionElement, userName: userName)
         notPublished(treeVersionElement)
+        treeVersionElement.refresh()
         treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
 
         //if there is an element that matches the new data use that element
@@ -1267,49 +1270,14 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param userName
      */
     def checkSynonymyUpdated(Instance instance, String userName) {
-        List<Tree> trees = Tree.list()
-        for (tree in trees) {
-            TreeVersionElement tve
-            if (tree.defaultDraftTreeVersion) {
-                tve = findElementForInstance(instance, tree.defaultDraftTreeVersion)
-            } else if (tree.currentTreeVersion) {
-                tve = findElementForInstance(instance, tree.currentTreeVersion)
-            }
-            if (tve) {
-                Synonyms synonyms = getSynonyms(instance)
-                if (tve.treeElement.synonymsHtml != synonyms.html()) {
-                    List<EventRecord> eventRecords = findSynonymsUpdatedEventRecord(tree, instance)
-                    if (eventRecords.empty) {
-                        makeSynonymsUpdatedEventRecord(tree, instance, userName)
-                    }
-                }
-            }
-        }
+        String synonyms = getSynonymsHtmlViaDBFunction(instance.id)
+        instance.cachedSynonymyHtml = synonyms
+        instance.save()
     }
 
-    private List<EventRecord> findSynonymsUpdatedEventRecord(Tree tree, Instance instance) {
+    def refreshSynonymHtmlCache() {
         Sql sql = getSql()
-        List<EventRecord> records = []
-        sql.eachRow('''select id
-from event_record
-where type = :type
-  and dealt_with = false
-  and (data ->> 'treeId') = :treeId
-  and (data ->> 'instanceId') = :instanceId
-order by updated_at desc 
-''', [instanceId: "${instance.id}".toString(), treeId: "${tree.id}".toString(), type: EventRecordTypes.SYNONYMY_UPDATED]) { row ->
-            records.add(EventRecord.get(row.id))
-        }
-        return records
-    }
-
-    private makeSynonymsUpdatedEventRecord(Tree tree, Instance instance, String userName) {
-        Map data = [
-                treeId      : tree.id,
-                instanceId  : instance.id,
-                instanceLink: linkService.getPreferredLinkForObject(instance)
-        ]
-        eventService.createSynonymyUpdatedEvent(data, userName)
+        sql.executeUpdate('update instance set cached_synonymy_html = synonyms_as_html(id) where id in (select distinct instance_id from tree_element);')
     }
 
     /**
@@ -1342,8 +1310,11 @@ order by updated_at desc
     }
 
     private makeAcceptedInstanceDeletedEventRecord(Tree tree, TreeVersionElement tve, Long instanceId, String userName) {
+        List<TreeVersion> affectedVersions = TreeVersion.findAllByTreeAndPublished(tree, false)
+        affectedVersions.add(tree.currentTreeVersion)
         Map data = [
                 treeId            : tree.id,
+                affectedVersions  : affectedVersions,
                 treeVersionElement: tve.elementLink,
                 instanceId        : instanceId
         ]
@@ -1366,8 +1337,8 @@ order by updated_at desc
     private TreeVersionElement changeElement(TreeVersionElement treeVersionElement, TreeElement newElement, String userName) {
         TreeVersionElement replacementTve = saveTreeVersionElement(newElement, treeVersionElement.parent,
                 treeVersionElement.treeVersion, treeVersionElement.taxonId, treeVersionElement.taxonLink, userName)
-        updateChildTreePath(replacementTve, treeVersionElement)
         updateParentId(treeVersionElement, replacementTve)
+        updateChildTreePath(replacementTve, treeVersionElement)
         deleteTreeVersionElement(treeVersionElement)
         return replacementTve
     }
@@ -1848,7 +1819,7 @@ and tve.element_link not in ($excludedLinks)
         }
 
         Synonyms synonyms = getSynonyms(instance)
-        String synonymsHtml = synonyms.html()
+        String synonymsHtml = getSynonymsHtmlViaDBFunction(instance.id)
 
         new TaxonData(
                 nameId: instance.name.id,

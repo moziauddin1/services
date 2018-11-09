@@ -185,12 +185,16 @@ class TreeServicesTagLib {
             String newLine = b[i]
             if (oldLine && !b.contains(oldLine)) {
                 diffA += oldLine.replaceFirst('<name ', '<name class="target" ')
+            } else if (oldLine != newLine) {
+                diffA += '<div class="targetMoved">⇅ ' + oldLine + '</div>'
             } else if (oldLine) {
                 diffA += oldLine
             }
 
             if (newLine && !a.contains(newLine)) {
                 diffB += newLine.replaceFirst('<name ', '<name class="target" ')
+            } else if (newLine != oldLine) {
+                diffB += '<div class="targetMoved">⇅ ' + newLine + '</div>'
             } else if (newLine) {
                 diffB += newLine
             }

@@ -64,12 +64,12 @@ class TreeReportService implements ValidationUtils {
                 to: TreeVersion.get(changeset.mergeReport.toVersionId as Long),
                 upToDate: changeset.mergeReport.upToDate,
         )
-        report.conflicts = changeset.mergeReport.conflicts.collect { diffFromData(it.tveDiff)  }
-        report.nonConflicts = changeset.mergeReport.nonConflicts.collect { diffFromData(it.tveDiff)  }
+        report.conflicts = changeset.mergeReport.conflicts.collect { diffFromData(it.tveDiff) }
+        report.nonConflicts = changeset.mergeReport.nonConflicts.collect { diffFromData(it.tveDiff) }
         return report
     }
 
-    private static TveDiff diffFromData(Map diffData){
+    private static TveDiff diffFromData(Map diffData) {
         TreeVersionElement from = diffData.from ? TreeVersionElement.get(diffData.from) : null
         TreeVersionElement to = diffData.to ? TreeVersionElement.get(diffData.to) : null
         TveDiff tveDiff = new TveDiff(from, to, diffData.fromType, diffData.toType)
@@ -88,7 +88,9 @@ class TreeReportService implements ValidationUtils {
      * @return a set of diffs from draft to head
      */
     List<TveDiff> findNonConflictingChanges(TreeChangeSet head, TreeChangeSet draft, TreeVersion draftVersion) {
-        List<Long> nonConflictingNameIds = head.all.collect { it.treeElement.nameId } - draft.all.collect { it.treeElement.nameId }
+        List<Long> nonConflictingNameIds = head.all.collect { it.treeElement.nameId } - draft.all.collect {
+            it.treeElement.nameId
+        }
         List<TveDiff> diffs = []
         head.added.findAll { nonConflictingNameIds.contains(it.treeElement.nameId) }.each { tve ->
             TreeVersionElement draftTve = treeService.findElementForNameId(tve.treeElement.nameId, draftVersion)
@@ -307,58 +309,33 @@ order by common_synonym;
         return Sql.newInstance(dataSource_nsl)
     }
 
-    Map synonymyUpdatedReport(EventRecord event, Tree tree) {
-        assert event.type == EventRecordTypes.SYNONYMY_UPDATED
-        TreeVersionElement tve
-        if (tree.defaultDraftTreeVersion) {
-            tve = treeService.findElementForInstanceId(event.data.instanceId as Long, tree.defaultDraftTreeVersion)
-        } else if (tree.currentTreeVersion) {
-            tve = treeService.findElementForInstanceId(event.data.instanceId as Long, tree.currentTreeVersion)
-        }
-        if (tve) {
-            tve.treeElement.refresh()
-            TaxonData taxonData = treeService.findInstanceByUri(event.data.instanceLink as String)
-            if (taxonData && tve.treeElement.synonymsHtml != taxonData.synonymsHtml) {
-                return [
-                        taxonData         : taxonData,
-                        treeVersionElement: tve,
-                        instanceLink      : event.data.instanceLink,
-                        instanceId        : event.data.instanceId,
-                        eventId           : event.id,
-                        updatedBy         : event.updatedBy,
-                        updatedAt         : event.updatedAt
-                ]
-            } else {
-                eventService.dealWith(event) //synonymy is now the same so mark it as done
-            }
-        }
-        return null
-    }
-
-    /**
-     * Check the synonymy of all instances on the version to see if they match the current synonymy of the instance
-     * on the tree. This is a much longer process than the synonymyUpdatedReport.
-     * @param treeVersion
-     * @return
-     */
-    def checkCurrentSynonymy(TreeVersion treeVersion, Integer limit = 100) {
+    Map checkCurrentSynonymy(TreeVersion treeVersion, Integer limit = 100) {
         Sql sql = getSql()
         List<Map> results = []
-        sql.eachRow('''select tve.element_link, te.instance_link, te.instance_id from tree_element te
-          join tree_version_element tve on te.id = tve.tree_element_id
-        where tve.tree_version_id = :versionId 
-          and te.synonyms_html <> synonyms_as_html(te.instance_id)
-          order by tve.name_path;''', [versionId: treeVersion.id], 0, limit) { row ->
-            TaxonData taxonData = treeService.findInstanceByUri(row.instance_link as String)
+        Integer count = sql.firstRow('''select count(tve.element_link)
+from tree_element te
+       join tree_version_element tve on te.id = tve.tree_element_id
+       join instance i on te.instance_id = i.id
+where tve.tree_version_id = :versionId 
+      and te.synonyms_html <> i.cached_synonymy_html''',[versionId: treeVersion.id])[0] as Integer
+
+        sql.eachRow('''select tve.element_link, te.instance_id, te.instance_link, i.cached_synonymy_html
+from tree_element te
+       join tree_version_element tve on te.id = tve.tree_element_id
+       join instance i on te.instance_id = i.id
+where tve.tree_version_id = :versionId 
+      and te.synonyms_html <> i.cached_synonymy_html''',
+                [versionId: treeVersion.id], 0, limit) { row ->
             Map d = [
-                    taxonData         : taxonData,
+                    synonymsHtml      : row.cached_synonymy_html,
                     treeVersionElement: TreeVersionElement.get(row.element_link as String),
                     instanceLink      : row.instance_link,
                     instanceId        : row.instance_id
             ]
             results.add(d)
         }
-        return results
+        return [count:count, results: results]
     }
+
 }
 
