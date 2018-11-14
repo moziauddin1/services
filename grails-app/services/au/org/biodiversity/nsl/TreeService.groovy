@@ -1277,7 +1277,7 @@ INSERT INTO tree_version_element (tree_version_id,
 
     def refreshSynonymHtmlCache() {
         Sql sql = getSql()
-        sql.executeUpdate('update instance set cached_synonymy_html = synonyms_as_html(id) where id in (select distinct instance_id from tree_element);')
+        sql.executeUpdate("update instance set cached_synonymy_html = coalesce(synonyms_as_html(id), '<synonyms></synonyms>') where id in (select distinct instance_id from tree_element);")
     }
 
     /**
@@ -1855,8 +1855,8 @@ and tve.element_link not in ($excludedLinks)
      * @return
      */
     protected String getSynonymsHtmlViaDBFunction(Long instanceId, Sql sql = getSql()) {
-        def row = sql.firstRow('''select synonyms_as_html(:instanceId) synonyms_html;''', [instanceId: instanceId])
-        return row.synonyms_html
+        def row = sql.firstRow('''select coalesce(synonyms_as_html(:instanceId), '<synonyms></synonyms>');''', [instanceId: instanceId])
+        return row[0]
     }
 
     protected TaxonData findInstanceByUri(String instanceUri) {

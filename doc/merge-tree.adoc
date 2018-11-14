@@ -43,6 +43,8 @@ what to do:
 2. Reject the published changes, effectively overwriting the published changes.
 3. Merge the changes from both the published and draft versions.
 
+image::draft-tree-cycle.svg[]
+
 === Simplifications to get it happening
 
 Merging the changes will initially be the same as Rejecting the published changes where the user will have to manually

@@ -138,3 +138,7 @@ The old tree element will be removed from the current version of the tree.
 == Delete a taxon element
 
 Remove a taxon element from the classification
+
+== Merge
+
+image::draft-tree-cycle.svg[]
