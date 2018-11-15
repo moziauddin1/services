@@ -254,9 +254,6 @@ tr.titleRow {
 .targetMoved syn
 {
     display: inline-block !important;
-    font-weight: bold;
-    background-color: RGBA(256, 256, 0, 0.30) !important;
-    border-bottom: 1px solid green;
 }
 
 .minus,
