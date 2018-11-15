@@ -87,13 +87,14 @@ class InstanceService {
         if (!reason) {
             errors << 'You need to supply a reason for deleting this instance.'
         }
-        if (treeService.isInstanceInAnyTree(instance)) {
-            List<String> trees = treeService.findTreesByInstance(instance).collect { tree ->
-                TreeVersionElement firstPublished = treeService.firstPublished(instance, tree)
-                TreeVersionElement last = treeService.lastAnyVersion(instance, tree)
-                String since = firstPublished?.updatedAt?.format('dd/MM/yyyy')
-                String till = last.treeVersion.published ? last.treeVersion.publishedAt.format('dd/MM/yyyy') : "Draft: $last.treeVersion.draftName"
-                "$tree.name: ${since ?: 'unpublished'} -> $till"
+        List<TreeVersionElement> currentTves = treeService.instanceInAnyCurrentTree(instance)
+        if (currentTves.size()) {
+            List<String> trees = currentTves.collect { tve ->
+                if(tve.treeVersion.published) {
+                    "Currently published tree $tve.treeVersion.tree.name"
+                } else {
+                    "Draft $tve.treeVersion.tree.name: $tve.treeVersion.draftName."
+                }
             } as List<String>
             errors << "This instance is in ${trees.join(', ')}.".toString()
         }

@@ -1935,6 +1935,12 @@ and tve.element_link not in ($excludedLinks)
         !findTreesByInstance(instance).empty
     }
 
+    List<TreeVersionElement> instanceInAnyCurrentTree(Instance instance) {
+        TreeVersionElement.executeQuery("""from TreeVersionElement tve 
+            where (tve.treeVersion.published = false or tve.treeVersion = tve.treeVersion.tree.currentTreeVersion)
+                and tve.treeElement.instanceId = :id""",[id: instance.id])
+    }
+
     Map merge(TreeVersion draftVersion, MergeReport report, String userName) {
         if (draftVersion.published) {
             throw new ServiceException("Error: $userName tried to merge into published version of ${draftVersion.tree.name}")
