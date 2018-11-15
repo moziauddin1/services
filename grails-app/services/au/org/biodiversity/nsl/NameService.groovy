@@ -48,7 +48,7 @@ class NameService {
             return
         }
         seen.add(note.id)
-
+        treeService.checkNameOnTreeChanged(name)
         notifyNameEvent(name, UPDATED_EVENT)
         name.discard() // make sure we don't update name in this TX
     }

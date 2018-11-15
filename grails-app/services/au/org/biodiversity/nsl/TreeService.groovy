@@ -1281,6 +1281,48 @@ INSERT INTO tree_version_element (tree_version_id,
     }
 
     /**
+     * If a name is changed the way we display the name on the tree may change so we should update the display_html.
+     * This is not a change to the tree, just a change to the way the name is displayed (e.g. corrections to author/reference)
+     *
+     * We just assume something may have changed and set the displayHtml again, since a comparison would be the same
+     * amount of work
+     * @param name
+     */
+    def checkNameOnTreeChanged(Name name) {
+        TreeElement.findAllByNameId(name.id).each { te ->
+            te.instance.reference.citationHtml
+            te.displayHtml = "<data>${name.fullNameHtml} <citation>${te.instance.reference.citationHtml}</citation></data>"
+            te.save()
+        }
+    }
+
+    Integer countChangedDisplayHtml() {
+        Sql sql = getSql()
+        sql.firstRow('''select count(te)
+  from tree_element te
+    join name n on te.name_id = n.id
+    join instance i on te.instance_id = i.id
+    join reference r on i.reference_id = r.id
+where te.display_html <> ('<data>' || n.full_name_html || ' <citation>' || r.citation_html || '</citation></data>')
+''')[0] as Integer
+    }
+
+    /**
+     * rewrite all the displayHtml fields on all tree elements. use as daily refresh to catch any chnages missed by lost
+     * triggers.
+     */
+    def refreshDisplayHtml() {
+        Sql sql = getSql()
+        sql.executeUpdate('''update tree_element te 
+    set display_html = '<data>' || n.full_name_html || ' <citation>' || r.citation_html || '</citation></data>'
+  from name n, instance i, reference r
+  where te.name_id = n.id
+    and te.instance_id = i.id
+    and i.reference_id = r.id;
+''')
+    }
+
+    /**
      * Checks to see if any current trees use a deleted instance and create an appropriate EventRecord.
      *
      * An accepted instance *may* be deleted from a tree if the tree isn't on the same services database as the tree.
