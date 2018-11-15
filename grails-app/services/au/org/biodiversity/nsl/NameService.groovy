@@ -58,6 +58,10 @@ class NameService {
             log.info "seen note, skipping $note"
             return
         }
+        if(!name.uri) {
+            name.uri = linkService.getPreferredLinkForObject(name)
+            name.save()
+        }
         seen.add(note.id)
         log.info "name $name created."
         notifyNameEvent(name, CREATED_EVENT)
@@ -413,4 +417,10 @@ or n.fullNameHtml is null""")?.first() as Integer
         }
     }
 
+    def updateMissingUris() {
+        Name.findAllByUriIsNull().each { Name name ->
+            name.uri = linkService.getPreferredLinkForObject(name)
+            name.save()
+        }
+    }
 }

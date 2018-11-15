@@ -237,6 +237,18 @@ class InstanceService {
         }
     }
 
+    def checkInstanceCreated(Instance instance) {
+        if(!instance.uri) {
+            instance.uri = linkService.getPreferredLinkForObject(instance)
+            instance.save()
+        }
+        //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
+        //create synonymy changed EventRecords
+        if (instance.citedBy) {
+            treeService.checkSynonymyUpdated(instance.citedBy, instance.updatedBy)
+        }
+    }
+
     /**
      * Check and update anything that may rely on this deleted instance ID e.g. trees.
      * Since the instance is deleted, it's hard to tell what it is. So we just get the treeService to check if this
@@ -250,6 +262,13 @@ class InstanceService {
             treeService.checkUsageOfDeletedInstance(id, instanceData.cited_by_id as Long, instanceData.updated_by ?: 'notification')
         } else {
             log.error "Audit does not contain deleted instance $id. Check audit is working."
+        }
+    }
+
+    def updateMissingUris() {
+        Instance.findAllByUriIsNull().each { Instance instance ->
+            instance.uri = linkService.getPreferredLinkForObject(instance)
+            instance.save()
         }
     }
 }
