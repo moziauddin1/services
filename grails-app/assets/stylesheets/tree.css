@@ -48,11 +48,15 @@ div.tr data scientific element {
 div.tr synonyms {
     display: block;
     margin-left: 2em;
-    color: slategrey;
+    color: black;
 }
 
-div.tr synonyms scientific {
-    color: black;
+div.tr synonyms name-status {
+    font-style: italic;
+}
+
+div.tr synonyms type {
+    color: darkslategrey;
 }
 
 div.tr synonyms nom,
