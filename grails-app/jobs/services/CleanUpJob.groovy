@@ -6,6 +6,9 @@ class CleanUpJob {
 
     def referenceService
     def authorService
+    def nameService
+    def instanceService
+    def treeService
 
     def concurrent = false
     def sessionRequired = true
@@ -20,6 +23,9 @@ class CleanUpJob {
             println "Running cleanup."
             authorService.autoDeduplicate('cleanUpJob')
             referenceService.deduplicateMarked('cleanUpJob')
+            instanceService.updateMissingUris()
+            nameService.updateMissingUris()
+            treeService.refreshDisplayHtml()
         }
     }
 }

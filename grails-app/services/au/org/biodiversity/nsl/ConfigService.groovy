@@ -138,6 +138,10 @@ class ConfigService {
         return getShardConfigOrfail("$productName label")
     }
 
+    Boolean getDisableCheckPolynomialsBelowNameParent() {
+        return getShardConfigOrfail("disable checkPolynomialsBelowNameParent") == 'true'
+    }
+
     String getPhotoServiceUri() {
         configOrThrow('services.photoService.url')
     }

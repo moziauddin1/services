@@ -91,8 +91,10 @@
                   <g:else>
                     <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: currentTreeVersion.id, v2: version.id])}"
                        title="Diff from current version">diff</a>,
-                    <a href="${createLink(namespace: 'api', controller: 'tree', action: 'eventReport', params: [treeId: version.tree.id])}"
-                       title="Check Events">events</a>,
+                    <a href="${createLink(namespace: 'api', controller: 'tree', action: 'checkCurrentSynonymy', params: [treeVersionId: version.id])}"
+                       title="Check Events">synonymy</a>,
+                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'mergeReport', params: [draftId: version.id])}"
+                       title="Check Events">merge</a>,
                   </g:else>
                 </g:if>
               </g:if>

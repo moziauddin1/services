@@ -3,6 +3,7 @@ package au.org.biodiversity.nsl
 import au.org.biodiversity.nsl.api.ValidationUtils
 import grails.transaction.Transactional
 import groovy.sql.Sql
+import groovy.transform.Synchronized
 import org.apache.shiro.SecurityUtils
 
 import javax.sql.DataSource
@@ -73,9 +74,20 @@ class TreeService implements ValidationUtils {
      */
     @Transactional(readOnly = true)
     TreeVersionElement findElementForName(Name name, TreeVersion treeVersion) {
-        if (name && treeVersion) {
+        findElementForNameId(name?.id, treeVersion)
+    }
+
+    /**
+     * get the TreeElement for a name in the given version of a tree
+     * @param name
+     * @param treeVersion
+     * @return TreeVersionElement or null if not on the tree
+     */
+    @Transactional(readOnly = true)
+    TreeVersionElement findElementForNameId(Long nameId, TreeVersion treeVersion) {
+        if (nameId && treeVersion) {
             return TreeVersionElement.find('from TreeVersionElement tve where tve.treeVersion = :treeVersion and tve.treeElement.nameId = :nameId',
-                    [treeVersion: treeVersion, nameId: name.id])
+                    [treeVersion: treeVersion, nameId: nameId])
         }
         return null
     }
@@ -215,6 +227,48 @@ class TreeService implements ValidationUtils {
             return tves
         }
         return null
+    }
+
+    @Transactional(readOnly = true)
+    TreeVersionElement lastChangeVersion(TreeVersionElement tve) {
+        TreeElement previousElement = tve.treeElement.previousElement
+        if (previousElement) {
+            return TreeVersionElement.find(
+                    'from TreeVersionElement where treeVersion.tree = :tree and treeElement = :element order by treeVersion.id desc',
+                    [tree: tve.treeVersion.tree, element: previousElement])
+        } else {
+            List<TreeVersionElement> history = historyForName(tve.treeElement.nameId, tve.treeVersion.tree)
+            Integer idx = 0
+            while (idx < history.size() && (history[idx++].elementLink != tve.elementLink))
+
+                if (idx < history.size() && history[idx].elementLink != tve.elementLink) {
+                    return history[idx]
+                }
+        }
+        return null
+    }
+
+    /**
+     * get a list of TreeVersionElements in reverse chronological order at the last version a tree element was used.
+     * @param nameId
+     * @param tree
+     * @return
+     */
+    @Transactional(readOnly = true)
+    List<TreeVersionElement> historyForName(Long nameId, Tree tree) {
+        List<TreeVersionElement> tves = TreeVersionElement.findAll(
+                'from TreeVersionElement  where treeVersion.tree = :tree and treeElement.nameId = :nameId and treeVersion.published = true order by treeVersion.id desc',
+                [tree: tree, nameId: nameId]
+        )
+        Long elementId = 0
+        List<TreeVersionElement> history = tves.findAll {
+            if (it.treeElementId != elementId) {
+                elementId = it.treeElementId
+                return true
+            }
+            return false
+        }
+        return history
     }
 
     /**
@@ -1046,7 +1100,7 @@ INSERT INTO tree_version_element (tree_version_id,
 
         elementComparators.remove('profile')
         //order by latest first so the first match will be the latest. (yes there are mutilple exact matches in some datasets)
-        List<TreeElement> matchingElements = TreeElement.findAllWhere(elementComparators).sort { a,b -> b.id <=> a.id }
+        List<TreeElement> matchingElements = TreeElement.findAllWhere(elementComparators).sort { a, b -> b.id <=> a.id }
         log.debug "Found ${matchingElements.size()} matching elements"
 
         TreeElement foundElement = null
@@ -1163,9 +1217,11 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param userName
      * @return
      */
+    @Synchronized
     TreeVersionElement updateElementFromInstanceData(TreeVersionElement treeVersionElement, String userName) {
         mustHave(treeVersionElement: treeVersionElement, userName: userName)
         notPublished(treeVersionElement)
+        treeVersionElement.refresh()
         treeVersionElement.treeElement.refresh() //fetch the element data including treeVersionElements
 
         //if there is an element that matches the new data use that element
@@ -1214,49 +1270,56 @@ INSERT INTO tree_version_element (tree_version_id,
      * @param userName
      */
     def checkSynonymyUpdated(Instance instance, String userName) {
-        List<Tree> trees = Tree.list()
-        for (tree in trees) {
-            TreeVersionElement tve
-            if (tree.defaultDraftTreeVersion) {
-                tve = findElementForInstance(instance, tree.defaultDraftTreeVersion)
-            } else if (tree.currentTreeVersion) {
-                tve = findElementForInstance(instance, tree.currentTreeVersion)
-            }
-            if (tve) {
-                Synonyms synonyms = getSynonyms(instance)
-                if (tve.treeElement.synonymsHtml != synonyms.html()) {
-                    List<EventRecord> eventRecords = findSynonymsUpdatedEventRecord(tree, instance)
-                    if (eventRecords.empty) {
-                        makeSynonymsUpdatedEventRecord(tree, instance, userName)
-                    }
-                }
-            }
-        }
+        String synonyms = getSynonymsHtmlViaDBFunction(instance.id)
+        instance.cachedSynonymyHtml = synonyms
+        instance.save()
     }
 
-    private List<EventRecord> findSynonymsUpdatedEventRecord(Tree tree, Instance instance) {
+    def refreshSynonymHtmlCache() {
         Sql sql = getSql()
-        List<EventRecord> records = []
-        sql.eachRow('''select id
-from event_record
-where type = :type
-  and dealt_with = false
-  and (data ->> 'treeId') = :treeId
-  and (data ->> 'instanceId') = :instanceId
-order by updated_at desc 
-''', [instanceId: "${instance.id}".toString(), treeId: "${tree.id}".toString(), type: EventRecordTypes.SYNONYMY_UPDATED]) { row ->
-            records.add(EventRecord.get(row.id))
-        }
-        return records
+        sql.executeUpdate("update instance set cached_synonymy_html = coalesce(synonyms_as_html(id), '<synonyms></synonyms>') where id in (select distinct instance_id from tree_element);")
     }
 
-    private makeSynonymsUpdatedEventRecord(Tree tree, Instance instance, String userName) {
-        Map data = [
-                treeId      : tree.id,
-                instanceId  : instance.id,
-                instanceLink: linkService.getPreferredLinkForObject(instance)
-        ]
-        eventService.createSynonymyUpdatedEvent(data, userName)
+    /**
+     * If a name is changed the way we display the name on the tree may change so we should update the display_html.
+     * This is not a change to the tree, just a change to the way the name is displayed (e.g. corrections to author/reference)
+     *
+     * We just assume something may have changed and set the displayHtml again, since a comparison would be the same
+     * amount of work
+     * @param name
+     */
+    def checkNameOnTreeChanged(Name name) {
+        TreeElement.findAllByNameId(name.id).each { te ->
+            te.instance.reference.citationHtml
+            te.displayHtml = "<data>${name.fullNameHtml} <citation>${te.instance.reference.citationHtml}</citation></data>"
+            te.save()
+        }
+    }
+
+    Integer countChangedDisplayHtml() {
+        Sql sql = getSql()
+        sql.firstRow('''select count(te)
+  from tree_element te
+    join name n on te.name_id = n.id
+    join instance i on te.instance_id = i.id
+    join reference r on i.reference_id = r.id
+where te.display_html <> ('<data>' || n.full_name_html || ' <citation>' || r.citation_html || '</citation></data>')
+''')[0] as Integer
+    }
+
+    /**
+     * rewrite all the displayHtml fields on all tree elements. use as daily refresh to catch any chnages missed by lost
+     * triggers.
+     */
+    def refreshDisplayHtml() {
+        Sql sql = getSql()
+        sql.executeUpdate('''update tree_element te 
+    set display_html = '<data>' || n.full_name_html || ' <citation>' || r.citation_html || '</citation></data>'
+  from name n, instance i, reference r
+  where te.name_id = n.id
+    and te.instance_id = i.id
+    and i.reference_id = r.id;
+''')
     }
 
     /**
@@ -1289,8 +1352,11 @@ order by updated_at desc
     }
 
     private makeAcceptedInstanceDeletedEventRecord(Tree tree, TreeVersionElement tve, Long instanceId, String userName) {
+        List<TreeVersion> affectedVersions = TreeVersion.findAllByTreeAndPublished(tree, false)
+        affectedVersions.add(tree.currentTreeVersion)
         Map data = [
                 treeId            : tree.id,
+                affectedVersions  : affectedVersions,
                 treeVersionElement: tve.elementLink,
                 instanceId        : instanceId
         ]
@@ -1298,10 +1364,12 @@ order by updated_at desc
     }
 
     /**
-     * Take replace and existing tree version element with a new one using a different tree element.
+     * Replace an existing tree version element with a new one using a different tree element.
      *
-     * This updates the tree version element tree path and deletes the existing treeVersionElement, so make sure it's
-     * not published before calling this.
+     * This updates the tree version element tree path and deletes the existing treeVersionElement.
+     *
+     * You must make sure the existing treeVersionElement not published before calling this (i.e. it is on a draft tree.
+     * Since you should only edit a draft tree that should be true.)
      *
      * @param treeVersionElement
      * @param newElement
@@ -1311,8 +1379,8 @@ order by updated_at desc
     private TreeVersionElement changeElement(TreeVersionElement treeVersionElement, TreeElement newElement, String userName) {
         TreeVersionElement replacementTve = saveTreeVersionElement(newElement, treeVersionElement.parent,
                 treeVersionElement.treeVersion, treeVersionElement.taxonId, treeVersionElement.taxonLink, userName)
-        updateChildTreePath(replacementTve, treeVersionElement)
         updateParentId(treeVersionElement, replacementTve)
+        updateChildTreePath(replacementTve, treeVersionElement)
         deleteTreeVersionElement(treeVersionElement)
         return replacementTve
     }
@@ -1397,6 +1465,14 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
     }
 
+    /**
+     * deletes a tree version element.
+     *
+     * WARNING: you must check this is a draft before calling this.
+     *
+     * @param target
+     * @return
+     */
     private deleteTreeVersionElement(TreeVersionElement target) {
         removeLink(target)
         target.treeElement.removeFromTreeVersionElements(target)
@@ -1569,9 +1645,7 @@ where parent = :oldParent''', [newParent: newParent, oldParent: oldParent])
         }
 
         //polynomials must be placed under parent
-        if(!configService.disableCheckPolynomialsBelowNameParent) {
-            checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
-        }
+        checkPolynomialsBelowNameParent(taxonData.simpleName, taxonData.excluded, taxonRank, parentElement.namePath.split('/'))
         return warnings
     }
 
@@ -1785,7 +1859,7 @@ and tve.element_link not in ($excludedLinks)
         }
 
         Synonyms synonyms = getSynonyms(instance)
-        String synonymsHtml = synonyms.html()
+        String synonymsHtml = getSynonymsHtmlViaDBFunction(instance.id)
 
         new TaxonData(
                 nameId: instance.name.id,
@@ -1821,8 +1895,8 @@ and tve.element_link not in ($excludedLinks)
      * @return
      */
     protected String getSynonymsHtmlViaDBFunction(Long instanceId, Sql sql = getSql()) {
-        def row = sql.firstRow('''select synonyms_as_html(:instanceId) synonyms_html;''', [instanceId: instanceId])
-        return row.synonyms_html
+        def row = sql.firstRow('''select coalesce(synonyms_as_html(:instanceId), '<synonyms></synonyms>');''', [instanceId: instanceId])
+        return row[0]
     }
 
     protected TaxonData findInstanceByUri(String instanceUri) {
@@ -1899,6 +1973,144 @@ and tve.element_link not in ($excludedLinks)
 
     boolean isInstanceInAnyTree(Instance instance) {
         !findTreesByInstance(instance).empty
+    }
+
+    List<TreeVersionElement> instanceInAnyCurrentTree(Instance instance) {
+        TreeVersionElement.executeQuery("""from TreeVersionElement tve 
+            where (tve.treeVersion.published = false or tve.treeVersion = tve.treeVersion.tree.currentTreeVersion)
+                and tve.treeElement.instanceId = :id""",[id: instance.id])
+    }
+
+    Map merge(TreeVersion draftVersion, MergeReport report, String userName) {
+        if (draftVersion.published) {
+            throw new ServiceException("Error: $userName tried to merge into published version of ${draftVersion.tree.name}")
+        }
+        if (draftVersion.tree.currentTreeVersion.id == draftVersion.previousVersion.id) {
+            return [message: 'Nothing to do, merge report may be out of date?', merged: 0, complete: true, report: []]
+        }
+
+        if (report.from == draftVersion.tree.currentTreeVersion && report.to == draftVersion) {
+            return doMerge(draftVersion, report, userName)
+        } else {
+            return [message: "Merge report may is out of date. From and To versions don't match", merged: 0, complete: true, report: []]
+        }
+    }
+
+    /**
+     * merge the selected changes
+     * collect all *useFrom* diffs and clear the from tve mergeConflict
+     * collect all useTo removed - sort bottom up by treePath and call removeTreeVersionElement on fromTve if exists
+     * collect all useTo added - sort top down by treePath and call placePublished on toTve
+     * collect all useTo modified where tree_element differs between from and to tve and call changeElement
+     * collect all useTo modified where tree_element is the same for from and to tve and update the placement/tve data(?)
+     *
+     * @param draftVersion
+     * @param report
+     * @param userName
+     * @return
+     */
+    private Map doMerge(TreeVersion draftVersion, MergeReport report, String userName) {
+        List<String> mergeLog = []
+
+        // collect all *useFrom* diffs and clear the from tve mergeConflict
+        report.getUseFrom().each { diff ->
+            diff.from.mergeConflict = false
+            mergeLog.add "Kept ${diff.from.treeElement.simpleName}: ${diff.from.elementLink}"
+        }
+
+        // collect all useTo removed - sort bottom up by treePath and call removeTreeVersionElement on fromTve if exists
+        report.getUseToType(TveDiff.REMOVED)
+              .sort { a, b -> b.to.namePath <=> a.to.namePath }
+              .each { diff ->
+            if (diff.from) {
+                removeTreeVersionElement(diff.from)
+                mergeLog.add "Removed ${diff.to.treeElement.simpleName}"
+            }
+        }
+
+        // collect all useTo added - sort top down by treePath and call placePublished on toTve
+        report.getUseToType(TveDiff.ADDED)
+              .sort { a, b -> a.to.namePath <=> b.to.namePath }
+              .each { diff ->
+            TreeVersionElement newTve = placePublishedTve(diff.to, draftVersion, userName)
+            mergeLog.add "Added ${newTve.treeElement.simpleName}: ${newTve.elementLink} "
+        }
+
+        // collect all useTo modified where tree_element differs between from and to tve and change the element
+        // collect all useTo modified where tree_element is the same for from and to tve and update the placement/tve data(?)
+        report.getUseToType(TveDiff.MODIFIED)
+              .each { diff ->
+            TreeVersionElement newTve = updateFromPublised(diff.from, diff.to, userName)
+            mergeLog.add "Updated ${newTve.treeElement.simpleName}: ${newTve.elementLink} "
+        }
+
+        List<TreeVersionElement> conflicted = TreeVersionElement.findAllByMergeConflictAndTreeVersion(true, draftVersion)
+        if (conflicted.size()) {
+            return [message: "Merge incomplete: merged ${mergeLog.size()} elements, ${conflicted.size()} conflicts remaining.", merged: mergeLog.size(), complete: false, report: mergeLog]
+        }
+        draftVersion.previousVersion = draftVersion.tree.currentTreeVersion
+        draftVersion.save()
+        return [message: "Merge complete: merged ${mergeLog.size()} elements, 0 conflicts remaining.", merged: mergeLog.size(), complete: true, report: mergeLog]
+
+    }
+
+    private TreeVersionElement placePublishedTve(TreeVersionElement publishedTve, TreeVersion draftVersion, String userName) {
+        TreeVersionElement draftParentTve = findElementForNameId(publishedTve.parent.treeElement.nameId, draftVersion)
+        TreeVersionElement replacementTve = saveTreeVersionElement(publishedTve.treeElement, draftParentTve,
+                draftVersion, publishedTve.taxonId, publishedTve.taxonLink, userName)
+        return replacementTve
+    }
+
+    private TreeVersionElement updateFromPublised(TreeVersionElement currentTve, TreeVersionElement publishedTve, String userName) {
+        notPublished(currentTve)
+
+        TreeVersionElement newParentTve = findElementForNameId(publishedTve.parent.treeElement.nameId, currentTve.treeVersion)
+
+        Boolean elementChanged = currentTve.treeElement != publishedTve.treeElement
+        if (elementChanged) {
+            return copyPublishedTve(publishedTve, newParentTve, currentTve, userName)
+        } else {
+            return updateExistingTve(currentTve, newParentTve, userName)
+        }
+    }
+
+    private updateExistingTve(TreeVersionElement currentTve, TreeVersionElement newParentTve, String userName) {
+        String oldTreePath = currentTve.treePath
+        String oldNamePath = currentTve.namePath
+        TreeVersionElement oldParent = currentTve.parent
+        currentTve.parent = newParentTve
+        currentTve.treePath = makeTreePath(newParentTve, currentTve.treeElement)
+        currentTve.namePath = makeNamePath(newParentTve, currentTve.treeElement)
+        currentTve.depth = (newParentTve?.depth ?: 0) + 1
+        currentTve.updatedBy = userName
+        currentTve.updatedAt = new Timestamp(System.currentTimeMillis())
+
+        updateChildTreePath(currentTve.treePath, oldTreePath, currentTve.treeVersion)
+        updateChildNamePath(currentTve.namePath, oldNamePath, currentTve.treeVersion)
+        updateChildNameDepth(currentTve.namePath, currentTve.treeVersion)
+
+        updateParentTaxaId(newParentTve)
+        if (oldParent != currentTve.parent) {
+            updateParentTaxaId(oldParent)
+        }
+        return currentTve
+    }
+
+    private copyPublishedTve(TreeVersionElement publishedTve, TreeVersionElement newParentTve, TreeVersionElement currentTve, String userName) {
+        TreeVersionElement replacementTve = saveTreeVersionElement(publishedTve.treeElement, newParentTve,
+                currentTve.treeVersion, publishedTve.taxonId, publishedTve.taxonLink, userName)
+        updateParentId(currentTve, replacementTve)
+        updateChildTreePath(replacementTve, currentTve)
+        updateChildNamePath(replacementTve, currentTve)
+        updateChildNameDepth(replacementTve)
+
+        updateParentTaxaId(newParentTve)
+        if (newParentTve != currentTve.parent) {
+            updateParentTaxaId(currentTve.parent)
+        }
+
+        deleteTreeVersionElement(currentTve)
+        return replacementTve
     }
 
 }

@@ -62,21 +62,6 @@ class Synonym {
         cites = synonymMap.cites as String
     }
 
-    String html() {
-        if (tax) {
-            return "<tax>${fullNameHtml} <type>${type}</type></tax>"
-        }
-        if (nom) {
-            return "<nom>${fullNameHtml} <type>${type}</type></nom>"
-        }
-        if (mis) {
-            return "<mis>${fullNameHtml} <type>${type}</type> by <citation>${cites ?: ''}</citation></mis>"
-        }
-        if (syn) {
-            return "<syn>${fullNameHtml} <type>${type}</type></syn>"
-        }
-    }
-
     Map asMap() {
         [
                 host          : host,
@@ -123,29 +108,4 @@ class Synonyms {
         [list: (synonyms.collect { it.asMap() } ?: [])]
     }
 
-    List<Synonym> nomSynonyms() {
-        synonyms.findAll { it.nom }.sort(sortSyn)
-    }
-
-    List<Synonym> taxSynonyms() {
-        synonyms.findAll { it.tax }.sort(sortSyn)
-    }
-
-    List<Synonym> misSynonyms() {
-        synonyms.findAll { it.mis }.sort(sortSyn)
-    }
-
-    List<Synonym> otherSynonyms() {
-        synonyms.findAll { !it.nom && !it.tax && !it.mis }.sort(sortSyn)
-    }
-
-
-    String html() {
-        "<synonyms>" +
-                "${nomSynonyms().collect { it.html() }.join('')}" +
-                "${taxSynonyms().collect { it.html() }.join('')}" +
-                "${misSynonyms().collect { it.html() }.join('')}" +
-                "${otherSynonyms().collect { it.html() }.join('')}" +
-                "</synonyms>"
-    }
 }

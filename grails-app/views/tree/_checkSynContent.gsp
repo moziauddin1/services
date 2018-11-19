@@ -8,13 +8,14 @@
     <p>${data.status}: ${data.error}</p>
   </g:if>
   <g:else>
-    <h2>Check All Synonyms Report for ${tree.name}</h2>
+    <h2>Check All Synonyms Report for ${treeVersion.tree.name} ${treeVersion.draftName}</h2>
 
-    <h3>Changed Synonymy</h3>
+    <h3>Changed Synonymy <span class="text-muted small">(${data.payload.count})</span></h3>
+    <p>Showing ${data.payload.results.size()} results.</p>
 
-    <g:if test="${data.payload}">
+    <g:if test="${data.payload.results}">
       <g:form controller="treeElement" action="updateSynonymyByInstance">
-        <input type="hidden" name="treeId" value="${tree.id}"/>
+        <input type="hidden" name="versionId" value="${treeVersion.id}"/>
         <table class="table">
           <thead>
           <tr>
@@ -22,9 +23,9 @@
             <th>Current Instance synonymy</th>
           </tr>
           </thead>
-          <g:each in="${data.payload}" var="report">
+          <g:each in="${data.payload.results}" var="report">
             <tree:diffSynonyms a="${report.treeVersionElement.treeElement.synonymsHtml}"
-                               b="${report.taxonData.synonymsHtml}">
+                               b="${report.synonymsHtml}">
               <tr>
                 <td class="diffBefore">
                   <div class="text-muted">
@@ -73,9 +74,9 @@
           </g:each>
         </table>
         <shiro:hasRole name="treebuilder">
-          <g:if test="${tree.defaultDraftTreeVersion}">
+          <g:if test="${treeVersion}">
             <g:submitButton class="btn btn-primary"
-                            name="Update selected in draft '${tree.defaultDraftTreeVersion.draftName}'"/>
+                            name="Update selected in draft '${treeVersion.draftName}'"/>
           </g:if>
           <g:else>
             <h2 class="text-warning"><i class="fa fa-exclamation-triangle"></i> Please create a draft tree to update.

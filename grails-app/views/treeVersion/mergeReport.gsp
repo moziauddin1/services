@@ -2,12 +2,12 @@
 <html>
 <head>
   <meta name="layout" content="main">
-  <title>Event Report</title>
+  <title>Tree - merge report</title>
   <asset:stylesheet src="tree.css"/>
 
 </head>
 
 <body>
-<g:render template="eventContent"/>
+<g:render template="mergeContent"/>
 </body>
 </html>
