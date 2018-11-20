@@ -47,6 +47,14 @@ tree-note {
     display: inline;
 }
 
+candidatus:before {
+    content: '"';
+}
+candidatus:after {
+    content: '"';
+    margin-left: -0.3em;
+}
+
 span.draftStamp:before {
     content: 'DRAFT';
 }

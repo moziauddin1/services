@@ -21,6 +21,7 @@ class NameConstructionService {
     def icnNameConstructionService
     def icznNameConstructionService
     def icnpNameConstructionService
+    def icvcnNameConstructionService
 
     static transactional = false
 
@@ -70,7 +71,7 @@ class NameConstructionService {
         }
 
         if (name.nameType.nameGroup.name == 'virus') {
-            return icnpNameConstructionService.constructName(name)
+            return icvcnNameConstructionService.constructName(name)
         }
 
         throw new UnsupportedNomCode("Unsupported Nomenclatural code for name construction $name.nameType.nameGroup.name")
@@ -94,7 +95,7 @@ class NameConstructionService {
         }
 
         if (name.nameType.nameGroup.name == 'virus') {
-            return icnpNameConstructionService.constructAuthor(name)
+            return icvcnNameConstructionService.constructAuthor(name)
         }
 
         throw new UnsupportedNomCode("Unsupported Nomenclatural code for name construction $name.nameType.nameGroup.name")

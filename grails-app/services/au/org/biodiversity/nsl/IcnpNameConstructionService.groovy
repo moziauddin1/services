@@ -57,23 +57,6 @@ class IcnpNameConstructionService implements NameConstructor {
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
-    private Map constructAutonymScientificName(Name name) {
-        use(NameConstructionUtils) {
-            Name nameParent = name.nameParent()
-            String precedingName = constructPrecedingNameString(nameParent, name)
-            String rank = nameParent ? makeRankString(name) : ''
-            String connector = makeConnectorString(name, rank)
-            String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
-            String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
-
-            List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
-
-            String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
-            //need to remove Authors below from simple name because preceding name includes author in autonyms
-            return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: fullMarkedUpName.removeAuthors()]
-        }
-    }
-
     private Map constructScientificName(Name name) {
         use(NameConstructionUtils) {
             Name nameParent = name.nameParent()
@@ -83,14 +66,16 @@ class IcnpNameConstructionService implements NameConstructor {
                 log.error "parent $nameParent, but didn't construct name."
             }
 
+            String candOpen = name.nameType.name == 'candidatus' ? '<candidatus>Candidatus' : ''
+            String candClose = name.nameType.name == 'candidatus' ? '</candidatus>' : ''
             String rank = nameParent ? makeRankString(name) : ''
             String connector = makeConnectorString(name, rank)
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
             String author = constructAuthor(name)
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> fullNameParts = [precedingName, rank, connector, element, author, manuscript]
-            List<String> simpleNameParts = [precedingName, rank, connector, element, manuscript]
+            List<String> fullNameParts = [candOpen, precedingName, rank, connector, element, candClose, author, manuscript]
+            List<String> simpleNameParts = [candOpen, precedingName, rank, connector, element, candClose, manuscript]
 
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
             String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
@@ -111,7 +96,7 @@ class IcnpNameConstructionService implements NameConstructor {
                     }
                     return constructedName.fullMarkedUpName.removeManuscript()
                 }
-                return constructedName.simpleMarkedUpName.removeManuscript()
+                return constructedName.simpleMarkedUpName.removeManuscript().replaceAll(/<candidatus>Candidatus ?(.*)<\/candidatus>/,'$1')
             }
             return ''
         }
@@ -147,7 +132,7 @@ class IcnpNameConstructionService implements NameConstructor {
                 }
             }
             if (name.exAuthor) {
-                bits << "<ex data-id='$name.exAuthor.id' title='${name.exAuthor.name.encodeAsHTML()}'>$name.exAuthor.abbrev</ex> ex"
+                bits << "(ex <ex data-id='$name.exAuthor.id' title='${name.exAuthor.name.encodeAsHTML()}'>$name.exAuthor.abbrev</ex>)"
             }
             bits << "<author data-id='$name.author.id' title='${name.author.name.encodeAsHTML()}'>$name.author.abbrev</author>"
             if (name.sanctioningAuthor) {

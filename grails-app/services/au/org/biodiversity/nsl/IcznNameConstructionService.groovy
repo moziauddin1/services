@@ -76,7 +76,7 @@ class IcznNameConstructionService implements NameConstructor {
 
     private Map constructScientificName(Name name) {
         use(NameConstructionUtils) {
-            Name nameParent = name.nameParent()
+            Name nameParent = (RankUtils.rankLowerThan(name.nameRank, 'Genus')) ? name.parent : null
             String precedingName = constructPrecedingNameString(nameParent, name)
 
             if (nameParent && !precedingName) {
@@ -85,7 +85,12 @@ class IcznNameConstructionService implements NameConstructor {
 
             String rank = nameParent ? makeRankString(name) : ''
             String connector = makeConnectorString(name, rank)
-            String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
+            String element
+            if (name.nameRank.name == 'Subgenus') {
+                element = "(<element>${name.nameElement.encodeAsHTML()}</element>)"
+            } else {
+                element = "<element>${name.nameElement.encodeAsHTML()}</element>"
+            }
             String author = constructAuthor(name)
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
