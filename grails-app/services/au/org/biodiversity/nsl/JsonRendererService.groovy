@@ -29,8 +29,6 @@ class JsonRendererService {
     def instanceService
     def treeService
 
-    MessageSource messageSource
-
     def registerObjectMashallers() {
         JSON.registerObjectMarshaller(Namespace) { Namespace namespace -> getBriefNamespace(namespace) }
         JSON.registerObjectMarshaller(Name) { Name name -> marshallName(name) }
@@ -41,6 +39,8 @@ class JsonRendererService {
         JSON.registerObjectMarshaller(Tree) { Tree tree -> marshallTree(tree) }
         JSON.registerObjectMarshaller(TreeVersion) { TreeVersion treeVersion -> marshallTreeVersion(treeVersion) }
         JSON.registerObjectMarshaller(TreeElement) { TreeElement treeElement -> marshallTreeElement(treeElement) }
+        JSON.registerObjectMarshaller(TveDiff) { TveDiff tveDiff -> marshallTveDiff(tveDiff) }
+        JSON.registerObjectMarshaller(MergeReport) { MergeReport mergeReport -> marshallMergReport(mergeReport) }
         //todo remove
         JSON.registerObjectMarshaller(TreeVersionElement) { TreeVersionElement treeVersionElement -> marshallTreeVersionElement(treeVersionElement) }
 
@@ -249,19 +249,19 @@ class JsonRendererService {
     Map marshallName(Name name) {
         Map data = getBaseInfo(name)
         data.name << [
-                fullName    : name.fullName,
-                fullNameHtml: name.fullNameHtml,
-                nameElement : name.nameElement,
-                simpleName  : name.simpleName,
-                rank        : [name: name.nameRank.displayName, sortOrder: name.nameRank.sortOrder],
-                type        : name.nameType.name,
-                status      : name.nameStatus.name,
-                tags        : name.tags.collect { it.name },
-                parent      : getBriefName(name.parent),
-                secondParent: getBriefName(name.secondParent),
-                instances   : name.instances.collect { getBriefInstance(it) },
-                author      : getBriefAuthor(name.author),
-                baseAuthor  : getBriefAuthor(name.baseAuthor),
+                fullName       : name.fullName,
+                fullNameHtml   : name.fullNameHtml,
+                nameElement    : name.nameElement,
+                simpleName     : name.simpleName,
+                rank           : [name: name.nameRank.displayName, sortOrder: name.nameRank.sortOrder],
+                type           : name.nameType.name,
+                status         : name.nameStatus.name,
+                tags           : name.tags.collect { it.name },
+                parent         : getBriefName(name.parent),
+                secondParent   : getBriefName(name.secondParent),
+                instances      : name.instances.collect { getBriefInstance(it) },
+                author         : getBriefAuthor(name.author),
+                baseAuthor     : getBriefAuthor(name.baseAuthor),
                 exAuthor       : getBriefAuthor(name.exAuthor),
                 exBaseAuthor   : getBriefAuthor(name.exBaseAuthor),
                 primaryInstance: instanceService.findPrimaryInstance(name)?.collect { Instance instance -> getBriefInstance(instance) }
@@ -472,6 +472,31 @@ class JsonRendererService {
                         ],
                 NOTE       : 'You probably want a TreeVersionElement'
         ]
+    }
+
+    Map marshallMergReport(MergeReport mergeReport) {
+        return [mergeReport: [
+                class        : mergeReport.class.name,
+                fromVersionId: mergeReport.from.id,
+                toVersionId  : mergeReport.to.id,
+                upToDate     : mergeReport.upToDate,
+                conflicts    : mergeReport.conflicts,
+                nonConflicts : mergeReport.nonConflicts
+        ]]
+    }
+
+    Map marshallTveDiff(TveDiff tveDiff) {
+        return [tveDiff: [
+                class         : tveDiff.class.name,
+                id            : tveDiff.id,
+                parentId      : tveDiff.parentId,
+                from          : tveDiff.from?.elementLink,
+                to            : tveDiff.to?.elementLink,
+                fromType      : tveDiff.fromType,
+                toType        : tveDiff.toType,
+                fromTypeString: tveDiff.fromTypeString,
+                toTypeString  : tveDiff.toTypeString
+        ]]
     }
 
     @SuppressWarnings("GroovyAssignabilityCheck")

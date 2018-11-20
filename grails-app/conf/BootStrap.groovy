@@ -40,6 +40,14 @@ class BootStrap {
             }
             sql.close()
         }
+
+        Sql sql = configService.getSqlForNSLDB()
+        def result = sql.firstRow('select count(*) from information_schema.triggers where trigger_name = \'audit_trigger_row\';')
+        if(result?.getAt(0) != 18) {
+            log.error "\n\n*** Audit triggers not set up, expected 18 audit triggers got ${result?.getAt(0)} *** \n"
+        }
+        sql.close()
+
         searchService.registerSuggestions()
         jsonRendererService.registerObjectMashallers()
 

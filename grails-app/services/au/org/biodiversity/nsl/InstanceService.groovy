@@ -87,13 +87,14 @@ class InstanceService {
         if (!reason) {
             errors << 'You need to supply a reason for deleting this instance.'
         }
-        if (treeService.isInstanceInAnyTree(instance)) {
-            List<String> trees = treeService.findTreesByInstance(instance).collect { tree ->
-                TreeVersionElement firstPublished = treeService.firstPublished(instance, tree)
-                TreeVersionElement last = treeService.lastAnyVersion(instance, tree)
-                String since = firstPublished?.updatedAt?.format('dd/MM/yyyy')
-                String till = last.treeVersion.published ? last.treeVersion.publishedAt.format('dd/MM/yyyy') : "Draft: $last.treeVersion.draftName"
-                "$tree.name: ${since ?: 'unpublished'} -> $till"
+        List<TreeVersionElement> currentTves = treeService.instanceInAnyCurrentTree(instance)
+        if (currentTves.size()) {
+            List<String> trees = currentTves.collect { tve ->
+                if(tve.treeVersion.published) {
+                    "Currently published tree $tve.treeVersion.tree.name"
+                } else {
+                    "Draft $tve.treeVersion.tree.name: $tve.treeVersion.draftName."
+                }
             } as List<String>
             errors << "This instance is in ${trees.join(', ')}.".toString()
         }
@@ -237,6 +238,18 @@ class InstanceService {
         }
     }
 
+    def checkInstanceCreated(Instance instance) {
+        if(!instance.uri) {
+            instance.uri = linkService.getPreferredLinkForObject(instance)
+            instance.save()
+        }
+        //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
+        //create synonymy changed EventRecords
+        if (instance.citedBy) {
+            treeService.checkSynonymyUpdated(instance.citedBy, instance.updatedBy)
+        }
+    }
+
     /**
      * Check and update anything that may rely on this deleted instance ID e.g. trees.
      * Since the instance is deleted, it's hard to tell what it is. So we just get the treeService to check if this
@@ -246,6 +259,17 @@ class InstanceService {
      */
     def checkInstanceDelete(Long id) {
         Map instanceData = auditService.recoverDeletedInstanceData(id)
-        treeService.checkUsageOfDeletedInstance(id, instanceData.cited_by_id as Long, instanceData.updated_by ?: 'notification')
+        if (instanceData) {
+            treeService.checkUsageOfDeletedInstance(id, instanceData.cited_by_id as Long, instanceData.updated_by ?: 'notification')
+        } else {
+            log.error "Audit does not contain deleted instance $id. Check audit is working."
+        }
+    }
+
+    def updateMissingUris() {
+        Instance.findAllByUriIsNull().each { Instance instance ->
+            instance.uri = linkService.getPreferredLinkForObject(instance)
+            instance.save()
+        }
     }
 }

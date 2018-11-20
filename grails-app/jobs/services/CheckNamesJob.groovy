@@ -86,11 +86,19 @@ class CheckNamesJob {
                         case 'reference deleted':
                             break
                         case 'instance updated':
-                        case 'instance created':
                             log.debug "Instance $note.objectId updated"
                             Instance instance = Instance.get(note.objectId)
                             if (instance) {
                                 instanceService.checkInstanceChanges(instance)
+                            } else {
+                                log.debug "Instance $note.objectId doesn't exist"
+                            }
+                            break
+                        case 'instance created':
+                            log.debug "Instance $note.objectId created"
+                            Instance instance = Instance.get(note.objectId)
+                            if (instance) {
+                                instanceService.checkInstanceCreated(instance)
                             } else {
                                 log.debug "Instance $note.objectId doesn't exist"
                             }

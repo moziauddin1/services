@@ -219,11 +219,10 @@ class TreeElementController extends BaseApiController {
         ResultObject results = require('instances': instanceIds)
 
         handleResults(results) {
-            Tree tree = got({ Tree.get(params.treeId as Long) }, "Tree $params.treeId") as Tree
-            String userName = treeService.authorizeTreeOperation(tree)
             TreeVersion treeVersion = got({
-                tree.defaultDraftTreeVersion
-            }, "No default draft version for tree ${tree.name} found. Create a default draft first.") as TreeVersion
+                TreeVersion.get(params.versionId as Long)
+            }, "No draft version with id ${params.versionId} found.") as TreeVersion
+            String userName = treeService.authorizeTreeOperation(treeVersion.tree)
 
             List<TreeVersionElement> payload = []
             for (Long instanceId in instanceIds) {

@@ -124,9 +124,12 @@ class ConfigService {
     String getProductDescription(String productName) {
         return getShardConfigOrfail("$productName description")
     }
-    // Disable the checkPolynomialsBelowNameParent function for virus shard
+
+    /**
+     * Disable the checkPolynomialsBelowNameParent function for virus shard
+      */
     Boolean getDisableCheckPolynomialsBelowNameParent() {
-        return getShardConfigOrfail("disable CheckPolynomialsBelowNameParent") == 'true'
+        return getShardConfigOrfail("disable checkPolynomialsBelowNameParent") == 'true'
     }
 
     /**

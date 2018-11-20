@@ -120,6 +120,22 @@ class TreeServicesTagLib {
         }
     }
 
+    def previously = { attrs, body ->
+        TreeVersionElement tve = attrs.element
+        TreeVersionElement lastChanged = treeService.lastChangeVersion(tve)
+        if (lastChanged) {
+            out << body(lastChanged: lastChanged)
+        }
+    }
+
+    def history = { attrs, body ->
+        TreeVersionElement tve = attrs.element
+        List<TreeVersionElement> history = treeService.historyForName(tve.treeElement.nameId, tve.treeVersion.tree)
+        for (element in history) {
+            out << body(historyElement: element, currentPos: tve.elementLink == element.elementLink)
+        }
+    }
+
     def drafts = { attrs, body ->
         Tree tree = attrs.tree
         List<TreeVersion> drafts = TreeVersion.findAllWhere(tree: tree, published: false)
@@ -148,13 +164,17 @@ class TreeServicesTagLib {
     }
 
     def diffSynonyms = { attrs, body ->
+
+        String synA = attrs.a ?: ''
+        String synB = attrs.b ?: ''
+
         // split synonyms onto new lines
-        List<String> a = (attrs.a as String)?.replaceAll('</?synonyms>', '')
-                                            ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
-                                            ?.split('::')
-        List<String> b = (attrs.b as String)?.replaceAll('</?synonyms>', '')
-                                            ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
-                                            ?.split('::')
+        List<String> a = (synA)?.replaceAll('</?synonyms>', '')
+                               ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
+                               ?.split('::')
+        List<String> b = (synB)?.replaceAll('</?synonyms>', '')
+                               ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
+                               ?.split('::')
 
         String diffA = '<synonyms>'
         String diffB = '<synonyms>'
@@ -163,16 +183,24 @@ class TreeServicesTagLib {
         0.upto(size - 1) { i ->
             String oldLine = a[i]
             String newLine = b[i]
-            if (oldLine && !b.contains(oldLine)) {
-                diffA += oldLine.replaceFirst('<name ', '<name class="target" ')
-            } else if (oldLine) {
-                diffA += oldLine
+            if (oldLine) {
+                if (!b.contains(oldLine)) {
+                    diffA += oldLine.replaceFirst('<name ', '<name class="target" ')
+                } else if (oldLine != newLine) {
+                    diffA += '<div class="targetMoved">⇅ ' + oldLine + '</div>'
+                } else {
+                    diffA += oldLine
+                }
             }
-
-            if (newLine && !a.contains(newLine)) {
-                diffB += newLine.replaceFirst('<name ', '<name class="target" ')
-            } else if (newLine) {
-                diffB += newLine
+            
+            if (newLine) {
+                if (!a.contains(newLine)) {
+                    diffB += newLine.replaceFirst('<name ', '<name class="target" ')
+                } else if (newLine != oldLine) {
+                    diffB += '<div class="targetMoved">⇅ ' + newLine + '</div>'
+                } else {
+                    diffB += newLine
+                }
             }
         }
         diffA += '</synonyms>'
@@ -180,10 +208,15 @@ class TreeServicesTagLib {
         out << body(diffA: diffA, diffB: diffB)
     }
 
+
     def diffPath = { attrs, body ->
-        // split synonyms onto new lines
-        List<String> a = (attrs.a as String)?.split('/')
-        List<String> b = (attrs.b as String)?.split('/')
+
+        String pathA = attrs.a ?: ''
+        String pathB = attrs.b ?: ''
+
+        // split path onto new lines
+        List<String> a = (pathA)?.split('/')
+        List<String> b = (pathB)?.split('/')
 
         int size = Math.max(a.size(), b.size())
         0.upto(size - 1) { i ->

@@ -57,16 +57,13 @@ class IcvcnNameConstructionService implements NameConstructor {
         return [fullMarkedUpName: markedUpName, simpleMarkedUpName: markedUpName]
     }
 
+    //TODO remove after removing autonym type from the virus database.
     private Map constructAutonymScientificName(Name name) {
         use(NameConstructionUtils) {
-            Name nameParent = name.nameParent()
-            String precedingName = constructPrecedingNameString(nameParent, name)
-            String rank = nameParent ? makeRankString(name) : ''
-            String connector = makeConnectorString(name, rank)
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> simpleNameParts = [rank, connector, element, manuscript]
+            List<String> simpleNameParts = [element, manuscript]
 
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
             return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: fullMarkedUpName]
@@ -75,63 +72,17 @@ class IcvcnNameConstructionService implements NameConstructor {
 
     private Map constructScientificName(Name name) {
         use(NameConstructionUtils) {
-            Name nameParent = name.nameParent()
-            String precedingName = constructPrecedingNameString(nameParent, name)
 
-            if (nameParent && !precedingName) {
-                log.error "parent $nameParent, but didn't construct name."
-            }
-
-            String rank = nameParent ? makeRankString(name) : ''
-            String connector = makeConnectorString(name, rank)
             String element = "<element>${name.nameElement.encodeAsHTML()}</element>"
             String manuscript = (name.nameStatus.name == 'manuscript') ? '<manuscript>MS</manuscript>' : ''
 
-            List<String> fullNameParts = [rank, connector, element, manuscript]
-            List<String> simpleNameParts = [rank, connector, element, manuscript]
+            List<String> fullNameParts = [element, manuscript]
+            List<String> simpleNameParts = [element, manuscript]
 
             String fullMarkedUpName = "<scientific><name data-id='$name.id'>${join(fullNameParts)}</name></scientific>"
             String simpleMarkedUpName = "<scientific><name data-id='$name.id'>${join(simpleNameParts)}</name></scientific>"
             return [fullMarkedUpName: fullMarkedUpName, simpleMarkedUpName: simpleMarkedUpName]
         }
-    }
-
-    private String constructPrecedingNameString(Name parent, Name child) {
-        use(NameConstructionUtils) {
-            if (parent) {
-                Map constructedName = constructName(parent)
-                if (child.nameType.autonym) {
-                    return constructedName.fullMarkedUpName.removeManuscript()
-                }
-                if (child.nameType.formula) {
-                    if (parent.nameType.formula) {
-                        return "(${constructedName.fullMarkedUpName.removeManuscript()})"
-                    }
-                    return constructedName.fullMarkedUpName.removeManuscript()
-                }
-                return constructedName.simpleMarkedUpName.removeManuscript()
-            }
-            return ''
-        }
-    }
-
-    private static String makeConnectorString(Name name, String rank) {
-        if (name.nameType.connector &&
-                !(rank && name.nameType.connector == 'x' && name.nameRank.abbrev.startsWith('notho'))) {
-            return "<hybrid data-id='$name.nameType.id' title='$name.nameType.name'>$name.nameType.connector</hybrid>"
-        } else {
-            return ''
-        }
-    }
-
-    private static String makeRankString(Name name) {
-        if (name.nameRank?.visibleInName) {
-            if (name.nameRank.useVerbatimRank && name.verbatimRank) {
-                return "<rank data-id='${name.nameRank?.id}'>${name.verbatimRank}</rank>"
-            }
-            return "<rank data-id='${name.nameRank?.id}'>${name.nameRank?.abbrev}</rank>"
-        }
-        return ''
     }
 
     String constructAuthor(Name name) {

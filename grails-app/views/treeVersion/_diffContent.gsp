@@ -12,7 +12,7 @@
     <p>We have changes, so many changes.</p>
   </g:elseif>
   <g:else>
-    <h3>Added</h3>
+    <h3>Added <span class="text-muted small">(${data.payload?.added?.size()})</span></h3>
 
     <g:if test="${data.payload?.added}">
       <table class="table">
@@ -30,7 +30,7 @@
       <p>nothing</p>
     </g:else>
 
-    <h3>Removed</h3>
+    <h3>Removed <span class="text-muted small">(${data.payload?.removed?.size()})</span></h3>
 
     <g:if test="${data.payload?.removed}">
       <table class="table">
@@ -48,7 +48,7 @@
       <p>nothing</p>
     </g:else>
 
-    <h3>Modified</h3>
+    <h3>Modified <span class="text-muted small">(${data.payload?.modified?.size()})</span></h3>
 
     <g:if test="${data.payload?.modified}">
 

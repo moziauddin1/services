@@ -28,6 +28,7 @@ class LinkService {
     CacheManager grailsCacheManager
 
     private String lowerNameSpaceName
+    private String preferredHost
 
     String nameSpace() {
         if (!lowerNameSpaceName) {
@@ -201,6 +202,12 @@ class LinkService {
             log.warn "Can't get link for null object"
             return null
         }
+        if (target instanceof Name && target.uri) {
+            return "${getPreferredHost()}/${target.uri}"
+        }
+        if (target instanceof Instance && target.uri) {
+            return "${getPreferredHost()}/${target.uri}"
+        }
         doUsingCache(getLinkCache(), target?.id) {
             String link = null
             try {
@@ -236,28 +243,31 @@ class LinkService {
      */
     @Timed()
     String getPreferredHost() {
-        String host = null
-        try {
-            String url = getInternalLinkServiceUrl('preferredHost')
+        if (!preferredHost) {
+            String host = null
+            try {
+                String url = getInternalLinkServiceUrl('preferredHost')
 
-            restCallService.json('get', url,
-                    { Map data ->
-                        host = data.host
-                    },
-                    { Map data, List errors ->
-                        log.error "Couldn't get preferred host $errors"
-                    },
-                    {
-                        log.error "Couldn't get preferred host: 404 not found"
-                    },
-                    { data ->
-                        log.error "Something went wrong getting preferred host. Response: $data"
-                    }
-            )
-        } catch (RestCallException e) {
-            log.error "Error $e.message getting preferred host"
+                restCallService.json('get', url,
+                        { Map data ->
+                            host = data.host
+                        },
+                        { Map data, List errors ->
+                            log.error "Couldn't get preferred host $errors"
+                        },
+                        {
+                            log.error "Couldn't get preferred host: 404 not found"
+                        },
+                        { data ->
+                            log.error "Something went wrong getting preferred host. Response: $data"
+                        }
+                )
+            } catch (RestCallException e) {
+                log.error "Error $e.message getting preferred host"
+            }
+            preferredHost = host
         }
-        return host
+        return preferredHost
     }
 
     /**
