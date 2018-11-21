@@ -59,16 +59,24 @@
   </st:preferredLink>
   <div class="timeline">
     <b>Changes:</b>
-  <tree:history element="${treeVersionElement}">
-    <g:if test="${index > 0}"><i class="fa fa-long-arrow-right"></i></g:if>
-    <span class="timeline ${currentPos ? 'active' : ''}">
-      <a href="${historyElement.fullElementLink()}" title="taxon ID: ${historyElement.taxonLink}">
-        <g:if test="${currentTreeVersion == historyElement.treeVersion}">Now</g:if>
-        <g:else><date>${historyElement.treeVersion.publishedAt}</date></g:else>
-        - <date>${historyElement.updatedAt}</date>
-      </a>
-    </span>
-  </tree:history>
+    <tree:history element="${treeVersionElement}">
+      <g:if test="${index == 0}">
+        <span class="timeline ${currentPos ? 'active' : ''}">
+          <a href="${historyElement.fullElementLink()}" title="taxon ID: ${historyElement.taxonLink}">
+            <g:if test="${currentTreeVersion == historyElement.treeVersion}">Now</g:if>
+            <g:else><date>${historyElement.treeVersion.publishedAt}</date></g:else>
+            <i class="fa fa-long-arrow-left"></i> <date>${historyElement.updatedAt}</date>
+          </a>
+        </span>
+      </g:if>
+      <g:else>&nbsp;<i class="fa fa-long-arrow-left"></i>
+        <span class="timeline ${currentPos ? 'active' : ''}">
+          <a href="${historyElement.fullElementLink()}" title="taxon ID: ${historyElement.taxonLink}">
+            <date>${historyElement.updatedAt}</date>
+          </a>
+        </span>
+      </g:else>
+    </tree:history>
   </div>
   <hr>
 </div>
