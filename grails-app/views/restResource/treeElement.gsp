@@ -58,10 +58,15 @@
     <g:else>DRAFT</g:else>
   </st:preferredLink>
   <div class="timeline">
-    <b>Changes:</b> <span class="timeline">Now</span>
+    <b>Changes:</b>
   <tree:history element="${treeVersionElement}">
-    <i class="fa fa-long-arrow-right"></i><span class="timeline ${currentPos ? 'active' : ''}">
-      <a href="${historyElement.fullElementLink()}" title="taxon ID: ${historyElement.taxonLink}"><date>${historyElement.updatedAt}</date></a>
+    <g:if test="${index > 0}"><i class="fa fa-long-arrow-right"></i></g:if>
+    <span class="timeline ${currentPos ? 'active' : ''}">
+      <a href="${historyElement.fullElementLink()}" title="taxon ID: ${historyElement.taxonLink}">
+        <g:if test="${currentTreeVersion == historyElement.treeVersion}">Now</g:if>
+        <g:else><date>${historyElement.treeVersion.publishedAt}</date></g:else>
+        - <date>${historyElement.updatedAt}</date>
+      </a>
     </span>
   </tree:history>
   </div>

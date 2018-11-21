@@ -131,8 +131,9 @@ class TreeServicesTagLib {
     def history = { attrs, body ->
         TreeVersionElement tve = attrs.element
         List<TreeVersionElement> history = treeService.historyForName(tve.treeElement.nameId, tve.treeVersion.tree)
+        Integer index = 0
         for (element in history) {
-            out << body(historyElement: element, currentPos: tve.elementLink == element.elementLink)
+            out << body(historyElement: element, currentPos: tve.elementLink == element.elementLink, index: index++)
         }
     }
 
