@@ -268,6 +268,9 @@ class TreeService implements ValidationUtils {
             }
             return false
         }
+        if (!history.contains(tves.last())) {
+            history.add(tves.last())
+        }
         return history
     }
 
@@ -1980,7 +1983,7 @@ and tve.element_link not in ($excludedLinks)
     List<TreeVersionElement> instanceInAnyCurrentTree(Instance instance) {
         TreeVersionElement.executeQuery("""from TreeVersionElement tve 
             where (tve.treeVersion.published = false or tve.treeVersion = tve.treeVersion.tree.currentTreeVersion)
-                and tve.treeElement.instanceId = :id""",[id: instance.id])
+                and tve.treeElement.instanceId = :id""", [id: instance.id])
     }
 
     Map merge(TreeVersion draftVersion, MergeReport report, String userName) {
