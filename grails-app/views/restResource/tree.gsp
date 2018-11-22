@@ -87,7 +87,7 @@
                   <g:if test="${version.published}">
                     <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: version.id, v2: currentTreeVersion.id])}"
                        title="Diff to current version">&Delta;&nbsp;current</a>,<g:if test="${version.previousVersion}">
-                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: version.id, v2: version.previousVersion.id])}"
+                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v2: version.id, v1: version.previousVersion.id])}"
                        title="Diff to current version">&Delta;&nbsp;previous</a>,</g:if>
                   </g:if>
                   <g:else>

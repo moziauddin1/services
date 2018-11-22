@@ -55,8 +55,8 @@
       <table class="table">
         <thead>
         <tr>
-          <th>Before</th>
-          <th>After</th>
+          <th>Before (${data.payload.v1.publishedAt?.format('dd/MM/yyyy hh:mm a')})</th>
+          <th>After (${data.payload.v2.publishedAt?.format('dd/MM/yyyy hh:mm a')})</th>
         </tr>
         </thead>
         <g:each in="${data.payload?.modified}" var="mod">
