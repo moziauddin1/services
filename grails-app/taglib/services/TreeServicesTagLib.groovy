@@ -165,50 +165,27 @@ class TreeServicesTagLib {
     }
 
     def diffSynonyms = { attrs, body ->
+        use(SynonymDiffMarker) {
 
-        String synA = attrs.a ?: ''
-        String synB = attrs.b ?: ''
+            String synA = attrs.a ?: ''
+            String synB = attrs.b ?: ''
 
-        // split synonyms onto new lines
-        List<String> a = (synA)?.replaceAll('</?synonyms>', '')
-                               ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
-                               ?.split('::')
-        List<String> b = (synB)?.replaceAll('</?synonyms>', '')
-                               ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
-                               ?.split('::')
+            // split synonyms onto new lines
+            ABPair input = new ABPair(splitSynonyms(synA), splitSynonyms(synB))
+            ABPair output = input.markUpNameChanges().markUpTypeChanges().markUpCitationChanges()
 
-        String diffA = '<synonyms>'
-        String diffB = '<synonyms>'
+            String diffA = '<synonyms>' + output.a.join('\n') + '</synonyms>'
+            String diffB = '<synonyms>' + output.b.join('\n') + '</synonyms>'
 
-        int size = Math.max(a.size(), b.size())
-        0.upto(size - 1) { i ->
-            String oldLine = a[i]
-            String newLine = b[i]
-            if (oldLine) {
-                if (!b.contains(oldLine)) {
-                    diffA += oldLine.replaceFirst('<name ', '<name class="target" ')
-                } else if (oldLine != newLine) {
-                    diffA += '<div class="targetMoved">⇅ ' + oldLine + '</div>'
-                } else {
-                    diffA += oldLine
-                }
-            }
-            
-            if (newLine) {
-                if (!a.contains(newLine)) {
-                    diffB += newLine.replaceFirst('<name ', '<name class="target" ')
-                } else if (newLine != oldLine) {
-                    diffB += '<div class="targetMoved">⇅ ' + newLine + '</div>'
-                } else {
-                    diffB += newLine
-                }
-            }
+            out << body(diffA: diffA, diffB: diffB)
         }
-        diffA += '</synonyms>'
-        diffB += '</synonyms>'
-        out << body(diffA: diffA, diffB: diffB)
     }
 
+    private static List<String> splitSynonyms(String syn) {
+        return (syn)?.replaceAll('</?synonyms>', '')
+                    ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
+                    ?.split('::')
+    }
 
     def diffPath = { attrs, body ->
 

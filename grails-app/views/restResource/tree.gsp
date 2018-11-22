@@ -86,11 +86,13 @@
                 <g:if test="${version.id != currentTreeVersion.id}">
                   <g:if test="${version.published}">
                     <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: version.id, v2: currentTreeVersion.id])}"
-                       title="Diff to current version">diff</a>,
+                       title="Diff to current version">&Delta;&nbsp;current</a>,<g:if test="${version.previousVersion}">
+                    <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: version.id, v2: version.previousVersion.id])}"
+                       title="Diff to current version">&Delta;&nbsp;previous</a>,</g:if>
                   </g:if>
                   <g:else>
                     <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'diff', params: [v1: currentTreeVersion.id, v2: version.id])}"
-                       title="Diff from current version">diff</a>,
+                       title="Diff from current version">&Delta;&nbsp;current</a>,
                     <a href="${createLink(namespace: 'api', controller: 'tree', action: 'checkCurrentSynonymy', params: [treeVersionId: version.id])}"
                        title="Check Events">synonymy</a>,
                     <a href="${createLink(namespace: 'api', controller: 'treeVersion', action: 'mergeReport', params: [draftId: version.id])}"
