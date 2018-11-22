@@ -120,6 +120,23 @@ class TreeServicesTagLib {
         }
     }
 
+    def previously = { attrs, body ->
+        TreeVersionElement tve = attrs.element
+        TreeVersionElement lastChanged = treeService.lastChangeVersion(tve)
+        if (lastChanged) {
+            out << body(lastChanged: lastChanged)
+        }
+    }
+
+    def history = { attrs, body ->
+        TreeVersionElement tve = attrs.element
+        List<TreeVersionElement> history = treeService.historyForName(tve.treeElement.nameId, tve.treeVersion.tree)
+        Integer index = 0
+        for (element in history) {
+            out << body(historyElement: element, currentPos: tve.elementLink == element.elementLink, index: index++)
+        }
+    }
+
     def drafts = { attrs, body ->
         Tree tree = attrs.tree
         List<TreeVersion> drafts = TreeVersion.findAllWhere(tree: tree, published: false)
@@ -148,42 +165,36 @@ class TreeServicesTagLib {
     }
 
     def diffSynonyms = { attrs, body ->
-        // split synonyms onto new lines
-        List<String> a = (attrs.a as String)?.replaceAll('</?synonyms>', '')
-                                            ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
-                                            ?.split('::')
-        List<String> b = (attrs.b as String)?.replaceAll('</?synonyms>', '')
-                                            ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
-                                            ?.split('::')
+        use(SynonymDiffMarker) {
 
-        String diffA = '<synonyms>'
-        String diffB = '<synonyms>'
+            String synA = attrs.a ?: ''
+            String synB = attrs.b ?: ''
 
-        int size = Math.max(a.size(), b.size())
-        0.upto(size - 1) { i ->
-            String oldLine = a[i]
-            String newLine = b[i]
-            if (oldLine && !b.contains(oldLine)) {
-                diffA += oldLine.replaceFirst('<name ', '<name class="target" ')
-            } else if (oldLine) {
-                diffA += oldLine
-            }
+            // split synonyms onto new lines
+            ABPair input = new ABPair(splitSynonyms(synA), splitSynonyms(synB))
+            ABPair output = input.markUpNameChanges().markUpTypeChanges().markUpCitationChanges()
 
-            if (newLine && !a.contains(newLine)) {
-                diffB += newLine.replaceFirst('<name ', '<name class="target" ')
-            } else if (newLine) {
-                diffB += newLine
-            }
+            String diffA = '<synonyms>' + output.a.join('\n') + '</synonyms>'
+            String diffB = '<synonyms>' + output.b.join('\n') + '</synonyms>'
+
+            out << body(diffA: diffA, diffB: diffB)
         }
-        diffA += '</synonyms>'
-        diffB += '</synonyms>'
-        out << body(diffA: diffA, diffB: diffB)
+    }
+
+    private static List<String> splitSynonyms(String syn) {
+        return (syn)?.replaceAll('</?synonyms>', '')
+                    ?.replaceAll('<(tax|nom|mis|syn)>', '::<$1>')
+                    ?.split('::')
     }
 
     def diffPath = { attrs, body ->
-        // split synonyms onto new lines
-        List<String> a = (attrs.a as String)?.split('/')
-        List<String> b = (attrs.b as String)?.split('/')
+
+        String pathA = attrs.a ?: ''
+        String pathB = attrs.b ?: ''
+
+        // split path onto new lines
+        List<String> a = (pathA)?.split('/')
+        List<String> b = (pathB)?.split('/')
 
         int size = Math.max(a.size(), b.size())
         0.upto(size - 1) { i ->

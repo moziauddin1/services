@@ -18,11 +18,11 @@ package au.org.biodiversity.nsl
 
 import grails.transaction.Transactional
 import groovy.sql.Sql
-import groovy.transform.Synchronized
 import groovy.xml.MarkupBuilder
 import org.codehaus.groovy.runtime.IOGroovyMethods
 import org.postgresql.PGConnection
 import org.postgresql.copy.CopyManager
+
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -62,7 +62,7 @@ class DataExportService {
     }
 
     File getBaseDir() {
-        String tempFileDir = grailsApplication.config.shard.temp.file.directory
+        String tempFileDir = configService.tempFileDir
         File baseDir = new File(tempFileDir, 'nsl-tmp')
         if (baseDir.exists()) {
             return baseDir

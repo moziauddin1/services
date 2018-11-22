@@ -48,11 +48,15 @@ div.tr data scientific element {
 div.tr synonyms {
     display: block;
     margin-left: 2em;
-    color: slategrey;
+    color: black;
 }
 
-div.tr synonyms scientific {
-    color: black;
+div.tr synonyms name-status {
+    font-style: italic;
+}
+
+div.tr synonyms type {
+    color: darkslategrey;
 }
 
 div.tr synonyms nom,
@@ -111,7 +115,7 @@ div.tr data scientific authors {
 }
 
 div.tr data citation {
-    color: slategrey;
+    color: darkslategrey;
     margin-left: 1em;
 }
 
@@ -232,8 +236,6 @@ tr.titleRow {
     font-weight: bold;
     background-color: RGBA(256, 256, 0, 0.30) !important;
     padding: 2px 10px 0 10px;
-    /*border-radius: 40px;*/
-    /*border: 3px solid red;*/
     border-bottom: 1px solid red;
 
 }
@@ -245,6 +247,18 @@ tr.titleRow {
     border-bottom: 1px solid red;
 }
 
+.targetMoved {
+    display: block;
+    margin-left: -1em;
+}
+
+.targetMoved tax,
+.targetMoved nom,
+.targetMoved mis,
+.targetMoved syn
+{
+    display: inline-block !important;
+}
 
 .minus,
 div.tr synonyms scientific .minus {
@@ -255,5 +269,21 @@ div.tr synonyms scientific .minus {
 .plus,
 div.tr synonyms scientific .plus {
     color: green !important;
+    font-weight: bold;
+}
+
+div.timeline {
+    color: grey;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+span.timeline {
+    border: 1px grey solid;
+    border-radius: 1em;
+    padding: 5px 5px;
+}
+
+span.timeline.active {
     font-weight: bold;
 }

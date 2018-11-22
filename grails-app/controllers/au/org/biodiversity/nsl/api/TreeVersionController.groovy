@@ -1,7 +1,10 @@
 package au.org.biodiversity.nsl.api
 
+import au.org.biodiversity.nsl.MergeReport
 import au.org.biodiversity.nsl.ObjectNotFoundException
 import au.org.biodiversity.nsl.TreeVersion
+import au.org.biodiversity.nsl.TreeVersionElement
+import grails.converters.JSON
 
 class TreeVersionController extends BaseApiController {
 
@@ -105,9 +108,43 @@ class TreeVersionController extends BaseApiController {
             if (!second) {
                 throw new ObjectNotFoundException("Version $v2, not found.")
             }
-            results.payload = treeReportService.diffReport(first, second)
+            results.payload = treeReportService.diffReport(first, second).toMap()
         }
     }
+
+    def mergeReport(Long draftId, Boolean embed) {
+        ResultObject results = require('Draft Version ID': draftId)
+
+        handleResults(results, { viewRespond('mergeReport', results, embed) }) {
+            TreeVersion draft = TreeVersion.get(draftId)
+            if (!draft) {
+                throw new ObjectNotFoundException("Version $draftId, not found.")
+            }
+            def p = treeReportService.mergeReport(draft)
+            results.payload = p
+        }
+    }
+
+    def merge() {
+        println params
+        ResultObject results = require('Draft Version ID': params.draftVersion, 'Changeset': params.changeset)
+        handleResults(results, { viewRespond('merge', results, false) }) {
+            MergeReport report = treeReportService.rehydrateReport(params.changeset)
+            params.keySet()
+                  .findAll { key -> (key as String).startsWith('diff-') }
+                  .each { key ->
+                Integer diffId = (key - 'diff-') as Integer
+                report.setUse(diffId, params[key] as String)
+            }
+            TreeVersion draft = TreeVersion.get(params.draftVersion as Long)
+            if (!draft) {
+                throw new ObjectNotFoundException("Version ${params.draftVersion}, not found.")
+            }
+            String userName = treeService.authorizeTreeOperation(draft.tree)
+            results.payload = treeService.merge(draft, report, userName)
+        }
+    }
+
 
     private viewRespond(String view, ResultObject resultObject, Boolean embed) {
         log.debug "result status is ${resultObject.status}"

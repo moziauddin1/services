@@ -87,7 +87,7 @@ class DataExportServiceSpec extends Specification {
 
     void "test base output directory"() {
         given:
-        service.grailsApplication = [config: [shard: [temp: [file: [directory: "/tmp"]]]]]
+        service.configService = [tempFileDir: '/tmp']
         File dir = service.getBaseDir()
         if (dir.exists()) {
             //clean up

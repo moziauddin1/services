@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta name="layout" content="main">
-  <title>Tree</title>
+  <title>Tree - diff</title>
   <asset:stylesheet src="tree.css"/>
 
 </head>

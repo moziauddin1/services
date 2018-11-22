@@ -36,7 +36,7 @@
         </g:if>
         <g:else>
           <a href="${last.fullElementLink()}" class="small text-info"
-             title="previously accepted till ${last.treeVersion.publishedAt.format('dd/MM/yyyy')}">
+             title="previously ${last.treeElement.excluded ? 'excluded' : 'accepted'} till ${last.treeVersion.publishedAt.format('dd/MM/yyyy')}">
             <i class="fa fa-tree"></i>
           </a>
         </g:else>

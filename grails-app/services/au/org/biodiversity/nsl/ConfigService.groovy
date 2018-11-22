@@ -18,6 +18,7 @@ package au.org.biodiversity.nsl
 import grails.transaction.Transactional
 import groovy.sql.Sql
 import org.apache.commons.logging.LogFactory
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 import javax.sql.DataSource
 
@@ -37,10 +38,18 @@ class ConfigService {
 
     DataSource dataSource_nsl
 
-    def grailsApplication
+    GrailsApplication grailsApplication
 
     private String nameSpaceName
     private Map shardConfig = null
+    private Map appConfigMap = null
+
+    private Map appConfig() {
+        if (!appConfigMap) {
+            appConfigMap = grailsApplication.config.flatten()
+        }
+        return appConfigMap
+    }
 
     private String getShardConfigOrfail(String key) {
         if (shardConfig == null) {
@@ -117,6 +126,13 @@ class ConfigService {
     }
 
     /**
+     * Disable the checkPolynomialsBelowNameParent function for virus shard
+      */
+    Boolean getDisableCheckPolynomialsBelowNameParent() {
+        return getShardConfigOrfail("disable checkPolynomialsBelowNameParent") == 'true'
+    }
+
+    /**
      * used next to banner text when a product is defined. See _service_navigation.gsp
      * @param productName
      * @return label text
@@ -126,21 +142,19 @@ class ConfigService {
     }
 
     String getPhotoServiceUri() {
-        if(grailsApplication.config?.services?.photoService?.url) {
-            return grailsApplication.config.services.photoService.url
-        }
-        return null
+        configOrThrow('services.photoService.url')
     }
 
     String getPhotoSearch(String name) {
-        if(grailsApplication.config?.services?.photoService?.search) {
-            return grailsApplication.config.services.photoService.search(name)
+        def search = configOrThrow('services.photoService.search')
+        if (search && search instanceof Closure) {
+            return search(name)
         }
         return null
     }
 
     Map getLdapConfig() {
-        if(grailsApplication.config.ldap) {
+        if(grailsApplication.config.containsKey('ldap')) {
             return grailsApplication.config.ldap as Map
         }
         throw new Exception("Config error. Add ldap config.")
@@ -154,17 +168,56 @@ class ConfigService {
     }
 
     String getJWTSecret() {
-        if(grailsApplication.config?.nslServices?.jwt?.secret) {
-            return grailsApplication.config.nslServices.jwt.secret
-        }
-        throw new Exception("Config error. Add JWT config.")
+        configOrThrow('nslServices.jwt.secret')
     }
 
     String getServerUrl() {
-        if (grailsApplication.config?.grails?.serverURL) {
-            return grailsApplication.config.grails.serverURL
+        configOrThrow('grails.serverURL')
+    }
+
+    String getTempFileDir() {
+        configOrThrow('shard.temp.file.directory')
+    }
+
+    String getInternalMapperURL() {
+        configOrThrow('services.link.internalMapperURL')
+    }
+
+    String getPublicMapperURL() {
+        configOrThrow('services.link.mapperURL')
+    }
+
+    String getMapperApiKey() {
+        configOrThrow('services.mapper.apikey')
+    }
+
+    String getSystemMessageFilename(){
+        configOrThrow('shard.system.message.file')
+    }
+
+    String getColourScheme() {
+        configOrThrow('shard.colourScheme')
+    }
+
+    String getEditorlink(){
+        configOrThrow('services.link.editor')
+    }
+
+    /**
+     * pass the path from the grailsApplication.config point. If the config exists you get the value if not
+     * it throws and exception saying the config is missing.
+     * @param path
+     */
+    private def configOrThrow(String path) {
+        if (appConfig() && appConfig().containsKey(path)) {
+            return appConfig().get(path)
+        } else {
+            throw new Exception("Config error. Config option $path not found, please set it in '.nsl/services-config.groovy'.")
         }
-        throw new Exception("Config error. Add serverURL.")
+    }
+
+    String printAppConfig() {
+        appConfig().toString()
     }
 
     Sql getSqlForNSLDB() {

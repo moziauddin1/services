@@ -52,7 +52,7 @@ class AuthController {
 
         // If a controller redirected to this page, redirect back
         // to it. Otherwise redirect to the root URI.
-        String rootURI = grailsApplication.config.grails.serverURL
+        String rootURI = configService.getServerUrl()
         def targetUri = params.targetUri ?: rootURI
 
         // Handle requests saved by Shiro filters.
@@ -175,7 +175,7 @@ class AuthController {
     }
 
     private JSON getJsonForPrincipal(String principal) {
-        Key key = new SecretKeySpec((grailsApplication.config.nslServices.jwt.secret as String).getBytes('UTF-8'), 'plain text')
+        Key key = new SecretKeySpec(configService.JWTSecret.getBytes('UTF-8'), 'plain text')
 
         JSON result = [
                 success  : true,

@@ -20,6 +20,8 @@ class NameConstructionService {
 
     def icnNameConstructionService
     def icznNameConstructionService
+    def icnpNameConstructionService
+    def icvcnNameConstructionService
 
     static transactional = false
 
@@ -64,6 +66,14 @@ class NameConstructionService {
             return icznNameConstructionService.constructName(name)
         }
 
+        if (name.nameType.nameGroup.name == 'prokaryotes') {
+            return icnpNameConstructionService.constructName(name)
+        }
+
+        if (name.nameType.nameGroup.name == 'virus') {
+            return icvcnNameConstructionService.constructName(name)
+        }
+
         throw new UnsupportedNomCode("Unsupported Nomenclatural code for name construction $name.nameType.nameGroup.name")
     }
 
@@ -78,6 +88,14 @@ class NameConstructionService {
 
         if (name.nameType.nameGroup.name == 'zoological') {
             return icznNameConstructionService.constructAuthor(name)
+        }
+
+        if (name.nameType.nameGroup.name == 'prokaryotes') {
+            return icnpNameConstructionService.constructAuthor(name)
+        }
+
+        if (name.nameType.nameGroup.name == 'virus') {
+            return icvcnNameConstructionService.constructAuthor(name)
         }
 
         throw new UnsupportedNomCode("Unsupported Nomenclatural code for name construction $name.nameType.nameGroup.name")

@@ -45,18 +45,19 @@
 
 body {
     min-width: 400px !important;
+    min-height: 100vh;
 }
 
 body.test {
-    background-color: rgba(246, 243, 87, 0.05);
+    border-left: #7a43b6 15px solid;
 }
 
 body.local {
-    background-color: rgba(159, 255, 0, 0.08);
+    border-left: #41b622 15px solid;
 }
 
 body.stage {
-    background-color: #a3cbdd;
+    border-left: #2e3ab6 15px solid;
 }
 
 div.logo {
@@ -86,6 +87,26 @@ span.cell {
 .ui-autocomplete {
     z-index: 10000;
 }
+
+.slider {
+    animation-duration: 10s;
+    animation-name: slidein;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+@keyframes slidein {
+    from {
+        margin-left: 80%;
+        width: 100%;
+    }
+
+    to {
+        margin-left: 0%;
+        width: 100%;
+    }
+}
+
 
 @media(min-width:992px) and (max-width:1100px){
     div.logo img {
@@ -126,6 +147,37 @@ div.logo div.sublogo {
     font-size: 0.9em;
     color: #66512c;
 }
+
+div#page-footer {
+
+    background: white none repeat scroll 0 0;
+    color: black;
+    border-top: 1px solid gray;
+    bottom: 0;
+    height: 4em;
+    position: fixed;
+    width: 100vh;
+    padding-top: 0.5em;
+    padding-left: 1em;
+    padding-right: 1em;
+    left: 0;
+
+}
+
+div#page-footer a.twitter-link {
+    color: black;
+}
+
+span#page-footer-inner-right {
+    display: inline-block;
+    margin-top: 1em;
+}
+
+div#main-content {
+    margin-bottom: 5em;
+}
+
+
 
 /* styles for basic CRUD pages */
 li.fieldcontain {
@@ -438,13 +490,56 @@ a:hover {
     overflow: auto;
 }
 
-.diffBefore {
+label.disabled {
+    color: grey;
+    text-decoration: grey line-through;
+}
+
+.conflicting {
+    border-left: 2px solid red;
+    padding-left: 1em;
+}
+.nonConflicting {
+    border-left: 2px solid green;
+    padding-left: 1em;
+}
+
+.diffBefore, .Removed {
     border-left: 10px solid rgba(235, 21, 31, 0.1);
     background-color: rgba(235, 21, 31, 0.02);
 }
-.diffAfter {
+.diffAfter, .Added {
     border-left: 10px solid rgba(12, 235, 2, 0.1);
     background-color: rgba(12, 235, 2, 0.02);
+}
+
+.Removed span.change-description {
+    font-weight: bold;
+    color: red;
+}
+
+.Added span.change-description {
+    font-weight: bold;
+    color: green;
+}
+
+.Modified span.change-description {
+    font-weight: bold;
+    color: purple;
+}
+
+.Unchanged span.change-description {
+    font-weight: bold;
+    color: grey;
+}
+
+.Modified {
+    border-left: 10px solid rgba(3, 19, 235, 0.1);
+    background-color: rgba(4, 31, 235, 0.02);
+}
+
+.Unchanged {
+    border-left: 10px solid rgba(167, 156, 160, 0.11);
 }
 
 .missing {
@@ -469,6 +564,10 @@ a:hover {
 
 tr.sep {
     border-top: 3px solid grey;
+}
+
+h3.sep {
+    border-bottom: 1px solid grey;
 }
 
 hybrid {
@@ -500,4 +599,9 @@ table.audit-report td.data {
     .imageAndText h1 {
         font-size: 20px;
     }
+}
+div.debug {
+    border: 1px solid green;
+    padding: 1em;
+    background-color: rgba(92, 184, 92, 0.65);
 }

@@ -103,44 +103,22 @@ class TreeController extends BaseApiController {
         }
     }
 
-    def eventReport(Long treeId, Boolean embed) {
-        Tree tree = Tree.get(treeId)
-        ResultObject results = requireTarget(tree, "No Tree with id: $treeId found")
-        handleResults(results, { eventRespond(results, tree, embed) }) {
-            List<EventRecord> eventRecords = treeReportService.currentSynonymyUpdatedEventRecords(tree)
-            results.payload = eventRecords.collect { treeReportService.synonymyUpdatedReport(it, tree) }
-                                          .findAll { it != null }
-                                          .sort { it.treeVersionElement.namePath }
+    def checkCurrentSynonymy(Long treeVersionId, Boolean embed) {
+        TreeVersion treeVersion = TreeVersion.get(treeVersionId)
+        ResultObject results = requireTarget(treeVersion, "No Tree version with id: $treeVersionId found")
+        handleResults(results, { checkSynRespond(results, treeVersion, embed) }) {
+            results.payload = treeReportService.checkCurrentSynonymy(treeVersion, 20)
         }
     }
 
-    private eventRespond(ResultObject resultObject, Tree tree, Boolean embed) {
+    private checkSynRespond(ResultObject resultObject, TreeVersion treeVersion, Boolean embed) {
         log.debug "result status is ${resultObject.status} $resultObject"
         if (embed) {
             //noinspection GroovyAssignabilityCheck
-            respond(resultObject, [view: '_eventContent', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
+            respond(resultObject, [view: '_checkSynContent', model: [treeVersion: treeVersion, data: resultObject], status: resultObject.remove('status')])
         } else {
             //noinspection GroovyAssignabilityCheck
-            respond(resultObject, [view: 'eventReport', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
-        }
-    }
-
-    def checkCurrentSynonymy(Long treeId, Boolean embed) {
-        Tree tree = Tree.get(treeId)
-        ResultObject results = requireTarget(tree, "No Tree with id: $treeId found")
-        handleResults(results, { checkSynRespond(results, tree, embed) }) {
-            results.payload = treeReportService.checkCurrentSynonymy(tree.defaultDraftTreeVersion)
-        }
-    }
-
-    private checkSynRespond(ResultObject resultObject, Tree tree, Boolean embed) {
-        log.debug "result status is ${resultObject.status} $resultObject"
-        if (embed) {
-            //noinspection GroovyAssignabilityCheck
-            respond(resultObject, [view: '_checkSynContent', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
-        } else {
-            //noinspection GroovyAssignabilityCheck
-            respond(resultObject, [view: 'checkSynReport', model: [tree: tree, data: resultObject], status: resultObject.remove('status')])
+            respond(resultObject, [view: 'checkSynReport', model: [treeVersion: treeVersion, data: resultObject], status: resultObject.remove('status')])
         }
     }
 
