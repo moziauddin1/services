@@ -268,7 +268,7 @@ class TreeService implements ValidationUtils {
             }
             return false
         }
-        if (!history.contains(tves.last())) {
+        if (tves && !tves.empty && !history.contains(tves.last())) {
             history.add(tves.last())
         }
         return history
