@@ -240,7 +240,7 @@ class InstanceService {
 
     def checkInstanceCreated(Instance instance) {
         if(!instance.uri) {
-            instance.uri = linkService.getPreferredLinkForObject(instance)
+            instance.uri = linkService.getPreferredLinkForObjectSansHost(instance)
             instance.save()
         }
         //if this is a relationship instance we want to check if it's citedBy instance is on any tree and
@@ -268,7 +268,7 @@ class InstanceService {
 
     def updateMissingUris() {
         Instance.findAllByUriIsNull().each { Instance instance ->
-            instance.uri = linkService.getPreferredLinkForObject(instance)
+            instance.uri = linkService.getPreferredLinkForObjectSansHost(instance)
             instance.save()
         }
     }
