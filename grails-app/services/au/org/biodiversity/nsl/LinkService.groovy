@@ -196,6 +196,10 @@ class LinkService {
         return result
     }
 
+    String getPreferredLinkForObjectSansHost(Object target) {
+        getPreferredLinkForObject(target) - "${getPreferredHost()}/"
+    }
+
     @Timed()
     String getPreferredLinkForObject(Object target) {
         if (target == null) {
