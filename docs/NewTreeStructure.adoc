@@ -615,7 +615,7 @@ for a single item, so while december 2015 saw 132 versions each one was for a si
 |===
 
 Take these changes adding excluded names to Correa pulchella J.B.Mackay ex Sweet which is this node
-https://biodiversity.org.au/nsl/services/node/apni/5424450 at 2015-12-23 08:49:16.608000 +11:00 but was a different
+https://id.biodiversity.org.au/node/apni/5424450 at 2015-12-23 08:49:16.608000 +11:00 but was a different
 node 3 minutes earlier. The reality is that these changes were meant to be done as a batch and should only have been
 published once.
 
@@ -649,7 +649,8 @@ to a _taxon identifier_.
 
 ==== new links
 
-We need to be able to encode the version into the tree links since tree_element uses a composite key.
+We need to be able to encode the version into the tree links since tree_version_element effectively uses a composite key.
+(In the current implementation this element_link in tree_version_element *is* the PK)
 
 Links currently are structured as .../object/namespace/number, e.g. node/apni/7845073, where the namespace so far
 has been directly related to the shard. Trees are meant to be above/separate to shards, so perhaps we should move to
@@ -850,25 +851,26 @@ current uber tree.
 Two million record tree would be expected to take up around 285MB based on the estimated data usage figures quoted above
 for 35k names.
 
-doing a select on 4 819 443 tree_elements and ordering by name_path on my local machine took 3m 12s
+doing a select on 4 819 443 tree_version_elements and ordering by name_path on my local machine took 250ms
 
- select * from tree_element order by name_path;
- 2000 rows retrieved starting from 1 in 3m 12s 448ms (execution: 3m 11s 788ms, fetching: 660ms)
+ sql> select te.simple_name, te.name_link, tve.element_link tree_link, tve.name_path
+      from tree_element te
+                  join tree_version_element tve on te.id = tve.tree_element_id
+ [2018-11-28 13:46:28] 2000 rows retrieved starting from 1 in 249 ms (execution: 144 ms, fetching: 105 ms)
 
 after optimising postgresql this came down to 1m 40s.
 
-With a trigram index on name_path a search for everything under Eucalyptus on 4.8M tree_elements (159213 results 2000 fetched)
-takes ~5 seconds.
+With an index on name_path a search for everything under Eucalyptus on 4.8M tree_elements (159213 results 2000 fetched)
+takes ~200ms.
 
- sql> select * from tree_element where name_path like '%/Eucalyptus/%' order by name_path
- [2017-06-26 17:02:47] 2000 rows retrieved starting from 1 in 4s 910ms (execution: 4s 579ms, fetching: 331ms)
+ sql> select te.simple_name, te.name_link, t.host_name|| tve.element_link tree_link, tve.name_path
+      from tree_element te
+                  join tree_version_element tve on te.id = tve.tree_element_id
+                  join tree t on tve.tree_version_id = t.current_tree_version_id and t.accepted_tree
+      where name_path like '%/Eucalyptus/%' order by name_path
+ [2018-11-28 13:42:41] 1168 rows retrieved starting from 1 in 203 ms (execution: 137 ms, fetching: 66 ms)
 
-On about 2M elements it takes 2.2s indicating the time taken for these queries is linear with number of records.
-
-  sql> select * from tree_element where tree_version_id > 80 and name_path like '%/Eucalyptus/%' order by name_path
-  [2017-06-26 17:07:46] 2000 rows retrieved starting from 1 in 2s 271ms (execution: 2s 35ms, fetching: 236ms)
-
-This also indicates more machine grunt may improve performance. (After optimising postgresql this came down to 1.48s)
+More machine grunt may improve performance. (After optimising postgresql this came down a lot)
 
 ****
 My local machine is an i7-4820K 3.70GHz CPU x 4, 32GB machine with a 500GB Samsung SSD. Postgresql had not been optimised
@@ -885,6 +887,10 @@ Given it takes about 12 seconds to copy/insert 35k tree_elements into the tree_e
 it should take around 11 minutes to copy an entire 2 million element tree. We shouldn't have to copy the entire uber
 tree of this size very often.
 
+NOTE: This copy was done on an older structure. We still copy the draft tree, but the process takes a little longer
+because we bulk load the identifiers by sending the list of identifiers to add to the mapper. This process currently
+needs some more optimisation.
+
 == What it looks like
 
 image::new-tree-overview.svg[]
@@ -894,75 +900,87 @@ image::new-tree-overview.svg[]
 [source]
 .DDL.sql
 ----
-DROP TABLE IF EXISTS tree;
-CREATE TABLE tree (
-  id                            INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
-  lock_version                  INT8 DEFAULT 0                         NOT NULL,
-  current_tree_version_id       INT8,
-  default_draft_tree_version_id INT8,
-  group_name                    TEXT                                   NOT NULL,
-  name                          TEXT                                   NOT NULL,
-  reference_id                  INT8,
-  PRIMARY KEY (id)
-);
+    create table tree (
+        id int8 default nextval('nsl_global_seq') not null,
+        lock_version int8 default 0 not null,
+        accepted_tree boolean default false not null,
+        config jsonb,
+        current_tree_version_id int8,
+        default_draft_tree_version_id int8,
+        description_html Text default 'Edit me' not null,
+        group_name Text not null,
+        host_name Text not null,
+        link_to_home_page Text,
+        name Text not null,
+        reference_id int8,
+        primary key (id)
+    );
 
-DROP TABLE IF EXISTS tree_version;
-CREATE TABLE tree_version (
-  id                  INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
-  lock_version        INT8 DEFAULT 0                         NOT NULL,
-  draft_name          TEXT                                   NOT NULL,
-  log_entry           TEXT,
-  previous_version_id INT8,
-  published           BOOLEAN DEFAULT FALSE                  NOT NULL,
-  published_at        TIMESTAMP WITH TIME ZONE,
-  published_by        VARCHAR(100),
-  tree_id             INT8                                   NOT NULL,
-  PRIMARY KEY (id)
-);
+    create table tree_element (
+        id int8 default nextval('nsl_global_seq') not null,
+        lock_version int8 default 0 not null,
+        display_html Text not null,
+        excluded boolean default false not null,
+        instance_id int8 not null,
+        instance_link Text not null,
+        name_element varchar(255) not null,
+        name_id int8 not null,
+        name_link Text not null,
+        previous_element_id int8,
+        profile jsonb,
+        rank varchar(50) not null,
+        simple_name Text not null,
+        source_element_link Text,
+        source_shard Text not null,
+        synonyms jsonb,
+        synonyms_html Text not null,
+        updated_at timestamp with time zone not null,
+        updated_by varchar(255) not null,
+        primary key (id)
+    );
 
-DROP TABLE IF EXISTS tree_element;
-CREATE TABLE tree_element (
-  id                  INT8 DEFAULT nextval('nsl_global_seq') NOT NULL,
-  lock_version        INT8 DEFAULT 0                         NOT NULL,
-  depth               INT4                                   NOT NULL,
-  display_html        TEXT                                   NOT NULL,
-  excluded            BOOLEAN DEFAULT FALSE                  NOT NULL,
-  instance_id         INT8                                   NOT NULL,
-  instance_link       TEXT                                   NOT NULL,
-  name_element        VARCHAR(255)                           NOT NULL,
-  name_id             INT8                                   NOT NULL,
-  name_link           TEXT                                   NOT NULL,
-  name_path           TEXT                                   NOT NULL,
-  parent_element_id   INT8,
-  previous_element_id INT8,
-  profile             JSONB,
-  rank                VARCHAR(50)                            NOT NULL,
-  rank_path           JSONB,
-  simple_name         TEXT                                   NOT NULL,
-  source_element_link TEXT,
-  source_shard        TEXT                                   NOT NULL,
-  synonyms            JSONB,
-  synonyms_html       TEXT                                   NOT NULL,
-  tree_path           TEXT                                   NOT NULL,
-  updated_at          TIMESTAMP WITH TIME ZONE               NOT NULL,
-  updated_by          VARCHAR(255)                           NOT NULL,
-  PRIMARY KEY (id)
-);
+    create table tree_version (
+        id int8 default nextval('nsl_global_seq') not null,
+        lock_version int8 default 0 not null,
+        created_at timestamp with time zone not null,
+        created_by varchar(255) not null,
+        draft_name Text not null,
+        log_entry Text,
+        previous_version_id int8,
+        published boolean default false not null,
+        published_at timestamp with time zone,
+        published_by varchar(100),
+        tree_id int8 not null,
+        primary key (id)
+    );
 
-DROP TABLE IF EXISTS tree_version_element;
-CREATE TABLE tree_version_element (
-  element_link    TEXT NOT NULL,
-  taxon_id        INT8 NOT NULL,
-  taxon_link      TEXT NOT NULL,
-  tree_element_id INT8 NOT NULL,
-  tree_version_id INT8 NOT NULL,
-  PRIMARY KEY (element_link)
-);
+    create table tree_version_element (
+        element_link Text not null,
+        depth int4 not null,
+        merge_conflict boolean default false not null,
+        name_path Text not null,
+        parent_id Text,
+        taxon_id int8 not null,
+        taxon_link Text not null,
+        tree_element_id int8 not null,
+        tree_path Text not null,
+        tree_version_id int8 not null,
+        updated_at timestamp with time zone not null,
+        updated_by varchar(255) not null,
+        primary key (element_link)
+    );
 
 ----
 
-Refer to code at https://github.com/bio-org-au/nsl-domain-plugin/blob/new-tree/web-app/sql/update-to-24.sql
+Refer to code at
+https://github.com/bio-org-au/nsl-domain-plugin/blob/8685491bc3916f5615d9716465fe622c32deebfe/web-app/sql/nsl-ddl.sql#L735[github]
 
+---
+
+IMPORTANT: This has been implemented in production so the Impact and Amount of work information below is only useful for
+retrospective evaluation. Skip to <<Query Examples>>
+
+---
 == User impact of change over
 
 Currently in production:
@@ -1597,7 +1615,7 @@ AND tree_path ~ '/50617337';
 
 == Placement Rules
 
-NOTE: there is a new more succinct document "placement-rules.adoc" which is based directly on the new implementation
+NOTE: there is a new more succinct document "<<placement-rules.adoc>>" which is based directly on the new implementation
 after we've tested and reviewed the results with users. Consider this document to be the before picture and that as the
 after.
 

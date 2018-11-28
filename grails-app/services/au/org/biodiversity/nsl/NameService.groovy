@@ -59,7 +59,7 @@ class NameService {
             return
         }
         if(!name.uri) {
-            name.uri = linkService.getPreferredLinkForObject(name)
+            name.uri = linkService.getPreferredLinkForObjectSansHost(name)
             name.save()
         }
         seen.add(note.id)
@@ -419,7 +419,7 @@ or n.fullNameHtml is null""")?.first() as Integer
 
     def updateMissingUris() {
         Name.findAllByUriIsNull().each { Name name ->
-            name.uri = linkService.getPreferredLinkForObject(name)
+            name.uri = linkService.getPreferredLinkForObjectSansHost(name)
             name.save()
         }
     }

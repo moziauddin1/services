@@ -268,6 +268,9 @@ class TreeService implements ValidationUtils {
             }
             return false
         }
+        if (tves && !tves.empty && !history.contains(tves.last())) {
+            history.add(tves.last())
+        }
         return history
     }
 
@@ -1313,9 +1316,12 @@ where te.display_html <> ('<data>' || n.full_name_html || ' <citation>' || r.cit
      */
     def refreshDisplayHtml() {
         Sql sql = getSql()
-        sql.executeUpdate('''update tree_element te 
-    set display_html = '<data>' || n.full_name_html || ' <citation>' || r.citation_html || '</citation></data>'
-  from name n, instance i, reference r
+        sql.executeUpdate('''
+update tree_element te 
+    set display_html = '<data>' || n.full_name_html || 
+    '<name-status class="' || ns.name|| '">, ' || ns.name || '</name-status> <citation>' || r.citation_html || '</citation></data>'
+  from name n join name_status ns on n.name_status_id = ns.id, 
+  instance i, reference r
   where te.name_id = n.id
     and te.instance_id = i.id
     and i.reference_id = r.id;
@@ -1980,7 +1986,7 @@ and tve.element_link not in ($excludedLinks)
     List<TreeVersionElement> instanceInAnyCurrentTree(Instance instance) {
         TreeVersionElement.executeQuery("""from TreeVersionElement tve 
             where (tve.treeVersion.published = false or tve.treeVersion = tve.treeVersion.tree.currentTreeVersion)
-                and tve.treeElement.instanceId = :id""",[id: instance.id])
+                and tve.treeElement.instanceId = :id""", [id: instance.id])
     }
 
     Map merge(TreeVersion draftVersion, MergeReport report, String userName) {
