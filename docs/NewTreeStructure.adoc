@@ -1,3 +1,6 @@
+---
+---
+
 = New tree structure
 v1.0, June 2017
 :imagesdir: resources/images/
