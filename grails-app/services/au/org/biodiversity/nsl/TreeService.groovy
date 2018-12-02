@@ -1878,7 +1878,7 @@ and tve.element_link not in ($excludedLinks)
                 synonymsHtml: synonymsHtml,
                 sourceShard: configService.nameSpaceName,
                 synonyms: synonyms,
-                rank: instance.name.nameRank.displayName,
+                rank: instance.name.nameRank.name,
                 nameLink: linkService.getPreferredLinkForObject(instance.name),
                 instanceLink: linkService.getPreferredLinkForObject(instance),
                 nomInval: instance.name.nameStatus.nomInval,
