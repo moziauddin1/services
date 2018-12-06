@@ -40,10 +40,19 @@
 
     <tree:findCurrentVersion element="${treeVersionElement}">
       <span class="small">
-        <i class="fa fa-long-arrow-right"></i>
-        <a href='${currentElement.fullElementLink()}'>
-          current version.
-        </a>
+        <g:if test="${synonym}">
+          currently
+          <g:each in="${elements}" var="currentElement">
+            <i class="fa fa-long-arrow-right"></i>
+            <a href='${currentElement.fullElementLink()}'>${currentElement.treeElement.simpleName}</a>
+          </g:each>
+        </g:if>
+        <g:else>
+          <i class="fa fa-long-arrow-right"></i>
+          <a href='${currentElement.fullElementLink()}'>
+            current version.
+          </a>
+        </g:else>
       </span>
     </tree:findCurrentVersion>
 
