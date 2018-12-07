@@ -284,7 +284,7 @@ WHERE w.sort_order >= rank_sort_order
 CREATE MATERIALIZED VIEW taxon_view AS
 
   -- synonyms bit
-  (SELECT tree.host_name || regexp_replace(syn ->> 'concept_link', '^https://[^/]*', '')                  AS "taxonID",
+  (SELECT tree.host_name || '/' || (syn ->> 'concept_link')                                               AS "taxonID",
           acc_nt.name                                                                                     AS "nameType",
           tree.host_name || tve.element_link                                                              AS "acceptedNameUsageID",
           acc_name.full_name                                                                              AS "acceptedNameUsage",
@@ -295,8 +295,7 @@ CREATE MATERIALIZED VIEW taxon_view AS
           syn ->> 'type'                                                                                  AS "taxonomicStatus",
           (syn ->> 'type' ~ 'parte')                                                                      AS "proParte",
           syn_name.full_name                                                                              AS "scientificName",
-          tree.host_name ||
-          regexp_replace(syn ->> 'name_link', '^https://[^/]*', '')                                       AS "scientificNameID",
+          tree.host_name || '/' || (syn ->> 'name_link')                                                  AS "scientificNameID",
           syn_name.simple_name                                                                            AS "canonicalName",
           CASE
             WHEN syn_nt.autonym
@@ -316,11 +315,9 @@ CREATE MATERIALIZED VIEW taxon_view AS
           syn_name.created_at                                                                             AS "created",
           syn_name.updated_at                                                                             AS "modified",
           tree.name                                                                                       AS "datasetName",
-          tree.host_name ||
-          regexp_replace(syn ->> 'concept_link', '^https://[^/]*', '')                                    AS "taxonConceptID",
+          tree.host_name || '/' || (syn ->> 'concept_link')                                               AS "taxonConceptID",
           (syn ->> 'cites')                                                                               AS "nameAccordingTo",
-          tree.host_name ||
-          regexp_replace(syn ->> 'cites_link', '^https://[^/]*', '')                                      AS "nameAccordingToID",
+          tree.host_name || (syn ->> 'cites_link')                                                        AS "nameAccordingToID",
           profile -> 'APC Comment' ->> 'value'                                                            AS "taxonRemarks",
           profile -> 'APC Dist.' ->> 'value'                                                              AS "taxonDistribution",
           -- todo check this is ok for synonyms
@@ -399,7 +396,7 @@ CREATE MATERIALIZED VIEW taxon_view AS
           tree.name                                                                                       AS "datasetName",
           te.instance_link                                                                                AS "taxonConceptID",
           acc_ref.citation                                                                                AS "nameAccordingTo",
-          tree.host_name || '/reference/${namespace}/' || acc_ref.id                                              AS "nameAccordingToID",
+          tree.host_name || '/reference/${namespace}/' || acc_ref.id                                      AS "nameAccordingToID",
           profile -> 'APC Comment' ->> 'value'                                                            AS "taxonRemarks",
           profile -> 'APC Dist.' ->> 'value'                                                              AS "taxonDistribution",
           -- todo check this is ok for synonyms
