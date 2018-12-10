@@ -27,6 +27,8 @@ import grails.transaction.Transactional
 import groovy.sql.GroovyResultSet
 import groovy.sql.Sql
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 @Transactional
 class FlatViewService implements WithSql {
 
@@ -35,6 +37,8 @@ class FlatViewService implements WithSql {
 
     private static String TAXON_VIEW = 'taxon_view'
     private static String NAME_VIEW = 'name_view'
+    private AtomicBoolean creatingTaxonView = new AtomicBoolean(false)
+    private AtomicBoolean creatingNameView = new AtomicBoolean(false)
 
 
     Closure nameView = { namespace ->
@@ -278,7 +282,7 @@ SELECT
   w.rank,
   w.sort_order
 FROM walk w
-WHERE w.sort_order >= rank_sort_order
+WHERE w.sort_order = rank_sort_order
 \$\$;
 
 CREATE MATERIALIZED VIEW taxon_view AS
@@ -472,6 +476,15 @@ CREATE MATERIALIZED VIEW taxon_view AS
         sql.execute(query)
     }
 
+    def bgRecreateViews() {
+        runAsync {
+            log.debug "Doing background recreate of taxon and name views."
+            String namespaceName = configService.nameSpace.name.toLowerCase()
+            createTaxonView(namespaceName)
+            createNameView(namespaceName)
+            log.debug "Recreate views complete."
+        }
+    }
 
     File exportTaxonToCSV() {
         exportToCSV(TAXON_VIEW, "${configService.classificationTreeName}-taxon", taxonView)

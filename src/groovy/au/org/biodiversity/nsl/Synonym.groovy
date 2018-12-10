@@ -19,6 +19,7 @@ class Synonym {
     final Boolean mis
     final Boolean syn
     final String cites
+    final String citesHtml
     final String citesLink
     final String conceptLink
     final Long year
@@ -39,7 +40,8 @@ class Synonym {
         tax = synonymInstance.instanceType.taxonomic
         mis = synonymInstance.instanceType.misapplied
         syn = synonymInstance.instanceType.synonym
-        cites = synonymInstance.cites ? synonymInstance.cites.reference.citationHtml : ''
+        cites = synonymInstance.cites ? synonymInstance.cites.reference.citation : ''
+        citesHtml = synonymInstance.cites ? synonymInstance.cites.reference.citationHtml : ''
     }
 
     Synonym(Map synonymMap) {
@@ -59,7 +61,9 @@ class Synonym {
         nom = synonymMap.nom as Boolean
         tax = synonymMap.tax as Boolean
         mis = synonymMap.mis as Boolean
+        syn = synonymMap.syn as Boolean
         cites = synonymMap.cites as String
+        citesHtml = synonymMap.citesHtml as String
     }
 
     Map asMap() {
@@ -76,7 +80,9 @@ class Synonym {
                 nom           : nom,
                 tax           : tax,
                 mis           : mis,
+                syn           : syn,
                 cites         : cites,
+                citesHtml     : citesHtml,
                 cites_link    : citesLink,
                 year          : year
         ]
@@ -86,9 +92,6 @@ class Synonym {
 class Synonyms {
     @Delegate
     final List<Synonym> synonyms = []
-    Closure sortSyn = { a, b ->
-        a.simpleName <=> b.simpleName ?: a.year <=> b.year ?: a.instance.cites?.id <=> b.instance.cites?.id ?: a.nameId <=> b.nameId
-    }
 
     Synonyms() {}
 

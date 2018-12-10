@@ -29,12 +29,13 @@ class BootStrap {
     def shiroSubjectDAO
     def configService
     def photoService
+    def flatViewService
 
     def init = { servletContext ->
-        if(!nslDomainService.checkUpToDate()) {
+        if (!nslDomainService.checkUpToDate()) {
             Map scriptParams = configService.getUpdateScriptParams()
             Sql sql = configService.getSqlForNSLDB()
-            if(!nslDomainService.updateToCurrentVersion(sql, scriptParams)) {
+            if (!nslDomainService.updateToCurrentVersion(sql, scriptParams)) {
                 log.error "Database is not up to date. Run update script on the DB before restarting."
                 throw new Exception('Database not at expected version.')
             }
@@ -43,15 +44,16 @@ class BootStrap {
 
         Sql sql = configService.getSqlForNSLDB()
         def result = sql.firstRow('select count(*) from information_schema.triggers where trigger_name = \'audit_trigger_row\';')
-        if(result?.getAt(0) != 18) {
+        if (result?.getAt(0) != 18) {
             log.error "\n\n*** Audit triggers not set up, expected 18 audit triggers got ${result?.getAt(0)} *** \n"
         }
         sql.close()
 
         searchService.registerSuggestions()
         jsonRendererService.registerObjectMashallers()
-
-        if(shiroSecurityManager) {
+        // recreate the name and taxon views in the background on startup.
+        flatViewService.bgRecreateViews()
+        if (shiroSecurityManager) {
             shiroSecurityManager.setSubjectDAO(shiroSubjectDAO)
             println "Set subject DAO on security manager."
             //this is just a random key generator - it does nothing :-)
