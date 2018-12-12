@@ -230,6 +230,25 @@ class TreeService implements ValidationUtils {
     }
 
     @Transactional(readOnly = true)
+    List<TreeVersionElement> findElementsForSynonym(Long nameId, TreeVersion treeVersion, Sql sql = getSql()) {
+        if (nameId && treeVersion) {
+            List<TreeVersionElement> tves = []
+            sql.eachRow('''
+        SELECT tve.element_link as element_link
+FROM tree_element el join tree_version_element tve on el.id = tve.tree_element_id,
+     jsonb_array_elements(synonyms -> 'list') AS tax_syn join instance i on (tax_syn ->> 'instance_id'):: NUMERIC :: BIGINT = i.id
+WHERE tve.tree_version_id = :versionId
+  AND synonyms is not null
+  AND synonyms ->> 'list' is not null
+  and i.name_id = :nameId''', [versionId: treeVersion.id, nameId: nameId]) { row ->
+                tves.add(TreeVersionElement.get(row.element_link as String))
+            }
+            return tves
+        }
+        return null
+    }
+
+    @Transactional(readOnly = true)
     TreeVersionElement lastChangeVersion(TreeVersionElement tve) {
         TreeElement previousElement = tve.treeElement.previousElement
         if (previousElement) {
@@ -1878,7 +1897,7 @@ and tve.element_link not in ($excludedLinks)
                 synonymsHtml: synonymsHtml,
                 sourceShard: configService.nameSpaceName,
                 synonyms: synonyms,
-                rank: instance.name.nameRank.displayName,
+                rank: instance.name.nameRank.name,
                 nameLink: linkService.getPreferredLinkForObject(instance.name),
                 instanceLink: linkService.getPreferredLinkForObject(instance),
                 nomInval: instance.name.nameStatus.nomInval,

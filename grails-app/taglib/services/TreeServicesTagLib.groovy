@@ -114,8 +114,14 @@ class TreeServicesTagLib {
             if (!currentElement) {
                 currentElement = treeService.findElementBySimpleName(tve.treeElement.simpleName, currentVersion)
             }
+            if (!currentElement) {
+                List<TreeVersionElement> tves = treeService.findElementsForSynonym(tve.treeElement.nameId, currentVersion)
+                if (tves?.size()) {
+                    out << body(synonym: true, elements: tves)
+                }
+            }
             if (currentElement) {
-                out << body(currentElement: currentElement)
+                out << body(currentElement: currentElement, synonym: false)
             }
         }
     }

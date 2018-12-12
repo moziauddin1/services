@@ -26,7 +26,6 @@ class CheckNamesJob {
     def instanceService
     def concurrent = false
     def sessionRequired = true
-//    def grailsCacheManager
 
     static triggers = {
         simple repeatInterval: 5000l // execute job once in 5 seconds
